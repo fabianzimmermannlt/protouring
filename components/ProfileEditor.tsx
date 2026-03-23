@@ -447,48 +447,54 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave }: ProfileE
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kleidergrößen</h3>
                 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Shirt</label>
-                  <input
-                    type="text"
-                    value={formData.shirtSize}
-                    onChange={(e) => handleChange('shirtSize', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
-                    placeholder="z.B. S, M, L, XL"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Shirt</label>
+                      <input
+                        type="text"
+                        value={formData.shirtSize}
+                        onChange={(e) => handleChange('shirtSize', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                        placeholder="z.B. S, M, L, XL"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Hoodie</label>
-                  <input
-                    type="text"
-                    value={formData.hoodieSize}
-                    onChange={(e) => handleChange('hoodieSize', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
-                    placeholder="z.B. S, M, L, XL"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Hoodie</label>
+                      <input
+                        type="text"
+                        value={formData.hoodieSize}
+                        onChange={(e) => handleChange('hoodieSize', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                        placeholder="z.B. S, M, L, XL"
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Hose</label>
-                  <input
-                    type="text"
-                    value={formData.pantsSize}
-                    onChange={(e) => handleChange('pantsSize', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
-                    placeholder="z.B. 32, 34, 36, 38"
-                  />
-                </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Hose</label>
+                      <input
+                        type="text"
+                        value={formData.pantsSize}
+                        onChange={(e) => handleChange('pantsSize', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                        placeholder="z.B. 32, 34, 36, 38"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Schuhe</label>
-                  <input
-                    type="text"
-                    value={formData.shoeSize}
-                    onChange={(e) => handleChange('shoeSize', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
-                    placeholder="z.B. 42, 43, 44, 45"
-                  />
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Schuhe</label>
+                      <input
+                        type="text"
+                        value={formData.shoeSize}
+                        onChange={(e) => handleChange('shoeSize', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
+                        placeholder="z.B. 42, 43, 44, 45"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

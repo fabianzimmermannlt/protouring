@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Upload</title>
+</head>
+<body>
+    <h1>Upload Debug Test</h1>
+    
+    <form id="uploadForm">
+        <input type="file" id="fileInput" multiple>
+        <button type="submit">Upload</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            
+            for (let file of files) {
+                formData.append('files', file);
+            }
+            formData.append('category', 'personal');
+            formData.append('userId', 'fabianzimmermann');
+            
+            try {
+                console.log('Sending request to: http://localhost:3002/api/uploads/upload/personal/fabianzimmermann');
+                console.log('FormData contents:', formData);
+                
+                const response = await fetch('http://localhost:3002/api/uploads/upload/personal/fabianzimmermann', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const result = await response.json();
+                console.log('Response body:', result);
+                
+                document.getElementById('result').innerHTML = `
+                    <h3>✅ Upload Result:</h3>
+                    <pre>Status: ${response.status}</pre>
+                    <pre>Response: ${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Upload error:', error);
+                document.getElementById('result').innerHTML = `
+                    <h3>❌ Upload Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
