@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Navigation } from '@/app/components/shared/Navigation'
-import DeskModule from './modules/desk/page'
+import DeskModule from './desk/page'
 import HotelsPage from '@/app/hotels/page'
 import VehiclesPage from '@/app/vehicles/page'
 
