@@ -1,7 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Home, Calendar, Users, MapPin, Hotel, Car, Music, FileText, Settings } from 'lucide-react'
+import {
+  HomeIcon,
+  CalendarDaysIcon,
+  UsersIcon,
+  MusicalNoteIcon,
+  BuildingOfficeIcon,
+  TruckIcon,
+  MapPinIcon,
+  DocumentTextIcon,
+  Cog6ToothIcon
+} from '@heroicons/react/24/outline'
 
 export interface NavigationItem {
   id: string
@@ -18,15 +28,15 @@ export interface NavigationProps {
 }
 
 const navigationItems: NavigationItem[] = [
-  { id: 'desk', name: 'SCHREIBTISCH', icon: Home, description: 'Haupt-Dashboard' },
-  { id: 'appointments', name: 'TERMINE', icon: Calendar, description: 'Termine & Planung' },
-  { id: 'contacts', name: 'KONTAKTE', icon: Users, description: 'Kontaktverwaltung' },
-  { id: 'about', name: 'ÜBER UNS', icon: Music, description: 'Band-Informationen' },
-  { id: 'hotels', name: 'HOTELS', icon: Hotel, description: 'Unterkünfte' },
-  { id: 'vehicles', name: 'FAHRZEUGE', icon: Car, description: 'Transport & Logistik' },
-  { id: 'venues', name: 'LOCATIONS', icon: MapPin, description: 'Spielorte' },
-  { id: 'templates', name: 'VORLAGEN', icon: FileText, description: 'Dokumentenvorlagen' },
-  { id: 'settings', name: 'EINSTELLUNGEN', icon: Settings, description: 'Anwendungseinstellungen' }
+  { id: 'desk', name: 'SCHREIBTISCH', icon: HomeIcon, description: 'Haupt-Dashboard' },
+  { id: 'appointments', name: 'TERMINE', icon: CalendarDaysIcon, description: 'Termine & Planung' },
+  { id: 'contacts', name: 'KONTAKTE', icon: UsersIcon, description: 'Kontaktverwaltung' },
+  { id: 'about', name: 'ÜBER UNS', icon: MusicalNoteIcon, description: 'Band-Informationen' },
+  { id: 'hotels', name: 'HOTELS', icon: BuildingOfficeIcon, description: 'Unterkünfte' },
+  { id: 'vehicles', name: 'FAHRZEUGE', icon: TruckIcon, description: 'Transport & Logistik' },
+  { id: 'venues', name: 'LOCATIONS', icon: MapPinIcon, description: 'Spielorte' },
+  { id: 'templates', name: 'VORLAGEN', icon: DocumentTextIcon, description: 'Dokumentenvorlagen' },
+  { id: 'settings', name: 'EINSTELLUNGEN', icon: Cog6ToothIcon, description: 'Anwendungseinstellungen' }
 ]
 
 export function Navigation({
