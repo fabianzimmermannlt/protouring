@@ -667,9 +667,6 @@ video {
 .ml-2 {
   margin-left: 0.5rem;
 }
-.ml-auto {
-  margin-left: auto;
-}
 .mr-2 {
   margin-right: 0.5rem;
 }
@@ -1481,11 +1478,6 @@ body {
 .hover\:bg-gray-200:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
-}
-
-.hover\:bg-gray-300:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(209 213 219 / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-gray-50:hover {
