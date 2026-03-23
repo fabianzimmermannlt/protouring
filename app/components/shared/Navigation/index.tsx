@@ -58,12 +58,13 @@ export function Navigation({
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     currentTab === item.id
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:text-white hover:bg-gray-800'
                   }`}
                 >
+                  <item.icon className="w-4 h-4" />
                   {item.name}
                 </button>
               ))}
@@ -81,12 +82,13 @@ export function Navigation({
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                  className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                     currentTab === item.id
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:text-white hover:bg-gray-800'
                   }`}
                 >
+                  <item.icon className="w-3 h-3" />
                   {item.name}
                 </button>
               ))}
