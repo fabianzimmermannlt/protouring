@@ -134,7 +134,7 @@ export default function ContentBoard({
         // Wenn kein Eintrag vorhanden und defaultContent definiert → automatisch anlegen
         if (loaded.length === 0 && defaultContent && isAdmin) {
           try {
-            const created = await createBoardItem(entityType, entityId, { title: defaultContent.title, content: defaultContent.content })
+            const created = await createBoardItem(entityType, entityId, { title: defaultContent.title, content: defaultContent.content, notFinal: false, sortOrder: 0 })
             setItems([created])
           } catch {
             setItems([])
