@@ -482,10 +482,13 @@ export default function SchreibtischModule() {
             title=""
             isAdmin={true}
             singleItem
+            hideEmptyButton
+            allowDelete={false}
             fixedTitle="Persönliche Notizen"
             showTitleField={false}
             modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
             newItemLabel="Notiz erstellen"
+            defaultContent={{ title: 'Persönliche Notizen', content: '' }}
             className="flex-1"
           />
         </div>
