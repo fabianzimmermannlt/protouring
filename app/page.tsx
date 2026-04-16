@@ -102,7 +102,7 @@ export default function ProTouringApp() {
                 onNavigated={() => setNavigateToTerminId(null)}
               />
             )}
-            {activeTab === 'contacts' && <ContactsModule />}
+            {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
             {activeTab === 'venues' && <VenuesPage />}
             {activeTab === 'partners' && <PartnersPage />}
             {activeTab === 'hotels' && <HotelsPage />}
@@ -113,7 +113,7 @@ export default function ProTouringApp() {
                 <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
               </div>
             )}
-            {activeTab === 'settings' && <SettingsModule />}
+            {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
           </div>
         </div>
       </div>
