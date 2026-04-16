@@ -1394,6 +1394,11 @@ app.get('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
     // 3. Neu anlegen wenn gar nichts gefunden — alle globalen Felder aus users kopieren
     if (!contact) {
       const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+      // Tenant-spezifische Defaults aus einem anderen Tenant des Users holen (function1/2/3, hotel_info, hotel_alias)
+      const otherContact = await db.get(
+        'SELECT * FROM contacts WHERE user_id = ? AND tenant_id != ? ORDER BY updated_at DESC LIMIT 1',
+        [req.user.id, req.tenant.id]
+      );
       const result = await db.run(
         `INSERT INTO contacts (
           tenant_id, user_id, first_name, last_name, email, phone, mobile,
@@ -1403,8 +1408,9 @@ app.get('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
           allergies, emergency_contact, emergency_phone,
           shirt_size, hoodie_size, pants_size, shoe_size,
           languages, drivers_license, railcard, frequent_flyer,
-          bank_account, bank_iban, bank_bic, tax_number, vat_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          bank_account, bank_iban, bank_bic, tax_number, vat_id,
+          notes, function1, function2, function3, hotel_info, hotel_alias
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           req.tenant.id, req.user.id, user.first_name || '', user.last_name || '', user.email || '', user.phone || '', user.mobile || '',
           user.address || '', user.postal_code || '', user.residence || '', user.tax_id || '', user.website || '',
@@ -1414,6 +1420,9 @@ app.get('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
           user.shirt_size || '', user.hoodie_size || '', user.pants_size || '', user.shoe_size || '',
           user.languages || '', user.drivers_license || '', user.railcard || '', user.frequent_flyer || '',
           user.bank_account || '', user.bank_iban || '', user.bank_bic || '', user.tax_number || '', user.vat_id || '',
+          user.special_notes || '',
+          otherContact?.function1 || '', otherContact?.function2 || '', otherContact?.function3 || '',
+          otherContact?.hotel_info || '', otherContact?.hotel_alias || '',
         ]
       );
       contact = await db.get('SELECT * FROM contacts WHERE id = ?', [result.lastID]);
@@ -1445,6 +1454,10 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
     }
     if (!contact) {
       const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+      const otherContact = await db.get(
+        'SELECT * FROM contacts WHERE user_id = ? AND tenant_id != ? ORDER BY updated_at DESC LIMIT 1',
+        [req.user.id, req.tenant.id]
+      );
       const result = await db.run(
         `INSERT INTO contacts (
           tenant_id, user_id, first_name, last_name, email, phone, mobile,
@@ -1454,8 +1467,9 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
           allergies, emergency_contact, emergency_phone,
           shirt_size, hoodie_size, pants_size, shoe_size,
           languages, drivers_license, railcard, frequent_flyer,
-          bank_account, bank_iban, bank_bic, tax_number, vat_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          bank_account, bank_iban, bank_bic, tax_number, vat_id,
+          notes, function1, function2, function3, hotel_info, hotel_alias
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           req.tenant.id, req.user.id, user.first_name || '', user.last_name || '', user.email || '', user.phone || '', user.mobile || '',
           user.address || '', user.postal_code || '', user.residence || '', user.tax_id || '', user.website || '',
@@ -1465,6 +1479,9 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
           user.shirt_size || '', user.hoodie_size || '', user.pants_size || '', user.shoe_size || '',
           user.languages || '', user.drivers_license || '', user.railcard || '', user.frequent_flyer || '',
           user.bank_account || '', user.bank_iban || '', user.bank_bic || '', user.tax_number || '', user.vat_id || '',
+          user.special_notes || '',
+          otherContact?.function1 || '', otherContact?.function2 || '', otherContact?.function3 || '',
+          otherContact?.hotel_info || '', otherContact?.hotel_alias || '',
         ]
       );
       contact = await db.get('SELECT * FROM contacts WHERE id = ?', [result.lastID]);
