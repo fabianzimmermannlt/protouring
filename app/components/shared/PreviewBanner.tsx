@@ -49,7 +49,7 @@ export default function PreviewBanner() {
           fontSize: '0.8rem', fontWeight: 600,
         }}>
           <Eye size={14} />
-          Vorschau als: {ROLE_LABELS[previewRole] ?? previewRole}
+          Vorschau als: {(ROLE_LABELS as Record<string, string>)[previewRole ?? ''] ?? previewRole}
           <button
             onClick={deactivate}
             style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(0,0,0,0.15)', border: 'none', borderRadius: '0.25rem', padding: '0.15rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}

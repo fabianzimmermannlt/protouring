@@ -102,7 +102,7 @@ export default function ProTouringApp() {
                 onNavigated={() => setNavigateToTerminId(null)}
               />
             )}
-            {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
+            {activeTab === 'contacts' && <ContactsModule />}
             {activeTab === 'venues' && <VenuesPage />}
             {activeTab === 'partners' && <PartnersPage />}
             {activeTab === 'hotels' && <HotelsPage />}

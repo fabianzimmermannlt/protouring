@@ -897,7 +897,7 @@ export async function createGuestContact(data: GuestContactData): Promise<Contac
     `/api/contacts/guest`,
     { method: 'POST', body: data }
   );
-  return contactFromRow(res.contact);
+  return contactFromRow(res.contact) as unknown as Contact;
 }
 
 function pickerContactFromRow(r: Record<string, unknown>): TravelPartyPickerContact {

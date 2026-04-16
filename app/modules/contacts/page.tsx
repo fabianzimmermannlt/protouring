@@ -78,7 +78,8 @@ function contactToProfile(c: Contact): ProfileData {
   } as unknown as ProfileData
 }
 
-export default function ContactsModule({ activeSubTab = 'overview' }: ContactsProps) {
+export default function ContactsModule() {
+  const [activeSubTab] = useState<string>('overview')
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
