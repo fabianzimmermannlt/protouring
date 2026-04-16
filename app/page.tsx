@@ -113,7 +113,7 @@ export default function ProTouringApp() {
                 <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
               </div>
             )}
-            {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
+            {activeTab === 'settings' && <SettingsModule />}
           </div>
         </div>
       </div>
