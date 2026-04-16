@@ -37,7 +37,7 @@ export interface SettingsProps {
   activeSubTab?: string
 }
 
-export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProps) {
+export default function SettingsModule({ activeSubTab = 'profil' }: { activeSubTab?: string }) {
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null)
   const showSaved = (label = 'Gespeichert') => {
     setSavedFeedback(label)
