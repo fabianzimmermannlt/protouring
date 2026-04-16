@@ -96,6 +96,11 @@ interface ContentBoardProps {
   hideEmptyButton?: boolean
   /** Löschen-Button im Modal ausblenden */
   allowDelete?: boolean
+  /**
+   * Standardinhalt: wenn kein Eintrag existiert, wird automatisch einer
+   * mit diesem Titel + Inhalt angelegt (nur wenn isAdmin=true).
+   */
+  defaultContent?: { title: string; content: string }
   className?: string
 }
 
@@ -114,6 +119,7 @@ export default function ContentBoard({
   showTitleField = true,
   hideEmptyButton = false,
   allowDelete = true,
+  defaultContent,
   className = '',
 }: ContentBoardProps) {
   const [items, setItems] = useState<BoardItem[]>([])
@@ -124,7 +130,19 @@ export default function ContentBoard({
 
   useEffect(() => {
     getBoardItems(entityType, entityId)
-      .then(setItems)
+      .then(async (loaded) => {
+        // Wenn kein Eintrag vorhanden und defaultContent definiert → automatisch anlegen
+        if (loaded.length === 0 && defaultContent && isAdmin) {
+          try {
+            const created = await createBoardItem(entityType, entityId, defaultContent.title, defaultContent.content)
+            setItems([created])
+          } catch {
+            setItems([])
+          }
+        } else {
+          setItems(loaded)
+        }
+      })
       .catch(e => {
         console.error('[ContentBoard] load error:', e)
         setLoadError(e?.message ?? 'Ladefehler')

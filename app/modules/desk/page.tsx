@@ -364,9 +364,15 @@ export default function SchreibtischModule() {
             title=""
             isAdmin={isEditor}
             singleItem
+            hideEmptyButton
+            allowDelete={false}
             modalTitle={{ new: 'Ankündigung erstellen', edit: 'Ankündigung bearbeiten' }}
             titlePlaceholder="Titel der Ankündigung"
             newItemLabel="Ankündigung erstellen"
+            defaultContent={{
+              title: 'Willkommen bei ProTouring 👋',
+              content: 'Hier kannst du aktuelle Infos, Ankündigungen oder Hinweise für dein Team hinterlegen. Admins, Tourmanager und Agencies können diesen Text bearbeiten.'
+            }}
             className="flex-1"
           />
         </div>
