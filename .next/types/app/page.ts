@@ -1,4 +1,4 @@
-// File: /Users/fabianzimmermann/CascadeProjects/windsurf-project/app/page.tsx
+// File: /Users/fabianzimmermann/Desktop/ProTouring Claude/ProTouring/windsurf-ProTouring/app/page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

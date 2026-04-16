@@ -1,1 +1,30 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment (NEVER committen – enthält Secrets)
+.env
+.env.local
+.env.production
+
+# Datenbank (wird auf Server separat verwaltet + gebackupt)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Uploads (user-generated content, nicht im Git)
+uploads/
+
+# Next.js Build
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# TypeScript
+tsconfig.tsbuildinfo

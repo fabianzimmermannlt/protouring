@@ -1,6 +1,8 @@
 // File API functions for server communication
 
-const API_BASE = 'http://localhost:3002/api/uploads';
+const API_BASE = typeof window !== 'undefined' 
+  ? `${window.location.protocol}//${window.location.hostname}:3002/api/uploads`
+  : 'http://localhost:3002/api/uploads';
 
 export const uploadFiles = async (category: string, userId: string, files: any[]) => {
   console.log('uploadFiles called with:', { category, userId, files, isArray: Array.isArray(files) });
@@ -97,7 +99,7 @@ export const renameFile = async (category: string, userId: string, oldName: stri
 
 export const openFileInTab = (file: any) => {
   // Create a download link and open in new tab
-  const fileUrl = `http://localhost:3002/api/uploads/file/${file.category}/${file.userId}/${file.filename}`;
+  const fileUrl = `${window.location.protocol}//${window.location.hostname}:3002/api/uploads/file/${file.category}/${file.userId}/${file.filename}`;
   
   // Open in new tab
   window.open(fileUrl, '_blank');

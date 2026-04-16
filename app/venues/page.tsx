@@ -165,7 +165,7 @@ export default function VenuesPage() {
 
   // Delete venue
   const deleteVenue = (venueId: string) => {
-    if (confirm('Möchten Sie diese Spielstätte wirklich löschen?')) {
+    if (confirm('Möchten Sie diese Venue wirklich löschen?')) {
       const updatedVenues = venues.filter(v => v.id !== venueId)
       saveVenues(updatedVenues)
     }
@@ -174,7 +174,7 @@ export default function VenuesPage() {
   // CSV Export
   const exportToCSV = () => {
     if (venues.length === 0) {
-      alert('Keine Spielstätten zum Exportieren vorhanden.')
+      alert('Keine VENUES zum Exportieren vorhanden.')
       return
     }
 
@@ -261,7 +261,7 @@ export default function VenuesPage() {
 
         const updatedVenues = [...venues, ...importedVenues]
         saveVenues(updatedVenues)
-        alert(`${importedVenues.length} Spielstätten erfolgreich importiert.`)
+        alert(`${importedVenues.length} VENUES erfolgreich importiert.`)
       } catch (error) {
         alert('Fehler beim Importieren der CSV-Datei. Bitte überprüfen Sie das Format.')
       }
@@ -279,7 +279,7 @@ export default function VenuesPage() {
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">SPIELSTÄTTEN</h1>
+        <h1 className="text-2xl font-bold text-gray-900">VENUES</h1>
         <div className="flex gap-3">
           <button
             onClick={exportToCSV}
@@ -303,7 +303,7 @@ export default function VenuesPage() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
           >
             <Plus className="h-4 w-4" />
-            Neue Spielstätte
+            Neue Venue
           </button>
         </div>
       </div>
@@ -313,8 +313,8 @@ export default function VenuesPage() {
         {venues.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-lg mb-2">Keine Spielstätten vorhanden</p>
-            <p className="text-sm">Klicken Sie auf "Neue Spielstätte" um zu beginnen.</p>
+            <p className="text-lg mb-2">Keine VENUES vorhanden</p>
+            <p className="text-sm">Klicken Sie auf "Neue Venue" um zu beginnen.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -441,7 +441,7 @@ export default function VenuesPage() {
             {/* Header */}
             <div className="bg-gray-900 text-white px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">
-                {editingVenue ? 'Spielstätte bearbeiten' : 'Neue Spielstätte'}
+                {editingVenue ? 'Venue bearbeiten' : 'Neue Venue'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -462,14 +462,14 @@ export default function VenuesPage() {
                     <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Name der Spielstätte
+                          Name der Venue
                         </label>
                         <input
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500"
-                          placeholder="Name der Spielstätte"
+                          placeholder="Name der Venue"
                         />
                       </div>
 

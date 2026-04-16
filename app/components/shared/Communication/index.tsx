@@ -1,268 +1,371 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Send, MessageCircle, User, Bot, Trash2 } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Send, MessageCircle, User, Trash2, Pencil, X, Check } from 'lucide-react'
+import { getAuthToken, getCurrentTenant, getCurrentUser, getEffectiveRole } from '@/lib/api-client'
+
+// ============================================================
+// Types
+// ============================================================
 
 export interface Message {
-  id: string
+  id: number
+  userId: number
+  userName: string
   text: string
-  sender: string
-  timestamp: Date
-  type: 'user' | 'system' | 'admin'
+  createdAt: string
 }
 
 export interface CommunicationProps {
   title?: string
   placeholder?: string
+  /** @deprecated – wird ignoriert, nur noch für Abwärtskompatibilität */
   storageKey?: string
+  entityType?: string
+  entityId?: string
   maxHeight?: string
   showHeader?: boolean
   enableInput?: boolean
-  onSendMessage?: (message: Message) => void
   className?: string
+  /** @deprecated – wird vom Backend bestimmt */
   userName?: string
   userRole?: string
 }
 
+// ============================================================
+// API helpers
+// ============================================================
+
+const API_BASE = typeof window !== 'undefined'
+  ? `${window.location.protocol}//${window.location.hostname}:3002`
+  : 'http://localhost:3002'
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  const h: Record<string, string> = {}
+  if (token) h['Authorization'] = `Bearer ${token}`
+  if (tenant) h['X-Tenant-Slug'] = tenant.slug
+  return h
+}
+
+async function apiLoad(entityType: string, entityId: string, since = 0): Promise<Message[]> {
+  const res = await fetch(
+    `${API_BASE}/api/chat/${entityType}/${entityId}?since=${since}`,
+    { headers: authHeaders() }
+  )
+  if (!res.ok) throw new Error('Load failed')
+  return (await res.json()).messages ?? []
+}
+
+async function apiSend(entityType: string, entityId: string, text: string): Promise<Message> {
+  const res = await fetch(`${API_BASE}/api/chat/${entityType}/${entityId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) throw new Error('Send failed')
+  return (await res.json()).message
+}
+
+async function apiClear(entityType: string, entityId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/chat/${entityType}/${entityId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Clear failed')
+}
+
+async function apiEditMessage(messageId: number, text: string): Promise<Message> {
+  const res = await fetch(`${API_BASE}/api/chat/message/${messageId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) throw new Error('Edit failed')
+  return (await res.json()).message
+}
+
+async function apiDeleteMessage(messageId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/chat/message/${messageId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Delete failed')
+}
+
+// ============================================================
+// Component
+// ============================================================
+
+const POLL_INTERVAL = 5000 // ms
+
 export function Communication({
   title = 'Kommunikation',
   placeholder = 'Nachricht eingeben...',
-  storageKey,
+  entityType = 'desk',
+  entityId = 'general',
   maxHeight = 'h-[400px]',
   showHeader = true,
   enableInput = true,
-  onSendMessage,
   className = '',
-  userName = 'User',
-  userRole = 'user'
 }: CommunicationProps) {
-  console.log('Communication Props - userRole:', userRole)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const lastIdRef = useRef(0)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Load messages from localStorage on mount
-  useEffect(() => {
-    console.log('=== Communication Mount ===')
-    console.log('storageKey:', storageKey)
-    if (storageKey && typeof window !== 'undefined') {
-      const savedMessages = localStorage.getItem(storageKey)
-      console.log('localStorage.getItem result:', savedMessages)
-      if (savedMessages) {
-        try {
-          const parsed = JSON.parse(savedMessages)
-          console.log('Parsed messages:', parsed)
-          setMessages(parsed.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          })))
-        } catch (error) {
-          console.error('Error loading messages:', error)
-        }
-      } else {
-        console.log('No saved messages found')
+  const currentUser = getCurrentUser()
+  const currentUserId = currentUser?.id
+  const isAdmin = getEffectiveRole() === 'admin'
+
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingText, setEditingText] = useState('')
+
+  // Initiales Laden + Polling starten
+  const loadAll = useCallback(async () => {
+    try {
+      const msgs = await apiLoad(entityType, entityId, 0)
+      setMessages(msgs)
+      if (msgs.length > 0) lastIdRef.current = msgs[msgs.length - 1].id
+    } catch {
+      setError('Chat konnte nicht geladen werden')
+    }
+  }, [entityType, entityId])
+
+  const pollNew = useCallback(async () => {
+    try {
+      const newMsgs = await apiLoad(entityType, entityId, lastIdRef.current)
+      if (newMsgs.length > 0) {
+        setMessages(prev => [...prev, ...newMsgs])
+        lastIdRef.current = newMsgs[newMsgs.length - 1].id
       }
-      setIsLoaded(true)
+    } catch {
+      // Polling-Fehler still ignorieren
     }
-  }, [storageKey])
+  }, [entityType, entityId])
 
-  // Save messages to localStorage when they change (but not on initial load)
   useEffect(() => {
-    if (storageKey && typeof window !== 'undefined' && isLoaded) {
-      console.log('=== Saving messages ===')
-      console.log('storageKey:', storageKey)
-      console.log('messages:', messages)
-      localStorage.setItem(storageKey, JSON.stringify(messages))
-      console.log('Saved to localStorage')
-    }
-  }, [messages, storageKey, isLoaded])
+    loadAll()
+    pollRef.current = setInterval(pollNew, POLL_INTERVAL)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [loadAll, pollNew])
 
-  // Auto-scroll to bottom when new messages arrive (but only scroll within the chat container)
+  // Auto-scroll
   useEffect(() => {
-    if (messagesEndRef.current && messagesEndRef.current.parentElement) {
-      messagesEndRef.current.parentElement.scrollTop = messagesEndRef.current.parentElement.scrollHeight
+    if (messagesEndRef.current?.parentElement) {
+      messagesEndRef.current.parentElement.scrollTop =
+        messagesEndRef.current.parentElement.scrollHeight
     }
   }, [messages])
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      sender: userName,
-      timestamp: new Date(),
-      type: 'user'
-    }
-
-    setIsLoading(true)
-    
+  const handleSend = async () => {
+    if (!inputText.trim() || sending) return
+    setSending(true)
+    setError('')
     try {
-      // Add user message
-      setMessages(prev => [...prev, newMessage])
+      const msg = await apiSend(entityType, entityId, inputText.trim())
+      setMessages(prev => [...prev, msg])
+      lastIdRef.current = msg.id
       setInputText('')
-
-      // Call callback if provided
-      if (onSendMessage) {
-        await onSendMessage(newMessage)
-      }
-
-      setIsLoading(false)
-
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setIsLoading(false)
+      if (textareaRef.current) { textareaRef.current.style.height = '38px' }
+    } catch {
+      setError('Nachricht konnte nicht gesendet werden')
+    } finally {
+      setSending(false)
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
+  const handleEditSave = async (msgId: number) => {
+    if (!editingText.trim()) return
+    try {
+      const updated = await apiEditMessage(msgId, editingText)
+      setMessages(prev => prev.map(m => m.id === updated.id ? updated : m))
+      setEditingId(null)
+    } catch { setError('Bearbeiten fehlgeschlagen') }
   }
 
-  const handleDeleteChat = () => {
-    if (storageKey && typeof window !== 'undefined') {
-      localStorage.removeItem(storageKey)
+  const handleDeleteMessage = async (msgId: number) => {
+    try {
+      await apiDeleteMessage(msgId)
+      setMessages(prev => prev.filter(m => m.id !== msgId))
+    } catch { setError('Löschen fehlgeschlagen') }
+  }
+
+  const handleClear = async () => {
+    try {
+      await apiClear(entityType, entityId)
       setMessages([])
+      lastIdRef.current = 0
       setShowDeleteConfirm(false)
+    } catch {
+      setError('Löschen fehlgeschlagen')
     }
   }
 
-  const formatDateTime = (date: Date) => {
-    return date.toLocaleString('de-DE', { 
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit'
+  const formatTime = (ts: string) => {
+    const d = new Date(ts)
+    return d.toLocaleString('de-DE', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
     })
-  }
-
-  const getSenderIcon = (type: string) => {
-    switch (type) {
-      case 'user':
-        return <User className="w-4 h-4" />
-      case 'admin':
-        return <MessageCircle className="w-4 h-4" />
-      default:
-        return <Bot className="w-4 h-4" />
-    }
-  }
-
-  const getSenderColor = (type: string) => {
-    switch (type) {
-      case 'user':
-        return 'bg-blue-500'
-      case 'admin':
-        return 'bg-green-500'
-      default:
-        return 'bg-gray-500'
-    }
   }
 
   return (
     <div className={`bg-white flex flex-col ${maxHeight} ${className}`}>
       {showHeader && (
-        <div className="flex items-center justify-between p-3">
+        <div className="flex items-center justify-between p-3 border-b">
           <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-gray-400 hover:text-red-500 transition-colors"
+            title="Chat löschen"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* Messages Container */}
+      {/* Nachrichten */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <MessageCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+        {error && (
+          <div className="text-center text-xs text-red-400 py-2">{error}</div>
+        )}
+
+        {messages.length === 0 && !error ? (
+          <div className="text-center text-gray-400 py-8">
+            <MessageCircle className="w-10 h-10 mx-auto mb-2 text-gray-300" />
             <div className="text-sm">Noch keine Nachrichten</div>
-            <div className="text-xs mt-1">Starte die Konversation</div>
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex items-start space-x-2 ${
-                message.type === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {message.type !== 'user' && (
-                <div className={`w-8 h-8 rounded-full ${getSenderColor(message.type)} flex items-center justify-center text-white flex-shrink-0`}>
-                  {getSenderIcon(message.type)}
-                </div>
-              )}
-              
-              <div className={`max-w-xs lg:max-w-md ${
-                message.type === 'user' ? 'order-2' : 'order-1'
-              }`}>
-                <div
-                  className={`px-3 py-2 rounded-lg text-sm ${
-                    message.type === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : message.type === 'admin'
-                      ? 'bg-green-100 text-green-900 border border-green-200'
-                      : 'bg-gray-100 text-gray-900 border border-gray-200'
-                  }`}
-                >
-                  {message.text}
-                </div>
-                <div className={`text-xs text-gray-500 mt-1 ${
-                  message.type === 'user' ? 'text-right' : 'text-left'
-                }`}>
-                  {message.sender} • {formatDateTime(message.timestamp)}
-                </div>
-              </div>
+          messages.map((msg) => {
+            const isOwn = msg.userId === currentUserId
+            return (
+              <div
+                key={msg.id}
+                className={`flex items-start gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}
+              >
+                {!isOwn && (
+                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+                    <User className="w-3 h-3" />
+                  </div>
+                )}
 
-              {message.type === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0 order-1">
-                  <User className="w-4 h-4" />
+                <div className={`max-w-[75%] flex flex-col ${isOwn ? 'items-end' : 'items-start'} group`}>
+                  {editingId === msg.id ? (
+                    /* Edit-Modus */
+                    <div className="flex flex-col gap-1 w-full">
+                      <textarea
+                        value={editingText}
+                        onChange={e => setEditingText(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEditSave(msg.id) }
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        className="text-xs border border-blue-400 rounded-lg px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[160px]"
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                        <button onClick={() => handleEditSave(msg.id)} className="text-green-600 hover:text-green-700 p-0.5" title="Speichern"><Check size={13} /></button>
+                        <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 p-0.5" title="Abbrechen"><X size={13} /></button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <div className={`pt-chat-bubble ${isOwn ? 'pt-chat-bubble-own' : 'pt-chat-bubble-other'}`}>
+                          {msg.text}
+                        </div>
+                        {/* Admin-Aktionen — erscheinen beim Hover */}
+                        {isAdmin && (
+                          <div className={`absolute top-0 ${isOwn ? 'left-0 -translate-x-full pr-1' : 'right-0 translate-x-full pl-1'} flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                            <button
+                              onClick={() => { setEditingId(msg.id); setEditingText(msg.text) }}
+                              className="p-1 rounded bg-white shadow-sm border border-gray-200 text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Bearbeiten"
+                            >
+                              <Pencil size={10} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="p-1 rounded bg-white shadow-sm border border-gray-200 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Löschen"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-chat-meta">
+                        <span className="pt-chat-meta-name">{msg.userName}</span>
+                        <span className="mx-1">·</span>
+                        {formatTime(msg.createdAt)}
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
-        )}
-        
-        {isLoading && (
-          <div className="flex items-start space-x-2 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center text-white flex-shrink-0">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div className="bg-gray-100 text-gray-900 border border-gray-200 px-3 py-2 rounded-lg text-sm">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+
+                {isOwn && (
+                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white flex-shrink-0 mt-0.5">
+                    <User className="w-3 h-3" />
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+            )
+          })
         )}
-        
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* Input */}
       {enableInput && (
         <div className="border-t p-3">
-          <div className="flex space-x-2">
-            <input
-              type="text"
+          <div className="flex gap-2 items-end">
+            <textarea
+              ref={textareaRef}
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onChange={e => {
+                setInputText(e.target.value)
+                // Auto-resize
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
               placeholder={placeholder}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-              disabled={isLoading}
+              rows={1}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent resize-none overflow-hidden leading-5"
+              style={{ minHeight: '38px' }}
+              disabled={sending}
             />
             <button
-              onClick={handleSendMessage}
-              disabled={!inputText.trim() || isLoading}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              onClick={handleSend}
+              disabled={!inputText.trim() || sending}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Löschen-Bestätigung */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center gap-3 rounded-lg z-10">
+          <p className="text-sm font-medium text-gray-800">Chat wirklich löschen?</p>
+          <div className="flex gap-2">
+            <button onClick={handleClear} className="btn btn-danger text-xs px-3 py-1.5">Löschen</button>
+            <button onClick={() => setShowDeleteConfirm(false)} className="btn btn-secondary text-xs px-3 py-1.5">Abbrechen</button>
           </div>
         </div>
       )}

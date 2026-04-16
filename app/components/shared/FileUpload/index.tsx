@@ -2,6 +2,12 @@
 
 import React, { useState, useRef } from 'react'
 import { Edit, Upload, File, Trash2, AlertCircle, X, Download, Eye } from 'lucide-react'
+import { getAuthToken } from '@/lib/api-client'
+
+const authHeaders = (): Record<string, string> => {
+  const token = getAuthToken()
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
 
 export interface FileItem {
   id: string
@@ -73,7 +79,9 @@ export function FileUpload({
   const loadFiles = async () => {
     setIsLoadingFiles(true)
     try {
-      const response = await fetch(`http://localhost:3002/api/uploads/list/${category}/${userId}`)
+      const response = await fetch(`http://localhost:3002/api/uploads/list/${category}/${userId}`, {
+        headers: authHeaders()
+      })
       const serverResponse = await response.json()
       const serverFiles = (serverResponse.files || []).map((file: any, index: number) => ({
         id: file.filename || `${Date.now()}_${index}`,
@@ -148,6 +156,7 @@ export function FileUpload({
         
         const response = await fetch(`http://localhost:3002/api/uploads/upload/${category}/${userId}`, {
           method: 'POST',
+          headers: authHeaders(),
           body: formData
         })
         
@@ -191,7 +200,8 @@ export function FileUpload({
       } else {
         // Default delete logic with server integration
         const response = await fetch(`http://localhost:3002/api/uploads/delete/${category}/${userId}/${fileId}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: authHeaders()
         })
         
         if (!response.ok) {
@@ -219,7 +229,7 @@ export function FileUpload({
         // Default rename logic with server integration
         const response = await fetch(`http://localhost:3002/api/uploads/rename/${category}/${userId}/${fileId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
           body: JSON.stringify({ newName })
         })
         

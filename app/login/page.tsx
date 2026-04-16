@@ -2,184 +2,264 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authAPI } from '@/lib/api'
-import { Music, Users, Lock, Mail } from 'lucide-react'
+import { Music, Lock, Mail, User, Building } from 'lucide-react'
+import { login, register, setAuthSession } from '@/lib/api-client'
 
 export default function LoginPage() {
-  const [isLogin, setIsLogin] = useState(true)
-  const [formData, setFormData] = useState({
-    username: '',
-    name: '',
-    email: '',
-    password: ''
-  })
+  const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const handleSubmit = async (e) => {
+  const [loginData, setLoginData] = useState({ email: '', password: '' })
+  const [regData, setRegData] = useState({
+    tenantName: '',
+    tenantEmail: '',
+    userFirstName: '',
+    userLastName: '',
+    userEmail: '',
+    password: '',
+    passwordConfirm: '',
+  })
+
+  // Login
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
-      if (isLogin) {
-        // Login
-        const response = await authAPI.login(formData.username, formData.password)
-        authAPI.setAuth(response.token, response.artist)
-        router.push('/')
+      const res = await login(loginData.email, loginData.password)
+      setAuthSession(res.token, res.currentTenant, res.user, res.tenants)
+      if (res.tenants.length > 1) {
+        router.push('/artists')
       } else {
-        // Register
-        const response = await authAPI.register(formData)
-        authAPI.setAuth(response.token, response.artist)
         router.push('/')
       }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Ein Fehler ist aufgetreten')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login fehlgeschlagen')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+  // Register
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (regData.password !== regData.passwordConfirm) {
+      setError('Passwörter stimmen nicht überein')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await register({
+        tenantName: regData.tenantName,
+        tenantEmail: regData.tenantEmail,
+        userFirstName: regData.userFirstName,
+        userLastName: regData.userLastName,
+        userEmail: regData.userEmail,
+        password: regData.password,
+      }) as { token: string; tenant: object; user: object }
+      setAuthSession(res.token, res.tenant, res.user)
+      router.push('/')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center py-12 px-4">
+      <div className="w-full max-w-md space-y-8">
+
+        {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-yellow-400 rounded-full flex items-center justify-center">
-            <Music className="h-6 w-6 text-gray-900" />
+          <div className="mx-auto h-14 w-14 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
+            <Music className="h-7 w-7 text-gray-900" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            ProTouring
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            {isLogin ? 'Melde dich in deinem Tour-Konto an' : 'Erstelle dein Tour-Konto'}
-          </p>
+          <h1 className="mt-5 text-3xl font-bold text-white tracking-tight">ProTouring</h1>
+          <p className="mt-1 text-sm text-gray-400">Tour Management für Artists & Crews</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {!isLogin && (
-              <>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Künstlername
-                  </label>
-                  <div className="mt-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Users className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required={!isLogin}
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500"
-                      placeholder="Dein Künstlername"
-                    />
-                  </div>
-                </div>
+        {/* Tab Switch */}
+        <div className="flex rounded-lg bg-gray-800 p-1">
+          <button
+            onClick={() => { setMode('login'); setError('') }}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              mode === 'login' ? 'bg-yellow-400 text-gray-900' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Anmelden
+          </button>
+          <button
+            onClick={() => { setMode('register'); setError('') }}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              mode === 'register' ? 'bg-yellow-400 text-gray-900' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Registrieren
+          </button>
+        </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email
-                  </label>
-                  <div className="mt-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required={!isLogin}
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500"
-                      placeholder="deine@email.de"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Benutzername
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Users className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500"
-                  placeholder="dein-benutzername"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Passwort
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
+        {/* Error */}
+        {error && (
+          <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 text-sm text-red-300">
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          <div>
+        {/* LOGIN FORM */}
+        {mode === 'login' && (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <InputField
+              label="E-Mail"
+              type="email"
+              icon={<Mail className="h-4 w-4" />}
+              value={loginData.email}
+              onChange={v => setLoginData(d => ({ ...d, email: v }))}
+              placeholder="deine@email.de"
+              required
+            />
+            <InputField
+              label="Passwort"
+              type="password"
+              icon={<Lock className="h-4 w-4" />}
+              value={loginData.password}
+              onChange={v => setLoginData(d => ({ ...d, password: v }))}
+              placeholder="••••••••"
+              required
+            />
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-white bg-yellow-400 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
+              className="w-full py-2.5 px-4 bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
-              {loading ? 'Wird geladen...' : (isLogin ? 'Anmelden' : 'Registrieren')}
+              {loading ? 'Anmelden...' : 'Anmelden'}
             </button>
-          </div>
+          </form>
+        )}
 
-          <div className="text-center">
+        {/* REGISTER FORM */}
+        {mode === 'register' && (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="border-t border-gray-700 pt-4">
+              <p className="text-xs text-gray-400 mb-3 uppercase tracking-wider">Artist / Organisation</p>
+              <div className="space-y-3">
+                <InputField
+                  label="Name der Band / Organisation *"
+                  type="text"
+                  icon={<Building className="h-4 w-4" />}
+                  value={regData.tenantName}
+                  onChange={v => setRegData(d => ({ ...d, tenantName: v }))}
+                  placeholder="z.B. Betontod"
+                  required
+                />
+                <InputField
+                  label="E-Mail der Organisation *"
+                  type="email"
+                  icon={<Mail className="h-4 w-4" />}
+                  value={regData.tenantEmail}
+                  onChange={v => setRegData(d => ({ ...d, tenantEmail: v }))}
+                  placeholder="info@band.de"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-gray-700 pt-4">
+              <p className="text-xs text-gray-400 mb-3 uppercase tracking-wider">Dein Account</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <InputField
+                    label="Vorname *"
+                    type="text"
+                    icon={<User className="h-4 w-4" />}
+                    value={regData.userFirstName}
+                    onChange={v => setRegData(d => ({ ...d, userFirstName: v }))}
+                    placeholder="Max"
+                    required
+                  />
+                  <InputField
+                    label="Nachname *"
+                    type="text"
+                    icon={<User className="h-4 w-4" />}
+                    value={regData.userLastName}
+                    onChange={v => setRegData(d => ({ ...d, userLastName: v }))}
+                    placeholder="Mustermann"
+                    required
+                  />
+                </div>
+                <InputField
+                  label="Deine E-Mail *"
+                  type="email"
+                  icon={<Mail className="h-4 w-4" />}
+                  value={regData.userEmail}
+                  onChange={v => setRegData(d => ({ ...d, userEmail: v }))}
+                  placeholder="deine@email.de"
+                  required
+                />
+                <InputField
+                  label="Passwort *"
+                  type="password"
+                  icon={<Lock className="h-4 w-4" />}
+                  value={regData.password}
+                  onChange={v => setRegData(d => ({ ...d, password: v }))}
+                  placeholder="Mindestens 8 Zeichen"
+                  required
+                />
+                <InputField
+                  label="Passwort wiederholen *"
+                  type="password"
+                  icon={<Lock className="h-4 w-4" />}
+                  value={regData.passwordConfirm}
+                  onChange={v => setRegData(d => ({ ...d, passwordConfirm: v }))}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-yellow-600 hover:text-yellow-500 text-sm font-medium"
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 px-4 bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
-              {isLogin ? 'Noch kein Konto? Registrieren' : 'Bereits ein Konto? Anmelden'}
+              {loading ? 'Konto wird erstellt...' : 'Konto erstellen'}
             </button>
-          </div>
-        </form>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InputField({
+  label, type, icon, value, onChange, placeholder, required
+}: {
+  label: string
+  type: string
+  icon: React.ReactNode
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  required?: boolean
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-400 mb-1">{label}</label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
+          {icon}
+        </div>
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg text-sm placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-yellow-400 focus:border-yellow-400"
+        />
       </div>
     </div>
   )

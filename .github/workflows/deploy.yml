@@ -1,0 +1,39 @@
+name: Deploy to Hetzner
+
+# Automatisch deployen wenn auf 'main' gepusht wird
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "── [1/5] Code aktualisieren ──────────────────"
+            cd /var/www/protouring
+            git pull origin main
+
+            echo "── [2/5] Abhängigkeiten installieren ─────────"
+            npm ci
+
+            echo "── [3/5] Build ───────────────────────────────"
+            npm run build
+
+            echo "── [4/5] App neu starten ─────────────────────"
+            pm2 restart ecosystem.config.js --update-env
+
+            echo "── [5/5] Status prüfen ───────────────────────"
+            pm2 status
+
+            echo "✓ Deploy erfolgreich: $(date '+%Y-%m-%d %H:%M:%S')"
