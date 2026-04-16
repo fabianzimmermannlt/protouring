@@ -208,12 +208,33 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     }
   }
 
-  const handleCopyInviteLink = async () => {
+  const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
-      await navigator.clipboard.writeText(inviteLink)
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const el = document.createElement('textarea')
+        el.value = text
+        el.style.position = 'fixed'
+        el.style.left = '-9999px'
+        document.body.appendChild(el)
+        el.focus()
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleCopyInviteLink = async () => {
+    const ok = await copyToClipboard(inviteLink)
+    if (ok) {
       setInviteCopied(true)
       setTimeout(() => setInviteCopied(false), 2500)
-    } catch {
+    } else {
       setInviteError('Kopieren fehlgeschlagen – Link manuell kopieren')
     }
   }
@@ -446,9 +467,11 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     />
                     <button
                       onClick={async () => {
-                        await navigator.clipboard.writeText(addInviteLink)
-                        setAddInviteCopied(true)
-                        setTimeout(() => setAddInviteCopied(false), 2500)
+                        const ok = await copyToClipboard(addInviteLink)
+                        if (ok) {
+                          setAddInviteCopied(true)
+                          setTimeout(() => setAddInviteCopied(false), 2500)
+                        }
                       }}
                       className={`px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                         addInviteCopied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
