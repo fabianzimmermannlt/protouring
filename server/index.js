@@ -926,6 +926,51 @@ async function initDatabase() {
     console.log(`🔗 ${linked.changes} Kontakt(e) per E-Mail mit User verknüpft`);
   }
 
+  // Globale Profilfelder aus contacts → users synchronisieren (einmalige Migration)
+  // Kopiert Felder aus dem aktuellsten Kontakt-Eintrag eines Users in die users-Tabelle,
+  // wenn das Feld in users noch leer ist. Idempotent.
+  const globalFields = [
+    'phone', 'mobile', 'address', 'postal_code', 'residence', 'tax_id', 'website',
+    'birth_date', 'gender', 'pronouns', 'birth_place', 'nationality',
+    'id_number', 'social_security', 'diet', 'gluten_free', 'lactose_free',
+    'allergies', 'emergency_contact', 'emergency_phone',
+    'shirt_size', 'hoodie_size', 'pants_size', 'shoe_size',
+    'languages', 'drivers_license', 'railcard', 'frequent_flyer',
+    'bank_account', 'bank_iban', 'bank_bic', 'tax_number', 'vat_id',
+  ];
+  for (const field of globalFields) {
+    await db.run(`
+      UPDATE users
+      SET ${field} = (
+        SELECT c.${field} FROM contacts c
+        WHERE c.user_id = users.id
+          AND c.${field} IS NOT NULL AND c.${field} != ''
+        ORDER BY c.updated_at DESC
+        LIMIT 1
+      )
+      WHERE (${field} IS NULL OR ${field} = '')
+        AND EXISTS (
+          SELECT 1 FROM contacts c
+          WHERE c.user_id = users.id
+            AND c.${field} IS NOT NULL AND c.${field} != ''
+        )
+    `);
+  }
+  // first_name / last_name separat (kommen von contacts)
+  await db.run(`
+    UPDATE users SET first_name = (
+      SELECT c.first_name FROM contacts c WHERE c.user_id = users.id AND c.first_name != '' ORDER BY c.updated_at DESC LIMIT 1
+    ) WHERE (first_name IS NULL OR first_name = '')
+      AND EXISTS (SELECT 1 FROM contacts c WHERE c.user_id = users.id AND c.first_name != '')
+  `);
+  await db.run(`
+    UPDATE users SET last_name = (
+      SELECT c.last_name FROM contacts c WHERE c.user_id = users.id AND c.last_name != '' ORDER BY c.updated_at DESC LIMIT 1
+    ) WHERE (last_name IS NULL OR last_name = '')
+      AND EXISTS (SELECT 1 FROM contacts c WHERE c.user_id = users.id AND c.last_name != '')
+  `);
+  console.log('🔄 Globale Profilfelder contacts → users synchronisiert');
+
   console.log('✅ Database initialized');
 }
 
@@ -1346,13 +1391,30 @@ app.get('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
       }
     }
 
-    // 3. Neu anlegen wenn gar nichts gefunden
+    // 3. Neu anlegen wenn gar nichts gefunden — alle globalen Felder aus users kopieren
     if (!contact) {
       const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
       const result = await db.run(
-        `INSERT INTO contacts (tenant_id, user_id, first_name, last_name, email, phone)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [req.tenant.id, req.user.id, user.first_name || '', user.last_name || '', user.email || '', user.phone || '']
+        `INSERT INTO contacts (
+          tenant_id, user_id, first_name, last_name, email, phone, mobile,
+          address, postal_code, residence, tax_id, website,
+          birth_date, gender, pronouns, birth_place, nationality,
+          id_number, social_security, diet, gluten_free, lactose_free,
+          allergies, emergency_contact, emergency_phone,
+          shirt_size, hoodie_size, pants_size, shoe_size,
+          languages, drivers_license, railcard, frequent_flyer,
+          bank_account, bank_iban, bank_bic, tax_number, vat_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          req.tenant.id, req.user.id, user.first_name || '', user.last_name || '', user.email || '', user.phone || '', user.mobile || '',
+          user.address || '', user.postal_code || '', user.residence || '', user.tax_id || '', user.website || '',
+          user.birth_date || '', user.gender || '', user.pronouns || '', user.birth_place || '', user.nationality || '',
+          user.id_number || '', user.social_security || '', user.diet || '', user.gluten_free || 0, user.lactose_free || 0,
+          user.allergies || '', user.emergency_contact || '', user.emergency_phone || '',
+          user.shirt_size || '', user.hoodie_size || '', user.pants_size || '', user.shoe_size || '',
+          user.languages || '', user.drivers_license || '', user.railcard || '', user.frequent_flyer || '',
+          user.bank_account || '', user.bank_iban || '', user.bank_bic || '', user.tax_number || '', user.vat_id || '',
+        ]
       );
       contact = await db.get('SELECT * FROM contacts WHERE id = ?', [result.lastID]);
     }
@@ -1384,15 +1446,59 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
     if (!contact) {
       const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
       const result = await db.run(
-        `INSERT INTO contacts (tenant_id, user_id, first_name, last_name, email)
-         VALUES (?, ?, ?, ?, ?)`,
-        [req.tenant.id, req.user.id, user.first_name || '', user.last_name || '', user.email || '']
+        `INSERT INTO contacts (
+          tenant_id, user_id, first_name, last_name, email, phone, mobile,
+          address, postal_code, residence, tax_id, website,
+          birth_date, gender, pronouns, birth_place, nationality,
+          id_number, social_security, diet, gluten_free, lactose_free,
+          allergies, emergency_contact, emergency_phone,
+          shirt_size, hoodie_size, pants_size, shoe_size,
+          languages, drivers_license, railcard, frequent_flyer,
+          bank_account, bank_iban, bank_bic, tax_number, vat_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          req.tenant.id, req.user.id, user.first_name || '', user.last_name || '', user.email || '', user.phone || '', user.mobile || '',
+          user.address || '', user.postal_code || '', user.residence || '', user.tax_id || '', user.website || '',
+          user.birth_date || '', user.gender || '', user.pronouns || '', user.birth_place || '', user.nationality || '',
+          user.id_number || '', user.social_security || '', user.diet || '', user.gluten_free || 0, user.lactose_free || 0,
+          user.allergies || '', user.emergency_contact || '', user.emergency_phone || '',
+          user.shirt_size || '', user.hoodie_size || '', user.pants_size || '', user.shoe_size || '',
+          user.languages || '', user.drivers_license || '', user.railcard || '', user.frequent_flyer || '',
+          user.bank_account || '', user.bank_iban || '', user.bank_bic || '', user.tax_number || '', user.vat_id || '',
+        ]
       );
       contact = await db.get('SELECT * FROM contacts WHERE id = ?', [result.lastID]);
     }
 
     const b = req.body;
     // req.body kommt als camelCase von updateMyContact() in api-client.ts
+
+    // 1. Globale Felder in users-Tabelle schreiben
+    await db.run(`
+      UPDATE users SET
+        first_name=?, last_name=?, phone=?, mobile=?,
+        address=?, postal_code=?, residence=?, tax_id=?, website=?,
+        birth_date=?, gender=?, pronouns=?, birth_place=?, nationality=?,
+        id_number=?, social_security=?, diet=?, gluten_free=?, lactose_free=?,
+        allergies=?, emergency_contact=?, emergency_phone=?,
+        shirt_size=?, hoodie_size=?, pants_size=?, shoe_size=?,
+        languages=?, drivers_license=?, railcard=?, frequent_flyer=?,
+        bank_account=?, bank_iban=?, bank_bic=?, tax_number=?, vat_id=?
+      WHERE id = ?`,
+      [
+        b.firstName, b.lastName, b.phone, b.mobile,
+        b.address, b.postalCode, b.residence, b.taxId, b.website,
+        b.birthDate, b.gender, b.pronouns, b.birthPlace, b.nationality,
+        b.idNumber, b.socialSecurity, b.diet, b.glutenFree ? 1 : 0, b.lactoseFree ? 1 : 0,
+        b.allergies, b.emergencyContact, b.emergencyPhone,
+        b.shirtSize, b.hoodieSize, b.pantsSize, b.shoeSize,
+        b.languages, b.driversLicense, b.railcard, b.frequentFlyer,
+        b.bankAccount, b.bankIban, b.bankBic, b.taxNumber, b.vatId,
+        req.user.id,
+      ]
+    );
+
+    // 2. Tenant-spezifische Felder in contacts schreiben
     await db.run(`
       UPDATE contacts SET
         first_name=?, last_name=?, function1=?, function2=?, function3=?,
