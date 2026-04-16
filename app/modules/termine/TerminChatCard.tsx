@@ -5,9 +5,11 @@ import { Trash2 } from 'lucide-react'
 import { Communication } from '@/app/components/shared/Communication/Communication'
 import { getAuthToken, getCurrentTenant } from '@/lib/api-client'
 
-const API_BASE = typeof window !== 'undefined'
-  ? `${window.location.protocol}//${window.location.hostname}:3002`
-  : 'http://localhost:3002'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
+  typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:3002`
+    : 'http://localhost:3002'
+)
 
 export default function TerminChatCard({ terminId }: { terminId: number }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

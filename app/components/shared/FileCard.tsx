@@ -41,9 +41,11 @@ export interface FileCardProps {
 // API helpers
 // ============================================================
 
-const API_BASE = typeof window !== 'undefined'
-  ? `${window.location.protocol}//${window.location.hostname}:3002`
-  : 'http://localhost:3002'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
+  typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:3002`
+    : 'http://localhost:3002'
+)
 
 function authHeaders(): Record<string, string> {
   const token = getAuthToken()

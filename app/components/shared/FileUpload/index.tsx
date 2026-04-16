@@ -4,6 +4,8 @@ import React, { useState, useRef } from 'react'
 import { Edit, Upload, File, Trash2, AlertCircle, X, Download, Eye } from 'lucide-react'
 import { getAuthToken } from '@/lib/api-client'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'
+
 const authHeaders = (): Record<string, string> => {
   const token = getAuthToken()
   return token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -79,7 +81,7 @@ export function FileUpload({
   const loadFiles = async () => {
     setIsLoadingFiles(true)
     try {
-      const response = await fetch(`http://localhost:3002/api/uploads/list/${category}/${userId}`, {
+      const response = await fetch(`${API_BASE}/api/uploads/list/${category}/${userId}`, {
         headers: authHeaders()
       })
       const serverResponse = await response.json()
@@ -89,7 +91,7 @@ export function FileUpload({
         size: file.size || 0,
         type: file.type || 'application/octet-stream',
         uploadDate: file.created || new Date().toISOString(),
-        url: `http://localhost:3002/uploads/${category}/${userId}/${file.filename}`
+        url: `${API_BASE}/uploads/${category}/${userId}/${file.filename}`
       }))
       
       setFiles(serverFiles)
@@ -154,7 +156,7 @@ export function FileUpload({
           formData.append('files', file)
         })
         
-        const response = await fetch(`http://localhost:3002/api/uploads/upload/${category}/${userId}`, {
+        const response = await fetch(`${API_BASE}/api/uploads/upload/${category}/${userId}`, {
           method: 'POST',
           headers: authHeaders(),
           body: formData
@@ -171,7 +173,7 @@ export function FileUpload({
           size: file.size || 0,
           type: file.type || 'application/octet-stream',
           uploadDate: new Date().toISOString(),
-          url: `http://localhost:3002/uploads/${category}/${userId}/${file.filename}`
+          url: `${API_BASE}/uploads/${category}/${userId}/${file.filename}`
         }))
       }
       
@@ -199,7 +201,7 @@ export function FileUpload({
         await onDelete(fileId)
       } else {
         // Default delete logic with server integration
-        const response = await fetch(`http://localhost:3002/api/uploads/delete/${category}/${userId}/${fileId}`, {
+        const response = await fetch(`${API_BASE}/api/uploads/delete/${category}/${userId}/${fileId}`, {
           method: 'DELETE',
           headers: authHeaders()
         })
@@ -227,7 +229,7 @@ export function FileUpload({
         await onRename(fileId, newName)
       } else {
         // Default rename logic with server integration
-        const response = await fetch(`http://localhost:3002/api/uploads/rename/${category}/${userId}/${fileId}`, {
+        const response = await fetch(`${API_BASE}/api/uploads/rename/${category}/${userId}/${fileId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...authHeaders() },
           body: JSON.stringify({ newName })
