@@ -969,6 +969,13 @@ async function initDatabase() {
     ) WHERE (last_name IS NULL OR last_name = '')
       AND EXISTS (SELECT 1 FROM contacts c WHERE c.user_id = users.id AND c.last_name != '')
   `);
+  // special_notes aus contacts.notes (Besonderheiten)
+  await db.run(`
+    UPDATE users SET special_notes = (
+      SELECT c.notes FROM contacts c WHERE c.user_id = users.id AND c.notes IS NOT NULL AND c.notes != '' ORDER BY c.updated_at DESC LIMIT 1
+    ) WHERE (special_notes IS NULL OR special_notes = '')
+      AND EXISTS (SELECT 1 FROM contacts c WHERE c.user_id = users.id AND c.notes IS NOT NULL AND c.notes != '')
+  `);
   console.log('🔄 Globale Profilfelder contacts → users synchronisiert');
 
   console.log('✅ Database initialized');
