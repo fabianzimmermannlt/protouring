@@ -281,15 +281,15 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
               .text(leftText,  MARGIN_H, lineY, { lineBreak: false });
             doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
               .text(rightText, tabX,     lineY, { width: rightW, lineBreak: false });
-            y = lineY + 13;
+            y = lineY + 16;
             continue;
           }
 
           // Normale Zeile
-          ensureSpace(14);
+          ensureSpace(16);
           doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
             .text(trimmed, MARGIN_H, y, { width: CONTENT_W });
-          y += doc.heightOfString(trimmed, { width: CONTENT_W, fontSize: 8.5 }) + 2;
+          y += doc.heightOfString(trimmed, { width: CONTENT_W, fontSize: 8.5 }) + 5;
         }
         spacer(8);
       }
@@ -401,8 +401,8 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       const COL = [MARGIN_H, MARGIN_H + 140, MARGIN_H + 260, MARGIN_H + 370];
       const COL_W = [130, 115, 105, CONTENT_W - 370];
 
-      const ROW_H = 20;
-      const PAD_T = 6; // Abstand Oberkante → Text: visuell zentriert (pdfkit-Textbox hat intern Freiraum oben)
+      const ROW_H = 22;
+      const PAD_T = 8; // Abstand Oberkante → Text: visuell zentriert (pdfkit-Textbox hat intern Freiraum oben)
 
       // Header-Zeile
       ensureSpace(14 + ROW_H);
