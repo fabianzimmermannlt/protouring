@@ -158,7 +158,7 @@ function generateSchedulePdf(schedule) {
       }
     }
     // Tab hinter längstem linken Text + Abstand; rechte Spalte endet bei tabX + maxRightW
-    const tabX      = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 10 : 50);
+    const tabX      = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 22 : 50);
     const rightColEnd = tabX + (maxRightW > 0 ? maxRightW : 150);
 
     for (const line of lines) {

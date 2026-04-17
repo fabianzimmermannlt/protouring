@@ -262,7 +262,7 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
           }
         }
         // Tab hinter längstem linken Text + Abstand; rechte Spalte endet bei tabX + maxRightW
-        const tabX      = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 10 : 40);
+        const tabX      = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 22 : 40);
         const rightColEnd = tabX + (maxRightW > 0 ? maxRightW : 120);
 
         for (const line of lines) {
