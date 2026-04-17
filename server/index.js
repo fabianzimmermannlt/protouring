@@ -4662,14 +4662,12 @@ app.put('/api/feedback/:id/note', authenticateToken, async (req, res) => {
   }
 })
 
-// DELETE /api/feedback/:id — Löschen (Superadmin oder eigener Eintrag)
+// DELETE /api/feedback/:id — Löschen (nur Superadmin)
 app.delete('/api/feedback/:id', authenticateToken, async (req, res) => {
   try {
+    if (!req.user.isSuperadmin) return res.status(403).json({ error: 'Nur für Entwickler' })
     const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [req.params.id])
     if (!item) return res.status(404).json({ error: 'Nicht gefunden' })
-    if (!req.user.isSuperadmin && item.user_id !== req.user.id) {
-      return res.status(403).json({ error: 'Kein Zugriff' })
-    }
     await db.run('DELETE FROM feedback_items WHERE id=?', [req.params.id])
     res.json({ ok: true })
   } catch (err) {

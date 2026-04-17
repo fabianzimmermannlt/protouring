@@ -309,7 +309,7 @@ function FeedbackItemRow({
   onDelete: (id: number) => void
 }) {
   const [showDesc, setShowDesc] = useState(false)
-  const canDelete = isSuperadmin || item.userId === currentUserId
+  const canDelete = isSuperadmin
 
   const date = new Date(item.createdAt).toLocaleDateString('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
