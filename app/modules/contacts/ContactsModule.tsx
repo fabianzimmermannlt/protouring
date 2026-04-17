@@ -17,6 +17,7 @@ import {
   type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import { parseCSV, col } from '@/lib/csvParser'
 
 const CONTACT_COLS: [string, keyof Contact][] = [
   ['Vorname', 'firstName'],
@@ -265,30 +266,29 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     const reader = new FileReader()
     reader.onload = async (e) => {
       const text = e.target?.result as string
-      const lines = text.trim().split('\n')
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.replace(/^"|"$/g, '').trim())
-        if (values.length >= 7 && values[0]) {
-          try {
+      const rows = parseCSV(text).slice(1) // Header überspringen
+      for (const row of rows) {
+        if (!col(row, 0)) continue
+        try {
             const c = await createContact({
-              firstName: values[0] || '', lastName: values[1] || '',
-              function1: values[2] || '', function2: values[3] || '', function3: values[4] || '',
-              specification: values[5] || '', accessRights: values[6] || '',
-              email: values[7] || '', phone: values[8] || '', mobile: '',
-              address: values[9] || '', postalCode: values[10] || '', residence: values[11] || '',
-              taxId: values[12] || '', website: '', birthDate: '', gender: '', pronouns: '',
+              firstName: col(row, 0), lastName: col(row, 1),
+              function1: col(row, 2), function2: col(row, 3), function3: col(row, 4),
+              specification: col(row, 5), accessRights: col(row, 6),
+              email: col(row, 7), phone: col(row, 8), mobile: '',
+              address: col(row, 9), postalCode: col(row, 10), residence: col(row, 11),
+              taxId: col(row, 12), website: '', birthDate: '', gender: '', pronouns: '',
               birthPlace: '', nationality: '', idNumber: '', socialSecurity: '', diet: '',
               glutenFree: false, lactoseFree: false, allergies: '', emergencyContact: '',
               emergencyPhone: '', shirtSize: '', hoodieSize: '', pantsSize: '', shoeSize: '',
               languages: '', driversLicense: '', railcard: '', frequentFlyer: '',
               bankAccount: '', bankIban: '', bankBic: '', taxNumber: '', vatId: '',
-              crewToolActive: true, hourlyRate: parseFloat(values[13]) || 0,
-              dailyRate: parseFloat(values[14]) || 0, notes: values[15] || '',
+              crewToolActive: true, hourlyRate: parseFloat(col(row, 13)) || 0,
+              dailyRate: parseFloat(col(row, 14)) || 0, notes: col(row, 15),
               hotelInfo: '', hotelAlias: '',
             })
             setContacts(prev => [...prev, c])
           } catch {}
-        }
+
       }
     }
     reader.readAsText(file)

@@ -5,6 +5,7 @@ import { Plus, Download, Upload } from 'lucide-react'
 import { getVehicles, createVehicle, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
+import { parseCSV, col } from '@/lib/csvParser'
 
 const VEHICLE_COLS: [string, keyof Vehicle][] = [
   ['Bezeichnung', 'designation'],
@@ -83,20 +84,18 @@ export default function VehiclesPage() {
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string
-        const lines = text.split('\n')
-        const dataLines = lines.slice(1).filter(line => line.trim())
+        const rows = parseCSV(text).slice(1) // Header überspringen
         let count = 0
-        for (const line of dataLines) {
-          const values = line.split(';').map(v => v.replace(/^"|"$/g, ''))
-          if (!values[0]) continue
+        for (const row of rows) {
+          if (!col(row, 0)) continue
           try {
             const created = await createVehicle({
-              designation: values[0] || '', vehicleType: values[1] || '',
-              driver: values[2] || '', licensePlate: values[3] || '',
-              dimensions: values[4] || '', powerConnection: values[5] || '',
-              hasTrailer: values[6] === 'Ja', trailerDimensions: values[7] || '',
-              trailerLicensePlate: values[8] || '', seats: values[9] || '',
-              sleepingPlaces: values[10] || '', notes: values[11] || ''
+              designation: col(row, 0), vehicleType: col(row, 1),
+              driver: col(row, 2), licensePlate: col(row, 3),
+              dimensions: col(row, 4), powerConnection: col(row, 5),
+              hasTrailer: col(row, 6) === 'Ja', trailerDimensions: col(row, 7),
+              trailerLicensePlate: col(row, 8), seats: col(row, 9),
+              sleepingPlaces: col(row, 10), notes: col(row, 11)
             })
             setVehicles(prev => [...prev, created]); count++
           } catch {}

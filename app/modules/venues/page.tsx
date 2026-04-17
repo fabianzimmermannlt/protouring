@@ -14,6 +14,7 @@ import {
   type VenueFormData,
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import { parseCSV, col } from '@/lib/csvParser'
 
 const VENUE_COLS: [string, keyof Venue][] = [
   ['Name', 'name'],
@@ -190,25 +191,21 @@ export default function VenuesPage() {
     const reader = new FileReader()
     reader.onload = async (e) => {
       const text = e.target?.result as string
-      const lines = text.split('\n').filter(l => l.trim())
-
-      // Skip header row
-      const dataLines = lines.slice(1)
+      const rows = parseCSV(text).slice(1) // Header überspringen
       let successCount = 0
 
-      for (const line of dataLines) {
-        const values = line.split(',').map(v => v.replace(/^"|"$/g, '').trim())
-        if (!values[0]) continue
+      for (const row of rows) {
+        if (!col(row, 0)) continue
         try {
           const newVenue = await createVenue({
             ...EMPTY_FORM,
-            name: values[0] || '',
-            street: values[1] || '',
-            postalCode: values[2] || '',
-            city: values[3] || '',
-            state: values[4] || '',
-            country: values[5] || '',
-            capacity: values[6] || '',
+            name: col(row, 0),
+            street: col(row, 1),
+            postalCode: col(row, 2),
+            city: col(row, 3),
+            state: col(row, 4),
+            country: col(row, 5),
+            capacity: col(row, 6),
           })
           setVenues(prev => [...prev, newVenue])
           successCount++

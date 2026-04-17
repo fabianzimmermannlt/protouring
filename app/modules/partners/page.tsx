@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Download, Upload, Edit, Trash2, Save, X } from 'lucide-react'
 import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import { parseCSV, col } from '@/lib/csvParser'
 
 const PARTNER_COLS: [string, keyof Partner][] = [
   ['Firmenname', 'companyName'],
@@ -168,17 +169,16 @@ export default function PartnersPage() {
     const reader = new FileReader()
     reader.onload = async (e) => {
       const text = e.target?.result as string
-      const lines = text.split('\n').slice(1).filter(l => l.trim())
+      const rows = parseCSV(text).slice(1) // Header überspringen
       let count = 0
-      for (const line of lines) {
-        const values = line.split(',').map(v => v.trim())
-        if (!values[0]) continue
+      for (const row of rows) {
+        if (!col(row, 0)) continue
         try {
           const created = await createPartner({
-            companyName: values[0] || '', street: values[1] || '',
-            postalCode: values[2] || '', city: values[3] || '',
-            state: values[4] || '', country: values[5] || '',
-            type: values[6] || '', contactPerson: '', email: '',
+            companyName: col(row, 0), street: col(row, 1),
+            postalCode: col(row, 2), city: col(row, 3),
+            state: col(row, 4), country: col(row, 5),
+            type: col(row, 6), contactPerson: '', email: '',
             phone: '', taxId: '', billingAddress: '', notes: ''
           })
           setPartners(prev => [...prev, created]); count++

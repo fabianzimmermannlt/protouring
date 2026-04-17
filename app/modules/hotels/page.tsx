@@ -5,6 +5,7 @@ import { Plus, Download, Upload } from 'lucide-react'
 import { getHotels, createHotel, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import HotelFormModal from './HotelFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
+import { parseCSV, col } from '@/lib/csvParser'
 
 const HOTEL_COLS: [string, keyof Hotel][] = [
   ['Name', 'name'],
@@ -110,16 +111,15 @@ export default function HotelsPage() {
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string
-        const dataLines = text.split('\n').slice(1).filter(line => line.trim())
+        const rows = parseCSV(text).slice(1) // Header überspringen
         let count = 0
-        for (const line of dataLines) {
-          const values = line.split(';').map(v => v.replace(/^"|"$/g, ''))
-          if (!values[0]) continue
+        for (const row of rows) {
+          if (!col(row, 0)) continue
           try {
             const created = await createHotel({
-              name: values[0] || '', street: values[1] || '', postalCode: values[2] || '',
-              city: values[3] || '', state: values[4] || '', country: values[5] || '',
-              email: '', phone: '', website: values[6] || '', reception: '',
+              name: col(row, 0), street: col(row, 1), postalCode: col(row, 2),
+              city: col(row, 3), state: col(row, 4), country: col(row, 5),
+              email: '', phone: '', website: col(row, 6), reception: '',
               checkIn: '', checkOut: '', earlyCheckIn: '', lateCheckOut: '',
               breakfast: '', breakfastWeekend: '', additionalInfo: ''
             })

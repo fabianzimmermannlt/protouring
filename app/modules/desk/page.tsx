@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Edit, Trash2, X, KeyRound, Loader2, Save } from 'lucide-react'
+import { Edit, X, KeyRound, Loader2, Save } from 'lucide-react'
 import { ProfileEditor, ProfileData as EditorProfileData } from '@/app/components/shared/ProfileEditor'
 import { Communication } from '@/app/components/shared/Communication'
 import { FileCard } from '@/app/components/shared/FileCard'
@@ -421,32 +421,12 @@ export default function SchreibtischModule() {
         
         {/* ALLGEMEINE KONVERSATION Section */}
         <div className="pt-card h-[400px] flex flex-col">
-          <div className="pt-card-header">
-            <span className="pt-card-title">Allgemeine Konversation</span>
-            {effectiveRole === 'admin' && (
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    if (confirm('Möchten Sie wirklich den gesamten Chat-Verlauf löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-                      localStorage.removeItem('generalConversation')
-                      window.location.reload()
-                    }
-                  }
-                }}
-                className="text-gray-400 hover:text-red-600 transition-colors"
-                title="Chat-Verlauf löschen"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
           <div className="flex-1 min-h-0">
             <Communication
-              title=""
+              title="Allgemeine Konversation"
               entityType="desk"
               entityId="general"
               className="h-full"
-              showHeader={false}
             />
           </div>
         </div>
