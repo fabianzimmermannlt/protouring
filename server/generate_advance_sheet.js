@@ -277,11 +277,11 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
             const leftText  = line.slice(0, sepIdx).trim();
             const rightText = line.slice(sepIdx + 4).trim();
             const lineY = y;
-            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID);
-            const lw = doc.widthOfString(leftText);
-            doc.text(leftText,  tabX - lw, lineY, { lineBreak: false });
-            doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
-              .text(rightText, tabX + 4, lineY, { width: rightW - 4, lineBreak: false });
+            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
+              .text(leftText, MARGIN_H, lineY, { lineBreak: false });
+            doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK);
+            const rw = doc.widthOfString(rightText);
+            doc.text(rightText, MARGIN_H + CONTENT_W - rw, lineY, { lineBreak: false });
             y = lineY + 18;
             continue;
           }

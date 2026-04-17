@@ -172,11 +172,11 @@ function generateSchedulePdf(schedule) {
         const leftText  = stripHtml(line.slice(0, idx)).trim();
         const rightText = stripHtml(line.slice(idx + 4)).trim();
         const lineY = y;
-        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor('#6b7280');
-        const lw = doc.widthOfString(leftText);
-        doc.text(leftText,  tabX - lw, lineY, { lineBreak: false });
-        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor('#111827')
-          .text(rightText, tabX + 4, lineY, { lineBreak: false });
+        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor('#6b7280')
+          .text(leftText, MARGIN_H, lineY, { lineBreak: false });
+        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor('#111827');
+        const rw = doc.widthOfString(rightText);
+        doc.text(rightText, MARGIN_H + CONTENT_W - rw, lineY, { lineBreak: false });
         y = lineY + LINE_H + 4;
         continue;
       }
