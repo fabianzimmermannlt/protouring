@@ -12,6 +12,7 @@ import PartnersPage from './modules/partners/page'
 import VenuesPage from './modules/venues/page'
 import TerminePage from './modules/termine/TermineModule'
 import { isAuthenticated, getCurrentUser, getCurrentTenant } from '@/lib/api-client'
+import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 
 export default function ProTouringApp() {
   const [activeTab, setActiveTab] = useState('desk')
@@ -89,6 +90,9 @@ export default function ProTouringApp() {
         activeSubTab={activeSubTab}
         onSubTabChange={setActiveSubTab}
       />
+
+      {/* Floating Feedback Button */}
+      <FeedbackButton />
 
       {/* Main Content */}
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">

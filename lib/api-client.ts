@@ -2075,3 +2075,60 @@ export async function changePassword(currentPassword: string, newPassword: strin
   })
 }
 
+// ============================================
+// FEEDBACK
+// ============================================
+
+export interface FeedbackItem {
+  id: number
+  userId: number
+  userName: string
+  tenantName: string | null
+  topic: string
+  description: string | null
+  private: boolean
+  status: 'open' | 'in_progress' | 'done'
+  createdAt: string
+}
+
+function feedbackFromRow(r: Record<string, unknown>): FeedbackItem {
+  return {
+    id: r.id as number,
+    userId: r.user_id as number,
+    userName: r.user_name as string,
+    tenantName: r.tenant_name as string | null,
+    topic: r.topic as string,
+    description: r.description as string | null,
+    private: Boolean(r.private),
+    status: (r.status as 'open' | 'in_progress' | 'done') || 'open',
+    createdAt: r.created_at as string,
+  }
+}
+
+export async function createFeedback(topic: string, description: string, isPrivate: boolean): Promise<FeedbackItem> {
+  const res = await request<{ item: Record<string, unknown> }>('/api/feedback', {
+    method: 'POST',
+    body: { topic, description, isPrivate },
+    skipTenant: true,
+  })
+  return feedbackFromRow(res.item)
+}
+
+export async function getFeedback(): Promise<FeedbackItem[]> {
+  const res = await request<{ items: Record<string, unknown>[] }>('/api/feedback', { skipTenant: true })
+  return res.items.map(feedbackFromRow)
+}
+
+export async function updateFeedbackStatus(id: number, status: 'open' | 'in_progress' | 'done'): Promise<FeedbackItem> {
+  const res = await request<{ item: Record<string, unknown> }>(`/api/feedback/${id}/status`, {
+    method: 'PUT',
+    body: { status },
+    skipTenant: true,
+  })
+  return feedbackFromRow(res.item)
+}
+
+export async function deleteFeedback(id: number): Promise<void> {
+  await request(`/api/feedback/${id}`, { method: 'DELETE', skipTenant: true })
+}
+

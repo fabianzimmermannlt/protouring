@@ -882,6 +882,20 @@ async function initDatabase() {
     )
   `)
 
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS feedback_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_name TEXT NOT NULL,
+      tenant_name TEXT,
+      topic TEXT NOT NULL,
+      description TEXT,
+      private INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'open',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
   const utSchema = await db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_tenants'")
   if (utSchema && utSchema.sql && utSchema.sql.includes("'owner'")) {
@@ -4549,6 +4563,88 @@ app.delete('/api/settings/invites/:tokenId', authenticateToken, requireTenant, r
       'DELETE FROM invite_tokens WHERE id=? AND tenant_id=?',
       [req.params.tokenId, req.tenant.id]
     )
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ============================================
+// ============================================
+// FEEDBACK
+// ============================================
+
+// POST /api/feedback — Feedback einreichen (jeder eingeloggte User)
+app.post('/api/feedback', authenticateToken, async (req, res) => {
+  try {
+    const { topic, description, isPrivate } = req.body
+    if (!topic?.trim()) return res.status(400).json({ error: 'Thema ist erforderlich' })
+    const user = await db.get('SELECT first_name, last_name, email FROM users WHERE id=?', [req.user.id])
+    const userName = (user?.first_name || user?.last_name)
+      ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+      : (user?.email || 'Unbekannt')
+    // Tenant-Name aus aktuellem X-Tenant-Slug Header (optional)
+    let tenantName = null
+    const tenantSlug = req.headers['x-tenant-slug']
+    if (tenantSlug) {
+      const tenant = await db.get('SELECT name FROM tenants WHERE slug=?', [tenantSlug])
+      tenantName = tenant?.name ?? null
+    }
+    const result = await db.run(
+      `INSERT INTO feedback_items (user_id, user_name, tenant_name, topic, description, private, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'open')`,
+      [req.user.id, userName, tenantName, topic.trim(), description?.trim() || null, isPrivate ? 1 : 0]
+    )
+    const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [result.lastID])
+    res.status(201).json({ item })
+  } catch (err) {
+    console.error('POST /api/feedback error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/feedback — Liste holen
+// Superadmin: alles; sonstige: eigene + öffentliche
+app.get('/api/feedback', authenticateToken, async (req, res) => {
+  try {
+    let items
+    if (req.user.isSuperadmin) {
+      items = await db.all('SELECT * FROM feedback_items ORDER BY created_at DESC')
+    } else {
+      items = await db.all(
+        'SELECT * FROM feedback_items WHERE private=0 OR user_id=? ORDER BY created_at DESC',
+        [req.user.id]
+      )
+    }
+    res.json({ items })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PUT /api/feedback/:id/status — Status setzen (Superadmin)
+app.put('/api/feedback/:id/status', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isSuperadmin) return res.status(403).json({ error: 'Nur für Entwickler' })
+    const { status } = req.body
+    if (!['open', 'in_progress', 'done'].includes(status)) return res.status(400).json({ error: 'Ungültiger Status' })
+    await db.run('UPDATE feedback_items SET status=? WHERE id=?', [status, req.params.id])
+    const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [req.params.id])
+    res.json({ item })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/feedback/:id — Löschen (Superadmin oder eigener Eintrag)
+app.delete('/api/feedback/:id', authenticateToken, async (req, res) => {
+  try {
+    const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [req.params.id])
+    if (!item) return res.status(404).json({ error: 'Nicht gefunden' })
+    if (!req.user.isSuperadmin && item.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Kein Zugriff' })
+    }
+    await db.run('DELETE FROM feedback_items WHERE id=?', [req.params.id])
     res.json({ ok: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
