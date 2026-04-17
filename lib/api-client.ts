@@ -2088,6 +2088,7 @@ export interface FeedbackItem {
   description: string | null
   private: boolean
   status: 'open' | 'in_progress' | 'done'
+  bemerkung: string | null
   createdAt: string
 }
 
@@ -2101,6 +2102,7 @@ function feedbackFromRow(r: Record<string, unknown>): FeedbackItem {
     description: r.description as string | null,
     private: Boolean(r.private),
     status: (r.status as 'open' | 'in_progress' | 'done') || 'open',
+    bemerkung: r.bemerkung as string | null,
     createdAt: r.created_at as string,
   }
 }
@@ -2123,6 +2125,15 @@ export async function updateFeedbackStatus(id: number, status: 'open' | 'in_prog
   const res = await request<{ item: Record<string, unknown> }>(`/api/feedback/${id}/status`, {
     method: 'PUT',
     body: { status },
+    skipTenant: true,
+  })
+  return feedbackFromRow(res.item)
+}
+
+export async function updateFeedbackNote(id: number, bemerkung: string | null): Promise<FeedbackItem> {
+  const res = await request<{ item: Record<string, unknown> }>(`/api/feedback/${id}/note`, {
+    method: 'PUT',
+    body: { bemerkung },
     skipTenant: true,
   })
   return feedbackFromRow(res.item)

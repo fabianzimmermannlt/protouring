@@ -674,6 +674,8 @@ async function initDatabase() {
     `ALTER TABLE users ADD COLUMN format_currency TEXT DEFAULT 'EUR'`,
     // Superadmin
     `ALTER TABLE users ADD COLUMN is_superadmin INTEGER DEFAULT 0`,
+    // Feedback: Bemerkung des Superadmins
+    `ALTER TABLE feedback_items ADD COLUMN bemerkung TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // Superadmin-Account sicherstellen (admin@protouring.de)
@@ -892,6 +894,7 @@ async function initDatabase() {
       description TEXT,
       private INTEGER DEFAULT 0,
       status TEXT DEFAULT 'open',
+      bemerkung TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
@@ -4639,6 +4642,19 @@ app.put('/api/feedback/:id/status', authenticateToken, async (req, res) => {
     const { status } = req.body
     if (!['open', 'in_progress', 'done'].includes(status)) return res.status(400).json({ error: 'Ungültiger Status' })
     await db.run('UPDATE feedback_items SET status=? WHERE id=?', [status, req.params.id])
+    const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [req.params.id])
+    res.json({ item })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PUT /api/feedback/:id/note — Bemerkung setzen (Superadmin)
+app.put('/api/feedback/:id/note', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isSuperadmin) return res.status(403).json({ error: 'Nur für Entwickler' })
+    const { bemerkung } = req.body
+    await db.run('UPDATE feedback_items SET bemerkung=? WHERE id=?', [bemerkung ?? null, req.params.id])
     const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [req.params.id])
     res.json({ item })
   } catch (err) {

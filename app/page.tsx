@@ -13,6 +13,7 @@ import VenuesPage from './modules/venues/page'
 import TerminePage from './modules/termine/TermineModule'
 import { isAuthenticated, getCurrentUser, getCurrentTenant } from '@/lib/api-client'
 import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
+import FeedbackPage from './modules/feedback/FeedbackPage'
 
 export default function ProTouringApp() {
   const [activeTab, setActiveTab] = useState('desk')
@@ -47,6 +48,13 @@ export default function ProTouringApp() {
     }
     window.addEventListener('navigate-to-termin', handler)
     return () => window.removeEventListener('navigate-to-termin', handler)
+  }, [])
+
+  // Globales Event: zum Feedback-Tab navigieren (z.B. vom FeedbackButton)
+  useEffect(() => {
+    const handler = () => setActiveTab('feedback')
+    window.addEventListener('navigate-to-feedback', handler)
+    return () => window.removeEventListener('navigate-to-feedback', handler)
   }, [])
 
   useEffect(() => {
@@ -118,6 +126,7 @@ export default function ProTouringApp() {
               </div>
             )}
             {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
+            {activeTab === 'feedback' && <FeedbackPage />}
           </div>
         </div>
       </div>

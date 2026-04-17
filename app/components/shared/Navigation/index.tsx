@@ -16,6 +16,7 @@ import {
   ChevronDownIcon,
   CheckIcon,
   PlusIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline'
 import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
@@ -30,6 +31,7 @@ export interface NavigationItem {
   name: string
   icon: React.ComponentType<{ className?: string }>
   description: string
+  superadminOnly?: boolean
 }
 
 export interface NavigationProps {
@@ -50,7 +52,8 @@ const navigationItems: NavigationItem[] = [
   { id: 'hotels', name: 'HOTELS', icon: BuildingOfficeIcon, description: 'Unterkünfte' },
   { id: 'vehicles', name: 'FAHRZEUGE', icon: TruckIcon, description: 'Transport & Logistik' },
   { id: 'templates', name: 'VORLAGEN', icon: DocumentTextIcon, description: 'Dokumentenvorlagen' },
-  { id: 'settings', name: 'EINSTELLUNGEN', icon: Cog6ToothIcon, description: 'Anwendungseinstellungen' }
+  { id: 'settings', name: 'EINSTELLUNGEN', icon: Cog6ToothIcon, description: 'Anwendungseinstellungen' },
+  { id: 'feedback', name: 'FEEDBACK', icon: ChatBubbleLeftRightIcon, description: 'Feedback & Meldungen', superadminOnly: true },
 ]
 
 export function Navigation({
@@ -73,6 +76,7 @@ export function Navigation({
   const [activeTenantSlug, setActiveTenantSlug] = useState<string | null>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const currentUser = getCurrentUser()
+  const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const router = useRouter()
   const hasMultipleTenants = tenantCount > 1
 
@@ -167,7 +171,9 @@ export function Navigation({
               </div>
             </div>
             <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.filter(item => canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? [])).map((item) => (
+              {navigationItems.filter(item =>
+  (item.superadminOnly ? isSuperadmin : canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? []))
+).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
@@ -271,7 +277,9 @@ export function Navigation({
               </div>
             </div>
             <div className="flex space-x-2 overflow-x-auto">
-              {navigationItems.filter(item => canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? [])).map((item) => (
+              {navigationItems.filter(item =>
+  (item.superadminOnly ? isSuperadmin : canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? []))
+).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
