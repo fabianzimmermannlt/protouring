@@ -672,7 +672,22 @@ async function initDatabase() {
     `ALTER TABLE users ADD COLUMN format_language TEXT DEFAULT 'de-DE'`,
     `ALTER TABLE users ADD COLUMN format_timezone TEXT DEFAULT 'Europe/Berlin'`,
     `ALTER TABLE users ADD COLUMN format_currency TEXT DEFAULT 'EUR'`,
+    // Superadmin
+    `ALTER TABLE users ADD COLUMN is_superadmin INTEGER DEFAULT 0`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
+
+  // Superadmin-Account sicherstellen (admin@protouring.de)
+  const superadmin = await db.get(`SELECT id FROM users WHERE email = 'admin@protouring.de'`)
+  if (!superadmin) {
+    const hash = await bcrypt.hash('ProTouring2026!', 10)
+    await db.run(
+      `INSERT INTO users (email, password_hash, first_name, last_name, is_superadmin) VALUES (?, ?, 'ProTouring', 'Admin', 1)`,
+      ['admin@protouring.de', hash]
+    )
+    console.log('✅ Superadmin admin@protouring.de angelegt')
+  } else {
+    await db.run(`UPDATE users SET is_superadmin = 1 WHERE email = 'admin@protouring.de'`)
+  }
 
   // Bestehende Kontakte ohne crew_tool_active auf 1 setzen (rückwirkend)
   await db.run(`UPDATE contacts SET crew_tool_active = 1 WHERE crew_tool_active IS NULL`)
@@ -1008,6 +1023,14 @@ const requireTenant = async (req, res, next) => {
   }
 
   try {
+    // Superadmin: Zugriff auf jeden Tenant ohne Membership-Eintrag
+    if (req.user.isSuperadmin) {
+      const tenant = await db.get(`SELECT id, name, slug, status FROM tenants WHERE slug = ?`, [tenantSlug]);
+      if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+      req.tenant = { ...tenant, role: 'admin', memberStatus: 'active' };
+      return next();
+    }
+
     // Erst ohne Status-Filter prüfen ob der User überhaupt zu diesem Tenant gehört
     const membership = await db.get(`
       SELECT t.id, t.name, t.slug, t.status, ut.role, ut.status AS memberStatus
@@ -1138,7 +1161,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   try {
     const user = await db.get(
-      'SELECT id, email, password_hash, first_name, last_name FROM users WHERE email = ?',
+      'SELECT id, email, password_hash, first_name, last_name, is_superadmin FROM users WHERE email = ?',
       [email]
     );
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
@@ -1146,28 +1169,38 @@ app.post('/api/auth/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const tenantQuery = tenantSlug
-      ? `SELECT t.id, t.name, t.slug, t.status, ut.role FROM user_tenants ut
-         JOIN tenants t ON ut.tenant_id = t.id
-         WHERE ut.user_id = ? AND t.slug = ? AND ut.status = 'active'`
-      : `SELECT t.id, t.name, t.slug, t.status, ut.role FROM user_tenants ut
-         JOIN tenants t ON ut.tenant_id = t.id
-         WHERE ut.user_id = ? AND ut.status = 'active'`;
+    let tenants;
+    if (user.is_superadmin) {
+      // Superadmin sieht alle Tenants mit virtueller Admin-Rolle
+      tenants = await db.all(`SELECT id, name, slug, status, 'admin' as role FROM tenants ORDER BY name`);
+    } else {
+      const tenantQuery = tenantSlug
+        ? `SELECT t.id, t.name, t.slug, t.status, ut.role FROM user_tenants ut
+           JOIN tenants t ON ut.tenant_id = t.id
+           WHERE ut.user_id = ? AND t.slug = ? AND ut.status = 'active'`
+        : `SELECT t.id, t.name, t.slug, t.status, ut.role FROM user_tenants ut
+           JOIN tenants t ON ut.tenant_id = t.id
+           WHERE ut.user_id = ? AND ut.status = 'active'`;
 
-    const tenants = tenantSlug
-      ? await db.all(tenantQuery, [user.id, tenantSlug])
-      : await db.all(tenantQuery, [user.id]);
+      tenants = tenantSlug
+        ? await db.all(tenantQuery, [user.id, tenantSlug])
+        : await db.all(tenantQuery, [user.id]);
 
-    if (tenants.length === 0) return res.status(401).json({ error: 'No active tenant access' });
+      if (tenants.length === 0) return res.status(401).json({ error: 'No active tenant access' });
 
-    // Update last_login_at
-    await db.run('UPDATE user_tenants SET last_login_at = datetime("now") WHERE user_id = ?', [user.id]);
+      // Update last_login_at
+      await db.run('UPDATE user_tenants SET last_login_at = datetime("now") WHERE user_id = ?', [user.id]);
+    }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, isSuperadmin: !!user.is_superadmin },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name },
+      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, isSuperadmin: !!user.is_superadmin },
       tenants,
       currentTenant: tenants[0]
     });
@@ -1795,7 +1828,8 @@ app.get('/api/contacts', authenticateToken, requireTenant, async (req, res) => {
       SELECT c.*, ut.role AS tenant_role
       FROM contacts c
       LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
-      WHERE c.tenant_id = ?
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.tenant_id = ? AND (u.is_superadmin IS NULL OR u.is_superadmin = 0)
       ORDER BY c.last_name, c.first_name
     `, [req.tenant.id]);
     res.json({ contacts: rows.map(contactFromRow) });
@@ -4288,6 +4322,8 @@ app.post('/api/tenants', authenticateToken, async (req, res) => {
 // GET /api/settings/my-role  — Eigene aktuelle Rolle aus DB (kein Admin nötig)
 app.get('/api/settings/my-role', authenticateToken, requireTenant, async (req, res) => {
   try {
+    // Superadmin hat immer Admin-Rolle
+    if (req.user.isSuperadmin) return res.json({ role: 'admin' })
     const row = await db.get(
       `SELECT ut.role FROM user_tenants ut
        WHERE ut.user_id = ? AND ut.tenant_id = ? AND ut.status = 'active'`,
@@ -4311,7 +4347,7 @@ app.get('/api/settings/users', authenticateToken, requireTenant, requireAdmin, a
        FROM user_tenants ut
        JOIN users u ON u.id = ut.user_id
        LEFT JOIN contacts c ON c.user_id = u.id AND c.tenant_id = ut.tenant_id
-       WHERE ut.tenant_id=? AND ut.status IN ('active', 'inactive')
+       WHERE ut.tenant_id=? AND ut.status IN ('active', 'inactive') AND u.is_superadmin = 0
        ORDER BY ut.joined_at ASC`,
       [req.tenant.id]
     )
