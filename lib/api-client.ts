@@ -1852,15 +1852,65 @@ export const ROLE_LABELS: Record<TenantRole, string> = {
 
 export const ADMIN_ROLES: TenantRole[] = ['admin', 'tourmanagement']
 
-// Rollen die Content bearbeiten dürfen (Ebene 1-3)
-export const EDITOR_ROLES: TenantRole[] = ['admin', 'agency', 'tourmanagement']
+// ── Permission Groups (aus Rollen-Matrix 2026-04-17) ──────────────────────
+
+/** Kann Inhalte bearbeiten (Termine, Kontakte, Hotels, Fahrzeuge etc.) */
+export const CAN_EDIT: TenantRole[] = ['admin', 'agency', 'tourmanagement']
+
+/** Alias für CAN_EDIT – Abwärtskompatibilität */
+export const EDITOR_ROLES: TenantRole[] = CAN_EDIT
+
+/** Kann Stammdaten anlegen/löschen (Venues, Hotels, Partner) */
+export const CAN_MANAGE: TenantRole[] = ['admin', 'agency']
+
+/** Kann neuen Termin anlegen */
+export const CAN_CREATE_TERMIN: TenantRole[] = ['admin', 'agency']
+
+/** Kann Ankündigung auf dem Schreibtisch bearbeiten */
+export const CAN_EDIT_ANKUENDIGUNG: TenantRole[] = ['admin', 'agency']
+
+/** Sieht globale Todo-Übersicht (alle Todos aller User) */
+export const CAN_SEE_TODOS_ALL: TenantRole[] = ['admin', 'tourmanagement', 'agency']
+
+/** Sieht Kalender-View */
+export const CAN_SEE_KALENDER: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus']
+
+/** Sieht Gebucht-Spalte in Terminliste */
+export const CAN_SEE_GEBUCHT: TenantRole[] = ['admin', 'tourmanagement', 'agency']
+
+/** Sieht Dateien auf Termin-Detailseite */
+export const CAN_SEE_FILES_TERMIN: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus']
+
+/** Sieht Honorar/Gage-Daten */
+export const CAN_SEE_FINANCIALS: TenantRole[] = ['admin', 'tourmanagement', 'agency']
+
+/** Kann Kontakt-Profile öffnen/lesen (über eigenes Profil hinaus) */
+export const CAN_SEE_KONTAKT_PROFIL: TenantRole[] = ['admin', 'tourmanagement', 'agency']
+
+/** Navigation: diese Tabs werden je Rolle angezeigt */
+export const NAV_VISIBLE: Record<string, TenantRole[]> = {
+  desk:         ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
+  appointments: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
+  contacts:     ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'],
+  venues:       ['admin', 'agency'],
+  partners:     ['admin', 'agency'],
+  hotels:       ['admin', 'tourmanagement', 'agency'],
+  vehicles:     ['admin', 'tourmanagement', 'agency'],
+  templates:    ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
+  settings:     ['admin', 'tourmanagement', 'agency'],
+}
+
+export function canDo(role: string | null | undefined, permission: TenantRole[]): boolean {
+  if (!role) return false
+  return permission.includes(role as TenantRole)
+}
 
 export function isAdminRole(role: string): boolean {
   return ADMIN_ROLES.includes(role as TenantRole)
 }
 
 export function isEditorRole(role: string): boolean {
-  return EDITOR_ROLES.includes(role as TenantRole)
+  return CAN_EDIT.includes(role as TenantRole)
 }
 
 /** Gibt die aktuell wirksame Rolle zurück — Preview-Rolle hat Vorrang */

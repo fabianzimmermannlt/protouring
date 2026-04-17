@@ -7,7 +7,7 @@ import { Communication } from '@/app/components/shared/Communication'
 import { FileCard } from '@/app/components/shared/FileCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
 import GlobalTodoOverview from '@/app/components/shared/GlobalTodoOverview'
-import { getCurrentUser, getCurrentTenant, getMyContact, getMyRole, updateMyContact, changeMyPassword, isAdminRole, isEditorRole, getEffectiveRole, updateCurrentTenantRole, ROLE_LABELS, type TenantRole } from '@/lib/api-client'
+import { getCurrentUser, getCurrentTenant, getMyContact, getMyRole, updateMyContact, changeMyPassword, isAdminRole, isEditorRole, getEffectiveRole, updateCurrentTenantRole, canDo, CAN_EDIT_ANKUENDIGUNG, ROLE_LABELS, type TenantRole } from '@/lib/api-client'
 
 // Helper functions for localStorage (user-scoped keys)
 const loadFromFile = async (key: string): Promise<string | null> => {
@@ -362,7 +362,7 @@ export default function SchreibtischModule() {
             entityType="desk"
             entityId="announcement"
             title=""
-            isAdmin={isEditor}
+            isAdmin={canDo(effectiveRole, CAN_EDIT_ANKUENDIGUNG)}
             singleItem
             hideEmptyButton
             allowDelete={false}

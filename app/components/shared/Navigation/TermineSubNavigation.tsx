@@ -1,5 +1,7 @@
 'use client'
 
+import { getEffectiveRole, canDo, CAN_SEE_KALENDER } from '@/lib/api-client'
+
 export type TermineDetailView = 'details' | 'travelparty'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
@@ -25,6 +27,7 @@ export function TermineListSubNavigation({
   listView = 'list',
   onListViewChange,
 }: TermineListSubNavigationProps) {
+  const canSeeKalender = canDo(getEffectiveRole(), CAN_SEE_KALENDER)
   return (
     <div className="pt-subnav">
       <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
@@ -38,12 +41,14 @@ export function TermineListSubNavigation({
               {FILTER_LABELS[f]}
             </button>
           ))}
-          <button
-            onClick={() => onListViewChange?.('calendar')}
-            className={`pt-subnav-btn${listView === 'calendar' ? ' active' : ''}`}
-          >
-            KALENDER
-          </button>
+          {canSeeKalender && (
+            <button
+              onClick={() => onListViewChange?.('calendar')}
+              className={`pt-subnav-btn${listView === 'calendar' ? ' active' : ''}`}
+            >
+              KALENDER
+            </button>
+          )}
         </div>
       </div>
     </div>

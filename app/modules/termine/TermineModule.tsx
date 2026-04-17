@@ -31,6 +31,10 @@ import {
   getEffectiveRole,
   isAdminRole,
   isEditorRole,
+  canDo,
+  CAN_CREATE_TERMIN,
+  CAN_SEE_GEBUCHT,
+  CAN_SEE_FILES_TERMIN,
   TERMIN_ART,
   TERMIN_ART_SUB,
   TERMIN_STATUS_BOOKING,
@@ -638,12 +642,14 @@ function TerminDetail({
   termin,
   termine,
   isAdmin,
+  canSeeFiles,
   onUpdated,
   onDeleted,
 }: {
   termin: Termin
   termine: Termin[]
   isAdmin: boolean
+  canSeeFiles: boolean
   onUpdated: (t: Termin) => void
   onDeleted: () => void
 }) {
@@ -693,7 +699,7 @@ function TerminDetail({
             isAdmin={isAdmin}
             onUpdated={onUpdated}
           />
-          <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />
+          {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
           <ToDoCard terminId={termin.id} />
           <div className="pt-card" style={{ minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
             <ContentBoard
@@ -860,8 +866,11 @@ export default function TerminePage({
 
   const currentUser = getCurrentUser()
   const effectiveRole = getEffectiveRole()
-  const isAdmin  = isAdminRole(effectiveRole)   // admin + tourmanagement
-  const isEditor = isEditorRole(effectiveRole)  // + agency
+  const isAdmin  = isAdminRole(effectiveRole)                        // admin + tourmanagement
+  const isEditor = isEditorRole(effectiveRole)                       // admin + agency + tourmanagement (CAN_EDIT)
+  const canCreate    = canDo(effectiveRole, CAN_CREATE_TERMIN)       // admin + agency
+  const canSeeGebucht = canDo(effectiveRole, CAN_SEE_GEBUCHT)        // admin + tourmanagement + agency
+  const canSeeFiles   = canDo(effectiveRole, CAN_SEE_FILES_TERMIN)   // admin + tourmanagement + agency + artist + crew_plus
 
   // ---- Load data ----
 
@@ -1030,7 +1039,8 @@ export default function TerminePage({
             <TerminDetail
               termin={selectedTermin}
               termine={sortedTermine}
-              isAdmin={isAdmin}
+              isAdmin={isEditor}
+              canSeeFiles={canSeeFiles}
               onUpdated={updated => {
                 setTermine(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t))
               }}
@@ -1045,7 +1055,7 @@ export default function TerminePage({
         /* ---- LIST VIEW ---- */
         <>
           {/* Header */}
-          {isAdmin && (
+          {canCreate && (
             <button onClick={openNew} className="btn btn-primary">
               <Plus size={16} /> Neuer Termin
             </button>
@@ -1097,7 +1107,7 @@ export default function TerminePage({
                     </th>
                   ))}
                   <th className="text-center" style={{ width: '5.5rem' }}>Verf.</th>
-                  <th className="text-center" style={{ width: '4rem' }}>Gebucht</th>
+                  {canSeeGebucht && <th className="text-center" style={{ width: '4rem' }}>Gebucht</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1107,7 +1117,7 @@ export default function TerminePage({
                   )
                   if (filtered.length === 0) return (
                     <tr>
-                      <td colSpan={9} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
+                      <td colSpan={canSeeGebucht ? 9 : 8} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
                         {termine.length === 0 ? 'Noch keine Termine. Mit „+ Neuer Termin" starten.' : 'Keine Treffer'}
                       </td>
                     </tr>
@@ -1162,6 +1172,7 @@ export default function TerminePage({
                     </td>
 
                     {/* Gebucht */}
+                    {canSeeGebucht && (
                     <td className="text-center">
                       {termin.inTravelParty
                         ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title="Gebucht – in Reisegruppe">✓</span>
@@ -1170,6 +1181,7 @@ export default function TerminePage({
                           : <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title="Offen">–</span>
                       }
                     </td>
+                    )}
                   </tr>
                 ))
                 })()}

@@ -17,7 +17,7 @@ import {
   CheckIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline'
-import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings } from '@/lib/api-client'
+import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
@@ -167,7 +167,7 @@ export function Navigation({
               </div>
             </div>
             <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.map((item) => (
+              {navigationItems.filter(item => canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? [])).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
@@ -269,7 +269,7 @@ export function Navigation({
               </div>
             </div>
             <div className="flex space-x-2 overflow-x-auto">
-              {navigationItems.map((item) => (
+              {navigationItems.filter(item => canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? [])).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
