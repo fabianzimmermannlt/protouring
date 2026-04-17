@@ -20,13 +20,13 @@ import FunktionenSettings from './FunktionenSettings'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
   adminSetUserEmail, adminSetUserPassword, adminToggleUserStatus,
-  changePassword, getMyContact, updateMyContact,
+  changePassword, getMyContact, updateMyContact, getContact, updateContact,
   getTenantArtistSettings, updateTenantArtistSettings,
   getTenantBilling, updateTenantBilling,
   getUserFormat, updateUserFormat,
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
   ROLE_LABELS, CURRENT_USER_KEY,
-  type TenantUser, type PendingInvite, type TenantRole, type ContactFormData,
+  type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat,
 } from '@/lib/api-client'
 
@@ -749,10 +749,11 @@ const USER_COLS: [string, keyof TenantUser][] = [
   ['Rolle', 'role'],
 ]
 
-function UserTable({ users, currentUserId, searchTerm, onEditEmail, onEditPassword, onToggleStatus, onRemove, onRoleChange }: {
+function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmail, onEditPassword, onToggleStatus, onRemove, onRoleChange }: {
   users: TenantUser[]
   currentUserId?: number
   searchTerm: string
+  onOpenProfile: (user: TenantUser) => void
   onEditEmail: (user: TenantUser) => void
   onEditPassword: (user: TenantUser) => void
   onToggleStatus: (userId: number) => void
@@ -786,7 +787,7 @@ function UserTable({ users, currentUserId, searchTerm, onEditEmail, onEditPasswo
         </thead>
         <tbody>
           {(sorted as unknown as TenantUser[]).map(user => (
-            <tr key={user.id} className={`clickable${user.memberStatus === 'inactive' ? ' opacity-50' : ''}`} onClick={() => onEditEmail(user)}>
+            <tr key={user.id} className={`clickable${user.memberStatus === 'inactive' ? ' opacity-50' : ''}`} onClick={() => onOpenProfile(user)}>
               <td className="font-medium">
                 {user.firstName}
                 {user.id === currentUserId && (
@@ -898,6 +899,20 @@ function UserManagement() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Profil Modal
+  const [profileContact, setProfileContact] = useState<Contact | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+
+  const openProfile = async (user: TenantUser) => {
+    if (!user.contactId) return
+    setProfileLoading(true)
+    try {
+      const c = await getContact(user.contactId)
+      setProfileContact(c)
+    } catch { /* ignore */ }
+    finally { setProfileLoading(false) }
+  }
 
   // E-Mail Modal
   const [emailModal, setEmailModal] = useState<ModalUser | null>(null)
@@ -1054,6 +1069,7 @@ function UserManagement() {
               users={users}
               currentUserId={currentUser?.id}
               searchTerm={searchTerm}
+              onOpenProfile={openProfile}
               onEditEmail={openEmailModal}
               onEditPassword={openPwModal}
               onToggleStatus={handleToggleStatus}
@@ -1109,6 +1125,76 @@ function UserManagement() {
             </div>
           )}
         </>
+      )}
+
+      {/* Profil-Modal */}
+      {profileContact && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setProfileContact(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <ProfileEditor
+              isOpen={true}
+              onClose={() => setProfileContact(null)}
+              profileData={{
+                firstName: profileContact.firstName, lastName: profileContact.lastName,
+                email: profileContact.email, phone: profileContact.phone ?? '', mobile: profileContact.mobile ?? '',
+                address: profileContact.address ?? '', postalCode: profileContact.postalCode ?? '', residence: profileContact.residence ?? '',
+                birthDate: profileContact.birthDate ?? '', gender: profileContact.gender ?? '', pronouns: profileContact.pronouns ?? '',
+                birthPlace: profileContact.birthPlace ?? '', nationality: profileContact.nationality ?? '',
+                idNumber: profileContact.idNumber ?? '', taxId: profileContact.taxId ?? '', socialSecurity: profileContact.socialSecurity ?? '',
+                taxNumber: profileContact.taxNumber ?? '', vatId: profileContact.vatId ?? '',
+                function1: profileContact.function1 ?? '', function2: profileContact.function2 ?? '', function3: profileContact.function3 ?? '',
+                specification: profileContact.specification ?? '',
+                diet: profileContact.diet ?? 'alles', glutenFree: Boolean(profileContact.glutenFree), lactoseFree: Boolean(profileContact.lactoseFree),
+                allergies: profileContact.allergies ?? '', specialNotes: profileContact.notes ?? '',
+                emergencyContact: profileContact.emergencyContact ?? '', emergencyPhone: profileContact.emergencyPhone ?? '',
+                shirtSize: profileContact.shirtSize ?? '', hoodieSize: profileContact.hoodieSize ?? '',
+                pantsSize: profileContact.pantsSize ?? '', shoeSize: profileContact.shoeSize ?? '',
+                languages: profileContact.languages ?? '', driversLicense: profileContact.driversLicense ?? '',
+                railcard: profileContact.railcard ?? '', frequentFlyer: profileContact.frequentFlyer ?? '',
+                bankAccount: profileContact.bankAccount ?? '', bankIban: profileContact.bankIban ?? '', bankBic: profileContact.bankBic ?? '',
+                hotelInfo: profileContact.hotelInfo ?? '', hotelAlias: profileContact.hotelAlias ?? '',
+                accessRights: profileContact.accessRights ?? '', personalFiles: [],
+                crewToolActive: profileContact.crewToolActive !== false,
+              }}
+              onSave={async (data) => {
+                await updateContact(profileContact.id, {
+                  firstName: data.firstName, lastName: data.lastName, email: data.email,
+                  phone: data.phone, mobile: data.mobile, address: data.address,
+                  postalCode: data.postalCode, residence: data.residence, birthDate: data.birthDate,
+                  gender: data.gender, pronouns: data.pronouns, birthPlace: data.birthPlace,
+                  nationality: data.nationality, idNumber: data.idNumber, taxId: data.taxId,
+                  socialSecurity: data.socialSecurity, taxNumber: data.taxNumber, vatId: data.vatId,
+                  function1: data.function1, function2: data.function2, function3: data.function3,
+                  specification: data.specification, accessRights: data.accessRights,
+                  diet: data.diet, glutenFree: data.glutenFree, lactoseFree: data.lactoseFree,
+                  allergies: data.allergies, notes: data.specialNotes,
+                  emergencyContact: data.emergencyContact, emergencyPhone: data.emergencyPhone,
+                  shirtSize: data.shirtSize, hoodieSize: data.hoodieSize,
+                  pantsSize: data.pantsSize, shoeSize: data.shoeSize,
+                  languages: data.languages, driversLicense: data.driversLicense,
+                  railcard: data.railcard, frequentFlyer: data.frequentFlyer,
+                  bankAccount: data.bankAccount, bankIban: data.bankIban, bankBic: data.bankBic,
+                  crewToolActive: data.crewToolActive,
+                  website: '', hourlyRate: 0, dailyRate: 0, hotelInfo: '', hotelAlias: '',
+                })
+                setUsers(prev => prev.map(u =>
+                  u.contactId === Number(profileContact.id)
+                    ? { ...u, firstName: data.firstName, lastName: data.lastName, email: data.email }
+                    : u
+                ))
+                setProfileContact(null)
+              }}
+              isAdmin={true}
+              isSelf={false}
+              onDelete={() => {}}
+            />
+          </div>
+        </div>
+      )}
+      {profileLoading && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <Loader2 className="animate-spin w-8 h-8 text-white" />
+        </div>
       )}
 
       {/* Modal: E-Mail ändern */}

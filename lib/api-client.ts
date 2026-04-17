@@ -1928,6 +1928,7 @@ export interface TenantUser {
   memberStatus?: 'active' | 'inactive'
   joinedAt: string | null
   lastLoginAt?: string | null
+  contactId?: number | null
 }
 
 export interface PendingInvite {
@@ -1962,6 +1963,7 @@ function tenantUserFromRow(r: Record<string, unknown>): TenantUser {
     role:        (r.role as TenantRole) ?? 'crew',
     joinedAt:    (r.joined_at as string | null) ?? null,
     lastLoginAt: (r.last_login_at as string | null) ?? null,
+    contactId:   (r.contact_id as number | null) ?? null,
   }
 }
 

@@ -4347,7 +4347,8 @@ app.get('/api/settings/users', authenticateToken, requireTenant, requireAdmin, a
       `SELECT u.id, u.email,
         COALESCE(c.first_name, u.first_name) AS first_name,
         COALESCE(c.last_name,  u.last_name)  AS last_name,
-        ut.role, ut.status AS memberStatus, ut.joined_at, ut.last_login_at
+        ut.role, ut.status AS memberStatus, ut.joined_at, ut.last_login_at,
+        c.id AS contact_id
        FROM user_tenants ut
        JOIN users u ON u.id = ut.user_id
        LEFT JOIN contacts c ON c.user_id = u.id AND c.tenant_id = ut.tenant_id
