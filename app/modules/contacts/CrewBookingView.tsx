@@ -289,9 +289,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                 <tr>
                   {crewMembers.map((c, ci) => (
                     <React.Fragment key={c.id}>
-                      <th style={{ width: 40, height: 30, padding: '0 4px', textAlign: 'center', fontWeight: 500, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined }}>
-                        {c.contactType === 'guest' ? <span style={{ fontSize: 8, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>MANUELL</span> : 'Verf'}
-                      </th>
+                      <th style={{ width: 40, height: 30, padding: '0 4px', textAlign: 'center', fontWeight: 500, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined }}>Verf</th>
                       <th style={{ width: 84, height: 30, padding: '0 8px', textAlign: 'center', fontWeight: 600, fontSize: 11, color: '#374151', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderRight: '1px solid #e0e7ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.firstName} {c.lastName}</th>
                     </React.Fragment>
                   ))}
@@ -308,7 +306,9 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                         return (
                           <React.Fragment key={c.id}>
                             <td style={{ width: 40, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined, textAlign: 'center', padding: '0 4px' }}>
-                              {c.contactType !== 'guest' && availIcon(getAvailStatus(t, uid))}
+                              {c.contactType === 'guest'
+                                ? <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#e5e7eb', color:'#9ca3af', fontSize:8, fontWeight:700, letterSpacing:'-0.02em' }} title="Manuell — kein Login">M</span>
+                                : availIcon(getAvailStatus(t, uid))}
                             </td>
                             <td style={{ width: 84, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderRight: '1px solid #e0e7ff', textAlign: 'center', padding: '0 4px' }}>
                               <div style={{ display: 'flex', justifyContent: 'center' }}>
