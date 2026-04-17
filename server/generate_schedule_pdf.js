@@ -166,18 +166,18 @@ function generateSchedulePdf(schedule) {
       }
 
       // Zwei-Spalten-Zeile mit -//-
-      // Kein drawSegments: direkte doc.text()-Aufrufe mit gesichertem lineY
-      // verhindert pdfkit-Cursor-Drift zwischen zwei text()-Aufrufen auf gleicher Zeile
+      // Linke Spalte RECHTSBÜNDIG zu tabX, rechte Spalte linksbündig ab tabX+4
       if (line.includes('-//-')) {
         const idx = line.indexOf('-//-');
         const leftText  = stripHtml(line.slice(0, idx)).trim();
         const rightText = stripHtml(line.slice(idx + 4)).trim();
         const lineY = y;
-        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor('#6b7280')
-          .text(leftText,  MARGIN_H, lineY, { lineBreak: false });
+        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor('#6b7280');
+        const lw = doc.widthOfString(leftText);
+        doc.text(leftText,  tabX - lw, lineY, { lineBreak: false });
         doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor('#111827')
-          .text(rightText, tabX,     lineY, { lineBreak: false });
-        y = lineY + LINE_H;
+          .text(rightText, tabX + 4, lineY, { lineBreak: false });
+        y = lineY + LINE_H + 4;
         continue;
       }
 

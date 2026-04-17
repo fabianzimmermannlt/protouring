@@ -270,26 +270,27 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
           }
 
           // Zwei-Spalten-Zeile mit -//-
-          // lineY sichern, beide text()-Aufrufe mit explizitem y → kein Cursor-Drift
+          // Linke Spalte RECHTSBÜNDIG zu tabX, rechte Spalte linksbündig ab tabX+4
           if (line.includes('-//-')) {
-            ensureSpace(14);
-            const sepIdx   = line.indexOf('-//-');
+            ensureSpace(18);
+            const sepIdx    = line.indexOf('-//-');
             const leftText  = line.slice(0, sepIdx).trim();
             const rightText = line.slice(sepIdx + 4).trim();
             const lineY = y;
-            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
-              .text(leftText,  MARGIN_H, lineY, { lineBreak: false });
+            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID);
+            const lw = doc.widthOfString(leftText);
+            doc.text(leftText,  tabX - lw, lineY, { lineBreak: false });
             doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
-              .text(rightText, tabX,     lineY, { width: rightW, lineBreak: false });
-            y = lineY + 16;
+              .text(rightText, tabX + 4, lineY, { width: rightW - 4, lineBreak: false });
+            y = lineY + 18;
             continue;
           }
 
           // Normale Zeile
-          ensureSpace(16);
+          ensureSpace(18);
           doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
             .text(trimmed, MARGIN_H, y, { width: CONTENT_W });
-          y += doc.heightOfString(trimmed, { width: CONTENT_W, fontSize: 8.5 }) + 5;
+          y += doc.heightOfString(trimmed, { width: CONTENT_W, fontSize: 8.5 }) + 7;
         }
         spacer(8);
       }
