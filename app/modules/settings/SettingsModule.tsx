@@ -20,7 +20,7 @@ import FunktionenSettings from './FunktionenSettings'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
   adminSetUserEmail, adminSetUserPassword, adminToggleUserStatus,
-  changePassword, getMyContact, updateMyContact, getContact, updateContact,
+  changePassword, getMyContact, updateMyContact, getOrCreateUserContact, updateContact,
   getTenantArtistSettings, updateTenantArtistSettings,
   getTenantBilling, updateTenantBilling,
   getUserFormat, updateUserFormat,
@@ -905,11 +905,14 @@ function UserManagement() {
   const [profileLoading, setProfileLoading] = useState(false)
 
   const openProfile = async (user: TenantUser) => {
-    if (!user.contactId) return
     setProfileLoading(true)
     try {
-      const c = await getContact(user.contactId)
+      const c = await getOrCreateUserContact(user.id)
       setProfileContact(c)
+      // contactId im lokalen State nachführen falls neu angelegt
+      if (!user.contactId) {
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, contactId: Number(c.id) } : u))
+      }
     } catch { /* ignore */ }
     finally { setProfileLoading(false) }
   }

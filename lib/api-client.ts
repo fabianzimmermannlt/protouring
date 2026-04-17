@@ -331,6 +331,10 @@ export async function getContact(id: number): Promise<Contact> {
   const res = await request<{ contact: Contact }>(`/api/contacts/${id}`);
   return res.contact;
 }
+export async function getOrCreateUserContact(userId: number): Promise<Contact> {
+  const res = await request<{ contact: Contact }>(`/api/settings/users/${userId}/contact`);
+  return res.contact;
+}
 export async function createContact(data: ContactFormData): Promise<Contact> {
   const res = await request<{ contact: Contact }>('/api/contacts', { method: 'POST', body: data });
   return res.contact;

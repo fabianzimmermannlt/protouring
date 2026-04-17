@@ -4349,6 +4349,55 @@ app.get('/api/settings/my-role', authenticateToken, requireTenant, async (req, r
   }
 })
 
+// GET /api/settings/users/:userId/contact  — Kontakt für User holen oder anlegen (Admin only)
+app.get('/api/settings/users/:userId/contact', authenticateToken, requireTenant, requireAdmin, async (req, res) => {
+  try {
+    const targetUserId = parseInt(req.params.userId)
+    const targetUser = await db.get('SELECT * FROM users WHERE id = ?', [targetUserId])
+    if (!targetUser) return res.status(404).json({ error: 'User nicht gefunden' })
+
+    // Prüfen ob User zu diesem Tenant gehört
+    const membership = await db.get(
+      'SELECT id FROM user_tenants WHERE user_id = ? AND tenant_id = ?',
+      [targetUserId, req.tenant.id]
+    )
+    if (!membership) return res.status(403).json({ error: 'User nicht in diesem Tenant' })
+
+    // Kontakt per user_id suchen
+    let contact = await db.get(
+      'SELECT * FROM contacts WHERE user_id = ? AND tenant_id = ?',
+      [targetUserId, req.tenant.id]
+    )
+
+    // Per E-Mail verknüpfen
+    if (!contact) {
+      const byEmail = await db.get(
+        'SELECT * FROM contacts WHERE email = ? AND tenant_id = ? AND user_id IS NULL',
+        [targetUser.email, req.tenant.id]
+      )
+      if (byEmail) {
+        await db.run('UPDATE contacts SET user_id = ? WHERE id = ?', [targetUserId, byEmail.id])
+        contact = { ...byEmail, user_id: targetUserId }
+      }
+    }
+
+    // Neu anlegen
+    if (!contact) {
+      const result = await db.run(
+        `INSERT INTO contacts (tenant_id, user_id, first_name, last_name, email)
+         VALUES (?, ?, ?, ?, ?)`,
+        [req.tenant.id, targetUserId, targetUser.first_name || '', targetUser.last_name || '', targetUser.email || '']
+      )
+      contact = await db.get('SELECT * FROM contacts WHERE id = ?', [result.lastID])
+    }
+
+    res.json({ contact: contactFromRow(contact) })
+  } catch (err) {
+    console.error('GET /api/settings/users/:userId/contact error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /api/settings/users  — Aktive User + offene Einladungen
 app.get('/api/settings/users', authenticateToken, requireTenant, requireAdmin, async (req, res) => {
   try {
