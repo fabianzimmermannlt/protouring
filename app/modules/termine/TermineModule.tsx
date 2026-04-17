@@ -625,7 +625,7 @@ function NeighbourBtn({ t, distance, dir, onClick }: {
   dir: 'prev' | 'next'
   onClick: () => void
 }) {
-  const cityLabel = t.city || ''
+  const cityLabel = t.city || t.venueName || t.title || ''
 
   return (
     <button onClick={onClick} className="pt-datumzeile-btn">
