@@ -36,7 +36,7 @@ export function SubNavigation({
 
   const isAdmin = getEffectiveRole() === 'admin'
   const visibleItems = platformSubItems.filter(item =>
-    item.id !== 'permissions' || isAdmin
+    (item.id !== 'permissions' && item.id !== 'artist') || isAdmin
   )
 
   return (
