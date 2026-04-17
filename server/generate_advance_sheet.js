@@ -242,19 +242,28 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
         sectionTitle((sched.not_final ? '⚠ NICHT FINAL – ' : '') + (sched.title || 'Zeitplan'));
         const lines = normalizeScheduleLines(sched.content);
 
-        // Erster Pass: breiteste linke Seite bei -//- Zeilen messen
+        // Erster Pass: breiteste linke UND rechte Seite messen
         let maxLeftW = 0;
+        let maxRightW = 0;
+        doc.font(FONT_BOLD).fontSize(8.5);
+        for (const line of lines) {
+          if (line.includes('-//-')) {
+            const sep = line.indexOf('-//-');
+            const lw = doc.widthOfString(line.slice(0, sep).trim());
+            if (lw > maxLeftW) maxLeftW = lw;
+          }
+        }
         doc.font(FONT_REG).fontSize(8.5);
         for (const line of lines) {
           if (line.includes('-//-')) {
-            const leftText = line.slice(0, line.indexOf('-//-')).trim();
-            const w = doc.widthOfString(leftText);
-            if (w > maxLeftW) maxLeftW = w;
+            const sep = line.indexOf('-//-');
+            const rw = doc.widthOfString(line.slice(sep + 4).trim());
+            if (rw > maxRightW) maxRightW = rw;
           }
         }
-        // Rechte Spalte startet: längster linker Text + kleiner Abstand
-        const tabX = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 8 : 40);
-        const rightW = MARGIN_H + CONTENT_W - tabX;
+        // Tab hinter längstem linken Text + Abstand; rechte Spalte endet bei tabX + maxRightW
+        const tabX      = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 10 : 40);
+        const rightColEnd = tabX + (maxRightW > 0 ? maxRightW : 120);
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -281,7 +290,7 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
               .text(leftText, MARGIN_H, lineY, { lineBreak: false });
             doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK);
             const rw = doc.widthOfString(rightText);
-            doc.text(rightText, MARGIN_H + CONTENT_W - rw, lineY, { lineBreak: false });
+            doc.text(rightText, rightColEnd - rw, lineY, { lineBreak: false });
             y = lineY + 18;
             continue;
           }

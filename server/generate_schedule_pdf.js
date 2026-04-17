@@ -138,18 +138,28 @@ function generateSchedulePdf(schedule) {
     // ── Content ──
     const lines = normalizeContent(schedule.content);
 
-    // Erster Pass: breiteste linke Seite bei -//- Zeilen messen
+    // Erster Pass: breiteste linke UND rechte Seite messen
     let maxLeftW = 0;
+    let maxRightW = 0;
+    doc.font(FONT_BOLD).fontSize(SIZE_BODY);
+    for (const line of lines) {
+      if (line.includes('-//-')) {
+        const sep = line.indexOf('-//-');
+        const lw = doc.widthOfString(stripHtml(line.slice(0, sep)).trim());
+        if (lw > maxLeftW) maxLeftW = lw;
+      }
+    }
     doc.font(FONT_REG).fontSize(SIZE_BODY);
     for (const line of lines) {
       if (line.includes('-//-')) {
-        const leftText = stripHtml(line.slice(0, line.indexOf('-//-'))).trim();
-        const w = doc.widthOfString(leftText);
-        if (w > maxLeftW) maxLeftW = w;
+        const sep = line.indexOf('-//-');
+        const rw = doc.widthOfString(stripHtml(line.slice(sep + 4)).trim());
+        if (rw > maxRightW) maxRightW = rw;
       }
     }
-    // Rechte Spalte: längster linker Text + kleiner Abstand
-    const tabX = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 8 : 50);
+    // Tab hinter längstem linken Text + Abstand; rechte Spalte endet bei tabX + maxRightW
+    const tabX      = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 10 : 50);
+    const rightColEnd = tabX + (maxRightW > 0 ? maxRightW : 150);
 
     for (const line of lines) {
       ensureSpace(LINE_H + 4);
@@ -176,7 +186,7 @@ function generateSchedulePdf(schedule) {
           .text(leftText, MARGIN_H, lineY, { lineBreak: false });
         doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor('#111827');
         const rw = doc.widthOfString(rightText);
-        doc.text(rightText, MARGIN_H + CONTENT_W - rw, lineY, { lineBreak: false });
+        doc.text(rightText, rightColEnd - rw, lineY, { lineBreak: false });
         y = lineY + LINE_H + 4;
         continue;
       }
