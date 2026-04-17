@@ -3598,11 +3598,16 @@ app.get('/api/termine/:terminId/schedules/:id/pdf', async (req, res) => {
     const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenant;
     if (!tenantSlug) return res.status(400).json({ error: 'Tenant required' });
 
-    const tenant = await db.get(`
-      SELECT t.id FROM tenants t
-      JOIN user_tenants ut ON t.id = ut.tenant_id
-      WHERE t.slug = ? AND ut.user_id = ? AND ut.status = 'active'
-    `, [tenantSlug, user.id]);
+    let tenant;
+    if (user.isSuperadmin) {
+      tenant = await db.get('SELECT id FROM tenants WHERE slug = ?', [tenantSlug]);
+    } else {
+      tenant = await db.get(`
+        SELECT t.id FROM tenants t
+        JOIN user_tenants ut ON t.id = ut.tenant_id
+        WHERE t.slug = ? AND ut.user_id = ? AND ut.status = 'active'
+      `, [tenantSlug, user.id]);
+    }
     if (!tenant) return res.status(403).json({ error: 'No access to this tenant' });
 
     const schedule = await db.get(
@@ -3643,11 +3648,16 @@ app.get('/api/termine/:terminId/hotel-pdf', async (req, res) => {
     const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenant;
     if (!tenantSlug) return res.status(400).json({ error: 'Tenant required' });
 
-    const tenant = await db.get(`
-      SELECT t.id FROM tenants t
-      JOIN user_tenants ut ON t.id = ut.tenant_id
-      WHERE t.slug = ? AND ut.user_id = ? AND ut.status = 'active'
-    `, [tenantSlug, user.id]);
+    let tenant;
+    if (user.isSuperadmin) {
+      tenant = await db.get('SELECT id FROM tenants WHERE slug = ?', [tenantSlug]);
+    } else {
+      tenant = await db.get(`
+        SELECT t.id FROM tenants t
+        JOIN user_tenants ut ON t.id = ut.tenant_id
+        WHERE t.slug = ? AND ut.user_id = ? AND ut.status = 'active'
+      `, [tenantSlug, user.id]);
+    }
     if (!tenant) return res.status(403).json({ error: 'No access to this tenant' });
 
     const terminId = req.params.terminId;
