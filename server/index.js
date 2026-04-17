@@ -4209,13 +4209,23 @@ app.get('/api/me/termine', authenticateToken, async (req, res) => {
 // GET /api/me/tenants — Alle Tenants des eingeloggten Users (kein Tenant-Header nötig)
 app.get('/api/me/tenants', authenticateToken, async (req, res) => {
   try {
-    const rows = await db.all(`
-      SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, ut.role
-      FROM user_tenants ut
-      JOIN tenants t ON ut.tenant_id = t.id
-      WHERE ut.user_id = ? AND ut.status = 'active'
-      ORDER BY name
-    `, [req.user.id])
+    let rows
+    if (req.user.isSuperadmin) {
+      // Superadmin sieht alle Tenants mit virtueller Admin-Rolle
+      rows = await db.all(`
+        SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, 'admin' AS role
+        FROM tenants t
+        ORDER BY name
+      `)
+    } else {
+      rows = await db.all(`
+        SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, ut.role
+        FROM user_tenants ut
+        JOIN tenants t ON ut.tenant_id = t.id
+        WHERE ut.user_id = ? AND ut.status = 'active'
+        ORDER BY name
+      `, [req.user.id])
+    }
     res.json({ tenants: rows })
   } catch (e) {
     res.status(500).json({ error: e.message })
