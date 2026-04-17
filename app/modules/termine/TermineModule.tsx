@@ -9,6 +9,7 @@ import PartnerModal from '../partners/PartnerModal'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
 import ReisegruppeView from './ReisegruppeView'
+import AdvanceSheetView from './AdvanceSheetView'
 import KalenderView from './KalenderView'
 import AnreiseCard from './AnreiseCard'
 import HotelCard from './HotelCard'
@@ -798,7 +799,7 @@ export default function TerminePage({
 
   // Detail view
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [detailView, setDetailView] = useState<'details' | 'travelparty'>('details')
+  const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet'>('details')
 
   // Reset sub-view when switching termin or leaving detail
   useEffect(() => {
@@ -831,7 +832,7 @@ export default function TerminePage({
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' }>).detail
+      const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' }>).detail
       if (detail?.view) setDetailView(detail.view)
     }
     window.addEventListener('termine-set-view', handler)
@@ -1035,6 +1036,8 @@ export default function TerminePage({
           />
           {detailView === 'travelparty' ? (
             <ReisegruppeView terminId={selectedTermin.id} isAdmin={isAdmin} />
+          ) : detailView === 'advance-sheet' ? (
+            <AdvanceSheetView terminId={selectedTermin.id} />
           ) : (
             <TerminDetail
               termin={selectedTermin}

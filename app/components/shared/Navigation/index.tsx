@@ -66,7 +66,7 @@ export function Navigation({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [artistName, setArtistName] = useState('')
   const [termineInDetail, setTermineInDetail] = useState(false)
-  const [termineView, setTermineView] = useState<'details' | 'travelparty'>('details')
+  const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet'>('details')
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -126,7 +126,7 @@ export function Navigation({
   // Listen for Termine detail view changes
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ inDetail: boolean; view?: 'details' | 'travelparty' }>).detail
+      const detail = (e as CustomEvent<{ inDetail: boolean; view?: 'details' | 'travelparty' | 'advance-sheet' }>).detail
       setTermineInDetail(detail.inDetail)
       if (detail.view) setTermineView(detail.view)
       if (!detail.inDetail) setTermineView('details')

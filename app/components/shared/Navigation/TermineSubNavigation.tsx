@@ -1,8 +1,8 @@
 'use client'
 
-import { getEffectiveRole, canDo, CAN_SEE_KALENDER } from '@/lib/api-client'
+import { getEffectiveRole, canDo, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
 
-export type TermineDetailView = 'details' | 'travelparty'
+export type TermineDetailView = 'details' | 'travelparty' | 'advance-sheet'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
 
@@ -68,6 +68,7 @@ export function TermineSubNavigation({
   activeView = 'details',
   onViewChange,
 }: TermineSubNavigationProps) {
+  const isEditor = isEditorRole(getEffectiveRole())
   return (
     <div className="pt-subnav">
       <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
@@ -87,6 +88,14 @@ export function TermineSubNavigation({
           >
             Reisegruppe
           </button>
+          {isEditor && (
+            <button
+              onClick={() => onViewChange?.('advance-sheet')}
+              className={`pt-subnav-btn ${activeView === 'advance-sheet' ? 'active' : ''}`}
+            >
+              Advance Sheet
+            </button>
+          )}
         </div>
       </div>
     </div>
