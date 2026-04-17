@@ -160,8 +160,9 @@ export function Navigation({
       {/* Desktop Navigation */}
       <header className="bg-gray-900 text-white shadow-sm border-b">
         <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+          <div className="flex items-center h-16">
+            {/* Links: Logo */}
+            <div className="flex-1 flex items-center">
               <div>
                 <h1 className="text-xl font-bold text-orange-400">ProTouring</h1>
                 {artistName && (
@@ -169,6 +170,7 @@ export function Navigation({
                 )}
               </div>
             </div>
+            {/* Mitte: Hauptnavigation zentriert */}
             <nav className="hidden md:flex items-center space-x-1">
               {navigationItems.filter(item =>
   (item.superadminOnly ? isSuperadmin : canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? []))
@@ -186,7 +188,10 @@ export function Navigation({
                   {item.name}
                 </button>
               ))}
-              <div className="ml-3 pl-3 border-l border-gray-700 flex items-center gap-2">
+            </nav>
+            {/* Rechts: User-Menu */}
+            <div className="flex-1 flex justify-end items-center">
+              <div className="flex items-center gap-2">
                 <PreviewBanner />
                 {/* User-Dropdown */}
                 <div className="relative" ref={userMenuRef}>
