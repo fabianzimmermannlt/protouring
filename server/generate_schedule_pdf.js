@@ -138,6 +138,19 @@ function generateSchedulePdf(schedule) {
     // ── Content ──
     const lines = normalizeContent(schedule.content);
 
+    // Erster Pass: breiteste linke Seite bei -//- Zeilen messen
+    let maxLeftW = 0;
+    doc.font(FONT_REG).fontSize(SIZE_BODY);
+    for (const line of lines) {
+      if (line.includes('-//-')) {
+        const leftText = stripHtml(line.slice(0, line.indexOf('-//-'))).trim();
+        const w = doc.widthOfString(leftText);
+        if (w > maxLeftW) maxLeftW = w;
+      }
+    }
+    // Rechte Spalte: längster linker Text + kleiner Abstand
+    const tabX = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 8 : 50);
+
     for (const line of lines) {
       ensureSpace(LINE_H + 4);
 
@@ -152,14 +165,15 @@ function generateSchedulePdf(schedule) {
         continue;
       }
 
-      // Left-right separator
+      // Zwei-Spalten-Zeile mit -//-
       if (line.includes('-//-')) {
         const idx = line.indexOf('-//-');
         const leftSegs  = parseSegments(line.slice(0, idx));
         const rightSegs = parseSegments(line.slice(idx + 4));
-        doc.fillColor('#111827');
+        doc.fillColor('#6b7280');
         drawSegments(doc, leftSegs, MARGIN_H, y);
-        drawSegments(doc, rightSegs, MARGIN_H + CONTENT_W, y, true);
+        doc.fillColor('#111827');
+        drawSegments(doc, rightSegs, tabX, y);
         y += LINE_H;
         continue;
       }

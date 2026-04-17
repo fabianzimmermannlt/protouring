@@ -221,13 +221,71 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
 
     // ── ZEITPLÄNE / TAGESABLAUF ───────────────────────────────────────────────
 
+    // Normalisiert HTML zu plain-text-Zeilen (analog generate_schedule_pdf.js)
+    function normalizeScheduleLines(html) {
+      return (html || '')
+        .replace(/<div><br\s*\/?>< \/div>/gi, '\n')
+        .replace(/<p><br\s*\/?>< \/p>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/div>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<div>/gi, '').replace(/<p>/gi, '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+        .replace(/\n{3,}/g, '\n\n')
+        .split('\n');
+    }
+
     if (has('schedules') && data.schedules && data.schedules.length > 0) {
       for (const sched of data.schedules) {
         sectionTitle((sched.not_final ? '⚠ NICHT FINAL – ' : '') + (sched.title || 'Zeitplan'));
-        const lines = stripHtml(sched.content).split('\n');
+        const lines = normalizeScheduleLines(sched.content);
+
+        // Erster Pass: breiteste linke Seite bei -//- Zeilen messen
+        let maxLeftW = 0;
+        doc.font(FONT_REG).fontSize(8.5);
+        for (const line of lines) {
+          if (line.includes('-//-')) {
+            const leftText = line.slice(0, line.indexOf('-//-')).trim();
+            const w = doc.widthOfString(leftText);
+            if (w > maxLeftW) maxLeftW = w;
+          }
+        }
+        // Rechte Spalte startet: längster linker Text + kleiner Abstand
+        const tabX = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 8 : 40);
+        const rightW = MARGIN_H + CONTENT_W - tabX;
+
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) { spacer(4); continue; }
+
+          // Trennlinie ---
+          if (trimmed === '---') {
+            ensureSpace(10);
+            doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
+              .lineWidth(0.5).strokeColor(C_MUTED).stroke();
+            spacer(6);
+            continue;
+          }
+
+          // Zwei-Spalten-Zeile mit -//-
+          if (line.includes('-//-')) {
+            ensureSpace(14);
+            const sepIdx = line.indexOf('-//-');
+            const leftText  = line.slice(0, sepIdx).trim();
+            const rightText = line.slice(sepIdx + 4).trim();
+            const rowY = y;
+            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
+              .text(leftText, MARGIN_H, rowY, { width: tabX - MARGIN_H - 4, lineBreak: false });
+            doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
+              .text(rightText || '', tabX, rowY, { width: rightW });
+            const rh = doc.heightOfString(rightText || ' ', { width: rightW, fontSize: 8.5 });
+            y = rowY + Math.max(12, rh) + 2;
+            continue;
+          }
+
+          // Normale Zeile
           ensureSpace(14);
           doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
             .text(trimmed, MARGIN_H, y, { width: CONTENT_W });
