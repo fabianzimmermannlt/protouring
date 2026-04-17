@@ -307,7 +307,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                           <React.Fragment key={c.id}>
                             <td style={{ width: 40, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined, textAlign: 'center', padding: '0 4px' }}>
                               {c.contactType === 'guest'
-                                ? <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#e5e7eb', color:'#9ca3af', fontSize:8, fontWeight:700, letterSpacing:'-0.02em' }} title="Manuell — kein Login">M</span>
+                                ? <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#22c55e', color:'white', fontSize:8, fontWeight:700, letterSpacing:'-0.02em' }} title="Manuell — kein Login">M</span>
                                 : availIcon(getAvailStatus(t, uid))}
                             </td>
                             <td style={{ width: 84, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderRight: '1px solid #e0e7ff', textAlign: 'center', padding: '0 4px' }}>
