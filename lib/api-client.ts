@@ -2001,14 +2001,14 @@ export async function getInviteToken(token: string): Promise<InviteToken> {
 }
 
 /** Öffentlich: Einladung annehmen */
-export async function acceptInvite(token: string, password?: string): Promise<{
+export async function acceptInvite(token: string, password?: string, firstName?: string, lastName?: string): Promise<{
   token: string
   user: { id: number; email: string; firstName: string; lastName: string }
   currentTenant: { id: number; name: string; slug: string; status: string; role: string }
 }> {
   return request(`/api/invite/${token}/accept`, {
     method: 'POST',
-    body: { password: password ?? null },
+    body: { password: password ?? null, firstName: firstName ?? '', lastName: lastName ?? '' },
     skipTenant: true,
   })
 }

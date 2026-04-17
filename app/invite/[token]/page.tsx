@@ -15,6 +15,8 @@ export default function InvitePage() {
   const [loadError, setLoadError] = useState('')
   const [loading, setLoading] = useState(true)
 
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving] = useState(false)
@@ -33,8 +35,10 @@ export default function InvitePage() {
     e.preventDefault()
     if (!invite) return
 
-    // Neuer User: Passwort prüfen
+    // Neuer User: Name + Passwort prüfen
     if (!invite.userExists) {
+      if (!firstName.trim()) { setSaveError('Vorname ist erforderlich'); return }
+      if (!lastName.trim()) { setSaveError('Nachname ist erforderlich'); return }
       if (password !== confirmPassword) { setSaveError('Passwörter stimmen nicht überein'); return }
       if (password.length < 6) { setSaveError('Passwort muss mindestens 6 Zeichen lang sein'); return }
     }
@@ -42,7 +46,7 @@ export default function InvitePage() {
     setSaving(true)
     setSaveError('')
     try {
-      const res = await acceptInvite(token, invite.userExists ? undefined : password)
+      const res = await acceptInvite(token, invite.userExists ? undefined : password, firstName.trim() || undefined, lastName.trim() || undefined)
       setAuthSession(res.token, res.currentTenant, res.user)
       setDone(true)
       setTimeout(() => router.push('/'), 1500)
@@ -124,8 +128,33 @@ export default function InvitePage() {
                   Dein Account existiert bereits. Klicke auf „Beitreten" um dem Artist beizutreten.
                 </div>
               ) : (
-                /* Neuer User: Passwort setzen */
+                /* Neuer User: Name + Passwort setzen */
                 <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vorname *</label>
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={e => setFirstName(e.target.value)}
+                        required
+                        autoFocus
+                        placeholder="Max"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nachname *</label>
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={e => setLastName(e.target.value)}
+                        required
+                        placeholder="Mustermann"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Passwort festlegen</label>
                     <div className="relative">

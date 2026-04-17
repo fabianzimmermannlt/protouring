@@ -4054,7 +4054,7 @@ app.get('/api/invite/:token', async (req, res) => {
 // POST /api/invite/:token/accept  — Einladung annehmen
 app.post('/api/invite/:token/accept', async (req, res) => {
   try {
-    const { password } = req.body
+    const { password, firstName: bodyFirstName, lastName: bodyLastName } = req.body
 
     const row = await db.get(
       `SELECT it.*, t.slug AS tenant_slug
@@ -4081,11 +4081,15 @@ app.post('/api/invite/:token/accept', async (req, res) => {
           await db.run('ROLLBACK')
           return res.status(400).json({ error: 'Passwort min. 6 Zeichen' })
         }
-        // Name aus Kontakt holen wenn vorhanden
-        let firstName = '', lastName = ''
-        if (row.contact_id) {
+        // Name: aus Body (Formular) bevorzugt, Fallback: verknüpfter Kontakt
+        let firstName = (bodyFirstName || '').trim()
+        let lastName  = (bodyLastName  || '').trim()
+        if ((!firstName || !lastName) && row.contact_id) {
           const contact = await db.get('SELECT first_name, last_name FROM contacts WHERE id=?', [row.contact_id])
-          if (contact) { firstName = contact.first_name; lastName = contact.last_name }
+          if (contact) {
+            if (!firstName) firstName = contact.first_name || ''
+            if (!lastName)  lastName  = contact.last_name  || ''
+          }
         }
         const hash = await bcrypt.hash(password, 10)
         const newUser = await db.run(
