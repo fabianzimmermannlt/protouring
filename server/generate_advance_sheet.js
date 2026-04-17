@@ -128,15 +128,16 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       .text('ADVANCE SHEET', MARGIN_H, y, { lineBreak: false });
     y += 12;
 
-    const terminLabel = [
-      termin.date ? formatDateLong(termin.date) : '',
-      termin.title || '',
-      termin.city  || '',
-    ].filter(Boolean).join('  ·  ');
-
+    // Datum eigene Zeile, dann Titel · Stadt
+    if (termin.date) {
+      doc.font(FONT_REG).fontSize(11).fillColor(C_MID)
+        .text(formatDateLong(termin.date), MARGIN_H, y, { width: CONTENT_W });
+      y += 16;
+    }
+    const terminLabel = [termin.title || '', termin.city || ''].filter(Boolean).join('  ·  ');
     doc.font(FONT_BOLD).fontSize(18).fillColor(C_DARK)
       .text(terminLabel || 'Termin', MARGIN_H, y, { width: CONTENT_W });
-    y += 28;
+    y += 26;
 
     doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
       .lineWidth(1.5).strokeColor(C_DARK).stroke();
@@ -351,15 +352,17 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y).lineWidth(0.5).strokeColor(C_RULE_L).stroke();
       y += 5;
 
+      const ROW_H  = 18;
+      const PAD_T  = 4; // Text vertikal mittig zwischen den Linien
       for (const m of data.travelParty) {
-        ensureSpace(14);
+        ensureSpace(ROW_H);
         const name = [m.first_name, m.last_name].filter(Boolean).join(' ');
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK).text(name || '–', COL[0], y, { width: COL_W[0], lineBreak: false });
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(m.role1 || '', COL[1], y, { width: COL_W[1], lineBreak: false });
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(m.role2 || '', COL[2], y, { width: COL_W[2], lineBreak: false });
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED).text(m.role3 || '', COL[3], y, { width: COL_W[3], lineBreak: false });
-        y += 13;
-        doc.moveTo(MARGIN_H, y - 1).lineTo(MARGIN_H + CONTENT_W, y - 1).lineWidth(0.3).strokeColor('#f3f4f6').stroke();
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK).text(name || '–', COL[0], y + PAD_T, { width: COL_W[0], lineBreak: false });
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(m.role1 || '', COL[1], y + PAD_T, { width: COL_W[1], lineBreak: false });
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(m.role2 || '', COL[2], y + PAD_T, { width: COL_W[2], lineBreak: false });
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED).text(m.role3 || '', COL[3], y + PAD_T, { width: COL_W[3], lineBreak: false });
+        y += ROW_H;
+        doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y).lineWidth(0.3).strokeColor('#f3f4f6').stroke();
       }
       spacer(10);
     }
