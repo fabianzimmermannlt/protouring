@@ -128,10 +128,9 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
       .finally(() => setLoading(false))
   }, [])
 
-  // Alle Kontakte mit gewählter Funktion — kein User-Account nötig
+  // Alle Kontakte mit gewählter Funktion — inkl. manuell angelegte Gäste (kein Login)
   const crewMembers = useMemo(() =>
     contacts.filter(c =>
-      c.contactType !== 'guest' &&
       [c.function1, c.function2, c.function3].some(f => f === selectedFn)
     ),
     [contacts, selectedFn]
@@ -307,7 +306,9 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                         return (
                           <React.Fragment key={c.id}>
                             <td style={{ width: 40, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined, textAlign: 'center', padding: '0 4px' }}>
-                              {availIcon(getAvailStatus(t, uid))}
+                              {c.contactType === 'guest'
+                                ? <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#e5e7eb', color:'#9ca3af', fontSize:9, fontWeight:700 }} title="Kein Login">—</span>
+                                : availIcon(getAvailStatus(t, uid))}
                             </td>
                             <td style={{ width: 84, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderRight: '1px solid #e0e7ff', textAlign: 'center', padding: '0 4px' }}>
                               <div style={{ display: 'flex', justifyContent: 'center' }}>
