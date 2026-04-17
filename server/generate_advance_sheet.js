@@ -270,18 +270,18 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
           }
 
           // Zwei-Spalten-Zeile mit -//-
+          // lineY sichern, beide text()-Aufrufe mit explizitem y → kein Cursor-Drift
           if (line.includes('-//-')) {
             ensureSpace(14);
-            const sepIdx = line.indexOf('-//-');
+            const sepIdx   = line.indexOf('-//-');
             const leftText  = line.slice(0, sepIdx).trim();
             const rightText = line.slice(sepIdx + 4).trim();
-            const rowY = y;
+            const lineY = y;
             doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
-              .text(leftText, MARGIN_H, rowY, { width: tabX - MARGIN_H - 4, lineBreak: false });
+              .text(leftText,  MARGIN_H, lineY, { lineBreak: false });
             doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
-              .text(rightText || '', tabX, rowY, { width: rightW });
-            const rh = doc.heightOfString(rightText || ' ', { width: rightW, fontSize: 8.5 });
-            y = rowY + Math.max(12, rh) + 2;
+              .text(rightText, tabX,     lineY, { width: rightW, lineBreak: false });
+            y = lineY + 13;
             continue;
           }
 
@@ -401,8 +401,8 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       const COL = [MARGIN_H, MARGIN_H + 140, MARGIN_H + 260, MARGIN_H + 370];
       const COL_W = [130, 115, 105, CONTENT_W - 370];
 
-      const ROW_H = 18;
-      const PAD_T = 4; // Abstand Oberkante → Text (Font ~10px → 4px oben, 4px unten)
+      const ROW_H = 20;
+      const PAD_T = 6; // Abstand Oberkante → Text: visuell zentriert (pdfkit-Textbox hat intern Freiraum oben)
 
       // Header-Zeile
       ensureSpace(14 + ROW_H);
