@@ -42,6 +42,7 @@ function emptyForm() {
     hotelInfo: '', hotelAlias: '',
     languages: '', driversLicense: '', railcard: '', frequentFlyer: '',
     hourlyRate: 0, dailyRate: 0,
+    bankAccount: '', bankIban: '', bankBic: '',
     taxId: '', taxNumber: '', vatId: '', website: '',
   }
 }
@@ -86,6 +87,9 @@ function contactToForm(c: Contact) {
     frequentFlyer:   c.frequentFlyer   ?? '',
     hourlyRate:      c.hourlyRate      ?? 0,
     dailyRate:       c.dailyRate       ?? 0,
+    bankAccount:     c.bankAccount     ?? '',
+    bankIban:        c.bankIban        ?? '',
+    bankBic:         c.bankBic         ?? '',
     taxId:           c.taxId           ?? '',
     taxNumber:       c.taxNumber       ?? '',
     vatId:           c.vatId           ?? '',
@@ -468,6 +472,23 @@ export default function GastAnlegenModal({
                   <input type="number" className="form-input" value={form.dailyRate || ''}
                     onChange={e => set('dailyRate', parseFloat(e.target.value) || 0)}
                     placeholder="0.00" />
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Kontoinhaber</label>
+                <input type="text" className="form-input" value={form.bankAccount}
+                  onChange={e => set('bankAccount', e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label">IBAN</label>
+                  <input type="text" className="form-input" value={form.bankIban}
+                    onChange={e => set('bankIban', e.target.value)} placeholder="DE…" />
+                </div>
+                <div>
+                  <label className="form-label">BIC</label>
+                  <input type="text" className="form-input" value={form.bankBic}
+                    onChange={e => set('bankBic', e.target.value)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
