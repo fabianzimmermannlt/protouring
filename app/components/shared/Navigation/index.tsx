@@ -277,7 +277,7 @@ export function Navigation({
                   )}
                 </div>
               </div>
-            </nav>
+            </div>
           </div>
         </div>
       </header>
