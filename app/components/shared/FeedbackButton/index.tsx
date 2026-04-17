@@ -78,15 +78,11 @@ export function FeedbackButton() {
   }
 
   const handleOpen = () => {
-    if (isSuperadmin) {
-      // Superadmin → direkt zur Feedback-Seite navigieren
-      window.dispatchEvent(new CustomEvent('navigate-to-feedback'))
-      return
-    }
     setIsOpen(true)
-    setView('form')
+    setView(isSuperadmin ? 'list' : 'form')
     setSubmitted(false)
     setSubmitError('')
+    if (isSuperadmin) loadItems()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
