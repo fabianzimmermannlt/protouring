@@ -343,26 +343,37 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       const COL = [MARGIN_H, MARGIN_H + 140, MARGIN_H + 260, MARGIN_H + 370];
       const COL_W = [130, 115, 105, CONTENT_W - 370];
 
-      // Header
-      ensureSpace(18);
+      const ROW_H = 18;
+      const PAD_T = 4; // Abstand Oberkante → Text (Font ~10px → 4px oben, 4px unten)
+
+      // Header-Zeile
+      ensureSpace(14 + ROW_H);
       ['Name', 'Funktion 1', 'Funktion 2', 'Funktion 3'].forEach((h, i) => {
-        doc.font(FONT_BOLD).fontSize(7).fillColor(C_MUTED).text(h, COL[i], y, { width: COL_W[i], lineBreak: false });
+        doc.font(FONT_BOLD).fontSize(7).fillColor(C_MUTED)
+          .text(h, COL[i], y, { width: COL_W[i], lineBreak: false });
       });
       y += 12;
-      doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y).lineWidth(0.5).strokeColor(C_RULE_L).stroke();
-      y += 5;
 
-      const ROW_H  = 18;
-      const PAD_T  = 4; // Text vertikal mittig zwischen den Linien
+      // Oberkante der ersten Datenzeile = Separator nach dem Header
+      doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
+        .lineWidth(0.5).strokeColor(C_RULE_L).stroke();
+
+      // Jede Zeile: Oberkante ist y, Text bei y+PAD_T, Unterkante bei y+ROW_H
       for (const m of data.travelParty) {
         ensureSpace(ROW_H);
+        const rowY = y; // explizit festhalten damit pdfkit-Cursor nichts verschiebt
         const name = [m.first_name, m.last_name].filter(Boolean).join(' ');
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK).text(name || '–', COL[0], y + PAD_T, { width: COL_W[0], lineBreak: false });
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(m.role1 || '', COL[1], y + PAD_T, { width: COL_W[1], lineBreak: false });
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(m.role2 || '', COL[2], y + PAD_T, { width: COL_W[2], lineBreak: false });
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED).text(m.role3 || '', COL[3], y + PAD_T, { width: COL_W[3], lineBreak: false });
-        y += ROW_H;
-        doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y).lineWidth(0.3).strokeColor('#f3f4f6').stroke();
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
+          .text(name || '–',   COL[0], rowY + PAD_T, { width: COL_W[0], lineBreak: false });
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID)
+          .text(m.role1 || '', COL[1], rowY + PAD_T, { width: COL_W[1], lineBreak: false });
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID)
+          .text(m.role2 || '', COL[2], rowY + PAD_T, { width: COL_W[2], lineBreak: false });
+        doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED)
+          .text(m.role3 || '', COL[3], rowY + PAD_T, { width: COL_W[3], lineBreak: false });
+        y = rowY + ROW_H; // immer exakt ROW_H weitergehen, unabhängig vom pdfkit-Cursor
+        doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
+          .lineWidth(0.3).strokeColor('#f3f4f6').stroke();
       }
       spacer(10);
     }
