@@ -138,7 +138,7 @@ export default function PartnersPage() {
   const exportToCSV = () => {
     const headers = ['Firmenname', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Art']
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...partners.map(partner => [
         partner.companyName || '',
         partner.street || '',
@@ -147,7 +147,8 @@ export default function PartnersPage() {
         partner.state || '',
         partner.country || '',
         partner.type || ''
-      ].join(','))
+      ].map(v => `"${v.replace(/"/g, '""')}"`)
+      .join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

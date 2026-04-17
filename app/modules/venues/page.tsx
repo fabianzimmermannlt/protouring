@@ -168,10 +168,10 @@ export default function VenuesPage() {
   const exportToCSV = () => {
     const headers = ['Name', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Kapazität']
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...venues.map(v => [v.name, v.street, v.postalCode, v.city, v.state, v.country, v.capacity]
         .map(val => `"${(val || '').replace(/"/g, '""')}"`)
-        .join(','))
+        .join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

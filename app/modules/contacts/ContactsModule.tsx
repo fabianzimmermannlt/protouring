@@ -246,12 +246,12 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       'Steuer-ID', 'Stundensatz', 'Tagessatz', 'Notizen']
     const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...contacts.map(c => [
         c.firstName, c.lastName, c.function1, c.function2, c.function3,
         c.specification, c.accessRights, c.email, c.phone, c.address,
         c.postalCode, c.residence, c.taxId, c.hourlyRate, c.dailyRate, c.notes
-      ].map(escape).join(','))
+      ].map(escape).join(';'))
     ].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
