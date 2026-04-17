@@ -149,14 +149,16 @@ export default function ArtistsPage() {
           })}
         </div>
 
-        {/* Neuen Artist anlegen */}
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full flex items-center justify-center gap-2 border border-dashed border-gray-600 hover:border-yellow-400 text-gray-400 hover:text-yellow-400 rounded-xl px-5 py-4 transition-all text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Neuen Artist anlegen
-        </button>
+        {/* Neuen Artist anlegen – nur für Admins (oder neue User ohne Tenants) */}
+        {(tenants.length === 0 || tenants.some(t => t.role === 'admin')) && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full flex items-center justify-center gap-2 border border-dashed border-gray-600 hover:border-yellow-400 text-gray-400 hover:text-yellow-400 rounded-xl px-5 py-4 transition-all text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Neuen Artist anlegen
+          </button>
+        )}
 
         {/* Meine Termine */}
         {termine.length > 0 && (

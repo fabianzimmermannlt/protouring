@@ -228,13 +228,15 @@ export function Navigation({
                               )}
                             </button>
                           ))}
-                          <button
-                            onClick={() => { setShowUserMenu(false); router.push('/artists?new=1') }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <PlusIcon className="w-4 h-4" />
-                            Neuer Artist
-                          </button>
+                          {allTenants.some(t => t.role === 'admin') && (
+                            <button
+                              onClick={() => { setShowUserMenu(false); router.push('/artists?new=1') }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <PlusIcon className="w-4 h-4" />
+                              Neuer Artist
+                            </button>
+                          )}
                         </>
                       )}
 
