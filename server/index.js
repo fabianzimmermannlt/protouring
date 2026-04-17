@@ -1055,6 +1055,14 @@ const requireTenant = async (req, res, next) => {
   }
 };
 
+// Schreibrechte: admin, agency, tourmanagement
+const requireEditor = (req, res, next) => {
+  if (!['admin', 'agency', 'tourmanagement'].includes(req.tenant.role)) {
+    return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+  }
+  next()
+}
+
 // ============================================
 // HELPERS
 // ============================================
@@ -1709,7 +1717,7 @@ app.get('/api/venues', authenticateToken, requireTenant, async (req, res) => {
 });
 
 // POST create venue
-app.post('/api/venues', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   const v = req.body;
   if (!v.name || !v.name.trim()) return res.status(400).json({ error: 'Venue name is required' });
 
@@ -1739,7 +1747,7 @@ app.post('/api/venues', authenticateToken, requireTenant, async (req, res) => {
 });
 
 // PUT update venue
-app.put('/api/venues/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   const v = req.body;
   const { id } = req.params;
 
@@ -1778,7 +1786,7 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, async (req, res) =>
 });
 
 // DELETE venue
-app.delete('/api/venues/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/venues/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get(
       'SELECT id FROM venues WHERE id = ? AND tenant_id = ?',
@@ -1849,7 +1857,7 @@ app.get('/api/contacts/:id', authenticateToken, requireTenant, async (req, res) 
   } catch (e) { res.status(500).json({ error: 'Failed to get contact' }) }
 })
 
-app.post('/api/contacts', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/contacts', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const c = req.body;
     const result = await db.run(`
@@ -1876,7 +1884,7 @@ app.post('/api/contacts', authenticateToken, requireTenant, async (req, res) => 
 });
 
 // Manuellen Kontakt anlegen (contact_type='guest') — kein Login, kein Travel-Party-Eintrag
-app.post('/api/contacts/guest', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/contacts/guest', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const {
       firstName = '', lastName = '', phone = '',
@@ -1904,7 +1912,7 @@ app.post('/api/contacts/guest', authenticateToken, requireTenant, async (req, re
   }
 })
 
-app.put('/api/contacts/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { id } = req.params; const c = req.body;
     const existing = await db.get('SELECT id FROM contacts WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
@@ -1934,7 +1942,7 @@ app.put('/api/contacts/:id', authenticateToken, requireTenant, async (req, res) 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to update contact' }); }
 });
 
-app.delete('/api/contacts/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get('SELECT id FROM contacts WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Contact not found' });
@@ -1964,7 +1972,7 @@ app.get('/api/hotels', authenticateToken, requireTenant, async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to get hotels' }); }
 });
 
-app.post('/api/hotels', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const h = req.body;
     const result = await db.run(`
@@ -1981,7 +1989,7 @@ app.post('/api/hotels', authenticateToken, requireTenant, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to create hotel' }); }
 });
 
-app.put('/api/hotels/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { id } = req.params; const h = req.body;
     const existing = await db.get('SELECT id FROM hotels WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
@@ -2000,7 +2008,7 @@ app.put('/api/hotels/:id', authenticateToken, requireTenant, async (req, res) =>
   } catch (e) { res.status(500).json({ error: 'Failed to update hotel' }); }
 });
 
-app.delete('/api/hotels/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get('SELECT id FROM hotels WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Hotel not found' });
@@ -2029,7 +2037,7 @@ app.get('/api/vehicles', authenticateToken, requireTenant, async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to get vehicles' }); }
 });
 
-app.post('/api/vehicles', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/vehicles', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const v = req.body;
     const result = await db.run(`
@@ -2045,7 +2053,7 @@ app.post('/api/vehicles', authenticateToken, requireTenant, async (req, res) => 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to create vehicle' }); }
 });
 
-app.put('/api/vehicles/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/vehicles/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { id } = req.params; const v = req.body;
     const existing = await db.get('SELECT id FROM vehicles WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
@@ -2063,7 +2071,7 @@ app.put('/api/vehicles/:id', authenticateToken, requireTenant, async (req, res) 
   } catch (e) { res.status(500).json({ error: 'Failed to update vehicle' }); }
 });
 
-app.delete('/api/vehicles/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/vehicles/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get('SELECT id FROM vehicles WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
@@ -2092,7 +2100,7 @@ app.get('/api/partners', authenticateToken, requireTenant, async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to get partners' }); }
 });
 
-app.post('/api/partners', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/partners', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const p = req.body;
     const result = await db.run(`
@@ -2107,7 +2115,7 @@ app.post('/api/partners', authenticateToken, requireTenant, async (req, res) => 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to create partner' }); }
 });
 
-app.put('/api/partners/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/partners/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { id } = req.params; const p = req.body;
     const existing = await db.get('SELECT id FROM partners WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
@@ -2125,7 +2133,7 @@ app.put('/api/partners/:id', authenticateToken, requireTenant, async (req, res) 
   } catch (e) { res.status(500).json({ error: 'Failed to update partner' }); }
 });
 
-app.delete('/api/partners/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/partners/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get('SELECT id FROM partners WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Partner not found' });
@@ -2223,7 +2231,7 @@ app.get('/api/files/:entityType/:entityId', authenticateToken, requireTenant, as
 });
 
 // UPLOAD: POST /api/files/:entityType/:entityId?category=X
-app.post('/api/files/:entityType/:entityId', authenticateToken, requireTenant, fileUpload.array('files'), async (req, res) => {
+app.post('/api/files/:entityType/:entityId', authenticateToken, requireTenant, requireEditor, fileUpload.array('files'), async (req, res) => {
   try {
     const { entityType, entityId } = req.params;
     const category = req.query.category || 'general';
@@ -2247,7 +2255,7 @@ app.post('/api/files/:entityType/:entityId', authenticateToken, requireTenant, f
 });
 
 // DELETE: DELETE /api/files/:fileId
-app.delete('/api/files/:fileId', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/files/:fileId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const file = await db.get('SELECT * FROM files WHERE id=? AND tenant_id=?', [req.params.fileId, req.tenant.id]);
     if (!file) return res.status(404).json({ error: 'File not found' });
@@ -2263,7 +2271,7 @@ app.delete('/api/files/:fileId', authenticateToken, requireTenant, async (req, r
 });
 
 // PATCH /api/files/:fileId  — umbenennen und/oder Kategorie ändern
-app.patch('/api/files/:fileId', authenticateToken, requireTenant, async (req, res) => {
+app.patch('/api/files/:fileId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { originalName, category } = req.body;
     if (!originalName && !category) return res.status(400).json({ error: 'originalName or category required' });
@@ -2633,7 +2641,7 @@ app.get('/api/termine/:id', authenticateToken, requireTenant, async (req, res) =
 });
 
 // Create termin
-app.post('/api/termine', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   const { date, title, city, venue_id, partner_id, announcement, capacity, notes, art, art_sub, status_booking, status_public, show_title_as_header } = req.body;
   if (!date || !title) return res.status(400).json({ error: 'date and title are required' });
   try {
@@ -2657,7 +2665,7 @@ app.post('/api/termine', authenticateToken, requireTenant, async (req, res) => {
 });
 
 // Update termin
-app.put('/api/termine/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   const { date, title, city, venue_id, partner_id, announcement, capacity, notes, art, art_sub, status_booking, status_public, show_title_as_header } = req.body;
   try {
     const existing = await db.get('SELECT id FROM termine WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
@@ -2686,7 +2694,7 @@ app.put('/api/termine/:id', authenticateToken, requireTenant, async (req, res) =
 });
 
 // Patch termin (partial update, only touches provided fields)
-app.patch('/api/termine/:id', authenticateToken, requireTenant, async (req, res) => {
+app.patch('/api/termine/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get('SELECT id FROM termine WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Termin not found' });
@@ -2712,7 +2720,7 @@ app.patch('/api/termine/:id', authenticateToken, requireTenant, async (req, res)
 });
 
 // Delete termin (admin/owner only)
-app.delete('/api/termine/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const role = req.tenant.role;
     if (!['owner', 'admin', 'manager'].includes(role)) {
@@ -2778,7 +2786,7 @@ app.get('/api/termine/:terminId/booking-rejections', authenticateToken, requireT
 })
 
 // POST: Kontakt absagen (fügt Rejection hinzu, entfernt aus Reisegruppe)
-app.post('/api/termine/:terminId/booking-rejections/:contactId', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/booking-rejections/:contactId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { terminId, contactId } = req.params
     // Aus Reisegruppe entfernen
@@ -2799,7 +2807,7 @@ app.post('/api/termine/:terminId/booking-rejections/:contactId', authenticateTok
 })
 
 // DELETE: Rejection entfernen (zurück auf null)
-app.delete('/api/termine/:terminId/booking-rejections/:contactId', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/booking-rejections/:contactId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { terminId, contactId } = req.params
     await db.run(
@@ -2829,7 +2837,7 @@ app.get('/api/termine/:terminId/contacts', authenticateToken, requireTenant, asy
   }
 });
 
-app.post('/api/termine/:terminId/contacts', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/contacts', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { label = '', first_name = '', name = '', phone = '', email = '', notes = '', sort_order = 0 } = req.body;
     const result = await db.run(
@@ -2843,7 +2851,7 @@ app.post('/api/termine/:terminId/contacts', authenticateToken, requireTenant, as
   }
 });
 
-app.put('/api/termine/:terminId/contacts/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { label = '', first_name = '', name = '', phone = '', email = '', notes = '', sort_order } = req.body;
     await db.run(
@@ -2857,7 +2865,7 @@ app.put('/api/termine/:terminId/contacts/:id', authenticateToken, requireTenant,
   }
 });
 
-app.delete('/api/termine/:terminId/contacts/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run(
       'DELETE FROM termin_contacts WHERE id = ? AND tenant_id = ?',
@@ -2926,7 +2934,7 @@ app.get('/api/termine/:terminId/travel-party/picker', authenticateToken, require
   }
 });
 
-app.post('/api/termine/:terminId/travel-party', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/travel-party', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { contact_id, role1 = '', role2 = '', role3 = '', specification = '', sort_order = 0 } = req.body;
     if (!contact_id) return res.status(400).json({ error: 'contact_id required' });
@@ -2953,7 +2961,7 @@ app.post('/api/termine/:terminId/travel-party', authenticateToken, requireTenant
   }
 });
 
-app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { role1 = '', role2 = '', role3 = '', specification = '', sort_order } = req.body;
     await db.run(
@@ -2980,7 +2988,7 @@ app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTen
   }
 });
 
-app.delete('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run(
       'DELETE FROM termin_travel_party WHERE id = ? AND tenant_id = ?',
@@ -2993,7 +3001,7 @@ app.delete('/api/termine/:terminId/travel-party/:id', authenticateToken, require
 });
 
 // DELETE by contact_id (für Crew-Vermittlung: Kontakt aus Reisegruppe entfernen)
-app.delete('/api/termine/:terminId/travel-party/by-contact/:contactId', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/travel-party/by-contact/:contactId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run(
       'DELETE FROM termin_travel_party WHERE termin_id = ? AND contact_id = ? AND tenant_id = ?',
@@ -3006,7 +3014,7 @@ app.delete('/api/termine/:terminId/travel-party/by-contact/:contactId', authenti
 });
 
 // POST: einzelne Rolle zu einem Reisegruppen-Eintrag hinzufügen (legt Eintrag an falls nicht vorhanden)
-app.post('/api/termine/:terminId/travel-party/add-role', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/travel-party/add-role', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { contact_id, role } = req.body;
     if (!contact_id || !role) return res.status(400).json({ error: 'contact_id and role required' });
@@ -3036,7 +3044,7 @@ app.post('/api/termine/:terminId/travel-party/add-role', authenticateToken, requ
 });
 
 // DELETE: einzelne Rolle aus Reisegruppen-Eintrag entfernen (löscht Eintrag wenn alle Rollen leer)
-app.delete('/api/termine/:terminId/travel-party/by-contact/:contactId/role/:roleName', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/travel-party/by-contact/:contactId/role/:roleName', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { terminId, contactId } = req.params;
     const role = decodeURIComponent(req.params.roleName);
@@ -3064,7 +3072,7 @@ app.delete('/api/termine/:terminId/travel-party/by-contact/:contactId/role/:role
 });
 
 // POST: Gast-Kontakt anlegen + direkt zur Reisegruppe hinzufügen
-app.post('/api/termine/:terminId/travel-party/guest', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/travel-party/guest', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const {
       first_name = '', last_name = '', phone = '',
@@ -3250,7 +3258,7 @@ app.get('/api/termine/:terminId/travel-legs', authenticateToken, requireTenant, 
 })
 
 // POST create leg
-app.post('/api/termine/:terminId/travel-legs', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/travel-legs', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const b = req.body
     const result = await db.run(`
@@ -3285,7 +3293,7 @@ app.post('/api/termine/:terminId/travel-legs', authenticateToken, requireTenant,
 })
 
 // PUT update leg
-app.put('/api/termine/:terminId/travel-legs/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/travel-legs/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const b = req.body
     await db.run(`
@@ -3322,7 +3330,7 @@ app.put('/api/termine/:terminId/travel-legs/:id', authenticateToken, requireTena
 })
 
 // DELETE leg
-app.delete('/api/termine/:terminId/travel-legs/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/travel-legs/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run('DELETE FROM termin_travel_legs WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     res.json({ success: true })
@@ -3332,7 +3340,7 @@ app.delete('/api/termine/:terminId/travel-legs/:id', authenticateToken, requireT
 })
 
 // PUT persons for a leg (vollständige Liste ersetzen)
-app.put('/api/termine/:terminId/travel-legs/:id/persons', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/travel-legs/:id/persons', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { member_ids } = req.body // Array of travel_party_member ids
     await db.run('DELETE FROM termin_travel_leg_persons WHERE leg_id=?', [req.params.id])
@@ -3424,7 +3432,7 @@ app.get('/api/termine/:terminId/hotel-stays', authenticateToken, requireTenant, 
 })
 
 // POST new stay
-app.post('/api/termine/:terminId/hotel-stays', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/hotel-stays', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const {
       hotel_id = null, check_in_date = '', check_out_date = '',
@@ -3447,7 +3455,7 @@ app.post('/api/termine/:terminId/hotel-stays', authenticateToken, requireTenant,
 })
 
 // PUT update stay
-app.put('/api/termine/:terminId/hotel-stays/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/hotel-stays/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const {
       hotel_id = null, check_in_date = '', check_out_date = '',
@@ -3472,7 +3480,7 @@ app.put('/api/termine/:terminId/hotel-stays/:id', authenticateToken, requireTena
 })
 
 // DELETE stay (cascades zu rooms + persons via FK)
-app.delete('/api/termine/:terminId/hotel-stays/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/hotel-stays/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run('DELETE FROM termin_hotel_stays WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     res.json({ success: true })
@@ -3483,7 +3491,7 @@ app.delete('/api/termine/:terminId/hotel-stays/:id', authenticateToken, requireT
 
 // PUT rooms for a stay – vollständiger Sync (delete + reinsert)
 // Body: { rooms: [{ room_type, room_label, member_ids: [] }] }
-app.put('/api/termine/:terminId/hotel-stays/:id/rooms', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/hotel-stays/:id/rooms', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const stayId = req.params.id
     const { rooms = [] } = req.body
@@ -3526,7 +3534,7 @@ app.get('/api/termine/:terminId/schedules', authenticateToken, requireTenant, as
   }
 });
 
-app.post('/api/termine/:terminId/schedules', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/schedules', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { title = '', content = '', not_final = 0, sort_order = 0 } = req.body;
     const result = await db.run(
@@ -3540,7 +3548,7 @@ app.post('/api/termine/:terminId/schedules', authenticateToken, requireTenant, a
   }
 });
 
-app.put('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { title = '', content = '', not_final = 0, sort_order } = req.body;
     await db.run(
@@ -3678,7 +3686,7 @@ app.get('/api/termine/:terminId/hotel-pdf', async (req, res) => {
   }
 });
 
-app.delete('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run(
       'DELETE FROM termin_schedules WHERE id = ? AND tenant_id = ?',
@@ -3722,7 +3730,7 @@ app.get('/api/boards/:entityType/:entityId', authenticateToken, requireTenant, a
   }
 });
 
-app.post('/api/boards/:entityType/:entityId', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/boards/:entityType/:entityId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { title = '', content = '', notFinal = false, sortOrder = 0 } = req.body;
     console.log('[boards POST]', req.params, { title, notFinal, sortOrder, tenant: req.tenant?.id });
@@ -3739,7 +3747,7 @@ app.post('/api/boards/:entityType/:entityId', authenticateToken, requireTenant, 
   }
 });
 
-app.put('/api/boards/:entityType/:entityId/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/boards/:entityType/:entityId/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { title = '', content = '', notFinal = false, sortOrder } = req.body;
     await db.run(
@@ -3753,7 +3761,7 @@ app.put('/api/boards/:entityType/:entityId/:id', authenticateToken, requireTenan
   }
 });
 
-app.delete('/api/boards/:entityType/:entityId/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/boards/:entityType/:entityId/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run(
       'DELETE FROM boards WHERE id=? AND tenant_id=?',
@@ -3790,7 +3798,7 @@ app.get('/api/termine/:terminId/todos', authenticateToken, requireTenant, async 
 });
 
 // POST /api/termine/:terminId/todos
-app.post('/api/termine/:terminId/todos', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/todos', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { title, description, status = 'open', priority = 'medium', assignedContactId, deadline } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: 'title required' });
@@ -3808,7 +3816,7 @@ app.post('/api/termine/:terminId/todos', authenticateToken, requireTenant, async
 });
 
 // PUT /api/termine/:terminId/todos/:id
-app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { title, description, status, priority, assignedContactId, deadline } = req.body;
     await db.run(`
@@ -3830,7 +3838,7 @@ app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, as
 });
 
 // DELETE /api/termine/:terminId/todos/:id
-app.delete('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run('DELETE FROM termin_todos WHERE id=? AND tenant_id=? AND termin_id=?',
       [req.params.id, req.tenant.id, req.params.terminId]);
@@ -3895,7 +3903,7 @@ app.get('/api/termine/:terminId/catering', authenticateToken, requireTenant, asy
 });
 
 // PUT /api/termine/:terminId/catering (upsert)
-app.put('/api/termine/:terminId/catering', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/catering', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { type, buyout_amount, notes, contact_name, contact_phone } = req.body;
     const existing = await db.get(
@@ -3933,7 +3941,7 @@ app.get('/api/termine/:terminId/catering/orders', authenticateToken, requireTena
 });
 
 // POST /api/termine/:terminId/catering/orders
-app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTenant, async (req, res) => {
+app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { contact_id, contact_name, order_text } = req.body;
     const result = await db.run(
@@ -3947,7 +3955,7 @@ app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTen
 });
 
 // PUT /api/termine/:terminId/catering/orders/:orderId
-app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, async (req, res) => {
+app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { order_text } = req.body;
     await db.run(
@@ -3960,7 +3968,7 @@ app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, re
 });
 
 // DELETE /api/termine/:terminId/catering/orders/:orderId
-app.delete('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, async (req, res) => {
+app.delete('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run('DELETE FROM termin_catering_orders WHERE id=? AND tenant_id=?', [req.params.orderId, req.tenant.id]);
     res.json({ success: true });
@@ -3980,6 +3988,7 @@ const requireAdmin = async (req, res, next) => {
   }
   next()
 }
+
 
 // POST /api/settings/invite  — Invite-Link erstellen (Admin only)
 app.post('/api/settings/invite', authenticateToken, requireTenant, requireAdmin, async (req, res) => {
