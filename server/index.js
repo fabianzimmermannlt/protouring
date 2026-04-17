@@ -2173,6 +2173,7 @@ app.delete('/api/partners/:id', authenticateToken, requireTenant, requireEditor,
 // - Private files (entityId = userId): nur der Uploader (uploaded_by = req.user.id)
 function canReadFile(file, userId) {
   if (file.entity_id === 'shared') return true;
+  if (file.entity_type === 'termin') return true;  // Termin-Dateien: alle Tenant-Mitglieder dürfen lesen
   return String(file.uploaded_by) === String(userId);
 }
 
