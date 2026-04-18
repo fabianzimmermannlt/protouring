@@ -207,6 +207,9 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
   const [totalLimit, setTotalLimit] = useState(String(s.total_limit ?? ''))
   const [perInviterLimit, setPerInviterLimit] = useState(String(s.per_inviter_limit ?? ''))
   const [passTypes, setPassTypes] = useState<string[]>(s.pass_types ?? DEFAULT_PASS_TYPES)
+  const [customTypes, setCustomTypes] = useState<string[]>(
+    s.custom_pass_types ?? (s.pass_types ?? []).filter(t => !DEFAULT_PASS_TYPES.includes(t))
+  )
   const [artistCanAdd, setArtistCanAdd] = useState(s.artist_can_add ?? false)
   const [crewPlusCanAdd, setCrewPlusCanAdd] = useState(s.crew_plus_can_add ?? false)
   const [exportShowInviter, setExportShowInviter] = useState(s.export_show_inviter ?? true)
@@ -217,10 +220,18 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
   const togglePassType = (t: string) =>
     setPassTypes(prev => prev.includes(t) ? prev.filter(p => p !== t) : [...prev, t])
 
+  const deleteCustomType = (t: string) => {
+    setCustomTypes(prev => prev.filter(p => p !== t))
+    setPassTypes(prev => prev.filter(p => p !== t))
+  }
+
   const addCustomPassType = () => {
     const v = newPassType.trim()
-    if (v && !passTypes.map(t => t.toLowerCase()).includes(v.toLowerCase())) {
-      setPassTypes(prev => [...prev, v]); setNewPassType('')
+    const allTypes = [...DEFAULT_PASS_TYPES, ...customTypes]
+    if (v && !allTypes.map(t => t.toLowerCase()).includes(v.toLowerCase())) {
+      setCustomTypes(prev => [...prev, v])
+      setPassTypes(prev => [...prev, v])
+      setNewPassType('')
     }
   }
 
@@ -231,6 +242,7 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
       total_limit: totalLimit ? parseInt(totalLimit) : null,
       per_inviter_limit: perInviterLimit ? parseInt(perInviterLimit) : null,
       pass_types: passTypes,
+      custom_pass_types: customTypes,
       artist_can_add: artistCanAdd,
       crew_plus_can_add: crewPlusCanAdd,
       export_show_inviter: exportShowInviter,
@@ -263,11 +275,11 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
                   {PASS_LABELS[t]}
                 </label>
               ))}
-              {passTypes.filter(t => !DEFAULT_PASS_TYPES.includes(t)).map(t => (
+              {customTypes.map(t => (
                 <label key={t} className="flex items-center gap-2 cursor-pointer text-sm">
-                  <input type="checkbox" checked onChange={() => togglePassType(t)} className="rounded border-gray-300" />
+                  <input type="checkbox" checked={passTypes.includes(t)} onChange={() => togglePassType(t)} className="rounded border-gray-300" />
                   {t}
-                  <button type="button" onClick={() => setPassTypes(prev => prev.filter(p => p !== t))} className="ml-auto text-red-400 hover:text-red-600">
+                  <button type="button" onClick={() => deleteCustomType(t)} className="ml-auto text-red-400 hover:text-red-600">
                     <XMarkIcon className="w-3 h-3" />
                   </button>
                 </label>

@@ -2157,7 +2157,8 @@ export interface GuestListSettings {
   total_limit?: number | null
   per_entry_limit?: number | null
   per_inviter_limit?: number | null
-  pass_types?: string[]
+  pass_types?: string[]           // aktive Pass-Typen (Default + ausgewählte Custom)
+  custom_pass_types?: string[]    // alle je angelegten Custom-Typen (auch inaktive)
   artist_can_add?: boolean
   crew_plus_can_add?: boolean
   export_show_inviter?: boolean
