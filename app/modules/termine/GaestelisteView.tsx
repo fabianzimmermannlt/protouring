@@ -198,6 +198,8 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
   const [passTypes, setPassTypes] = useState<string[]>(s.pass_types ?? DEFAULT_PASS_TYPES)
   const [artistCanAdd, setArtistCanAdd] = useState(s.artist_can_add ?? false)
   const [crewPlusCanAdd, setCrewPlusCanAdd] = useState(s.crew_plus_can_add ?? false)
+  const [exportShowInviter, setExportShowInviter] = useState(s.export_show_inviter ?? true)
+  const [exportShowEmail, setExportShowEmail] = useState(s.export_show_email ?? true)
   const [newPassType, setNewPassType] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -220,6 +222,8 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
       pass_types: passTypes,
       artist_can_add: artistCanAdd,
       crew_plus_can_add: crewPlusCanAdd,
+      export_show_inviter: exportShowInviter,
+      export_show_email: exportShowEmail,
     }, name)
     setSaving(false)
     onClose()
@@ -302,6 +306,20 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
               <label className="flex items-center gap-2 cursor-pointer text-sm">
                 <input type="checkbox" checked={crewPlusCanAdd} onChange={e => setCrewPlusCanAdd(e.target.checked)} className="rounded border-gray-300" />
                 Crew+ darf direkt hinzufügen (sonst nur Wunsch)
+              </label>
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <label className="form-label mb-2">Export (PDF &amp; CSV)</label>
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={exportShowInviter} onChange={e => setExportShowInviter(e.target.checked)} className="rounded border-gray-300" />
+                „Eingeladen von" ausgeben
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={exportShowEmail} onChange={e => setExportShowEmail(e.target.checked)} className="rounded border-gray-300" />
+                E-Mail-Adresse ausgeben
               </label>
             </div>
           </div>

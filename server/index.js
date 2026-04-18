@@ -5141,16 +5141,32 @@ app.get('/api/guest-lists/:id/export/csv', authenticateToken, requireTenant, asy
     if (!list) return res.status(404).json({ error: 'Not found' })
     const listSettings = JSON.parse(list.settings || '{}')
     const passTypes = listSettings.pass_types || ['guestlist', 'backstage', 'aftershow', 'photo']
-    const entries = await db.all('SELECT * FROM guest_list_entries WHERE guest_list_id = ? ORDER BY created_at ASC', [req.params.id])
+    const showInviter = listSettings.export_show_inviter !== false
+    const showEmail   = listSettings.export_show_email   !== false
+    const entries = await db.all(
+      `SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name
+       FROM guest_list_entries gle
+       LEFT JOIN users u ON u.id = gle.invited_by_user_id
+       WHERE gle.guest_list_id = ? AND gle.tenant_id = ?
+       ORDER BY gle.last_name ASC, gle.first_name ASC`,
+      [req.params.id, req.tenant.id]
+    )
 
-    const headers = ['Vorname', 'Nachname', 'Firma', 'Eingeladen von', 'E-Mail', 'Status', ...passTypes.map(p => p.charAt(0).toUpperCase() + p.slice(1)), 'Gesamt', 'Notiz']
+    const headers = ['Nachname', 'Vorname', 'Firma',
+      ...(showInviter ? ['Eingeladen von'] : []),
+      ...(showEmail   ? ['E-Mail'] : []),
+      'Status', ...passTypes, 'Gesamt', 'Notiz'
+    ]
     const rows = entries.map(e => {
       const passes = JSON.parse(e.passes || '{}')
+      const inviterName = e.invited_by_text || [e.inviter_first_name, e.inviter_last_name].filter(Boolean).join(' ') || ''
       const total = passTypes.reduce((s, t) => s + (parseInt(passes[t]) || 0), 0)
       return [
-        e.first_name, e.last_name, e.company || '', e.invited_by_text || '', e.email || '',
+        e.last_name, e.first_name, e.company || '',
+        ...(showInviter ? [inviterName] : []),
+        ...(showEmail   ? [e.email || ''] : []),
         e.is_wish ? `Wunsch (${e.status})` : 'Fix',
-        ...passTypes.map(t => passes[t] || 0),
+        ...passTypes.map(t => parseInt(passes[t]) || 0),
         total, e.notes || ''
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
     })
@@ -5172,10 +5188,20 @@ app.get('/api/guest-lists/:id/export/pdf', authenticateToken, requireTenant, asy
     if (!list) return res.status(404).json({ error: 'Not found' })
     const listSettings = JSON.parse(list.settings || '{}')
     const passTypes = listSettings.pass_types || ['guestlist', 'backstage', 'aftershow', 'photo']
-    const entries = await db.all('SELECT * FROM guest_list_entries WHERE guest_list_id = ? ORDER BY created_at ASC', [req.params.id])
+    const showInviter = listSettings.export_show_inviter !== false
+    const showEmail   = listSettings.export_show_email   !== false
+    const entries = await db.all(
+      `SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name
+       FROM guest_list_entries gle
+       LEFT JOIN users u ON u.id = gle.invited_by_user_id
+       WHERE gle.guest_list_id = ? AND gle.tenant_id = ?
+       ORDER BY gle.last_name ASC, gle.first_name ASC`,
+      [req.params.id, req.tenant.id]
+    )
     const { generateGuestListPdf } = require('./generate_guest_list_pdf')
     const termin = await db.get('SELECT * FROM termine WHERE id = ?', [list.termin_id])
-    const buf = await generateGuestListPdf({ list: { ...list, settings: listSettings }, entries: entries.map(e => ({ ...e, passes: JSON.parse(e.passes || '{}') })), passTypes, termin })
+    const parsedEntries = entries.map(e => ({ ...e, passes: JSON.parse(e.passes || '{}') }))
+    const buf = await generateGuestListPdf({ list: { ...list, settings: listSettings }, entries: parsedEntries, passTypes, termin, showInviter, showEmail })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="gaesteliste-${list.id}.pdf"`)
     res.send(buf)

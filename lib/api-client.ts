@@ -2160,6 +2160,8 @@ export interface GuestListSettings {
   pass_types?: string[]
   artist_can_add?: boolean
   crew_plus_can_add?: boolean
+  export_show_inviter?: boolean
+  export_show_email?: boolean
 }
 
 export interface GuestList {
