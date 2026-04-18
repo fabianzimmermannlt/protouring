@@ -414,90 +414,50 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
               </div>
             </div>
 
-            {/* Dritte Zeile: Kleidergrößen und Zugriffsrechte */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Kleidergrößen */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kleidergrößen</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="form-label">Shirt</label>
-                      <input
-                        type="text"
-                        value={formData.shirtSize}
-                        onChange={(e) => handleChange('shirtSize', e.target.value)}
-                        className="form-input"
-                        placeholder="z.B. S, M, L, XL"
-                      />
-                    </div>
+            {/* Dritte Zeile: Kleidergrößen */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kleidergrößen</h3>
 
-                    <div>
-                      <label className="form-label">Hoodie</label>
-                      <input
-                        type="text"
-                        value={formData.hoodieSize}
-                        onChange={(e) => handleChange('hoodieSize', e.target.value)}
-                        className="form-input"
-                        placeholder="z.B. S, M, L, XL"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="form-label">Hose</label>
-                      <input
-                        type="text"
-                        value={formData.pantsSize}
-                        onChange={(e) => handleChange('pantsSize', e.target.value)}
-                        className="form-input"
-                        placeholder="z.B. 32, 34, 36, 38"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">Schuhe</label>
-                      <input
-                        type="text"
-                        value={formData.shoeSize}
-                        onChange={(e) => handleChange('shoeSize', e.target.value)}
-                        className="form-input"
-                        placeholder="z.B. 42, 43, 44, 45"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Zugriffsrechte */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Zugriffsrechte</h3>
-
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="form-label">Zugriffsrechte</label>
-                  {isAdmin && !isSelf ? (
-                    <select
-                      value={formData.accessRights}
-                      onChange={(e) => handleChange('accessRights', e.target.value)}
-                      className="form-input"
-                    >
-                      <option value="">Bitte wählen...</option>
-                      <option value="Admin">Admin</option>
-                      <option value="Agentur">Agentur</option>
-                      <option value="Tourmanagement">Tourmanagement</option>
-                      <option value="Artist">Artist</option>
-                      <option value="Crew+">Crew+</option>
-                      <option value="Crew">Crew</option>
-                      <option value="Gast">Gast</option>
-                    </select>
-                  ) : (
-                    <div className="form-input bg-gray-50 text-gray-600 cursor-default">
-                      {formData.accessRights || '–'}
-                    </div>
-                  )}
+                  <label className="form-label">Shirt</label>
+                  <input
+                    type="text"
+                    value={formData.shirtSize}
+                    onChange={(e) => handleChange('shirtSize', e.target.value)}
+                    className="form-input"
+                    placeholder="S, M, L, XL"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Hoodie</label>
+                  <input
+                    type="text"
+                    value={formData.hoodieSize}
+                    onChange={(e) => handleChange('hoodieSize', e.target.value)}
+                    className="form-input"
+                    placeholder="S, M, L, XL"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Hose</label>
+                  <input
+                    type="text"
+                    value={formData.pantsSize}
+                    onChange={(e) => handleChange('pantsSize', e.target.value)}
+                    className="form-input"
+                    placeholder="32, 34, 36"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Schuhe</label>
+                  <input
+                    type="text"
+                    value={formData.shoeSize}
+                    onChange={(e) => handleChange('shoeSize', e.target.value)}
+                    className="form-input"
+                    placeholder="42, 43, 44"
+                  />
                 </div>
               </div>
             </div>
