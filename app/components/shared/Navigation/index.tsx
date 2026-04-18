@@ -342,14 +342,6 @@ export function Navigation({
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      {showMobileNavigation && (
-        <MobileBottomNav
-          activeTab={currentTab}
-          onTabChange={handleTabChange}
-          isSuperadmin={isSuperadmin}
-        />
-      )}
 
       {/* Sub Navigation */}
       {currentTab === 'settings' && (

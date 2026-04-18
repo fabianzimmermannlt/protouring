@@ -14,6 +14,7 @@ import TerminePage from './modules/termine/TermineModule'
 import { isAuthenticated, getCurrentUser, getCurrentTenant } from '@/lib/api-client'
 import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 import FeedbackPage from './modules/feedback/FeedbackPage'
+import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 
 export default function ProTouringApp() {
   const [activeTab, setActiveTab] = useState('desk')
@@ -75,6 +76,7 @@ export default function ProTouringApp() {
 
   const currentUser = getCurrentUser()
   const currentTenant = getCurrentTenant()
+  const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
 
   // Reset sub-tab when switching main tabs
   const handleTabChange = (tabId: string) => {
@@ -97,6 +99,13 @@ export default function ProTouringApp() {
         onTabChange={handleTabChange}
         activeSubTab={activeSubTab}
         onSubTabChange={setActiveSubTab}
+      />
+
+      {/* Mobile Bottom Navigation — außerhalb Navigation um stacking context zu vermeiden */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isSuperadmin={isSuperadmin}
       />
 
       {/* Floating Feedback Button */}
