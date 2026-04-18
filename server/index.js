@@ -4932,7 +4932,7 @@ app.get('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant, 
        WHERE gl.termin_id = ? AND gl.tenant_id = ?
        GROUP BY gl.id
        ORDER BY gl.sort_order ASC, gl.created_at ASC`,
-      [req.params.terminId, req.tenant.tenantId]
+      [req.params.terminId, req.tenant.id]
     )
     res.json({ lists: lists.map(l => ({ ...l, settings: JSON.parse(l.settings || '{}') })) })
   } catch (e) {
@@ -4947,7 +4947,7 @@ app.post('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant,
     const { name = 'Gästeliste', settings = {} } = req.body
     const r = await db.run(
       `INSERT INTO guest_lists (tenant_id, termin_id, name, settings) VALUES (?, ?, ?, ?)`,
-      [req.tenant.tenantId, req.params.terminId, name, JSON.stringify(settings)]
+      [req.tenant.id, req.params.terminId, name, JSON.stringify(settings)]
     )
     const list = await db.get('SELECT * FROM guest_lists WHERE id = ?', [r.lastID])
     res.json({ list: { ...list, settings: JSON.parse(list.settings || '{}') } })
@@ -4960,7 +4960,7 @@ app.post('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant,
 // PATCH /api/guest-lists/:id  (name, settings, status=locked/open)
 app.patch('/api/guest-lists/:id', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     if (!list) return res.status(404).json({ error: 'Not found' })
 
     const role = req.tenant.role
@@ -4981,7 +4981,7 @@ app.patch('/api/guest-lists/:id', authenticateToken, requireTenant, async (req, 
     if (settings !== undefined) { updates.push('settings = ?'); vals.push(JSON.stringify(settings)) }
     if (status !== undefined) { updates.push('status = ?'); vals.push(status) }
     updates.push('updated_at = CURRENT_TIMESTAMP')
-    vals.push(req.params.id, req.tenant.tenantId)
+    vals.push(req.params.id, req.tenant.id)
 
     await db.run(`UPDATE guest_lists SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, vals)
     const updated = await db.get('SELECT * FROM guest_lists WHERE id = ?', [req.params.id])
@@ -4995,7 +4995,7 @@ app.patch('/api/guest-lists/:id', authenticateToken, requireTenant, async (req, 
 // DELETE /api/guest-lists/:id
 app.delete('/api/guest-lists/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    await db.run('DELETE FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    await db.run('DELETE FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: 'Failed' })
@@ -5005,7 +5005,7 @@ app.delete('/api/guest-lists/:id', authenticateToken, requireTenant, requireEdit
 // GET /api/guest-lists/:id/entries
 app.get('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     if (!list) return res.status(404).json({ error: 'Not found' })
     const entries = await db.all(
       `SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name
@@ -5013,7 +5013,7 @@ app.get('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async 
        LEFT JOIN users u ON u.id = gle.invited_by_user_id
        WHERE gle.guest_list_id = ? AND gle.tenant_id = ?
        ORDER BY gle.created_at ASC`,
-      [req.params.id, req.tenant.tenantId]
+      [req.params.id, req.tenant.id]
     )
     const listSettings = JSON.parse(list.settings || '{}')
     res.json({
@@ -5029,7 +5029,7 @@ app.get('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async 
 // POST /api/guest-lists/:id/entries
 app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     if (!list) return res.status(404).json({ error: 'Not found' })
     if (list.status === 'locked') return res.status(403).json({ error: 'Liste ist gesperrt' })
 
@@ -5073,7 +5073,7 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
     const r = await db.run(
       `INSERT INTO guest_list_entries (guest_list_id, tenant_id, first_name, last_name, company, invited_by_text, invited_by_user_id, email, passes, is_wish, status, notes, created_by_user_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.params.id, req.tenant.tenantId, first_name, last_name, company || null, invited_by_text || null, invited_by_user_id || null, email || null, JSON.stringify(passes), is_wish, status, notes || null, req.user.userId]
+      [req.params.id, req.tenant.id, first_name, last_name, company || null, invited_by_text || null, invited_by_user_id || null, email || null, JSON.stringify(passes), is_wish, status, notes || null, req.user.id]
     )
     const entry = await db.get('SELECT * FROM guest_list_entries WHERE id = ?', [r.lastID])
     res.json({ entry: { ...entry, passes: JSON.parse(entry.passes || '{}') } })
@@ -5086,7 +5086,7 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
 // PATCH /api/guest-list-entries/:id
 app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const entry = await db.get('SELECT gle.*, gl.status as list_status FROM guest_list_entries gle JOIN guest_lists gl ON gl.id = gle.guest_list_id WHERE gle.id = ? AND gle.tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const entry = await db.get('SELECT gle.*, gl.status as list_status FROM guest_list_entries gle JOIN guest_lists gl ON gl.id = gle.guest_list_id WHERE gle.id = ? AND gle.tenant_id = ?', [req.params.id, req.tenant.id])
     if (!entry) return res.status(404).json({ error: 'Not found' })
     if (entry.list_status === 'locked') return res.status(403).json({ error: 'Liste ist gesperrt' })
 
@@ -5110,7 +5110,7 @@ app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async
     if (notes !== undefined) { updates.push('notes = ?'); vals.push(notes) }
     if (status !== undefined) { updates.push('status = ?'); vals.push(status) }
     updates.push('updated_at = CURRENT_TIMESTAMP')
-    vals.push(req.params.id, req.tenant.tenantId)
+    vals.push(req.params.id, req.tenant.id)
 
     await db.run(`UPDATE guest_list_entries SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, vals)
     const updated = await db.get('SELECT * FROM guest_list_entries WHERE id = ?', [req.params.id])
@@ -5124,10 +5124,10 @@ app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async
 // DELETE /api/guest-list-entries/:id
 app.delete('/api/guest-list-entries/:id', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const entry = await db.get('SELECT gle.*, gl.status as list_status FROM guest_list_entries gle JOIN guest_lists gl ON gl.id = gle.guest_list_id WHERE gle.id = ? AND gle.tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const entry = await db.get('SELECT gle.*, gl.status as list_status FROM guest_list_entries gle JOIN guest_lists gl ON gl.id = gle.guest_list_id WHERE gle.id = ? AND gle.tenant_id = ?', [req.params.id, req.tenant.id])
     if (!entry) return res.status(404).json({ error: 'Not found' })
     if (entry.list_status === 'locked') return res.status(403).json({ error: 'Liste ist gesperrt' })
-    await db.run('DELETE FROM guest_list_entries WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    await db.run('DELETE FROM guest_list_entries WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     res.json({ ok: true })
   } catch (e) {
     res.status(500).json({ error: 'Failed' })
@@ -5137,7 +5137,7 @@ app.delete('/api/guest-list-entries/:id', authenticateToken, requireTenant, asyn
 // GET /api/guest-lists/:id/export/csv
 app.get('/api/guest-lists/:id/export/csv', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     if (!list) return res.status(404).json({ error: 'Not found' })
     const listSettings = JSON.parse(list.settings || '{}')
     const passTypes = listSettings.pass_types || ['guestlist', 'backstage', 'aftershow', 'photo']
@@ -5168,7 +5168,7 @@ app.get('/api/guest-lists/:id/export/csv', authenticateToken, requireTenant, asy
 // GET /api/guest-lists/:id/export/pdf
 app.get('/api/guest-lists/:id/export/pdf', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     if (!list) return res.status(404).json({ error: 'Not found' })
     const listSettings = JSON.parse(list.settings || '{}')
     const passTypes = listSettings.pass_types || ['guestlist', 'backstage', 'aftershow', 'photo']
