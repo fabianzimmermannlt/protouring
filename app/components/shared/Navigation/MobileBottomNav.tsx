@@ -115,8 +115,8 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
         </>
       )}
 
-      {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)', transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}>
+      {/* Bottom Navigation Bar — kein fixed, Flex-Layout in page.tsx hält es unten */}
+      <nav className="bg-white border-t border-gray-200 md:hidden flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-stretch h-16">
 
           {/* Desk */}

@@ -91,54 +91,81 @@ export default function ProTouringApp() {
     }
   }
 
+  const content = (
+    <>
+      {activeTab === 'desk' && <DeskModule />}
+      {activeTab === 'appointments' && (
+        <TerminePage
+          initialSelectedId={navigateToTerminId}
+          onNavigated={() => setNavigateToTerminId(null)}
+        />
+      )}
+      {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
+      {activeTab === 'venues' && <VenuesPage />}
+      {activeTab === 'partners' && <PartnersPage />}
+      {activeTab === 'hotels' && <HotelsPage />}
+      {activeTab === 'vehicles' && <VehiclesPage />}
+      {activeTab === 'templates' && (
+        <div className="text-center py-8">
+          <div className="text-gray-500">VORLAGEN</div>
+          <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
+        </div>
+      )}
+      {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
+      {activeTab === 'feedback' && <FeedbackPage />}
+    </>
+  )
+
   return (
-    <main className="min-h-screen bg-gray-100">
-      {/* Navigation */}
-      <Navigation 
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        activeSubTab={activeSubTab}
-        onSubTabChange={setActiveSubTab}
-      />
+    <>
+      {/* ── MOBILE: Flex-Column mit 100dvh, kein fixed positioning ── */}
+      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: '100dvh' }}>
+        {/* Slim Header + Sub-Nav */}
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          activeSubTab={activeSubTab}
+          onSubTabChange={setActiveSubTab}
+          showMobileNavigation={true}
+        />
 
-      {/* Mobile Bottom Navigation — außerhalb Navigation um stacking context zu vermeiden */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        isSuperadmin={isSuperadmin}
-      />
-
-      {/* Floating Feedback Button */}
-      <FeedbackButton />
-
-      {/* Main Content */}
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
-        <div className="bg-white rounded-lg shadow-lg p-4">
-          {/* Content based on active tab */}
-          <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
-            {activeTab === 'desk' && <DeskModule />}
-            {activeTab === 'appointments' && (
-              <TerminePage
-                initialSelectedId={navigateToTerminId}
-                onNavigated={() => setNavigateToTerminId(null)}
-              />
-            )}
-            {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
-            {activeTab === 'venues' && <VenuesPage />}
-            {activeTab === 'partners' && <PartnersPage />}
-            {activeTab === 'hotels' && <HotelsPage />}
-            {activeTab === 'vehicles' && <VehiclesPage />}
-            {activeTab === 'templates' && (
-              <div className="text-center py-8">
-                <div className="text-gray-500">VORLAGEN</div>
-                <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
+        {/* Scrollbarer Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-3 py-4">
+            <div className="bg-white rounded-lg shadow p-3">
+              <div className="bg-gray-50 rounded-lg p-3">
+                {content}
               </div>
-            )}
-            {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
-            {activeTab === 'feedback' && <FeedbackPage />}
+            </div>
           </div>
         </div>
+
+        {/* Bottom Nav — normaler Flex-Item, kein fixed */}
+        <MobileBottomNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          isSuperadmin={isSuperadmin}
+        />
       </div>
-    </main>
+
+      {/* ── DESKTOP: bisheriges Layout ── */}
+      <main className="hidden md:block min-h-screen bg-gray-100">
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          activeSubTab={activeSubTab}
+          onSubTabChange={setActiveSubTab}
+          showMobileNavigation={false}
+        />
+        <FeedbackButton />
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-lg shadow-lg p-4">
+            <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
+              {content}
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
   )
 }
