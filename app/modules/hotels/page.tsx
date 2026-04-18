@@ -147,11 +147,11 @@ export default function HotelsPage() {
             <Plus className="h-4 w-4" /> Neues Hotel
           </button>
           <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-success">
-              <Download className="h-4 w-4" /> CSV-Export
+            <button onClick={exportToCSV} className="btn btn-ghost">
+              <Download className="h-4 w-4" /> CSV
             </button>
-            <label className="btn btn-primary cursor-pointer">
-              <Upload className="h-4 w-4" /> CSV-Import
+            <label className="btn btn-ghost cursor-pointer">
+              <Upload className="h-4 w-4" /> CSV
               <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
             </label>
           </div>

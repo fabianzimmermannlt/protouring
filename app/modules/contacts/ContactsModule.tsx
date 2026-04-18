@@ -335,14 +335,14 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <div className="flex gap-3">
                   <button
                     onClick={handleCSVExport}
-                    className="btn btn-success"
+                    className="btn btn-ghost"
                   >
                     <Download className="w-4 h-4" />
-                    CSV-Export
+                    CSV
                   </button>
-                  <label className="btn btn-primary cursor-pointer">
+                  <label className="btn btn-ghost cursor-pointer">
                     <Upload className="w-4 h-4" />
-                    CSV-Import
+                    CSV
                     <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
                   </label>
                 </div>

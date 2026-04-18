@@ -262,13 +262,13 @@ export default function VenuesPage() {
             Neue Venue
           </button>
           <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-success">
+            <button onClick={exportToCSV} className="btn btn-ghost">
               <Download className="w-4 h-4" />
-              CSV-Export
+              CSV
             </button>
-            <label className="btn btn-primary cursor-pointer">
+            <label className="btn btn-ghost cursor-pointer">
               <Upload className="w-4 h-4" />
-              CSV-Import
+              CSV
               <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
             </label>
           </div>

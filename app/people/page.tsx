@@ -277,22 +277,14 @@ export default function PeoplePage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">LEUTE</h1>
         <div className="flex gap-3">
-          <button
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-          >
+          <button onClick={exportToCSV} className="btn btn-ghost">
             <Download className="h-4 w-4" />
-            CSV-Export
+            CSV
           </button>
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm cursor-pointer">
+          <label className="btn btn-ghost cursor-pointer">
             <Upload className="h-4 w-4" />
-            CSV-Import
-            <input
-              type="file"
-              accept=".csv"
-              onChange={importFromCSV}
-              className="hidden"
-            />
+            CSV
+            <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
           </label>
           <button
             onClick={openNewPersonModal}

@@ -125,13 +125,13 @@ export default function VehiclesPage() {
             Neues Fahrzeug
           </button>
           <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-success">
+            <button onClick={exportToCSV} className="btn btn-ghost">
               <Download className="h-4 w-4" />
-              CSV-Export
+              CSV
             </button>
-            <label className="btn btn-primary cursor-pointer">
+            <label className="btn btn-ghost cursor-pointer">
               <Upload className="h-4 w-4" />
-              CSV-Import
+              CSV
               <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
             </label>
           </div>
