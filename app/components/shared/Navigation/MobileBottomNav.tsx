@@ -79,43 +79,39 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
 
   return (
     <>
-      {/* Mehr-Sheet Overlay */}
+      {/* Mehr-Sheet: nur rendern wenn offen */}
       {showMore && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40"
-          onClick={() => setShowMore(false)}
-        />
-      )}
-
-      {/* Mehr-Sheet */}
-      <div
-        className={`fixed bottom-16 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl border-t border-gray-200 transition-transform duration-200 ${
-          showMore ? 'translate-y-0' : 'translate-y-full'
-        }`}
-      >
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Mehr</span>
-          <button onClick={() => setShowMore(false)} className="p-1 rounded-full hover:bg-gray-100">
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        <div className="px-2 pb-4 grid grid-cols-4 gap-1">
-          {visibleMore.map(item => (
-            <button
-              key={item.id}
-              onClick={() => handleMore(item.id)}
-              className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl transition-colors ${
-                activeTab === item.id
-                  ? 'bg-orange-50 text-orange-500'
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setShowMore(false)}
+          />
+          <div className="fixed bottom-16 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl border-t border-gray-200">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Mehr</span>
+              <button onClick={() => setShowMore(false)} className="p-1 rounded-full hover:bg-gray-100">
+                <XMarkIcon className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="px-2 pb-4 grid grid-cols-4 gap-1">
+              {visibleMore.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => handleMore(item.id)}
+                  className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl transition-colors ${
+                    activeTab === item.id
+                      ? 'bg-orange-50 text-orange-500'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               <item.icon className="w-6 h-6" />
               <span className="text-xs font-medium">{item.name}</span>
             </button>
-          ))}
-        </div>
-      </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 md:hidden">
