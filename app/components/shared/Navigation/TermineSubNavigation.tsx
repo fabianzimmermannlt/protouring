@@ -20,6 +20,12 @@ export interface TermineListSubNavigationProps {
   onListViewChange?: (view: TermineListView) => void
 }
 
+const FILTER_SHORT: Record<TermineListFilter, string> = {
+  aktuell:   'Aktuell',
+  vergangen: 'Vergangen',
+  alle:      'Alle',
+}
+
 export function TermineListSubNavigation({
   maxWidth = 'max-w-full',
   activeFilter = 'aktuell',
@@ -28,30 +34,54 @@ export function TermineListSubNavigation({
   onListViewChange,
 }: TermineListSubNavigationProps) {
   const canSeeKalender = canDo(getEffectiveRole(), CAN_SEE_KALENDER)
+
   return (
-    <div className="pt-subnav">
-      <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
-        <div className="pt-subnav-inner">
-          {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => (
-            <button
-              key={f}
-              onClick={() => { onListViewChange?.('list'); onFilterChange?.(f) }}
-              className={`pt-subnav-btn${listView === 'list' && activeFilter === f ? ' active' : ''}`}
-            >
-              {FILTER_LABELS[f]}
-            </button>
-          ))}
-          {canSeeKalender && (
-            <button
-              onClick={() => onListViewChange?.('calendar')}
-              className={`pt-subnav-btn${listView === 'calendar' ? ' active' : ''}`}
-            >
-              KALENDER
-            </button>
-          )}
+    <>
+      {/* Desktop */}
+      <div className="hidden md:block pt-subnav">
+        <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
+          <div className="pt-subnav-inner">
+            {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => (
+              <button
+                key={f}
+                onClick={() => { onListViewChange?.('list'); onFilterChange?.(f) }}
+                className={`pt-subnav-btn${listView === 'list' && activeFilter === f ? ' active' : ''}`}
+              >
+                {FILTER_LABELS[f]}
+              </button>
+            ))}
+            {canSeeKalender && (
+              <button
+                onClick={() => onListViewChange?.('calendar')}
+                className={`pt-subnav-btn${listView === 'calendar' ? ' active' : ''}`}
+              >
+                KALENDER
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      {/* Mobile Chips */}
+      <div className="md:hidden pt-chips">
+        {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => (
+          <button
+            key={f}
+            onClick={() => { onListViewChange?.('list'); onFilterChange?.(f) }}
+            className={`pt-chip${listView === 'list' && activeFilter === f ? ' active' : ''}`}
+          >
+            {FILTER_SHORT[f]}
+          </button>
+        ))}
+        {canSeeKalender && (
+          <button
+            onClick={() => onListViewChange?.('calendar')}
+            className={`pt-chip${listView === 'calendar' ? ' active' : ''}`}
+          >
+            Kalender
+          </button>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -69,42 +99,41 @@ export function TermineSubNavigation({
   onViewChange,
 }: TermineSubNavigationProps) {
   const isEditor = isEditorRole(getEffectiveRole())
+
+  const views = [
+    { id: 'details',       label: 'Details',       short: 'Details' },
+    { id: 'travelparty',   label: 'Reisegruppe',   short: 'Crew' },
+    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet', short: 'Advance' }] : []),
+    { id: 'guestlist',     label: 'Gästeliste',    short: 'Gäste' },
+  ] as { id: string; label: string; short: string }[]
+
   return (
-    <div className="pt-subnav">
-      <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
-        <div className="pt-subnav-inner">
-          <button onClick={() => onBack?.()} className="pt-subnav-btn">
-            Terminliste
-          </button>
-          <button
-            onClick={() => onViewChange?.('details')}
-            className={`pt-subnav-btn ${activeView === 'details' ? 'active' : ''}`}
-          >
-            Details
-          </button>
-          <button
-            onClick={() => onViewChange?.('travelparty')}
-            className={`pt-subnav-btn ${activeView === 'travelparty' ? 'active' : ''}`}
-          >
-            Reisegruppe
-          </button>
-          {isEditor && (
-            <button
-              onClick={() => onViewChange?.('advance-sheet')}
-              className={`pt-subnav-btn ${activeView === 'advance-sheet' ? 'active' : ''}`}
-            >
-              Advance Sheet
-            </button>
-          )}
-          <button
-            onClick={() => onViewChange?.('guestlist')}
-            className={`pt-subnav-btn ${activeView === 'guestlist' ? 'active' : ''}`}
-          >
-            Gästeliste
-          </button>
+    <>
+      {/* Desktop */}
+      <div className="hidden md:block pt-subnav">
+        <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
+          <div className="pt-subnav-inner">
+            <button onClick={() => onBack?.()} className="pt-subnav-btn">Terminliste</button>
+            {views.map(v => (
+              <button key={v.id} onClick={() => onViewChange?.(v.id as TermineDetailView)}
+                className={`pt-subnav-btn ${activeView === v.id ? 'active' : ''}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile Chips */}
+      <div className="md:hidden pt-chips">
+        {views.map(v => (
+          <button key={v.id} onClick={() => onViewChange?.(v.id as TermineDetailView)}
+            className={`pt-chip ${activeView === v.id ? 'active' : ''}`}>
+            {v.short}
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
 

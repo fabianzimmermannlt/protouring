@@ -26,6 +26,17 @@ const platformSubItems: SubNavigationItem[] = [
   { id: 'artist',        name: 'ARTIST',              description: 'Artist-Informationen' },
 ]
 
+const SHORT_LABEL: Record<string, string> = {
+  profil: 'Profil',
+  permissions: 'Rechte',
+  appearance: 'Style',
+  notifications: 'Alerts',
+  contacts: 'Kontakte',
+  guestlist: 'Gäste',
+  daysheet: 'Daysheet',
+  artist: 'Artist',
+}
+
 export function SubNavigation({
   activeTab = 'profil',
   parentTab = 'settings',
@@ -40,22 +51,37 @@ export function SubNavigation({
   )
 
   return (
-    <div className="pt-subnav">
-      <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
-        <div className="pt-subnav-inner">
-          {visibleItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onTabChange?.(item.id)}
-              className={`pt-subnav-btn${activeTab === item.id ? ' active' : ''}`}
-              title={item.description}
-            >
-              {item.name}
-            </button>
-          ))}
+    <>
+      {/* Desktop */}
+      <div className="hidden md:block pt-subnav">
+        <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
+          <div className="pt-subnav-inner">
+            {visibleItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onTabChange?.(item.id)}
+                className={`pt-subnav-btn${activeTab === item.id ? ' active' : ''}`}
+                title={item.description}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      {/* Mobile Chips */}
+      <div className="md:hidden pt-chips">
+        {visibleItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onTabChange?.(item.id)}
+            className={`pt-chip${activeTab === item.id ? ' active' : ''}`}
+          >
+            {SHORT_LABEL[item.id] ?? item.name}
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
 
