@@ -103,7 +103,7 @@ export default function ProTouringApp() {
       <FeedbackButton />
 
       {/* Main Content */}
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
         <div className="bg-white rounded-lg shadow-lg p-4">
           {/* Content based on active tab */}
           <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">

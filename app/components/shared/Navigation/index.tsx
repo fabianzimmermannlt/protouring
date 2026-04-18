@@ -18,6 +18,7 @@ import {
   PlusIcon,
   ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline'
+import { MobileBottomNav } from './MobileBottomNav'
 import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
@@ -158,7 +159,7 @@ export function Navigation({
     <>
       <DeactivatedScreen />
       {/* Desktop Navigation */}
-      <header className="bg-gray-900 text-white shadow-sm border-b">
+      <header className="hidden md:block bg-gray-900 text-white shadow-sm border-b">
         <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`}>
           <div className="flex items-center h-16">
             {/* Links: Logo */}
@@ -282,38 +283,69 @@ export function Navigation({
         </div>
       </header>
 
-      {/* Mobile Navigation */}
+      {/* Mobile: slim Header (nur Logo + Initials, Nav ist unten) */}
       {showMobileNavigation && (
-        <div className="md:hidden border-b bg-gray-900 text-white px-4 py-2">
-          <div className={`${maxWidth} mx-auto`}>
-            <div className="flex justify-between items-center mb-2">
-              <div>
-                <h1 className="text-lg font-bold text-orange-400">ProTouring</h1>
-                {artistName && (
-                  <p className="text-xs text-gray-400">{artistName}</p>
-                )}
+        <div className="md:hidden bg-gray-900 text-white border-b border-gray-700 px-4 h-14 flex items-center justify-between">
+          {/* Links: Initials / User-Dropdown */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setShowUserMenu(v => !v)}
+              className="flex items-center gap-1 text-gray-300 hover:text-white"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
+                {initials}
               </div>
-            </div>
-            <div className="flex space-x-2 overflow-x-auto">
-              {navigationItems.filter(item =>
-  (item.superadminOnly ? isSuperadmin : canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? []))
-).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
-                    currentTab === item.id
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                  }`}
-                >
-                  <item.icon className="w-3 h-3" />
-                  {item.name}
+              <ChevronDownIcon className={`w-3 h-3 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            </button>
+            {showUserMenu && (
+              <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <button onClick={handleGoToProfil} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <UserCircleIcon className="w-4 h-4 text-gray-400" />
+                  Mein Profil
                 </button>
-              ))}
-            </div>
+                {allTenants.length > 0 && (
+                  <>
+                    <div className="border-t border-gray-100 my-1" />
+                    <button onClick={() => { setShowUserMenu(false); router.push('/artists') }} className="w-full text-left px-4 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 uppercase tracking-wider flex items-center justify-between">
+                      Artists <span className="normal-case text-gray-300 text-xs font-normal">Übersicht</span>
+                    </button>
+                    {allTenants.map(t => (
+                      <button key={t.id} onClick={() => activeTenantSlug === t.slug ? setShowUserMenu(false) : handleSwitchTenant(t)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between gap-2">
+                        <span className="truncate">{t.name}</span>
+                        {activeTenantSlug === t.slug && <CheckIcon className="w-4 h-4 text-blue-500 shrink-0" />}
+                      </button>
+                    ))}
+                  </>
+                )}
+                <div className="border-t border-gray-100 my-1" />
+                <button onClick={() => { setShowUserMenu(false); logout() }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  Abmelden
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Mitte: Logo + Artist */}
+          <div className="text-center absolute left-1/2 -translate-x-1/2">
+            <p className="text-base font-bold text-orange-400 leading-none">ProTouring</p>
+            {artistName && <p className="text-[10px] text-gray-400 mt-0.5">{artistName}</p>}
+          </div>
+
+          {/* Rechts: PreviewBanner (falls aktiv) */}
+          <div className="flex items-center">
+            <PreviewBanner />
           </div>
         </div>
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      {showMobileNavigation && (
+        <MobileBottomNav
+          activeTab={currentTab}
+          onTabChange={handleTabChange}
+          isSuperadmin={isSuperadmin}
+        />
       )}
 
       {/* Sub Navigation */}
