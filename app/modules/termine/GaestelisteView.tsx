@@ -519,7 +519,7 @@ export default function GaestelisteView({ terminId }: Props) {
         {canWrite && !isLocked && (
           <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
             <PlusIcon className="w-4 h-4" />
-            {isDirect ? 'Hinzufügen' : '+ Wunsch'}
+            {isDirect ? 'Hinzufügen' : 'Wunsch'}
           </button>
         )}
         {isEditor && (
@@ -597,12 +597,18 @@ export default function GaestelisteView({ terminId }: Props) {
               const isWish = entry.is_wish === 1
               const isPending = isWish && entry.status === 'pending'
               const isRejected = entry.status === 'rejected'
+              // Abgelehnte ausblenden wenn Liste gesperrt
+              if (isLocked && isRejected) return null
               const total = passTotal(entry.passes)
               const inviterName = entry.invited_by_text
                 || [entry.inviter_first_name, entry.inviter_last_name].filter(Boolean).join(' ')
                 || null
+              // Zeilenstil: pending-Wünsche grau+kursiv, abgelehnte durchgestrichen
+              const rowClass = isPending
+                ? 'text-gray-400 italic'
+                : isRejected ? 'text-gray-400' : ''
               return (
-                <tr key={entry.id} className={isPending ? 'bg-amber-50' : ''}>
+                <tr key={entry.id} className={rowClass}>
                   {/* Nachname */}
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
@@ -612,31 +618,31 @@ export default function GaestelisteView({ terminId }: Props) {
                           entry.status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
                         }`} />
                       )}
-                      <span className={`font-medium ${isRejected ? 'line-through text-gray-400' : ''}`}>
+                      <span className={`font-medium ${isRejected ? 'line-through' : ''}`}>
                         {entry.last_name}
                       </span>
-                      {entry.company && <span className="text-gray-400 text-xs ml-1">({entry.company})</span>}
+                      {entry.company && <span className="text-xs ml-1">({entry.company})</span>}
                     </div>
                     {isPending && isEditor && (
                       <div className="flex gap-1 mt-1">
-                        <button onClick={() => handleApprove(entry, 'approved')} className="text-xs text-green-700 bg-green-50 hover:bg-green-100 px-2 py-0.5 rounded flex items-center gap-0.5">
+                        <button onClick={() => handleApprove(entry, 'approved')} className="not-italic text-xs text-green-700 bg-green-50 hover:bg-green-100 px-2 py-0.5 rounded flex items-center gap-0.5">
                           <CheckIcon className="w-3 h-3" /> Annehmen
                         </button>
-                        <button onClick={() => handleApprove(entry, 'rejected')} className="text-xs text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded flex items-center gap-0.5">
+                        <button onClick={() => handleApprove(entry, 'rejected')} className="not-italic text-xs text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded flex items-center gap-0.5">
                           <XMarkIcon className="w-3 h-3" /> Ablehnen
                         </button>
                       </div>
                     )}
                     {isPending && !isEditor && (
-                      <span className="text-xs text-amber-600">Wunsch – ausstehend</span>
+                      <span className="text-xs text-amber-600 not-italic">Wunsch – ausstehend</span>
                     )}
                   </td>
                   {/* Vorname */}
                   <td className="px-4 py-2.5">
-                    <span className={isRejected ? 'line-through text-gray-400' : ''}>{entry.first_name}</span>
+                    <span className={isRejected ? 'line-through' : ''}>{entry.first_name}</span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-500 text-sm">{inviterName || '–'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-xs">{entry.email || '–'}</td>
+                  <td className="px-4 py-2.5 text-sm">{inviterName || '–'}</td>
+                  <td className="px-4 py-2.5 text-xs">{entry.email || '–'}</td>
                   {passTypes.map(t => (
                     <td key={t} className="px-2 py-2.5 text-center text-sm">
                       {(entry.passes[t] ?? 0) > 0
