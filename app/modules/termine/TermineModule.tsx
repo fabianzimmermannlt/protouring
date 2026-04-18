@@ -1040,7 +1040,7 @@ export default function TerminePage({
           ) : detailView === 'advance-sheet' ? (
             <AdvanceSheetView terminId={selectedTermin.id} />
           ) : detailView === 'guestlist' ? (
-            <GaestelisteView terminId={selectedTermin.id} />
+            <GaestelisteView key={selectedTermin.id} terminId={selectedTermin.id} />
           ) : (
             <TerminDetail
               termin={selectedTermin}
