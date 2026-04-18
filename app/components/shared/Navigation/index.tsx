@@ -66,7 +66,7 @@ export function Navigation({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [artistName, setArtistName] = useState('')
   const [termineInDetail, setTermineInDetail] = useState(false)
-  const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet'>('details')
+  const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>('details')
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
   const [showUserMenu, setShowUserMenu] = useState(false)

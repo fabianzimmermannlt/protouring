@@ -1010,6 +1010,48 @@ async function initDatabase() {
   `);
   console.log('🔄 Globale Profilfelder contacts → users synchronisiert');
 
+  // Gästelisten
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS guest_lists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      termin_id INTEGER NOT NULL,
+      name TEXT NOT NULL DEFAULT 'Gästeliste',
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'locked')),
+      settings TEXT NOT NULL DEFAULT '{}',
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (termin_id) REFERENCES termine(id) ON DELETE CASCADE
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_guest_lists_termin ON guest_lists(termin_id)`)
+
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS guest_list_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guest_list_id INTEGER NOT NULL,
+      tenant_id INTEGER NOT NULL,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      company TEXT,
+      invited_by_text TEXT,
+      invited_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      email TEXT,
+      passes TEXT NOT NULL DEFAULT '{}',
+      is_wish INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
+      notes TEXT,
+      created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (guest_list_id) REFERENCES guest_lists(id) ON DELETE CASCADE,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_guest_list_entries_list ON guest_list_entries(guest_list_id)`)
+
   console.log('✅ Database initialized');
 }
 
@@ -4864,6 +4906,284 @@ app.get('/api/health', (req, res) => {
     db: 'SQLite'
   });
 });
+
+// ============================================
+// GÄSTELISTEN
+// ============================================
+
+// Hilfsfunktion: Darf diese Rolle direkt hinzufügen (nicht nur wünschen)?
+function canAddDirectly(role, listSettings) {
+  // Roles 1-3 immer
+  if (['admin', 'tourmanagement', 'agency'].includes(role)) return true
+  // Rolle 4 (artist): nur wenn in tenant-settings erlaubt
+  if (role === 'artist' && listSettings.artist_can_add) return true
+  // Rolle 5 (crew_plus): nur wenn in tenant-settings erlaubt
+  if (role === 'crew_plus' && listSettings.crew_plus_can_add) return true
+  return false
+}
+
+// GET /api/termine/:terminId/guest-lists
+app.get('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const lists = await db.all(
+      `SELECT gl.*, COUNT(gle.id) as entry_count
+       FROM guest_lists gl
+       LEFT JOIN guest_list_entries gle ON gle.guest_list_id = gl.id
+       WHERE gl.termin_id = ? AND gl.tenant_id = ?
+       GROUP BY gl.id
+       ORDER BY gl.sort_order ASC, gl.created_at ASC`,
+      [req.params.terminId, req.tenant.tenantId]
+    )
+    res.json({ lists: lists.map(l => ({ ...l, settings: JSON.parse(l.settings || '{}') })) })
+  } catch (e) {
+    console.error('GET guest-lists failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// POST /api/termine/:terminId/guest-lists
+app.post('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name = 'Gästeliste', settings = {} } = req.body
+    const r = await db.run(
+      `INSERT INTO guest_lists (tenant_id, termin_id, name, settings) VALUES (?, ?, ?, ?)`,
+      [req.tenant.tenantId, req.params.terminId, name, JSON.stringify(settings)]
+    )
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ?', [r.lastID])
+    res.json({ list: { ...list, settings: JSON.parse(list.settings || '{}') } })
+  } catch (e) {
+    console.error('POST guest-lists failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// PATCH /api/guest-lists/:id  (name, settings, status=locked/open)
+app.patch('/api/guest-lists/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!list) return res.status(404).json({ error: 'Not found' })
+
+    const role = req.tenant.role
+    const { name, settings, status } = req.body
+
+    // Lock/Unlock: nur Editor
+    if (status !== undefined) {
+      if (!['admin', 'tourmanagement', 'agency'].includes(role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+    }
+    // Name/Settings ändern: nur Editor
+    if ((name !== undefined || settings !== undefined) && !['admin', 'tourmanagement', 'agency'].includes(role)) {
+      return res.status(403).json({ error: 'Keine Berechtigung' })
+    }
+
+    const updates = []
+    const vals = []
+    if (name !== undefined) { updates.push('name = ?'); vals.push(name) }
+    if (settings !== undefined) { updates.push('settings = ?'); vals.push(JSON.stringify(settings)) }
+    if (status !== undefined) { updates.push('status = ?'); vals.push(status) }
+    updates.push('updated_at = CURRENT_TIMESTAMP')
+    vals.push(req.params.id, req.tenant.tenantId)
+
+    await db.run(`UPDATE guest_lists SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, vals)
+    const updated = await db.get('SELECT * FROM guest_lists WHERE id = ?', [req.params.id])
+    res.json({ list: { ...updated, settings: JSON.parse(updated.settings || '{}') } })
+  } catch (e) {
+    console.error('PATCH guest-lists failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// DELETE /api/guest-lists/:id
+app.delete('/api/guest-lists/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run('DELETE FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// GET /api/guest-lists/:id/entries
+app.get('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!list) return res.status(404).json({ error: 'Not found' })
+    const entries = await db.all(
+      `SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name
+       FROM guest_list_entries gle
+       LEFT JOIN users u ON u.id = gle.invited_by_user_id
+       WHERE gle.guest_list_id = ? AND gle.tenant_id = ?
+       ORDER BY gle.created_at ASC`,
+      [req.params.id, req.tenant.tenantId]
+    )
+    const listSettings = JSON.parse(list.settings || '{}')
+    res.json({
+      list: { ...list, settings: listSettings },
+      entries: entries.map(e => ({ ...e, passes: JSON.parse(e.passes || '{}') }))
+    })
+  } catch (e) {
+    console.error('GET entries failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// POST /api/guest-lists/:id/entries
+app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!list) return res.status(404).json({ error: 'Not found' })
+    if (list.status === 'locked') return res.status(403).json({ error: 'Liste ist gesperrt' })
+
+    const role = req.tenant.role
+    const listSettings = JSON.parse(list.settings || '{}')
+
+    // Wer darf überhaupt hinzufügen? (alle bis auf 'guest')
+    const allowedRoles = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew']
+    if (!allowedRoles.includes(role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+
+    const isDirect = canAddDirectly(role, listSettings)
+    const is_wish = isDirect ? 0 : 1
+    const status = isDirect ? 'approved' : 'pending'
+
+    const { first_name, last_name, company, invited_by_text, invited_by_user_id, email, passes = {}, notes } = req.body
+    if (!first_name || !last_name) return res.status(400).json({ error: 'Vor- und Nachname erforderlich' })
+
+    // E-Mail Pflichtfeld prüfen
+    if (listSettings.require_email && !email) return res.status(400).json({ error: 'E-Mail ist für diese Liste Pflicht' })
+
+    // Limit pro Einlader prüfen
+    if (listSettings.per_inviter_limit && invited_by_user_id) {
+      const count = await db.get(
+        `SELECT COUNT(*) as cnt FROM guest_list_entries WHERE guest_list_id = ? AND invited_by_user_id = ? AND status != 'rejected'`,
+        [req.params.id, invited_by_user_id]
+      )
+      if (count.cnt >= listSettings.per_inviter_limit) return res.status(400).json({ error: `Limit von ${listSettings.per_inviter_limit} Einladungen erreicht` })
+    }
+
+    // Gesamtlimit prüfen
+    if (listSettings.total_limit) {
+      const total = await db.get(
+        `SELECT COALESCE(SUM(json_extract(passes, '$') ), 0) as total FROM guest_list_entries WHERE guest_list_id = ? AND status != 'rejected'`,
+        [req.params.id]
+      )
+      // einfach Einträge zählen wenn kein pass-summing
+      const cnt = await db.get(`SELECT COUNT(*) as cnt FROM guest_list_entries WHERE guest_list_id = ? AND status != 'rejected'`, [req.params.id])
+      if (cnt.cnt >= listSettings.total_limit) return res.status(400).json({ error: `Gesamtlimit von ${listSettings.total_limit} Einträgen erreicht` })
+    }
+
+    const r = await db.run(
+      `INSERT INTO guest_list_entries (guest_list_id, tenant_id, first_name, last_name, company, invited_by_text, invited_by_user_id, email, passes, is_wish, status, notes, created_by_user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.params.id, req.tenant.tenantId, first_name, last_name, company || null, invited_by_text || null, invited_by_user_id || null, email || null, JSON.stringify(passes), is_wish, status, notes || null, req.user.userId]
+    )
+    const entry = await db.get('SELECT * FROM guest_list_entries WHERE id = ?', [r.lastID])
+    res.json({ entry: { ...entry, passes: JSON.parse(entry.passes || '{}') } })
+  } catch (e) {
+    console.error('POST entry failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// PATCH /api/guest-list-entries/:id
+app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const entry = await db.get('SELECT gle.*, gl.status as list_status FROM guest_list_entries gle JOIN guest_lists gl ON gl.id = gle.guest_list_id WHERE gle.id = ? AND gle.tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!entry) return res.status(404).json({ error: 'Not found' })
+    if (entry.list_status === 'locked') return res.status(403).json({ error: 'Liste ist gesperrt' })
+
+    const role = req.tenant.role
+    const { first_name, last_name, company, invited_by_text, invited_by_user_id, email, passes, notes, status } = req.body
+
+    // Status (approve/reject) nur für Editoren
+    if (status !== undefined && !['admin', 'tourmanagement', 'agency'].includes(role)) {
+      return res.status(403).json({ error: 'Keine Berechtigung für Statusänderung' })
+    }
+
+    const updates = []
+    const vals = []
+    if (first_name !== undefined) { updates.push('first_name = ?'); vals.push(first_name) }
+    if (last_name !== undefined) { updates.push('last_name = ?'); vals.push(last_name) }
+    if (company !== undefined) { updates.push('company = ?'); vals.push(company) }
+    if (invited_by_text !== undefined) { updates.push('invited_by_text = ?'); vals.push(invited_by_text) }
+    if (invited_by_user_id !== undefined) { updates.push('invited_by_user_id = ?'); vals.push(invited_by_user_id) }
+    if (email !== undefined) { updates.push('email = ?'); vals.push(email) }
+    if (passes !== undefined) { updates.push('passes = ?'); vals.push(JSON.stringify(passes)) }
+    if (notes !== undefined) { updates.push('notes = ?'); vals.push(notes) }
+    if (status !== undefined) { updates.push('status = ?'); vals.push(status) }
+    updates.push('updated_at = CURRENT_TIMESTAMP')
+    vals.push(req.params.id, req.tenant.tenantId)
+
+    await db.run(`UPDATE guest_list_entries SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, vals)
+    const updated = await db.get('SELECT * FROM guest_list_entries WHERE id = ?', [req.params.id])
+    res.json({ entry: { ...updated, passes: JSON.parse(updated.passes || '{}') } })
+  } catch (e) {
+    console.error('PATCH entry failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// DELETE /api/guest-list-entries/:id
+app.delete('/api/guest-list-entries/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const entry = await db.get('SELECT gle.*, gl.status as list_status FROM guest_list_entries gle JOIN guest_lists gl ON gl.id = gle.guest_list_id WHERE gle.id = ? AND gle.tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!entry) return res.status(404).json({ error: 'Not found' })
+    if (entry.list_status === 'locked') return res.status(403).json({ error: 'Liste ist gesperrt' })
+    await db.run('DELETE FROM guest_list_entries WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// GET /api/guest-lists/:id/export/csv
+app.get('/api/guest-lists/:id/export/csv', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!list) return res.status(404).json({ error: 'Not found' })
+    const listSettings = JSON.parse(list.settings || '{}')
+    const passTypes = listSettings.pass_types || ['guestlist', 'backstage', 'aftershow', 'photo']
+    const entries = await db.all('SELECT * FROM guest_list_entries WHERE guest_list_id = ? ORDER BY created_at ASC', [req.params.id])
+
+    const headers = ['Vorname', 'Nachname', 'Firma', 'Eingeladen von', 'E-Mail', 'Status', ...passTypes.map(p => p.charAt(0).toUpperCase() + p.slice(1)), 'Gesamt', 'Notiz']
+    const rows = entries.map(e => {
+      const passes = JSON.parse(e.passes || '{}')
+      const total = passTypes.reduce((s, t) => s + (parseInt(passes[t]) || 0), 0)
+      return [
+        e.first_name, e.last_name, e.company || '', e.invited_by_text || '', e.email || '',
+        e.is_wish ? `Wunsch (${e.status})` : 'Fix',
+        ...passTypes.map(t => passes[t] || 0),
+        total, e.notes || ''
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    })
+
+    const csv = [headers.join(','), ...rows].join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="gaesteliste-${list.id}.csv"`)
+    res.send('\uFEFF' + csv)
+  } catch (e) {
+    console.error('CSV export failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
+
+// GET /api/guest-lists/:id/export/pdf
+app.get('/api/guest-lists/:id/export/pdf', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const list = await db.get('SELECT * FROM guest_lists WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.tenantId])
+    if (!list) return res.status(404).json({ error: 'Not found' })
+    const listSettings = JSON.parse(list.settings || '{}')
+    const passTypes = listSettings.pass_types || ['guestlist', 'backstage', 'aftershow', 'photo']
+    const entries = await db.all('SELECT * FROM guest_list_entries WHERE guest_list_id = ? ORDER BY created_at ASC', [req.params.id])
+    const { generateGuestListPdf } = require('./generate_guest_list_pdf')
+    const termin = await db.get('SELECT * FROM termine WHERE id = ?', [list.termin_id])
+    const buf = await generateGuestListPdf({ list: { ...list, settings: listSettings }, entries: entries.map(e => ({ ...e, passes: JSON.parse(e.passes || '{}') })), passTypes, termin })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="gaesteliste-${list.id}.pdf"`)
+    res.send(buf)
+  } catch (e) {
+    console.error('PDF export failed', e)
+    res.status(500).json({ error: 'Failed' })
+  }
+})
 
 // ============================================
 // START

@@ -2143,3 +2143,104 @@ export async function deleteFeedback(id: number): Promise<void> {
   await request(`/api/feedback/${id}`, { method: 'DELETE', skipTenant: true })
 }
 
+
+// ============================================
+// Gästelisten API
+// ============================================
+
+export type PassMap = Record<string, number>
+export type GuestListStatus = 'open' | 'locked'
+export type GuestEntryStatus = 'pending' | 'approved' | 'rejected'
+
+export interface GuestListSettings {
+  require_email?: boolean
+  total_limit?: number | null
+  per_entry_limit?: number | null
+  per_inviter_limit?: number | null
+  pass_types?: string[]
+  artist_can_add?: boolean
+  crew_plus_can_add?: boolean
+}
+
+export interface GuestList {
+  id: number
+  tenant_id: number
+  termin_id: number
+  name: string
+  status: GuestListStatus
+  settings: GuestListSettings
+  sort_order: number
+  entry_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface GuestListEntry {
+  id: number
+  guest_list_id: number
+  tenant_id: number
+  first_name: string
+  last_name: string
+  company: string | null
+  invited_by_text: string | null
+  invited_by_user_id: number | null
+  inviter_first_name?: string | null
+  inviter_last_name?: string | null
+  email: string | null
+  passes: PassMap
+  is_wish: number
+  status: GuestEntryStatus
+  notes: string | null
+  created_by_user_id: number | null
+  created_at: string
+  updated_at: string
+}
+
+export async function getGuestLists(terminId: number): Promise<GuestList[]> {
+  const res = await request<{ lists: GuestList[] }>(`/api/termine/${terminId}/guest-lists`)
+  return res.lists
+}
+
+export async function createGuestList(terminId: number, name: string): Promise<GuestList> {
+  const res = await request<{ list: GuestList }>(`/api/termine/${terminId}/guest-lists`, {
+    method: 'POST', body: { name }
+  })
+  return res.list
+}
+
+export async function updateGuestList(id: number, data: Partial<{ name: string; settings: GuestListSettings; status: GuestListStatus }>): Promise<GuestList> {
+  const res = await request<{ list: GuestList }>(`/api/guest-lists/${id}`, { method: 'PATCH', body: data })
+  return res.list
+}
+
+export async function deleteGuestList(id: number): Promise<void> {
+  await request(`/api/guest-lists/${id}`, { method: 'DELETE' })
+}
+
+export async function getGuestListEntries(listId: number): Promise<{ list: GuestList; entries: GuestListEntry[] }> {
+  return request<{ list: GuestList; entries: GuestListEntry[] }>(`/api/guest-lists/${listId}/entries`)
+}
+
+export async function createGuestListEntry(listId: number, data: Partial<GuestListEntry>): Promise<GuestListEntry> {
+  const res = await request<{ entry: GuestListEntry }>(`/api/guest-lists/${listId}/entries`, { method: 'POST', body: data })
+  return res.entry
+}
+
+export async function updateGuestListEntry(id: number, data: Partial<GuestListEntry & { status: GuestEntryStatus }>): Promise<GuestListEntry> {
+  const res = await request<{ entry: GuestListEntry }>(`/api/guest-list-entries/${id}`, { method: 'PATCH', body: data })
+  return res.entry
+}
+
+export async function deleteGuestListEntry(id: number): Promise<void> {
+  await request(`/api/guest-list-entries/${id}`, { method: 'DELETE' })
+}
+
+export function getGuestListCsvUrl(listId: number, token: string): string {
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  return `${API_BASE}/api/guest-lists/${listId}/export/csv`
+}
+
+export function getGuestListPdfUrl(listId: number): string {
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  return `${API_BASE}/api/guest-lists/${listId}/export/pdf`
+}

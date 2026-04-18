@@ -2,7 +2,7 @@
 
 import { getEffectiveRole, canDo, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
 
-export type TermineDetailView = 'details' | 'travelparty' | 'advance-sheet'
+export type TermineDetailView = 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
 
@@ -96,6 +96,12 @@ export function TermineSubNavigation({
               Advance Sheet
             </button>
           )}
+          <button
+            onClick={() => onViewChange?.('guestlist')}
+            className={`pt-subnav-btn ${activeView === 'guestlist' ? 'active' : ''}`}
+          >
+            Gästeliste
+          </button>
         </div>
       </div>
     </div>
