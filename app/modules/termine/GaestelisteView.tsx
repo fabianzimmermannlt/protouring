@@ -332,7 +332,8 @@ export default function GaestelisteView({ terminId }: Props) {
   const [entries, setEntries] = useState<GuestListEntry[]>([])
   const [activeList, setActiveList] = useState<GuestList | null>(null)
   const [travelParty, setTravelParty] = useState<Array<{ id: number; displayName: string; userId?: number | null }>>([])
-  const [loading, setLoading] = useState(true)
+  const [listsLoading, setListsLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editEntry, setEditEntry] = useState<GuestListEntry | null>(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -347,11 +348,12 @@ export default function GaestelisteView({ terminId }: Props) {
   }, [])
 
   const loadLists = useCallback(async () => {
+    setListsLoading(true)
     try {
       const l = await getGuestLists(terminId)
       setLists(l)
       if (l.length > 0 && !activeListId) setActiveListId(l[0].id)
-    } catch {}
+    } catch {} finally { setListsLoading(false) }
   }, [terminId, activeListId])
 
   const loadEntries = useCallback(async (listId: number) => {
@@ -446,7 +448,9 @@ export default function GaestelisteView({ terminId }: Props) {
   const approvedCount = entries.filter(e => e.status === 'approved').length
   const totalTickets = entries.filter(e => e.status !== 'rejected').reduce((s, e) => s + passTotal(e.passes), 0)
 
-  if (lists.length === 0 && !loading) {
+  if (listsLoading) return <div className="p-8 text-center text-gray-400 text-sm">Laden...</div>
+
+  if (lists.length === 0) {
     return (
       <div className="p-8 text-center">
         <p className="text-gray-400 mb-4">Noch keine Gästeliste für diesen Termin.</p>
