@@ -278,7 +278,7 @@ export default function SchreibtischModule() {
   return (
     <>
       {/* Datum Zeile */}
-      <div className="mb-4">
+      <div className="mb-2 md:mb-4">
         <div className="text-lg font-medium text-gray-700 text-center">
           {new Date().toLocaleDateString('de-DE', { 
             weekday: 'long', 
@@ -290,7 +290,7 @@ export default function SchreibtischModule() {
       </div>
 
       {/* Zeile 1: 4 Spalten */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-2 md:mb-4">
         
         {/* DEIN PROFIL Section */}
         <div className="pt-card h-[400px] flex flex-col">
@@ -417,7 +417,7 @@ export default function SchreibtischModule() {
       </div>
 
       {/* Zeile 2: 4 Spalten */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
         
         {/* ALLGEMEINE KONVERSATION Section */}
         <div className="pt-card h-[400px] flex flex-col">
