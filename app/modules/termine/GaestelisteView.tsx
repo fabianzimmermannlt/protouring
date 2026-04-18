@@ -591,16 +591,8 @@ export default function GaestelisteView({ terminId }: Props) {
         </div>
       </div>
 
-      {/* Stats + Suche */}
+      {/* Suche */}
       <div className="flex items-center gap-4 mb-3 flex-wrap">
-        {activeList && (
-          <div className="flex gap-4 text-sm text-gray-500">
-            <span>{approvedCount} bestätigt</span>
-            {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
-            <span>{totalTickets} Tickets gesamt</span>
-            {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
-          </div>
-        )}
         <div className="flex-1" />
         <input
           type="text"
@@ -736,6 +728,16 @@ export default function GaestelisteView({ terminId }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Stats unter Tabelle */}
+      {activeList && (
+        <div className="flex gap-4 text-sm text-gray-500 mt-2 px-1">
+          <span>{approvedCount} bestätigt</span>
+          {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
+          <span>{totalTickets} Tickets gesamt</span>
+          {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
+        </div>
+      )}
 
       {/* Modals */}
       {showAddModal && (
