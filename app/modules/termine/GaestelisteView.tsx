@@ -323,9 +323,10 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
 // Hauptview
 // ─────────────────────────────────────────────────────────────────────────────
 export default function GaestelisteView({ terminId }: Props) {
-  const role = getEffectiveRole()
+  const [role, setRole] = useState('')
+  useEffect(() => { setRole(getEffectiveRole()) }, [])
   const isEditor = isEditorRole(role)
-  const canWrite = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'].includes(role)
+  const canWrite = role !== ''
 
   const [lists, setLists] = useState<GuestList[]>([])
   const [activeListId, setActiveListId] = useState<number | null>(null)
