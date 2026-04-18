@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { usePolling } from '@/app/hooks/usePolling'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
+import TerminDetailMobile from './TerminDetailMobile'
 import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
@@ -867,6 +869,7 @@ export default function TerminePage({
   const [commentPopup, setCommentPopup] = useState<{ terminId: number; comment: string } | null>(null)
   const [commentSaving, setCommentSaving] = useState(false)
 
+  const isMobile = useIsMobile()
   const currentUser = getCurrentUser()
   const effectiveRole = getEffectiveRole()
   const isAdmin  = isAdminRole(effectiveRole)                        // admin + tourmanagement
@@ -1054,6 +1057,21 @@ export default function TerminePage({
             <AdvanceSheetView terminId={selectedTermin.id} />
           ) : detailView === 'guestlist' ? (
             <GaestelisteView key={selectedTermin.id} terminId={selectedTermin.id} />
+          ) : isMobile ? (
+            <TerminDetailMobile
+              termin={selectedTermin}
+              termine={sortedTermine}
+              isAdmin={isEditor}
+              canSeeFiles={canSeeFiles}
+              onUpdated={updated => {
+                setTermine(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t))
+              }}
+              onDeleted={() => {
+                setTermine(prev => prev.filter(t => t.id !== selectedId))
+                setSelectedId(null)
+              }}
+              onEditClick={() => { setEditingTermin(selectedTermin); setIsModalOpen(true) }}
+            />
           ) : (
             <TerminDetail
               termin={selectedTermin}
@@ -1099,8 +1117,69 @@ export default function TerminePage({
             />
           )}
 
-          {/* Table */}
-          {listView === 'list' && <div className="data-table-wrapper">
+          {/* Mobile Card List */}
+          {listView === 'list' && isMobile && (
+            <div className="flex flex-col gap-2 mt-2">
+              {tableRows.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm">
+                  {termine.length === 0 ? 'Noch keine Termine. Mit „+ Neuer Termin" starten.' : 'Keine Treffer'}
+                </div>
+              ) : tableRows.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedId(t.id)}
+                  className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
+                >
+                  {/* Date column */}
+                  <div className="flex-shrink-0 w-12 text-center">
+                    <div className="text-lg font-bold text-gray-800 leading-none">
+                      {new Date(t.date).toLocaleDateString('de-DE', { day: '2-digit' })}
+                    </div>
+                    <div className="text-xs text-gray-400 uppercase mt-0.5">
+                      {new Date(t.date).toLocaleDateString('de-DE', { month: 'short' })}
+                    </div>
+                  </div>
+                  {/* Divider */}
+                  <div className="w-px self-stretch bg-gray-100 flex-shrink-0" />
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-gray-900 text-sm truncate">{t.title}</span>
+                      {t.statusBooking && (
+                        <span className={`${STATUS_BOOKING_COLOR[t.statusBooking] || 'badge badge-gray'} flex-shrink-0`}>
+                          {t.statusBooking}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5 truncate">
+                      {[t.city, t.venueName].filter(Boolean).join(' · ') || <span className="italic">Kein Ort</span>}
+                    </div>
+                  </div>
+                  {/* Availability dots */}
+                  <div className="flex-shrink-0 flex gap-1 items-center">
+                    {(['available', 'maybe', 'unavailable'] as AvailStatus[]).map(s => {
+                      const active = t.myAvailability === s
+                      const cfg = AVAIL_ICON[s as string]
+                      return (
+                        <button
+                          key={s}
+                          onClick={e => { e.stopPropagation(); selectAvailability(t, s) }}
+                          title={cfg.label}
+                          className="w-5 h-5 rounded-full font-bold text-white flex items-center justify-center text-xs transition-transform active:scale-110"
+                          style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}
+                        >
+                          {cfg.symbol}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Desktop Table */}
+          {listView === 'list' && !isMobile && <div className="data-table-wrapper">
             <table className="data-table data-table--termine">
               <thead>
                 <tr>
