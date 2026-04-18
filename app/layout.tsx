@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   description: 'Comprehensive tour management platform for artists and agencies',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: {

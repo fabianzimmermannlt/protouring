@@ -59,10 +59,12 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
 
   const handleAktuell = useCallback(() => {
     setShowMore(false)
+    onTabChange('appointments')
     if (nextTerminId) {
-      window.dispatchEvent(new CustomEvent('navigate-to-termin', { detail: { terminId: nextTerminId } }))
-    } else {
-      onTabChange('appointments')
+      // Kurz warten bis TermineModule gemountet ist, dann zum Termin navigieren
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('navigate-to-termin', { detail: { terminId: nextTerminId } }))
+      }, 50)
     }
   }, [nextTerminId, onTabChange])
 
@@ -114,7 +116,7 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
       )}
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-stretch h-16">
 
           {/* Desk */}

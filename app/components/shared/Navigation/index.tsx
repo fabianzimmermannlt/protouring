@@ -65,6 +65,9 @@ export function Navigation({
   onSubTabChange
 }: NavigationProps) {
   const [currentTab, setCurrentTab] = useState(activeTab)
+
+  // Prop-Sync: wenn page.tsx activeTab extern ändert (z.B. via navigate-to-termin Event), übernehmen
+  useEffect(() => { setCurrentTab(activeTab) }, [activeTab])
   const [artistName, setArtistName] = useState('')
   const [termineInDetail, setTermineInDetail] = useState(false)
   const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>('details')
