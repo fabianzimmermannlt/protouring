@@ -37,8 +37,19 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
   const [showMore, setShowMore] = useState(false)
   const [nextTerminId, setNextTerminId] = useState<number | null>(null)
   const [loadingNext, setLoadingNext] = useState(false)
+  const [termineInDetail, setTermineInDetail] = useState(false)
 
   const role = getEffectiveRole()
+
+  // Trackt ob wir im Termin-Detail sind
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ inDetail: boolean }>).detail
+      setTermineInDetail(detail.inDetail)
+    }
+    window.addEventListener('termine-view-changed', handler)
+    return () => window.removeEventListener('termine-view-changed', handler)
+  }, [])
 
   // Nächsten Termin beim Mount laden
   useEffect(() => {
@@ -134,8 +145,8 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
           <button
             onClick={() => {
               setShowMore(false)
-              if (activeTab === 'appointments') {
-                // Bereits in Termine → zurück zur Liste
+              if (activeTab === 'appointments' && termineInDetail) {
+                // Im Detail → zurück zur Liste
                 window.dispatchEvent(new CustomEvent('termine-go-to-list'))
               } else {
                 onTabChange('appointments')
