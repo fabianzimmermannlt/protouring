@@ -174,7 +174,7 @@ export default function PartnersPage() {
     ]
 
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...partners.map(partner => [
         `"${partner.name}"`,
         `"${partner.type}"`,
@@ -192,7 +192,7 @@ export default function PartnersPage() {
         `"${partner.status}"`,
         `"${partner.rating}"`,
         `"${partner.notes}"`
-      ].join(','))
+      ].join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

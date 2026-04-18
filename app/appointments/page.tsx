@@ -153,7 +153,7 @@ export default function AppointmentsPage() {
     ]
 
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...appointments.map(appointment => [
         `"${appointment.title}"`,
         `"${appointment.date}"`,
@@ -167,7 +167,7 @@ export default function AppointmentsPage() {
         `"${appointment.priority}"`,
         `"${appointment.reminder}"`,
         `"${appointment.notes}"`
-      ].join(','))
+      ].join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

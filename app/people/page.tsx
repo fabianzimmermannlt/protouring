@@ -179,7 +179,7 @@ export default function PeoplePage() {
     ]
 
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...people.map(person => [
         `"${person.firstName}"`,
         `"${person.lastName}"`,
@@ -198,7 +198,7 @@ export default function PeoplePage() {
         `"${person.availability}"`,
         `"${person.hourlyRate}"`,
         `"${person.notes}"`
-      ].join(','))
+      ].join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

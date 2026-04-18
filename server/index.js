@@ -5169,10 +5169,10 @@ app.get('/api/guest-lists/:id/export/csv', authenticateToken, requireTenant, asy
         e.is_wish ? `Wunsch (${e.status})` : 'Fix',
         ...passTypes.map(t => parseInt(passes[t]) || 0),
         total, e.notes || ''
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')
     })
 
-    const csv = [headers.join(','), ...rows].join('\n')
+    const csv = [headers.join(';'), ...rows].join('\n')
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="gaesteliste-${list.id}.csv"`)
     res.send('\uFEFF' + csv)

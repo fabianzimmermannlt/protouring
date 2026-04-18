@@ -185,7 +185,7 @@ export default function VenuesPage() {
     ]
 
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...venues.map(venue => [
         `"${venue.name}"`,
         `"${venue.type}"`,
@@ -205,7 +205,7 @@ export default function VenuesPage() {
         `"${venue.contactPerson}"`,
         `"${venue.rentalFee}"`,
         `"${venue.notes}"`
-      ].join(','))
+      ].join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })

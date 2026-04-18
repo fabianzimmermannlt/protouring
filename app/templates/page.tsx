@@ -165,7 +165,7 @@ export default function TemplatesPage() {
     ]
 
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...templates.map(template => [
         `"${template.name}"`,
         `"${template.type}"`,
@@ -178,7 +178,7 @@ export default function TemplatesPage() {
         `"${template.lastUpdated}"`,
         `"${template.usage}"`,
         `"${template.notes}"`
-      ].join(','))
+      ].join(';'))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
