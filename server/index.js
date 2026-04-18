@@ -4942,7 +4942,7 @@ app.get('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant, 
 })
 
 // POST /api/termine/:terminId/guest-lists
-app.post('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+app.post('/api/termine/:terminId/guest-lists', authenticateToken, requireTenant, async (req, res) => {
   try {
     const { name = 'Gästeliste', settings = {} } = req.body
     const r = await db.run(
@@ -5037,7 +5037,7 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
     const listSettings = JSON.parse(list.settings || '{}')
 
     // Wer darf überhaupt hinzufügen? (alle bis auf 'guest')
-    const allowedRoles = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew']
+    const allowedRoles = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest']
     if (!allowedRoles.includes(role)) return res.status(403).json({ error: 'Keine Berechtigung' })
 
     const isDirect = canAddDirectly(role, listSettings)

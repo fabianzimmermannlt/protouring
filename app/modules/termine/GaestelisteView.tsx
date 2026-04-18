@@ -325,7 +325,7 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
 export default function GaestelisteView({ terminId }: Props) {
   const role = getEffectiveRole()
   const isEditor = isEditorRole(role)
-  const canWrite = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'].includes(role)
+  const canWrite = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'].includes(role)
 
   const [lists, setLists] = useState<GuestList[]>([])
   const [activeListId, setActiveListId] = useState<number | null>(null)
