@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { usePolling } from '@/app/hooks/usePolling'
 import { Plus, Loader2, Check, Clock, Circle, ChevronDown, ChevronUp, Pencil, Trash2, X } from 'lucide-react'
 import {
   getTodos, createTodo, updateTodo, deleteTodo,
@@ -212,6 +213,18 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
     }
     Promise.all(fetches).finally(() => setLoading(false))
   }, [terminId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stilles Polling alle 30s — nur Todos, keine Kontakte
+  const refreshTodos = useCallback(async () => {
+    if (isGuest) return
+    try {
+      const t = await getTodos(terminId)
+      setTodos(t)
+    } catch {
+      // still ignorieren
+    }
+  }, [terminId, isGuest])
+  usePolling(refreshTodos, 30_000)
 
   // Nicht-Editoren sehen nur ihre eigenen Todos
   const visibleTodos = canSeeAll

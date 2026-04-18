@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { usePolling } from '@/app/hooks/usePolling'
 import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
@@ -890,7 +891,19 @@ export default function TerminePage({
     }
   }, [])
 
+  // Stilles Polling alle 30s — kein Loading-Spinner
+  const silentRefresh = useCallback(async () => {
+    if (!isAuthenticated()) return
+    try {
+      const t = await getTermine()
+      setTermine(t)
+    } catch {
+      // still ignorieren
+    }
+  }, [])
+
   useEffect(() => { loadData() }, [loadData])
+  usePolling(silentRefresh, 30_000)
 
   // ---- Modal helpers ----
 

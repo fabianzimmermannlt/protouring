@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { usePolling } from '@/app/hooks/usePolling'
 import {
   PlusIcon, LockClosedIcon, LockOpenIcon, ArrowDownTrayIcon,
   DocumentTextIcon, Cog6ToothIcon, CheckIcon,
@@ -417,6 +418,23 @@ export default function GaestelisteView({ terminId }: Props) {
 
   useEffect(() => { loadLists() }, [terminId])
   useEffect(() => { if (activeListId) loadEntries(activeListId) }, [activeListId])
+
+  // Ref damit der Polling-Callback immer den aktuellen activeListId kennt
+  const activeListIdRef = useRef(activeListId)
+  useEffect(() => { activeListIdRef.current = activeListId }, [activeListId])
+
+  // Stilles Polling alle 30s — nur Einträge der aktiven Liste
+  const refreshEntries = useCallback(async () => {
+    const id = activeListIdRef.current
+    if (!id) return
+    try {
+      const { list, entries: e } = await getGuestListEntries(id)
+      setActiveList(list); setEntries(e)
+    } catch {
+      // still ignorieren
+    }
+  }, [])
+  usePolling(refreshEntries, 30_000)
   useEffect(() => {
     getTravelParty(terminId).then(tp =>
       setTravelParty(tp.map(m => ({
