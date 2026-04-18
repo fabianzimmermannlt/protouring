@@ -372,6 +372,44 @@ body {
   padding: 0.25rem 0 0;
 }
 
+@media (max-width: 767px) {
+  .pt-datumzeile {
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.25rem 0;
+  }
+  .pt-datumzeile-neighbors--left {
+    padding-right: 0;
+    gap: 0;
+    justify-content: flex-start;
+  }
+  .pt-datumzeile-neighbors--right {
+    padding-left: 0;
+    gap: 0;
+    justify-content: flex-end;
+  }
+  /* hide the 2nd neighbor (distance=2) on mobile */
+  .pt-datumzeile-neighbors--left .pt-datumzeile-btn:first-child,
+  .pt-datumzeile-neighbors--right .pt-datumzeile-btn:last-child {
+    display: none;
+  }
+  .pt-datumzeile-btn {
+    padding: 0.25rem 0.5rem;
+    background: #f3f4f6;
+    border-radius: 0.5rem;
+  }
+  .pt-datumzeile-btn-city {
+    display: none;
+  }
+  .pt-datumzeile-center-date {
+    font-size: 0.875rem;
+  }
+  .pt-datumzeile-center {
+    text-align: center;
+  }
+}
+
 .pt-datumzeile-neighbors--left {
   display: flex;
   align-items: center;

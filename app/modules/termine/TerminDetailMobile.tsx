@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Edit2 } from 'lucide-react'
+import { Edit2 } from 'lucide-react'
 import AnreiseCard from './AnreiseCard'
 import HotelCard from './HotelCard'
 import LokaleKontakteCard from './LokaleKontakteCard'
@@ -13,39 +13,7 @@ import ToDoCard from './ToDoCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
 import { getCurrentUser } from '@/lib/api-client'
 import type { Termin } from '@/lib/api-client'
-
-// ── Accordion Section ──────────────────────────────────────────
-
-function Section({
-  title,
-  defaultOpen = false,
-  children,
-}: {
-  title: string
-  defaultOpen?: boolean
-  children: React.ReactNode
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</span>
-        <ChevronDown
-          size={16}
-          className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {open && (
-        <div className="border-t border-gray-100">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
+import { AccordionSection as Section } from '@/app/components/shared/AccordionSection'
 
 // ── Status badges ──────────────────────────────────────────────
 

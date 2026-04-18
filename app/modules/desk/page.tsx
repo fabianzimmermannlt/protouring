@@ -8,6 +8,7 @@ import { FileCard } from '@/app/components/shared/FileCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
 import GlobalTodoOverview from '@/app/components/shared/GlobalTodoOverview'
 import { getCurrentUser, getCurrentTenant, getMyContact, getMyRole, updateMyContact, changeMyPassword, isAdminRole, isEditorRole, getEffectiveRole, updateCurrentTenantRole, canDo, CAN_EDIT_ANKUENDIGUNG, ROLE_LABELS, type TenantRole } from '@/lib/api-client'
+import { AccordionSection } from '@/app/components/shared/AccordionSection'
 
 // Helper functions for localStorage (user-scoped keys)
 const loadFromFile = async (key: string): Promise<string | null> => {
@@ -280,17 +281,127 @@ export default function SchreibtischModule() {
       {/* Datum Zeile */}
       <div className="mb-2 md:mb-4">
         <div className="text-lg font-medium text-gray-700 text-center">
-          {new Date().toLocaleDateString('de-DE', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+          {new Date().toLocaleDateString('de-DE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
           })}
         </div>
       </div>
 
+      {/* ── MOBILE: Accordion ── */}
+      <div className="md:hidden flex flex-col gap-2">
+        <AccordionSection title="Ankündigung" defaultOpen>
+          <ContentBoard
+            entityType="desk"
+            entityId="announcement"
+            title=""
+            isAdmin={canDo(effectiveRole, CAN_EDIT_ANKUENDIGUNG)}
+            singleItem
+            hideEmptyButton
+            allowDelete={false}
+            modalTitle={{ new: 'Ankündigung erstellen', edit: 'Ankündigung bearbeiten' }}
+            titlePlaceholder="Titel der Ankündigung"
+            newItemLabel="Ankündigung erstellen"
+            defaultContent={{
+              title: 'Willkommen bei ProTouring 👋',
+              content: 'Hier kannst du aktuelle Infos, Ankündigungen oder Hinweise für dein Team hinterlegen.'
+            }}
+          />
+        </AccordionSection>
+
+        <AccordionSection title="Offene Aufgaben" defaultOpen>
+          <div className="p-1">
+            <GlobalTodoOverview />
+          </div>
+        </AccordionSection>
+
+        <AccordionSection title="Persönliche Notizen" defaultOpen>
+          <div className="p-3">
+            <ContentBoard
+              entityType="desk_personal"
+              entityId={currentUserId}
+              title=""
+              isAdmin={true}
+              singleItem
+              hideEmptyButton
+              allowDelete={false}
+              fixedTitle="Persönliche Notizen"
+              showTitleField={false}
+              modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+              newItemLabel="Notiz erstellen"
+              defaultContent={{ title: 'Persönliche Notizen', content: '' }}
+            />
+          </div>
+        </AccordionSection>
+
+        <AccordionSection title="Dein Profil">
+          <div className="px-4 py-3 text-sm space-y-1">
+            <div className="font-medium text-gray-900">{profileData.firstName} {profileData.lastName}</div>
+            <div className="text-gray-500">{profileData.email}</div>
+            {profileData.phone && <div className="text-gray-500">{profileData.phone}</div>}
+            {profileData.function1 && (
+              <div className="text-gray-500">{[profileData.function1, profileData.function2, profileData.function3].filter(Boolean).join(', ')}</div>
+            )}
+          </div>
+        </AccordionSection>
+
+        <AccordionSection title="Konversation">
+          <Communication
+            title="Allgemeine Konversation"
+            entityType="desk"
+            entityId="general"
+            className="h-64"
+          />
+        </AccordionSection>
+
+        <AccordionSection title="Pinnwand">
+          <div className="p-3">
+            <ContentBoard
+              entityType="desk"
+              entityId="notice_board"
+              title=""
+              isAdmin={isAdmin}
+              modalTitle={{ new: 'Neue Mitteilung', edit: 'Mitteilung bearbeiten' }}
+              titlePlaceholder="Titel der Mitteilung"
+              newItemLabel="Neue Mitteilung"
+            />
+          </div>
+        </AccordionSection>
+
+        {effectiveRole !== 'guest' && (
+          <AccordionSection title="Allgemeine Dateien">
+            <FileCard
+              title=""
+              entityType="desk"
+              entityId="shared"
+              category="general"
+              maxFiles={10}
+              maxFileSizeMB={50}
+              canManage={isEditor}
+            />
+          </AccordionSection>
+        )}
+
+        {effectiveRole !== 'guest' && (
+          <AccordionSection title="Persönliche Dateien">
+            <FileCard
+              title=""
+              entityType="desk"
+              entityId={currentUserId}
+              category="personal"
+              maxFiles={10}
+              maxFileSizeMB={20}
+              canManage={true}
+            />
+          </AccordionSection>
+        )}
+      </div>
+
+      {/* ── DESKTOP: Grid ── */}
       {/* Zeile 1: 4 Spalten */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-2 md:mb-4">
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         
         {/* DEIN PROFIL Section */}
         <div className="pt-card h-[400px] flex flex-col">
@@ -417,7 +528,7 @@ export default function SchreibtischModule() {
       </div>
 
       {/* Zeile 2: 4 Spalten */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* ALLGEMEINE KONVERSATION Section */}
         <div className="pt-card h-[400px] flex flex-col">
