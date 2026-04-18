@@ -132,7 +132,15 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
 
           {/* Termine */}
           <button
-            onClick={() => { setShowMore(false); onTabChange('appointments') }}
+            onClick={() => {
+              setShowMore(false)
+              if (activeTab === 'appointments') {
+                // Bereits in Termine → zurück zur Liste
+                window.dispatchEvent(new CustomEvent('termine-go-to-list'))
+              } else {
+                onTabChange('appointments')
+              }
+            }}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
               activeTab === 'appointments' ? 'text-orange-500' : 'text-gray-500'
             }`}
