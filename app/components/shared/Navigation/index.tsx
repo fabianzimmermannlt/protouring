@@ -295,7 +295,7 @@ export function Navigation({
               onClick={() => setShowUserMenu(v => !v)}
               className="flex items-center gap-1 text-gray-300 hover:text-white"
             >
-              <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white text-xs font-semibold">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
                 {initials}
               </div>
               <ChevronDownIcon className={`w-3 h-3 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
