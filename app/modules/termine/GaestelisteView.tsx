@@ -350,9 +350,13 @@ export default function GaestelisteView({ terminId }: Props) {
   const loadLists = useCallback(async () => {
     setListsLoading(true)
     try {
-      const l = await getGuestLists(terminId)
+      let l = await getGuestLists(terminId)
+      if (l.length === 0) {
+        const created = await createGuestList(terminId, 'Gästeliste')
+        l = [created]
+      }
       setLists(l)
-      if (l.length > 0 && !activeListId) setActiveListId(l[0].id)
+      if (!activeListId) setActiveListId(l[0].id)
     } catch {} finally { setListsLoading(false) }
   }, [terminId, activeListId])
 
@@ -449,19 +453,6 @@ export default function GaestelisteView({ terminId }: Props) {
   const totalTickets = entries.filter(e => e.status !== 'rejected').reduce((s, e) => s + passTotal(e.passes), 0)
 
   if (listsLoading) return <div className="p-8 text-center text-gray-400 text-sm">Laden...</div>
-
-  if (lists.length === 0) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-gray-400 mb-4">Noch keine Gästeliste für diesen Termin.</p>
-        {isEditor && (
-          <button onClick={handleAddList} className="btn btn-primary">
-            <PlusIcon className="w-4 h-4" /> Erste Liste erstellen
-          </button>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div className="p-4">
