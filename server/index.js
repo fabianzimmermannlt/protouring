@@ -5148,6 +5148,7 @@ app.get('/api/guest-lists/:id/export/csv', authenticateToken, requireTenant, asy
        FROM guest_list_entries gle
        LEFT JOIN users u ON u.id = gle.invited_by_user_id
        WHERE gle.guest_list_id = ? AND gle.tenant_id = ?
+         AND gle.status NOT IN ('pending', 'rejected')
        ORDER BY gle.last_name ASC, gle.first_name ASC`,
       [req.params.id, req.tenant.id]
     )
@@ -5195,6 +5196,7 @@ app.get('/api/guest-lists/:id/export/pdf', authenticateToken, requireTenant, asy
        FROM guest_list_entries gle
        LEFT JOIN users u ON u.id = gle.invited_by_user_id
        WHERE gle.guest_list_id = ? AND gle.tenant_id = ?
+         AND gle.status NOT IN ('pending', 'rejected')
        ORDER BY gle.last_name ASC, gle.first_name ASC`,
       [req.params.id, req.tenant.id]
     )

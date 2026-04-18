@@ -108,10 +108,10 @@ function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, o
 
           <div>
             <label className="form-label">Eingeladen von</label>
-            <div className="flex gap-2">
-              {tpOptions.length > 0 && (
+            {tpOptions.length > 0 ? (
+              <>
                 <select
-                  className="form-input w-40 shrink-0"
+                  className="form-input"
                   value={invitedByUserId ?? ''}
                   onChange={e => {
                     const uid = parseInt(e.target.value) || null
@@ -119,20 +119,31 @@ function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, o
                     if (uid) {
                       const m = tpOptions.find(t => t.userId === uid)
                       if (m) setInvitedByText(m.displayName)
+                    } else {
+                      setInvitedByText('')
                     }
                   }}
                 >
-                  <option value="">Manuell</option>
+                  <option value="">Manuell eingeben…</option>
                   {tpOptions.map(m => <option key={m.userId} value={m.userId!}>{m.displayName}</option>)}
                 </select>
-              )}
+                {invitedByUserId === null && (
+                  <input
+                    className="form-input mt-2"
+                    placeholder="Name freitext..."
+                    value={invitedByText}
+                    onChange={e => setInvitedByText(e.target.value)}
+                  />
+                )}
+              </>
+            ) : (
               <input
-                className="form-input flex-1"
+                className="form-input"
                 placeholder="Name freitext..."
                 value={invitedByText}
                 onChange={e => setInvitedByText(e.target.value)}
               />
-            </div>
+            )}
           </div>
 
           <div>
@@ -593,6 +604,7 @@ export default function GaestelisteView({ terminId }: Props) {
         <table className="data-table">
           <thead>
             <tr>
+              {isEditor && <th className="w-14" />}
               <th className="sortable text-left" onClick={() => toggleSort('last_name')}>
                 Nachname <span className={`sort-indicator${sortKey === 'last_name' ? ' active' : ''}`}>{sortKey === 'last_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
               </th>
@@ -618,47 +630,64 @@ export default function GaestelisteView({ terminId }: Props) {
             {filteredSortedEntries.length === 0 ? (
               <tr><td colSpan={99} className="text-center py-10 text-gray-400">{searchTerm ? 'Keine Treffer' : 'Noch keine Einträge'}</td></tr>
             ) : filteredSortedEntries.map(entry => {
-              const isWish = entry.is_wish === 1
+              const isWish    = entry.is_wish === 1
               const isPending = isWish && entry.status === 'pending'
               const isRejected = entry.status === 'rejected'
-              // Abgelehnte ausblenden wenn Liste gesperrt
-              if (isLocked && isRejected) return null
+
+              // Pending + abgelehnte ausblenden wenn Liste gesperrt
+              if (isLocked && (isPending || isRejected)) return null
+
               const total = passTotal(entry.passes)
               const inviterName = entry.invited_by_text
                 || [entry.inviter_first_name, entry.inviter_last_name].filter(Boolean).join(' ')
                 || null
-              // Zeilenstil: pending-Wünsche grau+kursiv, abgelehnte durchgestrichen
-              const rowClass = isPending
-                ? 'text-gray-400 italic'
-                : isRejected ? 'text-gray-400' : ''
+
+              // Pending-Wünsche: halbtransparent + kursiv (gilt für gesamte Zeile inkl. Kinder)
+              const rowStyle: React.CSSProperties = isPending
+                ? { opacity: 0.5, fontStyle: 'italic' }
+                : isRejected ? { color: '#9ca3af' } : {}
+
               return (
-                <tr key={entry.id} className={rowClass}>
+                <tr key={entry.id} style={rowStyle}>
+                  {/* Approve/Reject für Editoren (erste Spalte) */}
+                  {isEditor && (
+                    <td className="px-2 py-2.5">
+                      {isWish && !isLocked && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleApprove(entry, 'approved')}
+                            title="Annehmen"
+                            style={{ fontStyle: 'normal' }}
+                            className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
+                              entry.status === 'approved'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-gray-200 text-gray-500 hover:bg-green-100 hover:text-green-700'
+                            }`}
+                          >✓</button>
+                          <button
+                            onClick={() => handleApprove(entry, 'rejected')}
+                            title="Ablehnen"
+                            style={{ fontStyle: 'normal' }}
+                            className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
+                              entry.status === 'rejected'
+                                ? 'bg-red-500 text-white'
+                                : 'bg-gray-200 text-gray-500 hover:bg-red-100 hover:text-red-700'
+                            }`}
+                          >✗</button>
+                        </div>
+                      )}
+                    </td>
+                  )}
                   {/* Nachname */}
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      {isWish && (
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          entry.status === 'approved' ? 'bg-green-500' :
-                          entry.status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
-                        }`} />
-                      )}
                       <span className={`font-medium ${isRejected ? 'line-through' : ''}`}>
                         {entry.last_name}
                       </span>
                       {entry.company && <span className="text-xs ml-1">({entry.company})</span>}
                     </div>
-                    {isPending && isEditor && (
-                      <div className="flex gap-1 mt-1">
-                        <button onClick={() => handleApprove(entry, 'approved')} className="not-italic text-xs text-green-700 bg-green-50 hover:bg-green-100 px-2 py-0.5 rounded flex items-center gap-0.5">
-                          <CheckIcon className="w-3 h-3" /> Annehmen
-                        </button>
-                        <button onClick={() => handleApprove(entry, 'rejected')} className="not-italic text-xs text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded flex items-center gap-0.5">
-                          <XMarkIcon className="w-3 h-3" /> Ablehnen
-                        </button>
-                      </div>
-                    )}
                     {isPending && !isEditor && (
-                      <span className="text-xs text-amber-600 not-italic">Wunsch – ausstehend</span>
+                      <span className="text-xs text-amber-600" style={{ fontStyle: 'normal' }}>Wunsch – ausstehend</span>
                     )}
                   </td>
                   {/* Vorname */}
@@ -670,11 +699,11 @@ export default function GaestelisteView({ terminId }: Props) {
                   {passTypes.map(t => (
                     <td key={t} className="px-2 py-2.5 text-center text-sm">
                       {(entry.passes[t] ?? 0) > 0
-                        ? <span className="font-medium text-gray-900">{entry.passes[t]}</span>
+                        ? <span className="font-medium">{entry.passes[t]}</span>
                         : <span className="text-gray-300">–</span>}
                     </td>
                   ))}
-                  <td className="px-2 py-2.5 text-center font-semibold text-gray-900 text-sm">
+                  <td className="px-2 py-2.5 text-center font-semibold text-sm">
                     {total > 0 ? total : <span className="text-gray-300">–</span>}
                   </td>
                   <td className="px-4 py-2.5">
