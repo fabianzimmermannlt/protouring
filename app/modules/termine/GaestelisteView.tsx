@@ -205,8 +205,10 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
     setPassTypes(prev => prev.includes(t) ? prev.filter(p => p !== t) : [...prev, t])
 
   const addCustomPassType = () => {
-    const v = newPassType.trim().toLowerCase()
-    if (v && !passTypes.includes(v)) { setPassTypes(prev => [...prev, v]); setNewPassType('') }
+    const v = newPassType.trim()
+    if (v && !passTypes.map(t => t.toLowerCase()).includes(v.toLowerCase())) {
+      setPassTypes(prev => [...prev, v]); setNewPassType('')
+    }
   }
 
   const handleSave = async () => {
@@ -482,66 +484,70 @@ export default function GaestelisteView({ terminId }: Props) {
 
   return (
     <div className="p-4">
-      {/* Tabs */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {lists.map(l => (
-          <button
-            key={l.id}
-            onClick={() => setActiveListId(l.id)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              l.id === activeListId
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-            }`}
-          >
-            {l.name}
-            {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
-            {(l.entry_count ?? 0) > 0 && (
-              <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
-                {l.entry_count}
-              </span>
-            )}
-          </button>
-        ))}
-        {isEditor && (
-          <button
-            onClick={handleAddList}
-            disabled={creatingList}
-            className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-          >
-            + Weitere Liste
-          </button>
-        )}
-      </div>
+      {/* Toolbar + Tabs in einer Zeile */}
+      <div className="flex items-center gap-2 mb-4">
+        {/* Links: Hinzufügen / Abschließen */}
+        <div className="flex items-center gap-2 shrink-0">
+          {canWrite && !isLocked && (
+            <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
+              <PlusIcon className="w-4 h-4" />
+              {isDirect ? 'Hinzufügen' : 'Wunsch'}
+            </button>
+          )}
+          {isEditor && (
+            <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+              {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
+              {isLocked ? 'Entsperren' : 'Abschließen'}
+            </button>
+          )}
+        </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {canWrite && !isLocked && (
-          <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
-            <PlusIcon className="w-4 h-4" />
-            {isDirect ? 'Hinzufügen' : 'Wunsch'}
-          </button>
-        )}
-        {isEditor && (
-          <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
-            {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-            {isLocked ? 'Entsperren' : 'Abschließen'}
-          </button>
-        )}
+        {/* Mitte: Tabs zentriert */}
+        <div className="flex-1 flex items-center justify-center gap-2 flex-wrap">
+          {lists.map(l => (
+            <button
+              key={l.id}
+              onClick={() => setActiveListId(l.id)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                l.id === activeListId
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+              }`}
+            >
+              {l.name}
+              {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
+              {(l.entry_count ?? 0) > 0 && (
+                <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
+                  {l.entry_count}
+                </span>
+              )}
+            </button>
+          ))}
+          {isEditor && (
+            <button
+              onClick={handleAddList}
+              disabled={creatingList}
+              className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+            >
+              + Weitere Liste
+            </button>
+          )}
+        </div>
 
-        <div className="flex-1" />
-
-        {isEditor && (
-          <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
-            <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
+        {/* Rechts: Einstellungen, CSV, PDF */}
+        <div className="flex items-center gap-2 shrink-0">
+          {isEditor && (
+            <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
+              <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
+            </button>
+          )}
+          <button onClick={handleCsvExport} className="btn btn-ghost">
+            <ArrowDownTrayIcon className="w-4 h-4" /> CSV
           </button>
-        )}
-        <button onClick={handleCsvExport} className="btn btn-ghost">
-          <ArrowDownTrayIcon className="w-4 h-4" /> CSV
-        </button>
-        <button onClick={handlePdfExport} className="btn btn-ghost">
-          <DocumentTextIcon className="w-4 h-4" /> PDF
-        </button>
+          <button onClick={handlePdfExport} className="btn btn-ghost">
+            <DocumentTextIcon className="w-4 h-4" /> PDF
+          </button>
+        </div>
       </div>
 
       {/* Stats + Suche */}
@@ -675,6 +681,7 @@ export default function GaestelisteView({ terminId }: Props) {
       {/* Modals */}
       {showAddModal && (
         <EntryModal
+          key={`${activeListId}-${JSON.stringify(listSettings.pass_types)}-${editEntry?.id ?? 'new'}`}
           listSettings={listSettings}
           entry={editEntry}
           travelParty={travelParty}
