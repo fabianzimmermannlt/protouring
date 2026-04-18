@@ -524,7 +524,7 @@ export default function GaestelisteView({ terminId }: Props) {
   if (listsLoading) return <div className="p-8 text-center text-gray-400 text-sm">Laden...</div>
 
   return (
-    <div className="p-4">
+    <div className="px-4 pb-4">
       {/* Toolbar + Tabs in einer Zeile */}
       <div className="flex items-center gap-2 mb-4">
         {/* Links: Hinzufügen / Abschließen */}
