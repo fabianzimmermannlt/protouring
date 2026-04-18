@@ -538,7 +538,7 @@ export default function GaestelisteView({ terminId }: Props) {
               <th className="text-left">E-Mail</th>
               {passTypes.map(t => (
                 <th key={t} className="text-center whitespace-nowrap">
-                  {(PASS_LABELS[t] ?? t).substring(0, 3).toUpperCase()}
+                  {PASS_LABELS[t] ?? t}
                 </th>
               ))}
               <th className="text-center">∑</th>
@@ -549,14 +549,18 @@ export default function GaestelisteView({ terminId }: Props) {
             {entries.length === 0 ? (
               <tr><td colSpan={99} className="text-center py-10 text-gray-400">Noch keine Einträge</td></tr>
             ) : entries.map(entry => {
-              const isPending = entry.is_wish && entry.status === 'pending'
+              const isWish = entry.is_wish === 1
+              const isPending = isWish && entry.status === 'pending'
               const isRejected = entry.status === 'rejected'
               const total = passTotal(entry.passes)
+              const inviterName = entry.invited_by_text
+                || [entry.inviter_first_name, entry.inviter_last_name].filter(Boolean).join(' ')
+                || null
               return (
                 <tr key={entry.id} className={isPending ? 'bg-amber-50' : ''}>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      {entry.is_wish && (
+                      {isWish && (
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                           entry.status === 'approved' ? 'bg-green-500' :
                           entry.status === 'rejected' ? 'bg-red-400' : 'bg-amber-400'
@@ -581,7 +585,7 @@ export default function GaestelisteView({ terminId }: Props) {
                       <span className="text-xs text-amber-600">Wunsch – ausstehend</span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-gray-500 text-sm">{entry.invited_by_text || '–'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-sm">{inviterName || '–'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-xs">{entry.email || '–'}</td>
                   {passTypes.map(t => (
                     <td key={t} className="px-2 py-2.5 text-center text-sm">
