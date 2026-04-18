@@ -5075,7 +5075,7 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [req.params.id, req.tenant.id, first_name, last_name, company || null, invited_by_text || null, invited_by_user_id || null, email || null, JSON.stringify(passes), is_wish, status, notes || null, req.user.id]
     )
-    const entry = await db.get('SELECT * FROM guest_list_entries WHERE id = ?', [r.lastID])
+    const entry = await db.get('SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name FROM guest_list_entries gle LEFT JOIN users u ON u.id = gle.invited_by_user_id WHERE gle.id = ?', [r.lastID])
     res.json({ entry: { ...entry, passes: JSON.parse(entry.passes || '{}') } })
   } catch (e) {
     console.error('POST entry failed', e)
@@ -5113,7 +5113,7 @@ app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async
     vals.push(req.params.id, req.tenant.id)
 
     await db.run(`UPDATE guest_list_entries SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, vals)
-    const updated = await db.get('SELECT * FROM guest_list_entries WHERE id = ?', [req.params.id])
+    const updated = await db.get('SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name FROM guest_list_entries gle LEFT JOIN users u ON u.id = gle.invited_by_user_id WHERE gle.id = ?', [req.params.id])
     res.json({ entry: { ...updated, passes: JSON.parse(updated.passes || '{}') } })
   } catch (e) {
     console.error('PATCH entry failed', e)
