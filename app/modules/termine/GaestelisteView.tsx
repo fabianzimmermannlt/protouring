@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   PlusIcon, LockClosedIcon, LockOpenIcon, ArrowDownTrayIcon,
   DocumentTextIcon, Cog6ToothIcon, CheckIcon,
@@ -334,6 +334,9 @@ export default function GaestelisteView({ terminId }: Props) {
   const [travelParty, setTravelParty] = useState<Array<{ id: number; displayName: string; userId?: number | null }>>([])
   const [listsLoading, setListsLoading] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortKey, setSortKey] = useState<'last_name' | 'first_name' | 'invited_by_text' | 'email'>('last_name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [showAddModal, setShowAddModal] = useState(false)
   const [editEntry, setEditEntry] = useState<GuestListEntry | null>(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -447,6 +450,28 @@ export default function GaestelisteView({ terminId }: Props) {
   const listSettings = activeList?.settings ?? {}
   const passTypes = listSettings.pass_types ?? DEFAULT_PASS_TYPES
   const isLocked = activeList?.status === 'locked'
+
+  const toggleSort = (key: typeof sortKey) => {
+    if (key === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const filteredSortedEntries = useMemo(() => {
+    const q = searchTerm.toLowerCase()
+    const filtered = q
+      ? entries.filter(e =>
+          [e.first_name, e.last_name, e.company, e.invited_by_text,
+           e.inviter_first_name, e.inviter_last_name, e.email]
+            .some(v => v?.toLowerCase().includes(q))
+        )
+      : entries
+    return [...filtered].sort((a, b) => {
+      const av = (a[sortKey] ?? '').toLowerCase()
+      const bv = (b[sortKey] ?? '').toLowerCase()
+      const cmp = av.localeCompare(bv, 'de')
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [entries, searchTerm, sortKey, sortDir])
   const isDirect = canAddDirect(role, listSettings)
   const pendingCount = entries.filter(e => e.status === 'pending').length
   const approvedCount = entries.filter(e => e.status === 'approved').length
@@ -518,24 +543,43 @@ export default function GaestelisteView({ terminId }: Props) {
         </button>
       </div>
 
-      {/* Stats */}
-      {activeList && (
-        <div className="flex gap-4 mb-3 text-sm text-gray-500">
-          <span>{approvedCount} bestätigt</span>
-          {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
-          <span>{totalTickets} Tickets gesamt</span>
-          {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
-        </div>
-      )}
+      {/* Stats + Suche */}
+      <div className="flex items-center gap-4 mb-3 flex-wrap">
+        {activeList && (
+          <div className="flex gap-4 text-sm text-gray-500">
+            <span>{approvedCount} bestätigt</span>
+            {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
+            <span>{totalTickets} Tickets gesamt</span>
+            {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
+          </div>
+        )}
+        <div className="flex-1" />
+        <input
+          type="text"
+          placeholder="Gästeliste durchsuchen..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="search-input"
+        />
+      </div>
 
       {/* Tabelle */}
       <div className="data-table-wrapper">
         <table className="data-table">
           <thead>
             <tr>
-              <th className="text-left">Name</th>
-              <th className="text-left">Eingeladen von</th>
-              <th className="text-left">E-Mail</th>
+              <th className="sortable text-left" onClick={() => toggleSort('last_name')}>
+                Nachname <span className={`sort-indicator${sortKey === 'last_name' ? ' active' : ''}`}>{sortKey === 'last_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+              </th>
+              <th className="sortable text-left" onClick={() => toggleSort('first_name')}>
+                Vorname <span className={`sort-indicator${sortKey === 'first_name' ? ' active' : ''}`}>{sortKey === 'first_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+              </th>
+              <th className="sortable text-left" onClick={() => toggleSort('invited_by_text')}>
+                Eingeladen von <span className={`sort-indicator${sortKey === 'invited_by_text' ? ' active' : ''}`}>{sortKey === 'invited_by_text' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+              </th>
+              <th className="sortable text-left" onClick={() => toggleSort('email')}>
+                E-Mail <span className={`sort-indicator${sortKey === 'email' ? ' active' : ''}`}>{sortKey === 'email' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+              </th>
               {passTypes.map(t => (
                 <th key={t} className="text-center whitespace-nowrap">
                   {PASS_LABELS[t] ?? t}
@@ -546,9 +590,9 @@ export default function GaestelisteView({ terminId }: Props) {
             </tr>
           </thead>
           <tbody>
-            {entries.length === 0 ? (
-              <tr><td colSpan={99} className="text-center py-10 text-gray-400">Noch keine Einträge</td></tr>
-            ) : entries.map(entry => {
+            {filteredSortedEntries.length === 0 ? (
+              <tr><td colSpan={99} className="text-center py-10 text-gray-400">{searchTerm ? 'Keine Treffer' : 'Noch keine Einträge'}</td></tr>
+            ) : filteredSortedEntries.map(entry => {
               const isWish = entry.is_wish === 1
               const isPending = isWish && entry.status === 'pending'
               const isRejected = entry.status === 'rejected'
@@ -558,6 +602,7 @@ export default function GaestelisteView({ terminId }: Props) {
                 || null
               return (
                 <tr key={entry.id} className={isPending ? 'bg-amber-50' : ''}>
+                  {/* Nachname */}
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       {isWish && (
@@ -567,9 +612,9 @@ export default function GaestelisteView({ terminId }: Props) {
                         }`} />
                       )}
                       <span className={`font-medium ${isRejected ? 'line-through text-gray-400' : ''}`}>
-                        {entry.first_name} {entry.last_name}
+                        {entry.last_name}
                       </span>
-                      {entry.company && <span className="text-gray-400 text-xs">({entry.company})</span>}
+                      {entry.company && <span className="text-gray-400 text-xs ml-1">({entry.company})</span>}
                     </div>
                     {isPending && isEditor && (
                       <div className="flex gap-1 mt-1">
@@ -584,6 +629,10 @@ export default function GaestelisteView({ terminId }: Props) {
                     {isPending && !isEditor && (
                       <span className="text-xs text-amber-600">Wunsch – ausstehend</span>
                     )}
+                  </td>
+                  {/* Vorname */}
+                  <td className="px-4 py-2.5">
+                    <span className={isRejected ? 'line-through text-gray-400' : ''}>{entry.first_name}</span>
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-sm">{inviterName || '–'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-xs">{entry.email || '–'}</td>
