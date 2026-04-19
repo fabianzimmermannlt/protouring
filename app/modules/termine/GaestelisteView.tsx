@@ -8,6 +8,7 @@ import {
   XMarkIcon, PencilIcon, TrashIcon,
 } from '@heroicons/react/24/outline'
 import { X } from 'lucide-react'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 import {
   getGuestLists, createGuestList, updateGuestList,
   getGuestListEntries, createGuestListEntry, updateGuestListEntry, deleteGuestListEntry,
@@ -538,223 +539,369 @@ export default function GaestelisteView({ terminId }: Props) {
   const pendingCount = entries.filter(e => e.status === 'pending').length
   const approvedCount = entries.filter(e => e.status === 'approved').length
   const totalTickets = entries.filter(e => e.status !== 'rejected').reduce((s, e) => s + passTotal(e.passes), 0)
+  const isMobile = useIsMobile()
 
   if (listsLoading) return <div className="p-8 text-center text-gray-400 text-sm">Laden...</div>
 
+  // ── Shared helpers ────────────────────────────────────────────
+  const listTabs = (
+    <div className="flex items-center gap-2 flex-wrap">
+      {lists.map(l => (
+        <button
+          key={l.id}
+          onClick={() => setActiveListId(l.id)}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            l.id === activeListId
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+          }`}
+        >
+          {l.name}
+          {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
+          {(l.entry_count ?? 0) > 0 && (
+            <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
+              {l.entry_count}
+            </span>
+          )}
+        </button>
+      ))}
+      {isEditor && (
+        <button
+          onClick={handleAddList}
+          disabled={creatingList}
+          className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+        >
+          + Weitere Liste
+        </button>
+      )}
+    </div>
+  )
+
+  const statsBar = activeList && (
+    <div className="flex gap-4 text-sm text-gray-500 mt-2 px-1">
+      <span>{approvedCount} bestätigt</span>
+      {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
+      <span>{totalTickets} Tickets gesamt</span>
+      {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
+    </div>
+  )
+
   return (
     <div className="px-4 pb-4">
-      {/* Toolbar + Tabs in einer Zeile */}
-      <div className="flex items-center gap-2 mb-4">
-        {/* Links: Hinzufügen / Abschließen */}
-        <div className="flex items-center gap-2 shrink-0">
-          {canWrite && !isLocked && (
-            <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
-              <PlusIcon className="w-4 h-4" />
-              {isDirect ? 'Hinzufügen' : 'Wunsch'}
-            </button>
-          )}
-          {isEditor && (
-            <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
-              {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-              {isLocked ? 'Entsperren' : 'Abschließen'}
-            </button>
-          )}
-        </div>
 
-        {/* Mitte: Tabs zentriert */}
-        <div className="flex-1 flex items-center justify-center gap-2 flex-wrap">
-          {lists.map(l => (
-            <button
-              key={l.id}
-              onClick={() => setActiveListId(l.id)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                l.id === activeListId
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-              }`}
-            >
-              {l.name}
-              {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
-              {(l.entry_count ?? 0) > 0 && (
-                <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
-                  {l.entry_count}
-                </span>
+      {isMobile ? (
+        /* ══════════════════════ MOBILE LAYOUT ══════════════════════ */
+        <>
+          {/* Row 1: Action buttons + Icon buttons */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex gap-2">
+              {canWrite && !isLocked && (
+                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
+                  <PlusIcon className="w-4 h-4" />
+                  {isDirect ? 'Hinzufügen' : 'Wunsch'}
+                </button>
               )}
-            </button>
-          ))}
-          {isEditor && (
-            <button
-              onClick={handleAddList}
-              disabled={creatingList}
-              className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-            >
-              + Weitere Liste
-            </button>
-          )}
-        </div>
+              {isEditor && (
+                <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
+                  {isLocked ? 'Freigeben' : 'Abschl.'}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1">
+              {isEditor && (
+                <button onClick={() => setShowSettings(true)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                  <Cog6ToothIcon className="w-5 h-5" />
+                </button>
+              )}
+              <button onClick={handleCsvExport} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                <ArrowDownTrayIcon className="w-5 h-5" />
+              </button>
+              <button onClick={handlePdfExport} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                <DocumentTextIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
 
-        {/* Rechts: Einstellungen, CSV, PDF */}
-        <div className="flex items-center gap-2 shrink-0">
-          {isEditor && (
-            <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
-              <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
-            </button>
-          )}
-          <button onClick={handleCsvExport} className="btn btn-ghost">
-            <ArrowDownTrayIcon className="w-4 h-4" /> CSV
-          </button>
-          <button onClick={handlePdfExport} className="btn btn-ghost">
-            <DocumentTextIcon className="w-4 h-4" /> PDF
-          </button>
-        </div>
-      </div>
+          {/* Row 2: List tabs */}
+          <div className="mb-3">{listTabs}</div>
 
-      {/* Suche */}
-      <div className="flex items-center gap-4 mb-3 flex-wrap">
-        <div className="flex-1" />
-        <input
-          type="text"
-          placeholder="Gästeliste durchsuchen..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
-      </div>
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Suchen..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="search-input mb-3"
+          />
 
-      {/* Tabelle */}
-      <div className="data-table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              {isEditor && <th className="w-14" />}
-              <th className="sortable text-left" onClick={() => toggleSort('last_name')}>
-                Nachname <span className={`sort-indicator${sortKey === 'last_name' ? ' active' : ''}`}>{sortKey === 'last_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
-              </th>
-              <th className="sortable text-left" onClick={() => toggleSort('first_name')}>
-                Vorname <span className={`sort-indicator${sortKey === 'first_name' ? ' active' : ''}`}>{sortKey === 'first_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
-              </th>
-              <th className="sortable text-left" onClick={() => toggleSort('invited_by_text')}>
-                Eingeladen von <span className={`sort-indicator${sortKey === 'invited_by_text' ? ' active' : ''}`}>{sortKey === 'invited_by_text' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
-              </th>
-              <th className="sortable text-left" onClick={() => toggleSort('email')}>
-                E-Mail <span className={`sort-indicator${sortKey === 'email' ? ' active' : ''}`}>{sortKey === 'email' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
-              </th>
-              {passTypes.map(t => (
-                <th key={t} className="text-center whitespace-nowrap">
-                  {PASS_LABELS[t] ?? t}
-                </th>
-              ))}
-              <th className="text-center">∑</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSortedEntries.length === 0 ? (
-              <tr><td colSpan={99} className="text-center py-10 text-gray-400">{searchTerm ? 'Keine Treffer' : 'Noch keine Einträge'}</td></tr>
-            ) : filteredSortedEntries.map(entry => {
-              const isWish    = entry.is_wish === 1
-              const isPending = isWish && entry.status === 'pending'
-              const isRejected = entry.status === 'rejected'
+          {/* Card list */}
+          {filteredSortedEntries.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm">
+              {searchTerm ? 'Keine Treffer' : 'Noch keine Einträge'}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {filteredSortedEntries.map(entry => {
+                const isWish     = entry.is_wish === 1
+                const isPending  = isWish && entry.status === 'pending'
+                const isRejected = entry.status === 'rejected'
+                if (isLocked && (isPending || isRejected)) return null
+                const total = passTotal(entry.passes)
+                const inviterName = entry.invited_by_text
+                  || [entry.inviter_first_name, entry.inviter_last_name].filter(Boolean).join(' ')
+                  || null
+                const activePasses = passTypes.filter(t => (entry.passes[t] ?? 0) > 0)
 
-              // Pending + abgelehnte ausblenden wenn Liste gesperrt
-              if (isLocked && (isPending || isRejected)) return null
-
-              const total = passTotal(entry.passes)
-              const inviterName = entry.invited_by_text
-                || [entry.inviter_first_name, entry.inviter_last_name].filter(Boolean).join(' ')
-                || null
-
-              // Pending-Wünsche: halbtransparent + kursiv (gilt für gesamte Zeile inkl. Kinder)
-              const rowStyle: React.CSSProperties = isPending
-                ? { opacity: 0.5, fontStyle: 'italic' }
-                : isRejected ? { color: '#9ca3af' } : {}
-
-              return (
-                <tr key={entry.id} style={rowStyle}>
-                  {/* Approve/Reject für Editoren (erste Spalte) */}
-                  {isEditor && (
-                    <td className="px-2 py-2.5">
-                      {isWish && !isLocked && (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleApprove(entry, 'approved')}
-                            title="Annehmen"
-                            style={{ fontStyle: 'normal' }}
-                            className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
-                              entry.status === 'approved'
-                                ? 'bg-green-500 text-white'
-                                : 'bg-gray-200 text-gray-500 hover:bg-green-100 hover:text-green-700'
-                            }`}
-                          >✓</button>
-                          <button
-                            onClick={() => handleApprove(entry, 'rejected')}
-                            title="Ablehnen"
-                            style={{ fontStyle: 'normal' }}
-                            className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
-                              entry.status === 'rejected'
-                                ? 'bg-red-500 text-white'
-                                : 'bg-gray-200 text-gray-500 hover:bg-red-100 hover:text-red-700'
-                            }`}
-                          >✗</button>
+                return (
+                  <div
+                    key={entry.id}
+                    className={`bg-white rounded-xl border px-4 py-3 ${
+                      isPending ? 'border-amber-200 opacity-70' :
+                      isRejected ? 'border-gray-100' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      {/* Left: Name + meta */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-semibold text-sm text-gray-900 ${isRejected ? 'line-through text-gray-400' : ''}`}>
+                            {entry.first_name} {entry.last_name}
+                          </span>
+                          {entry.company && (
+                            <span className="text-xs text-gray-400">({entry.company})</span>
+                          )}
+                          {isPending && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full" style={{ fontStyle: 'normal' }}>
+                              ausstehend
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="text-xs bg-red-50 text-red-400 px-1.5 py-0.5 rounded-full">abgelehnt</span>
+                          )}
                         </div>
-                      )}
-                    </td>
-                  )}
-                  {/* Nachname */}
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium ${isRejected ? 'line-through' : ''}`}>
-                        {entry.last_name}
-                      </span>
-                      {entry.company && <span className="text-xs ml-1">({entry.company})</span>}
-                    </div>
-                    {isPending && !isEditor && (
-                      <span className="text-xs text-amber-600" style={{ fontStyle: 'normal' }}>Wunsch – ausstehend</span>
-                    )}
-                  </td>
-                  {/* Vorname */}
-                  <td className="px-4 py-2.5">
-                    <span className={isRejected ? 'line-through' : ''}>{entry.first_name}</span>
-                  </td>
-                  <td className="px-4 py-2.5 text-sm">{inviterName || '–'}</td>
-                  <td className="px-4 py-2.5 text-xs">{entry.email || '–'}</td>
-                  {passTypes.map(t => (
-                    <td key={t} className="px-2 py-2.5 text-center text-sm">
-                      {(entry.passes[t] ?? 0) > 0
-                        ? <span className="font-medium">{entry.passes[t]}</span>
-                        : <span className="text-gray-300">–</span>}
-                    </td>
-                  ))}
-                  <td className="px-2 py-2.5 text-center font-semibold text-sm">
-                    {total > 0 ? total : <span className="text-gray-300">–</span>}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {!isLocked && (
-                      <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => { setEditEntry(entry); setShowAddModal(true) }} className="text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors">
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setConfirmDelete(entry)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors">
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
+                        {inviterName && (
+                          <div className="text-xs text-gray-400 mt-0.5">von {inviterName}</div>
+                        )}
+                        {activePasses.length > 0 && (
+                          <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                            {activePasses.map(t => (
+                              <span key={t} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                {PASS_LABELS[t] ?? t} {entry.passes[t]}
+                              </span>
+                            ))}
+                            {activePasses.length > 1 && total > 0 && (
+                              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                                ∑ {total}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
 
-      {/* Stats unter Tabelle */}
-      {activeList && (
-        <div className="flex gap-4 text-sm text-gray-500 mt-2 px-1">
-          <span>{approvedCount} bestätigt</span>
-          {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
-          <span>{totalTickets} Tickets gesamt</span>
-          {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
-        </div>
+                      {/* Right: Approve/Reject + Edit/Delete */}
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        {isEditor && isWish && !isLocked && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleApprove(entry, 'approved')}
+                              className={`w-7 h-7 rounded-full text-sm font-bold flex items-center justify-center transition-colors ${
+                                entry.status === 'approved'
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-700'
+                              }`}
+                            >✓</button>
+                            <button
+                              onClick={() => handleApprove(entry, 'rejected')}
+                              className={`w-7 h-7 rounded-full text-sm font-bold flex items-center justify-center transition-colors ${
+                                entry.status === 'rejected'
+                                  ? 'bg-red-500 text-white'
+                                  : 'bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-700'
+                              }`}
+                            >✗</button>
+                          </div>
+                        )}
+                        {!isLocked && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => { setEditEntry(entry); setShowAddModal(true) }}
+                              className="p-1.5 text-gray-300 hover:text-blue-500 transition-colors"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(entry)}
+                              className="p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {statsBar}
+        </>
+      ) : (
+        /* ══════════════════════ DESKTOP LAYOUT ══════════════════════ */
+        <>
+          {/* Toolbar + Tabs in einer Zeile */}
+          <div className="flex items-center gap-2 mb-4">
+            {/* Links: Hinzufügen / Abschließen */}
+            <div className="flex items-center gap-2 shrink-0">
+              {canWrite && !isLocked && (
+                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
+                  <PlusIcon className="w-4 h-4" />
+                  {isDirect ? 'Hinzufügen' : 'Wunsch'}
+                </button>
+              )}
+              {isEditor && (
+                <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
+                  {isLocked ? 'Entsperren' : 'Abschließen'}
+                </button>
+              )}
+            </div>
+
+            {/* Mitte: Tabs */}
+            <div className="flex-1 flex items-center justify-center">
+              {listTabs}
+            </div>
+
+            {/* Rechts: Einstellungen, CSV, PDF */}
+            <div className="flex items-center gap-2 shrink-0">
+              {isEditor && (
+                <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
+                  <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
+                </button>
+              )}
+              <button onClick={handleCsvExport} className="btn btn-ghost">
+                <ArrowDownTrayIcon className="w-4 h-4" /> CSV
+              </button>
+              <button onClick={handlePdfExport} className="btn btn-ghost">
+                <DocumentTextIcon className="w-4 h-4" /> PDF
+              </button>
+            </div>
+          </div>
+
+          {/* Suche */}
+          <div className="flex items-center gap-4 mb-3 flex-wrap">
+            <div className="flex-1" />
+            <input
+              type="text"
+              placeholder="Gästeliste durchsuchen..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          {/* Tabelle */}
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {isEditor && <th className="w-14" />}
+                  <th className="sortable text-left" onClick={() => toggleSort('last_name')}>
+                    Nachname <span className={`sort-indicator${sortKey === 'last_name' ? ' active' : ''}`}>{sortKey === 'last_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </th>
+                  <th className="sortable text-left" onClick={() => toggleSort('first_name')}>
+                    Vorname <span className={`sort-indicator${sortKey === 'first_name' ? ' active' : ''}`}>{sortKey === 'first_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </th>
+                  <th className="sortable text-left" onClick={() => toggleSort('invited_by_text')}>
+                    Eingeladen von <span className={`sort-indicator${sortKey === 'invited_by_text' ? ' active' : ''}`}>{sortKey === 'invited_by_text' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </th>
+                  <th className="sortable text-left" onClick={() => toggleSort('email')}>
+                    E-Mail <span className={`sort-indicator${sortKey === 'email' ? ' active' : ''}`}>{sortKey === 'email' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </th>
+                  {passTypes.map(t => (
+                    <th key={t} className="text-center whitespace-nowrap">
+                      {PASS_LABELS[t] ?? t}
+                    </th>
+                  ))}
+                  <th className="text-center">∑</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSortedEntries.length === 0 ? (
+                  <tr><td colSpan={99} className="text-center py-10 text-gray-400">{searchTerm ? 'Keine Treffer' : 'Noch keine Einträge'}</td></tr>
+                ) : filteredSortedEntries.map(entry => {
+                  const isWish    = entry.is_wish === 1
+                  const isPending = isWish && entry.status === 'pending'
+                  const isRejected = entry.status === 'rejected'
+                  if (isLocked && (isPending || isRejected)) return null
+                  const total = passTotal(entry.passes)
+                  const inviterName = entry.invited_by_text
+                    || [entry.inviter_first_name, entry.inviter_last_name].filter(Boolean).join(' ')
+                    || null
+                  const rowStyle: React.CSSProperties = isPending
+                    ? { opacity: 0.5, fontStyle: 'italic' }
+                    : isRejected ? { color: '#9ca3af' } : {}
+                  return (
+                    <tr key={entry.id} style={rowStyle}>
+                      {isEditor && (
+                        <td className="px-2 py-2.5">
+                          {isWish && !isLocked && (
+                            <div className="flex gap-1">
+                              <button onClick={() => handleApprove(entry, 'approved')} title="Annehmen" style={{ fontStyle: 'normal' }}
+                                className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${entry.status === 'approved' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-green-100 hover:text-green-700'}`}>✓</button>
+                              <button onClick={() => handleApprove(entry, 'rejected')} title="Ablehnen" style={{ fontStyle: 'normal' }}
+                                className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${entry.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-red-100 hover:text-red-700'}`}>✗</button>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${isRejected ? 'line-through' : ''}`}>{entry.last_name}</span>
+                          {entry.company && <span className="text-xs ml-1">({entry.company})</span>}
+                        </div>
+                        {isPending && !isEditor && (
+                          <span className="text-xs text-amber-600" style={{ fontStyle: 'normal' }}>Wunsch – ausstehend</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={isRejected ? 'line-through' : ''}>{entry.first_name}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm">{inviterName || '–'}</td>
+                      <td className="px-4 py-2.5 text-xs">{entry.email || '–'}</td>
+                      {passTypes.map(t => (
+                        <td key={t} className="px-2 py-2.5 text-center text-sm">
+                          {(entry.passes[t] ?? 0) > 0
+                            ? <span className="font-medium">{entry.passes[t]}</span>
+                            : <span className="text-gray-300">–</span>}
+                        </td>
+                      ))}
+                      <td className="px-2 py-2.5 text-center font-semibold text-sm">
+                        {total > 0 ? total : <span className="text-gray-300">–</span>}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {!isLocked && (
+                          <div className="flex items-center gap-1 justify-end">
+                            <button onClick={() => { setEditEntry(entry); setShowAddModal(true) }} className="text-gray-400 hover:text-blue-600 p-1 rounded hover:bg-blue-50 transition-colors">
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setConfirmDelete(entry)} className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors">
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {statsBar}
+        </>
       )}
 
       {/* Modals */}
