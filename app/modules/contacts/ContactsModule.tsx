@@ -18,6 +18,7 @@ import {
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import { parseCSV, col } from '@/lib/csvParser'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 
 const CONTACT_COLS: [string, keyof Contact][] = [
   ['Vorname', 'firstName'],
@@ -302,85 +303,152 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       .toLowerCase().includes(searchTerm.toLowerCase())
   })
 
+  const isMobile = useIsMobile()
+
+  const handleEdit = (contact: Contact) => {
+    if (contact.contactType === 'guest') {
+      setEditingGast(contact)
+    } else {
+      setEditingContact(contact)
+      setShowAddModal(true)
+    }
+  }
+
   const renderContent = () => {
     switch (activeSubTab) {
       case 'overview':
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
                 {error}
               </div>
             )}
 
-            {isEditor && (
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2">
-                  <button
-                    onClick={openAddModal}
-                    className="btn btn-primary"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Einladen
-                  </button>
-                  <button
-                    onClick={() => setShowGastModal(true)}
-                    className="btn btn-ghost"
-                    title="Manuellen Kontakt anlegen (kein Login)"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Manuell anlegen
-                  </button>
+            {isMobile ? (
+              /* ── Mobile Toolbar ── */
+              isEditor && (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex gap-2">
+                    <button onClick={openAddModal} className="btn btn-primary">
+                      <Plus className="w-4 h-4" /> Einladen
+                    </button>
+                    <button onClick={() => setShowGastModal(true)} title="Manuell anlegen" className="btn btn-ghost">
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={handleCSVExport} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                      <Download className="w-5 h-5" />
+                    </button>
+                    <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import">
+                      <Upload className="w-5 h-5" />
+                      <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
+                    </label>
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleCSVExport}
-                    className="btn btn-ghost"
-                  >
-                    <Download className="w-4 h-4" />
-                    CSV
-                  </button>
-                  <label className="btn btn-ghost cursor-pointer">
-                    <Upload className="w-4 h-4" />
-                    CSV
-                    <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
-                  </label>
+              )
+            ) : (
+              /* ── Desktop Toolbar ── */
+              isEditor && (
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2">
+                    <button onClick={openAddModal} className="btn btn-primary">
+                      <Plus className="w-4 h-4" /> Einladen
+                    </button>
+                    <button onClick={() => setShowGastModal(true)} className="btn btn-ghost" title="Manuellen Kontakt anlegen (kein Login)">
+                      <Plus className="w-4 h-4" /> Manuell anlegen
+                    </button>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={handleCSVExport} className="btn btn-ghost">
+                      <Download className="w-4 h-4" /> CSV
+                    </button>
+                    <label className="btn btn-ghost cursor-pointer">
+                      <Upload className="w-4 h-4" /> CSV
+                      <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
+                    </label>
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
-            <div>
-              <input
-                type="text"
-                placeholder="Kontakte durchsuchen..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-            </div>
+            <input
+              type="text"
+              placeholder="Kontakte durchsuchen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
 
-            <div className="data-table-wrapper">
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Wird geladen...</div>
-              ) : filteredContacts.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">Keine Kontakte gefunden</div>
-              ) : (
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Wird geladen...</div>
+            ) : filteredContacts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">Keine Kontakte gefunden</div>
+            ) : isMobile ? (
+              /* ── Mobile Card List ── */
+              <div className="flex flex-col gap-2">
+                {filteredContacts.map(contact => {
+                  const functions = [contact.function1, contact.function2, contact.function3].filter(Boolean).join(' · ')
+                  const role = contact.tenantRole
+                    ? (ROLE_LABELS[contact.tenantRole as TenantRole] ?? contact.tenantRole)
+                    : contact.accessRights
+                  const initials = [contact.firstName?.[0], contact.lastName?.[0]].filter(Boolean).join('').toUpperCase() || '?'
+                  return (
+                    <div
+                      key={contact.id}
+                      className={`bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-3 ${contact.tenantRole === null && contact.userId ? 'opacity-50' : ''}`}
+                      onClick={isEditor ? () => handleEdit(contact) : undefined}
+                    >
+                      {/* Initials avatar */}
+                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold flex-shrink-0">
+                        {initials}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-gray-900">
+                            {contact.firstName} {contact.lastName}
+                          </span>
+                          {contact.contactType === 'guest' && (
+                            <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">Manuell</span>
+                          )}
+                        </div>
+                        {functions && <div className="text-xs text-gray-500 mt-0.5">{functions}</div>}
+                        {role && <div className="text-xs text-gray-400">{role}</div>}
+                      </div>
+                      {/* Access status */}
+                      {isAdmin && (
+                        <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                          {contact.contactType === 'guest' ? (
+                            <UserIcon className="w-4 h-4 text-gray-300" />
+                          ) : contact.userId ? (
+                            <button onClick={e => openInviteModal(contact, e)} title="Login aktiv">
+                              <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                            </button>
+                          ) : (
+                            <button onClick={e => openInviteModal(contact, e)} title="Login einrichten">
+                              <KeyIcon className="w-4 h-4 text-gray-300 hover:text-blue-500" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              /* ── Desktop Table ── */
+              <div className="data-table-wrapper">
                 <ContactTable
                   contacts={filteredContacts}
                   isAdmin={isAdmin}
                   canEdit={isEditor}
-                  onEdit={(contact) => {
-                    if (contact.contactType === 'guest') {
-                      setEditingGast(contact)
-                    } else {
-                      setEditingContact(contact)
-                      setShowAddModal(true)
-                    }
-                  }}
+                  onEdit={handleEdit}
                   onInviteModal={openInviteModal}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )
 
