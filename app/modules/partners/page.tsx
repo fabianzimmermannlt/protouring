@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Download, Upload, Edit, Trash2, Save, X } from 'lucide-react'
 import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 
 const PARTNER_COLS: [string, keyof Partner][] = [
@@ -17,6 +18,7 @@ const PARTNER_COLS: [string, keyof Partner][] = [
 ]
 
 export default function PartnersPage() {
+  const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [partners, setPartners] = useState<Partner[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -194,24 +196,38 @@ export default function PartnersPage() {
   return (
     <div className="module-content">
       {/* Action Buttons — nur 1-3 */}
-      {isEditor && (
-        <div className="flex justify-between items-center">
-          <button onClick={openNewPartnerModal} className="btn btn-primary">
-            <Plus className="w-4 h-4" />
-            Neuer Partner
-          </button>
-          <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-ghost">
-              <Download className="w-4 h-4" />
-              CSV
-            </button>
-            <label className="btn btn-ghost cursor-pointer">
-              <Upload className="w-4 h-4" />
-              CSV
-              <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-            </label>
+      {isMobile ? (
+        isEditor && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <button onClick={openNewPartnerModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={exportToCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"><Download className="w-5 h-5" /></button>
+              <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import"><Upload className="w-5 h-5" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
+            </div>
           </div>
-        </div>
+        )
+      ) : (
+        isEditor && (
+          <div className="flex justify-between items-center">
+            <button onClick={openNewPartnerModal} className="btn btn-primary">
+              <Plus className="w-4 h-4" />
+              Neuer Partner
+            </button>
+            <div className="flex gap-3">
+              <button onClick={exportToCSV} className="btn btn-ghost">
+                <Download className="w-4 h-4" />
+                CSV
+              </button>
+              <label className="btn btn-ghost cursor-pointer">
+                <Upload className="w-4 h-4" />
+                CSV
+                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
+              </label>
+            </div>
+          </div>
+        )
       )}
 
       {/* Search */}
@@ -223,21 +239,34 @@ export default function PartnersPage() {
         className="search-input"
       />
 
-      {/* Partners Table */}
-      <div className="data-table-wrapper">
-        {(() => {
-          const filtered = partners.filter(p =>
-            `${p.companyName} ${p.type} ${p.contactPerson} ${p.city} ${p.country}`.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-          if (filtered.length === 0) return (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-lg mb-2">{partners.length === 0 ? 'Keine Partner vorhanden' : 'Keine Treffer'}</div>
-              {partners.length === 0 && <div className="text-sm">Klicken Sie auf &quot;Neuer Partner&quot; um den ersten Partner anzulegen</div>}
-            </div>
-          )
-          return <PartnerTable partners={filtered} canEdit={isEditor} onEdit={openEditPartnerModal} />
-        })()}
-      </div>
+      {/* Partners Table / Mobile Cards */}
+      {(() => {
+        const filtered = partners.filter(p =>
+          `${p.companyName} ${p.type} ${p.contactPerson} ${p.city} ${p.country}`.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        if (filtered.length === 0) return (
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-lg mb-2">{partners.length === 0 ? 'Keine Partner vorhanden' : 'Keine Treffer'}</div>
+            {partners.length === 0 && <div className="text-sm">Klicken Sie auf &quot;Neuer Partner&quot; um den ersten Partner anzulegen</div>}
+          </div>
+        )
+        return isMobile ? (
+          <div className="flex flex-col gap-2">
+            {[...filtered].sort((a, b) => a.companyName.localeCompare(b.companyName, 'de')).map(item => (
+              <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
+                onClick={isEditor ? () => openEditPartnerModal(item) : undefined}>
+                <p className="text-sm font-semibold text-gray-900">{item.companyName}</p>
+                {item.type && <p className="text-xs text-gray-500 mt-0.5">{item.type}</p>}
+                {item.city && <p className="text-xs text-gray-400 mt-0.5">{item.city}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="data-table-wrapper">
+            <PartnerTable partners={filtered} canEdit={isEditor} onEdit={openEditPartnerModal} />
+          </div>
+        )
+      })()}
 
       {/* Modal for Add/Edit Partner */}
       {isModalOpen && (

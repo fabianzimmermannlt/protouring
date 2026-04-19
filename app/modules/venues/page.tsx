@@ -14,6 +14,7 @@ import {
   type VenueFormData,
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 
 const VENUE_COLS: [string, keyof Venue][] = [
@@ -54,6 +55,7 @@ const EMPTY_FORM: VenueFormData = {
 }
 
 export default function VenuesPage() {
+  const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [venues, setVenues] = useState<Venue[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -255,24 +257,38 @@ export default function VenuesPage() {
       )}
 
       {/* Action Buttons — nur 1-3 */}
-      {isEditor && (
-        <div className="flex justify-between items-center">
-          <button onClick={openNewModal} className="btn btn-primary">
-            <Plus className="w-4 h-4" />
-            Neue Venue
-          </button>
-          <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-ghost">
-              <Download className="w-4 h-4" />
-              CSV
-            </button>
-            <label className="btn btn-ghost cursor-pointer">
-              <Upload className="w-4 h-4" />
-              CSV
-              <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-            </label>
+      {isMobile ? (
+        isEditor && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <button onClick={openNewModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={exportToCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"><Download className="w-5 h-5" /></button>
+              <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import"><Upload className="w-5 h-5" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
+            </div>
           </div>
-        </div>
+        )
+      ) : (
+        isEditor && (
+          <div className="flex justify-between items-center">
+            <button onClick={openNewModal} className="btn btn-primary">
+              <Plus className="w-4 h-4" />
+              Neue Venue
+            </button>
+            <div className="flex gap-3">
+              <button onClick={exportToCSV} className="btn btn-ghost">
+                <Download className="w-4 h-4" />
+                CSV
+              </button>
+              <label className="btn btn-ghost cursor-pointer">
+                <Upload className="w-4 h-4" />
+                CSV
+                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
+              </label>
+            </div>
+          </div>
+        )
       )}
 
       {/* Search */}
@@ -284,26 +300,41 @@ export default function VenuesPage() {
         className="search-input"
       />
 
-      {/* Venues Table */}
-      <div className="data-table-wrapper">
-        {loading ? (
+      {/* Venues Table / Mobile Cards */}
+      {loading ? (
+        <div className="data-table-wrapper">
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400 mr-2" />
             <span className="text-gray-500">Venues werden geladen...</span>
           </div>
-        ) : (() => {
-          const filtered = venues.filter(v =>
-            `${v.name} ${v.city} ${v.state} ${v.country} ${v.capacity}`.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-          if (filtered.length === 0) return (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-lg mb-2">{venues.length === 0 ? 'Keine Venues vorhanden' : 'Keine Treffer'}</div>
-              {venues.length === 0 && <div className="text-sm">Klicke auf &quot;Neue Venue&quot; um die erste Venue anzulegen</div>}
-            </div>
-          )
-          return <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} />
-        })()}
-      </div>
+        </div>
+      ) : (() => {
+        const filtered = venues.filter(v =>
+          `${v.name} ${v.city} ${v.state} ${v.country} ${v.capacity}`.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        if (filtered.length === 0) return (
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-lg mb-2">{venues.length === 0 ? 'Keine Venues vorhanden' : 'Keine Treffer'}</div>
+            {venues.length === 0 && <div className="text-sm">Klicke auf &quot;Neue Venue&quot; um die erste Venue anzulegen</div>}
+          </div>
+        )
+        return isMobile ? (
+          <div className="flex flex-col gap-2">
+            {[...filtered].sort((a, b) => a.name.localeCompare(b.name, 'de')).map(item => (
+              <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
+                onClick={isEditor ? () => openEditModal(item) : undefined}>
+                <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{item.city}</p>
+                {item.capacity && parseInt(item.capacity) > 0 && <p className="text-xs text-gray-400 mt-0.5">Kapazität: {item.capacity}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="data-table-wrapper">
+            <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} />
+          </div>
+        )
+      })()}
 
       {/* Modal */}
       {isModalOpen && (

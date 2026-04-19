@@ -5,6 +5,7 @@ import { Plus, Download, Upload } from 'lucide-react'
 import { getHotels, createHotel, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import HotelFormModal from './HotelFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 
 const HOTEL_COLS: [string, keyof Hotel][] = [
@@ -70,6 +71,7 @@ function HotelTable({ hotels, canEdit = false, onEdit }: { hotels: Hotel[]; canE
 }
 
 export default function HotelsPage() {
+  const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -141,21 +143,35 @@ export default function HotelsPage() {
 
   return (
     <div className="module-content">
-      {isEditor && (
-        <div className="flex justify-between items-center">
-          <button onClick={openNewHotelModal} className="btn btn-primary">
-            <Plus className="h-4 w-4" /> Neues Hotel
-          </button>
-          <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-ghost">
-              <Download className="h-4 w-4" /> CSV
-            </button>
-            <label className="btn btn-ghost cursor-pointer">
-              <Upload className="h-4 w-4" /> CSV
-              <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-            </label>
+      {isMobile ? (
+        isEditor && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={exportToCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"><Download className="w-5 h-5" /></button>
+              <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import"><Upload className="w-5 h-5" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
+            </div>
           </div>
-        </div>
+        )
+      ) : (
+        isEditor && (
+          <div className="flex justify-between items-center">
+            <button onClick={openNewHotelModal} className="btn btn-primary">
+              <Plus className="h-4 w-4" /> Neues Hotel
+            </button>
+            <div className="flex gap-3">
+              <button onClick={exportToCSV} className="btn btn-ghost">
+                <Download className="h-4 w-4" /> CSV
+              </button>
+              <label className="btn btn-ghost cursor-pointer">
+                <Upload className="h-4 w-4" /> CSV
+                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
+              </label>
+            </div>
+          </div>
+        )
       )}
 
       <input
@@ -166,16 +182,27 @@ export default function HotelsPage() {
         className="search-input"
       />
 
-      <div className="data-table-wrapper">
-        {filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg mb-2">{hotels.length === 0 ? 'Keine Hotels vorhanden' : 'Keine Treffer'}</p>
-            {hotels.length === 0 && <p className="text-sm">Klicken Sie auf „Neues Hotel" um zu beginnen.</p>}
-          </div>
-        ) : (
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-lg mb-2">{hotels.length === 0 ? 'Keine Hotels vorhanden' : 'Keine Treffer'}</p>
+          {hotels.length === 0 && <p className="text-sm">Klicken Sie auf „Neues Hotel" um zu beginnen.</p>}
+        </div>
+      ) : isMobile ? (
+        <div className="flex flex-col gap-2">
+          {[...filtered].sort((a, b) => a.name.localeCompare(b.name, 'de')).map(item => (
+            <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
+              onClick={isEditor ? () => openEditHotelModal(item) : undefined}>
+              <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+              {item.city && <p className="text-xs text-gray-500 mt-0.5">{item.city}</p>}
+              {item.website && <p className="text-xs text-gray-400 mt-0.5">{item.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</p>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="data-table-wrapper">
           <HotelTable hotels={filtered} canEdit={isEditor} onEdit={openEditHotelModal} />
-        )}
-      </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <HotelFormModal

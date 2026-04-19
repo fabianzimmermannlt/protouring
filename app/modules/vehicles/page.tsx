@@ -5,6 +5,7 @@ import { Plus, Download, Upload } from 'lucide-react'
 import { getVehicles, createVehicle, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 
 const VEHICLE_COLS: [string, keyof Vehicle][] = [
@@ -19,6 +20,7 @@ const VEHICLE_COLS: [string, keyof Vehicle][] = [
 ]
 
 export default function VehiclesPage() {
+  const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -118,24 +120,38 @@ export default function VehiclesPage() {
   return (
     <div className="module-content">
       {/* Header — nur 1-3 */}
-      {isEditor && (
-        <div className="flex justify-between items-center">
-          <button onClick={openNewVehicleModal} className="btn btn-primary">
-            <Plus className="h-4 w-4" />
-            Neues Fahrzeug
-          </button>
-          <div className="flex gap-3">
-            <button onClick={exportToCSV} className="btn btn-ghost">
-              <Download className="h-4 w-4" />
-              CSV
-            </button>
-            <label className="btn btn-ghost cursor-pointer">
-              <Upload className="h-4 w-4" />
-              CSV
-              <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-            </label>
+      {isMobile ? (
+        isEditor && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={exportToCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"><Download className="w-5 h-5" /></button>
+              <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import"><Upload className="w-5 h-5" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
+            </div>
           </div>
-        </div>
+        )
+      ) : (
+        isEditor && (
+          <div className="flex justify-between items-center">
+            <button onClick={openNewVehicleModal} className="btn btn-primary">
+              <Plus className="h-4 w-4" />
+              Neues Fahrzeug
+            </button>
+            <div className="flex gap-3">
+              <button onClick={exportToCSV} className="btn btn-ghost">
+                <Download className="h-4 w-4" />
+                CSV
+              </button>
+              <label className="btn btn-ghost cursor-pointer">
+                <Upload className="h-4 w-4" />
+                CSV
+                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
+              </label>
+            </div>
+          </div>
+        )
       )}
 
       {/* Search */}
@@ -147,17 +163,28 @@ export default function VehiclesPage() {
         className="search-input"
       />
 
-      {/* Vehicles List */}
-      <div className="data-table-wrapper">
-        {filteredVehicles.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg mb-2">{vehicles.length === 0 ? 'Keine Fahrzeuge vorhanden' : 'Keine Treffer'}</p>
-            {vehicles.length === 0 && <p className="text-sm">Klicken Sie auf &quot;Neues Fahrzeug&quot; um zu beginnen.</p>}
-          </div>
-        ) : (
+      {/* Vehicles List / Mobile Cards */}
+      {filteredVehicles.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-lg mb-2">{vehicles.length === 0 ? 'Keine Fahrzeuge vorhanden' : 'Keine Treffer'}</p>
+          {vehicles.length === 0 && <p className="text-sm">Klicken Sie auf &quot;Neues Fahrzeug&quot; um zu beginnen.</p>}
+        </div>
+      ) : isMobile ? (
+        <div className="flex flex-col gap-2">
+          {[...filteredVehicles].sort((a, b) => a.designation.localeCompare(b.designation, 'de')).map(item => (
+            <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
+              onClick={isEditor ? () => openEditVehicleModal(item) : undefined}>
+              <p className="text-sm font-semibold text-gray-900">{item.designation}</p>
+              {item.vehicleType && <p className="text-xs text-gray-500 mt-0.5">{item.vehicleType}</p>}
+              {item.licensePlate && <p className="text-xs text-gray-400 mt-0.5">{item.licensePlate}</p>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="data-table-wrapper">
           <VehicleTable vehicles={filteredVehicles} canEdit={isEditor} onEdit={openEditVehicleModal} />
-        )}
-      </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <VehicleFormModal
