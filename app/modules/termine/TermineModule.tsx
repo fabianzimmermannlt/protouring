@@ -1176,10 +1176,10 @@ export default function TerminePage({
                     </div>
                     {canSeeGebucht && (
                       t.inTravelParty
-                        ? <span className="text-[10px] font-semibold text-blue-500">Gebucht</span>
+                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#3b82f6' }}>✓</span>
                         : t.isRejected
-                          ? <span className="text-[10px] font-semibold text-red-400">Abgesagt</span>
-                          : <span className="text-[10px] text-gray-300">Offen</span>
+                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }}>✗</span>
+                          : <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }}>–</span>
                     )}
                   </div>
                 </button>
