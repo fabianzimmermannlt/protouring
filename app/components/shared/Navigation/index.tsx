@@ -130,13 +130,25 @@ export function Navigation({
   // Listen for Termine detail view changes
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ inDetail: boolean; view?: 'details' | 'travelparty' | 'advance-sheet' }>).detail
-      setTermineInDetail(detail.inDetail)
-      if (detail.view) setTermineView(detail.view)
-      if (!detail.inDetail) setTermineView('details')
+      const detail = (e as CustomEvent<{ inDetail: boolean; view?: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
+      // Only set to true from event — false is handled by onBack + termine-go-to-list
+      if (detail.inDetail) {
+        setTermineInDetail(true)
+        if (detail.view) setTermineView(detail.view)
+      }
     }
     window.addEventListener('termine-view-changed', handler)
     return () => window.removeEventListener('termine-view-changed', handler)
+  }, [])
+
+  // Listen for explicit "go to list" — this is the single source of truth for leaving detail
+  useEffect(() => {
+    const handler = () => {
+      setTermineInDetail(false)
+      setTermineView('details')
+    }
+    window.addEventListener('termine-go-to-list', handler)
+    return () => window.removeEventListener('termine-go-to-list', handler)
   }, [])
 
   const handleTabChange = (tabId: string, subTabId?: string) => {
