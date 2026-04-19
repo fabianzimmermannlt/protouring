@@ -103,8 +103,8 @@ export default function TerminDetailMobile({
         </div>
       </div>
 
-      {/* ── 1. Anreise & Hotel ──────────────────────────── */}
-      <Section title="Anreise & Hotel" defaultOpen>
+      {/* ── 1. Reise & Hotel ────────────────────────────── */}
+      <Section title="Reise & Hotel" defaultOpen>
         <AnreiseCard
           terminId={termin.id}
           legType="anreise"
