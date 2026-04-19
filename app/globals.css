@@ -395,11 +395,6 @@ body {
     gap: 0;
     justify-content: flex-end;
   }
-  /* 2. Nachbar ausblenden */
-  .pt-datumzeile-neighbors--left .pt-datumzeile-btn:first-child,
-  .pt-datumzeile-neighbors--right .pt-datumzeile-btn:last-child {
-    display: none;
-  }
   /* Nur Pfeil-Icon, kein Text */
   .pt-datumzeile-btn > div {
     display: none;

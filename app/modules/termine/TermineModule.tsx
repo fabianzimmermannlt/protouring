@@ -611,7 +611,7 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
       <div className="pt-datumzeile-neighbors--left">
         {prev1 && (
           <>
-            {prev2 && <NeighbourBtn t={prev2} distance={2} dir="prev" onClick={() => onNavigate(prev2.id)} />}
+            {!isMobile && prev2 && <NeighbourBtn t={prev2} distance={2} dir="prev" onClick={() => onNavigate(prev2.id)} />}
             <NeighbourBtn t={prev1} distance={1} dir="prev" onClick={() => onNavigate(prev1.id)} />
           </>
         )}
@@ -622,7 +622,7 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
       </div>
       <div className="pt-datumzeile-neighbors--right">
         {next1 && <NeighbourBtn t={next1} distance={1} dir="next" onClick={() => onNavigate(next1.id)} />}
-        {next2 && <NeighbourBtn t={next2} distance={2} dir="next" onClick={() => onNavigate(next2.id)} />}
+        {!isMobile && next2 && <NeighbourBtn t={next2} distance={2} dir="next" onClick={() => onNavigate(next2.id)} />}
       </div>
     </div>
   )
