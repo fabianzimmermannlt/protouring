@@ -20,7 +20,13 @@ body {
 .module-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
+}
+
+@media (max-width: 767px) {
+  .module-content {
+    gap: 0.5rem;
+  }
 }
 
 /* ============================================================
