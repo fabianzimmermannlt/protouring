@@ -364,9 +364,13 @@ export function Navigation({
         <TermineSubNavigation
           maxWidth={maxWidth}
           activeView={termineView}
-          onBack={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
+          onBack={() => {
+            setTermineInDetail(false)
+            window.dispatchEvent(new CustomEvent('termine-go-to-list'))
+          }}
           onViewChange={(view) => {
             setTermineView(view)
+            setTermineInDetail(true)
             window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view } }))
           }}
         />
