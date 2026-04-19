@@ -592,6 +592,7 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
   termine: Termin[]
   onNavigate: (id: number) => void
 }) {
+  const isMobile = useIsMobile()
   const idx = termine.findIndex(t => t.id === termin.id)
   const prev2 = idx >= 2 ? termine[idx - 2] : null
   const prev1 = idx >= 1 ? termine[idx - 1] : null
@@ -600,6 +601,10 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
 
   const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader ? termin.title : locationLabel || termin.title
+
+  const dateLabel = isMobile
+    ? new Date(termin.date).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    : formatDateLong(termin.date)
 
   return (
     <div className="pt-datumzeile">
@@ -612,7 +617,7 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
         )}
       </div>
       <div className="pt-datumzeile-center">
-        <div className="pt-datumzeile-center-date">{formatDateLong(termin.date)}</div>
+        <div className="pt-datumzeile-center-date">{dateLabel}</div>
         <div className="pt-datumzeile-center-label">{pageTitle}</div>
       </div>
       <div className="pt-datumzeile-neighbors--right">
