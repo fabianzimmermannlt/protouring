@@ -615,7 +615,11 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
         )}
       </div>
       <div className="pt-datumzeile-center">
-        <div className="pt-datumzeile-center-date">{dateLabel}</div>
+        {isMobile ? (
+          <div className="text-lg font-medium text-gray-700 text-center">{dateLabel}</div>
+        ) : (
+          <div className="pt-datumzeile-center-date">{dateLabel}</div>
+        )}
         <div className="pt-datumzeile-center-label">{pageTitle}</div>
       </div>
       <div className="pt-datumzeile-neighbors--right">
