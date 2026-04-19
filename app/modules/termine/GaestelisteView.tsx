@@ -614,7 +614,7 @@ export default function GaestelisteView({ terminId }: Props) {
   )
 
   return (
-    <div className="px-4 pb-4">
+    <div className="pb-4">
 
       {isMobile ? (
         /* ══════════════════════ MOBILE LAYOUT ══════════════════════ */
@@ -775,7 +775,7 @@ export default function GaestelisteView({ terminId }: Props) {
         </>
       ) : (
         /* ══════════════════════ DESKTOP LAYOUT ══════════════════════ */
-        <>
+        <div className="px-4">
           {/* Toolbar + Tabs in einer Zeile */}
           <div className="flex items-center gap-2 mb-4">
             {/* Links: Hinzufügen / Abschließen */}
@@ -927,7 +927,7 @@ export default function GaestelisteView({ terminId }: Props) {
           </div>
 
           {statsBar}
-        </>
+        </div>
       )}
 
       {/* Modals */}
