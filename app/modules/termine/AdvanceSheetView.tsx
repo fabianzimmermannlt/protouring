@@ -66,7 +66,7 @@ export default function AdvanceSheetView({ terminId }: Props) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-6 px-4">
+    <div className="max-w-2xl mx-auto pb-6 md:px-4">
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
