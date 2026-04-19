@@ -1155,23 +1155,32 @@ export default function TerminePage({
                       {[t.city, t.venueName].filter(Boolean).join(' · ') || <span className="italic">Kein Ort</span>}
                     </div>
                   </div>
-                  {/* Availability dots */}
-                  <div className="flex-shrink-0 flex gap-1 items-center">
-                    {(['available', 'maybe', 'unavailable'] as AvailStatus[]).map(s => {
-                      const active = t.myAvailability === s
-                      const cfg = AVAIL_ICON[s as string]
-                      return (
-                        <button
-                          key={s}
-                          onClick={e => { e.stopPropagation(); selectAvailability(t, s) }}
-                          title={cfg.label}
-                          className="w-5 h-5 rounded-full font-bold text-white flex items-center justify-center text-xs transition-transform active:scale-110"
-                          style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}
-                        >
-                          {cfg.symbol}
-                        </button>
-                      )
-                    })}
+                  {/* Availability dots + Gebucht */}
+                  <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                    <div className="flex gap-1">
+                      {(['available', 'maybe', 'unavailable'] as AvailStatus[]).map(s => {
+                        const active = t.myAvailability === s
+                        const cfg = AVAIL_ICON[s as string]
+                        return (
+                          <button
+                            key={s}
+                            onClick={e => { e.stopPropagation(); selectAvailability(t, s) }}
+                            title={cfg.label}
+                            className="w-5 h-5 rounded-full font-bold text-white flex items-center justify-center text-xs transition-transform active:scale-110"
+                            style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}
+                          >
+                            {cfg.symbol}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {canSeeGebucht && (
+                      t.inTravelParty
+                        ? <span className="text-[10px] font-semibold text-blue-500">Gebucht</span>
+                        : t.isRejected
+                          ? <span className="text-[10px] font-semibold text-red-400">Abgesagt</span>
+                          : <span className="text-[10px] text-gray-300">Offen</span>
+                    )}
                   </div>
                 </button>
               ))}
