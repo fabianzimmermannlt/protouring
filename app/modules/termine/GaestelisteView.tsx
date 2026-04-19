@@ -569,9 +569,10 @@ export default function GaestelisteView({ terminId }: Props) {
         <button
           onClick={handleAddList}
           disabled={creatingList}
+          title="Weitere Liste"
           className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
         >
-          + Weitere Liste
+          +<span className="hidden md:inline"> Weitere Liste</span>
         </button>
       )}
     </div>
@@ -602,9 +603,8 @@ export default function GaestelisteView({ terminId }: Props) {
                 </button>
               )}
               {isEditor && (
-                <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
                   {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-                  {isLocked ? 'Freigeben' : 'Abschl.'}
                 </button>
               )}
             </div>
