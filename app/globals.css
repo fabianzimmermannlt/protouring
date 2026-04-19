@@ -407,7 +407,7 @@ body {
   }
   /* Datum wie auf dem Desk — schlicht, mittig */
   .pt-datumzeile-center-date {
-    font-size: 1rem;
+    font-size: 1.125rem;
     font-weight: 500;
     color: #374151;
   }

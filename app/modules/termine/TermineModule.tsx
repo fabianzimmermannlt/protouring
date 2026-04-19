@@ -602,9 +602,7 @@ function TerminDatumzeile({ termin, termine, onNavigate }: {
   const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader ? termin.title : locationLabel || termin.title
 
-  const dateLabel = isMobile
-    ? new Date(termin.date).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-    : formatDateLong(termin.date)
+  const dateLabel = formatDateLong(termin.date)
 
   return (
     <div className="pt-datumzeile">
