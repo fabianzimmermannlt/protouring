@@ -10,7 +10,7 @@ import {
 import { X } from 'lucide-react'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import {
-  getGuestLists, createGuestList, updateGuestList,
+  getGuestLists, createGuestList, updateGuestList, deleteGuestList,
   getGuestListEntries, createGuestListEntry, updateGuestListEntry, deleteGuestListEntry,
   GuestList, GuestListEntry, GuestListSettings, PassMap,
   getEffectiveRole, isEditorRole, getTravelParty,
@@ -455,6 +455,16 @@ export default function GaestelisteView({ terminId }: Props) {
     } finally { setCreatingList(false) }
   }
 
+  const handleDeleteList = async (listId: number) => {
+    if (lists.length <= 1) return
+    const list = lists.find(l => l.id === listId)
+    if (!confirm(`Liste „${list?.name ?? listId}" wirklich löschen? Alle Einträge werden entfernt.`)) return
+    await deleteGuestList(listId)
+    const remaining = lists.filter(l => l.id !== listId)
+    setLists(remaining)
+    if (activeListId === listId) setActiveListId(remaining[0]?.id ?? null)
+  }
+
   const handleLockToggle = async () => {
     if (!activeList) return
     const updated = await updateGuestList(activeList.id, { status: activeList.status === 'locked' ? 'open' : 'locked' })
@@ -547,23 +557,39 @@ export default function GaestelisteView({ terminId }: Props) {
   const listTabs = (
     <div className="flex items-center gap-2 flex-wrap">
       {lists.map(l => (
-        <button
-          key={l.id}
-          onClick={() => setActiveListId(l.id)}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-            l.id === activeListId
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-          }`}
-        >
-          {l.name}
-          {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
-          {(l.entry_count ?? 0) > 0 && (
-            <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
-              {l.entry_count}
-            </span>
+        <div key={l.id} className="relative flex items-center">
+          <button
+            onClick={() => setActiveListId(l.id)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              isEditor && lists.length > 1 ? 'pr-6' : ''
+            } ${
+              l.id === activeListId
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+            }`}
+          >
+            {l.name}
+            {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
+            {(l.entry_count ?? 0) > 0 && (
+              <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
+                {l.entry_count}
+              </span>
+            )}
+          </button>
+          {isEditor && lists.length > 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); handleDeleteList(l.id) }}
+              title="Liste löschen"
+              className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full text-xs transition-colors ${
+                l.id === activeListId
+                  ? 'text-blue-200 hover:text-white hover:bg-blue-500'
+                  : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
+              }`}
+            >
+              <XMarkIcon className="w-3 h-3" />
+            </button>
           )}
-        </button>
+        </div>
       ))}
       {isEditor && (
         <button
