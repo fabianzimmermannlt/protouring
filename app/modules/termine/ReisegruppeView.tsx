@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Trash2, Loader2, Paperclip } from 'lucide-react'
+import { Plus, Trash2, Loader2, Paperclip, Mail, Phone } from 'lucide-react'
+import { useIsMobile } from '@/app/hooks/useIsMobile'
 import {
   getTravelParty,
   updateTravelPartyMember,
@@ -108,6 +109,8 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
     })
   }, [members, sortKey, sortDir])
 
+  const isMobile = useIsMobile()
+
   const handleAdded = (m: TravelPartyMember) => setMembers(prev => [...prev, m])
   const handleUpdated = (m: TravelPartyMember) => setMembers(prev => prev.map(x => x.id === m.id ? m : x))
 
@@ -160,7 +163,60 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             Noch niemand in der Reisegruppe. Mit „+ Hinzufügen" Kontakte auswählen.
           </div>
         </div>
+      ) : isMobile ? (
+        /* ── Mobile Card List ── */
+        <div className="flex flex-col gap-2 mt-2">
+          {sortedMembers.map(m => {
+            const functions = [m.role1, m.role2, m.role3].filter(Boolean).join(' · ')
+            return (
+              <div key={m.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-start gap-3">
+                {/* Availability */}
+                <div className="flex-shrink-0 pt-1">
+                  <AvailCell status={m.availabilityStatus} />
+                </div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-gray-900 text-sm">
+                      {m.firstName} {m.lastName}
+                    </span>
+                    {m.contactType === 'guest' && (
+                      <span className="pt-guest-badge">Gast</span>
+                    )}
+                  </div>
+                  {functions && (
+                    <div className="text-xs text-gray-500 mt-0.5">{functions}</div>
+                  )}
+                  <div className="flex flex-wrap gap-3 mt-1.5">
+                    {m.email && (
+                      <a href={`mailto:${m.email}`} className="flex items-center gap-1 text-xs text-blue-600"
+                        onClick={e => e.stopPropagation()}>
+                        <Mail size={11} /> {m.email}
+                      </a>
+                    )}
+                    {(m.phone || m.mobile) && (
+                      <a href={`tel:${m.phone || m.mobile}`} className="flex items-center gap-1 text-xs text-blue-600"
+                        onClick={e => e.stopPropagation()}>
+                        <Phone size={11} /> {m.phone || m.mobile}
+                      </a>
+                    )}
+                  </div>
+                </div>
+                {/* Actions */}
+                {isAdmin && (
+                  <button
+                    onClick={() => handleRemove(m)}
+                    className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
       ) : (
+        /* ── Desktop Table ── */
         <div className="data-table-wrapper">
           <table className="data-table data-table--compact">
             <thead>
