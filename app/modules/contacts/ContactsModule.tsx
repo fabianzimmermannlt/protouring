@@ -7,6 +7,7 @@ import {
   UserIcon,
 } from '@heroicons/react/24/outline'
 import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
+import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
 import GastAnlegenModal from './GastAnlegenModal'
 import {
@@ -33,6 +34,51 @@ export interface ContactsProps {
   activeSubTab?: string
 }
 
+// ProfileEditor-Daten ↔ Contact konvertieren
+function profileToContact(data: ProfileData): ContactFormData {
+  return {
+    firstName: data.firstName || '', lastName: data.lastName || '',
+    function1: data.function1 || '', function2: data.function2 || '', function3: data.function3 || '',
+    specification: (data as any).specification || data.specialNotes || '',
+    accessRights: data.accessRights || 'Crew',
+    email: data.email || '', phone: data.phone || '', mobile: data.mobile || '',
+    address: data.address || '', postalCode: data.postalCode || '', residence: data.residence || '',
+    taxId: data.taxId || '', website: '', birthDate: data.birthDate || '',
+    gender: data.gender || '', pronouns: data.pronouns || '', birthPlace: data.birthPlace || '',
+    nationality: data.nationality || '', idNumber: data.idNumber || '', socialSecurity: data.socialSecurity || '',
+    diet: data.diet || '', glutenFree: data.glutenFree || false, lactoseFree: data.lactoseFree || false,
+    allergies: data.allergies || '', emergencyContact: data.emergencyContact || '', emergencyPhone: data.emergencyPhone || '',
+    shirtSize: data.shirtSize || '', hoodieSize: data.hoodieSize || '', pantsSize: data.pantsSize || '',
+    shoeSize: data.shoeSize || '', languages: data.languages || '', driversLicense: data.driversLicense || '',
+    railcard: data.railcard || '', frequentFlyer: data.frequentFlyer || '',
+    bankAccount: data.bankAccount || '', bankIban: data.bankIban || '', bankBic: data.bankBic || '',
+    taxNumber: data.taxNumber || '', vatId: data.vatId || '', crewToolActive: data.crewToolActive || false,
+    hourlyRate: 0, dailyRate: 0, notes: data.specialNotes || '',
+    hotelInfo: '', hotelAlias: '',
+  }
+}
+
+function contactToProfile(c: Contact): ProfileData {
+  return {
+    firstName: c.firstName, lastName: c.lastName,
+    function1: c.function1, function2: c.function2, function3: c.function3,
+    specification: c.specification,
+    accessRights: c.tenantRole ? (ROLE_LABELS[c.tenantRole as TenantRole] ?? c.tenantRole) : c.accessRights,
+    email: c.email, phone: c.phone, mobile: c.mobile,
+    address: c.address, postalCode: c.postalCode, residence: c.residence,
+    taxId: c.taxId, birthDate: c.birthDate, gender: c.gender, pronouns: c.pronouns,
+    birthPlace: c.birthPlace, nationality: c.nationality, idNumber: c.idNumber,
+    socialSecurity: c.socialSecurity, diet: c.diet, glutenFree: c.glutenFree,
+    lactoseFree: c.lactoseFree, allergies: c.allergies,
+    emergencyContact: c.emergencyContact, emergencyPhone: c.emergencyPhone,
+    shirtSize: c.shirtSize, hoodieSize: c.hoodieSize, pantsSize: c.pantsSize,
+    shoeSize: c.shoeSize, languages: c.languages, driversLicense: c.driversLicense,
+    railcard: c.railcard, frequentFlyer: c.frequentFlyer,
+    bankAccount: c.bankAccount, bankIban: c.bankIban, bankBic: c.bankBic,
+    taxNumber: c.taxNumber, vatId: c.vatId, crewToolActive: c.crewToolActive,
+    specialNotes: c.notes, hotelInfo: '', hotelAlias: '', personalFiles: [],
+  } as unknown as ProfileData
+}
 
 export default function ContactsModule({ activeSubTab = 'overview' }: ContactsProps) {
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -41,6 +87,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [showAddModal, setShowAddModal] = useState(false)
   const [showGastModal, setShowGastModal] = useState(false)
   const [editingGast, setEditingGast] = useState<Contact | null>(null)
+  const [editingContact, setEditingContact] = useState<Contact | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
@@ -225,7 +272,30 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const isMobile = useIsMobile()
 
   const handleEdit = (contact: Contact) => {
-    setEditingGast(contact)
+    setEditingContact(contact)
+  }
+
+  const handleUpdateContact = async (profileData: ProfileData) => {
+    if (!editingContact) return
+    try {
+      const updated = await updateContact(editingContact.id, profileToContact(profileData))
+      setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
+      setEditingContact(null)
+    } catch (e) {
+      setError('Kontakt konnte nicht aktualisiert werden.')
+    }
+  }
+
+  const handleDeleteContact = async () => {
+    if (!editingContact) return
+    if (!confirm('Möchten Sie diesen Kontakt wirklich löschen?')) return
+    try {
+      await deleteContact(editingContact.id)
+      setContacts(prev => prev.filter(c => c.id !== editingContact.id))
+      setEditingContact(null)
+    } catch (e) {
+      setError('Kontakt konnte nicht gelöscht werden.')
+    }
   }
 
   const renderContent = () => {
@@ -494,14 +564,27 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         />
       )}
 
-      {/* Gast-Kontakt bearbeiten */}
-      {editingGast && (
-        <GastAnlegenModal
-          contact={editingGast}
-          onClose={() => setEditingGast(null)}
-          onUpdated={(updated) => setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))}
-          onDeleted={(id) => setContacts(prev => prev.filter(c => String(c.id) !== id))}
-        />
+      {/* Kontakt bearbeiten – ProfileEditor (keine Tabs) */}
+      {editingContact && (
+        <div className="modal-overlay">
+          <div className="modal-container max-w-3xl">
+            <div className="modal-header">
+              <h2 className="modal-title">{editingContact.firstName} {editingContact.lastName}</h2>
+              <button onClick={() => setEditingContact(null)} className="text-gray-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <ProfileEditor
+              isOpen={true}
+              onClose={() => setEditingContact(null)}
+              profileData={contactToProfile(editingContact)}
+              onSave={handleUpdateContact}
+              onDelete={isAdmin ? handleDeleteContact : undefined}
+              isAdmin={isAdmin}
+              isSelf={false}
+            />
+          </div>
+        </div>
       )}
 
       {/* Invite-Modal */}
