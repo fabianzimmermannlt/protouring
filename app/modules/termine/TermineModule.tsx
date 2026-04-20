@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
@@ -812,7 +812,6 @@ export default function TerminePage({
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  const isFirstRender = useRef(true)
 
   // Detail view — aus window.location initialisieren (robust auf Mobile)
   const [selectedId, setSelectedId] = useState<number | null>(() => {
@@ -842,13 +841,22 @@ export default function TerminePage({
     }))
   }, [selectedId, detailView])
 
-  // URL-Persistenz: selectedId + detailView + filter still in URL schreiben
+  // URL-Persistenz: URL nur updaten wenn sie sich von aktuellem State unterscheidet
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return }
-    const url = selectedId !== null
-      ? `/?tab=appointments&terminId=${selectedId}&view=${detailView}`
-      : `/?tab=appointments&filter=${termineFilter}`
-    window.history.replaceState(null, '', url)
+    const p = new URLSearchParams(window.location.search)
+    const urlTerminId = p.get('terminId') ? parseInt(p.get('terminId')!) : null
+    const urlView = p.get('view') ?? 'details'
+    const urlFilter = p.get('filter') ?? 'aktuell'
+
+    if (selectedId !== null) {
+      if (urlTerminId !== selectedId || urlView !== detailView) {
+        window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detailView}`)
+      }
+    } else {
+      if (urlTerminId !== null || urlFilter !== termineFilter) {
+        window.history.replaceState(null, '', `/?tab=appointments&filter=${termineFilter}`)
+      }
+    }
   }, [selectedId, detailView, termineFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
