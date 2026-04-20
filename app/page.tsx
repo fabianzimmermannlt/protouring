@@ -39,10 +39,11 @@ export default function ProTouringApp() {
   const [authChecked, setAuthChecked] = useState(false)
   const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
 
-  // Direktlink von /artists: /?terminId=123 öffnet Termin direkt
+  // Direktlink von /artists: /?terminId=123 öffnet Termin direkt (nur wenn kein tab-Param gesetzt)
   useEffect(() => {
     const terminId = searchParams.get('terminId')
-    if (terminId) {
+    const tab = searchParams.get('tab')
+    if (terminId && !tab) {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
         setActiveTab('appointments')
