@@ -815,21 +815,43 @@ export default function TerminePage({
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  // Detail view — URL-Params via router.replace (kein replaceState-Hack mehr nötig)
-  // Ref: immer aktueller selectedId — synchron in Render-Phase gesetzt, kein Closure-Problem
+  // Persistenz: sessionStorage (zuverlässig bei Reload) + URL best-effort
+  const SS_KEY = 'pt_nav'
+
+  const persistNav = useCallback((id: number, view: string) => {
+    try { sessionStorage.setItem(SS_KEY, JSON.stringify({ id, view })) } catch {}
+    router.replace(`/?tab=appointments&terminId=${id}&view=${view}`, { scroll: false })
+  }, [router])
+
+  const clearNav = useCallback(() => {
+    try { sessionStorage.removeItem(SS_KEY) } catch {}
+    router.replace(`/?tab=appointments`, { scroll: false })
+  }, [router])
+
+  // Ref: immer aktueller selectedId — kein Closure-Problem bei Event-Listenern
   const selectedIdRef = useRef<number | null>(null)
 
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null
-    const p = new URLSearchParams(window.location.search)
-    const urlId = p.get('terminId')
-    return urlId ? parseInt(urlId, 10) : null
+    // 1. URL-Param (funktioniert wenn router.replace durchkam)
+    const urlId = new URLSearchParams(window.location.search).get('terminId')
+    if (urlId) return parseInt(urlId, 10)
+    // 2. sessionStorage — kein tab-Check nötig, TerminePage mountet nur wenn activeTab=appointments
+    try {
+      const s = sessionStorage.getItem(SS_KEY)
+      if (s) { const saved = JSON.parse(s); if (saved?.id) return saved.id }
+    } catch {}
+    return null
   })
   const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
     if (typeof window === 'undefined') return 'details'
-    const p = new URLSearchParams(window.location.search)
-    const urlView = p.get('view')
-    return urlView ? urlView as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' : 'details'
+    const urlView = new URLSearchParams(window.location.search).get('view')
+    if (urlView) return urlView as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+    try {
+      const s = sessionStorage.getItem(SS_KEY)
+      if (s) { const saved = JSON.parse(s); if (saved?.view) return saved.view }
+    } catch {}
+    return 'details'
   })
 
   // Ref synchron in Render-Phase aktualisieren — Event-Handler lesen immer aktuellen Wert
@@ -850,20 +872,10 @@ export default function TerminePage({
     }))
   }, [selectedId, detailView])
 
-  // URL-Persistenz: router.replace geht durch Next.js, wird nicht revertiert
-  useEffect(() => {
-    if (selectedId !== null) {
-      router.replace(`/?tab=appointments&terminId=${selectedId}&view=${detailView}`, { scroll: false })
-    } else {
-      router.replace(`/?tab=appointments&filter=${termineFilter}`, { scroll: false })
-    }
-  }, [selectedId, detailView, termineFilter]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // useCallback mit frischen Werten — Event-Listener re-registriert wenn termineFilter ändert
   const handleGoToList = useCallback(() => {
     setSelectedId(null)
-    router.replace(`/?tab=appointments&filter=${termineFilter}`, { scroll: false })
-  }, [termineFilter, router])
+    clearNav()
+  }, [clearNav])
 
   useEffect(() => {
     window.addEventListener('termine-go-to-list', handleGoToList)
@@ -878,17 +890,17 @@ export default function TerminePage({
     }
   }, [initialSelectedId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ref-basierter Handler — kein Re-register nötig, liest immer aktuellen selectedId
+  // Ref-basierter Handler — liest immer aktuellen selectedId via Ref
   const handleSetView = useCallback((e: Event) => {
     const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
     if (detail?.view) {
       setDetailView(detail.view)
       const currentId = selectedIdRef.current
       if (currentId !== null) {
-        router.replace(`/?tab=appointments&terminId=${currentId}&view=${detail.view}`, { scroll: false })
+        persistNav(currentId, detail.view)
       }
     }
-  }, [router]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [persistNav])
 
   useEffect(() => {
     window.addEventListener('termine-set-view', handleSetView)
@@ -1101,10 +1113,7 @@ export default function TerminePage({
           <TerminDatumzeile
             termin={selectedTermin}
             termine={sortedTermine}
-            onNavigate={id => {
-              setSelectedId(id)
-              router.replace(`/?tab=appointments&terminId=${id}&view=details`, { scroll: false })
-            }}
+            onNavigate={id => { setSelectedId(id); persistNav(id, 'details') }}
           />
           {detailView === 'travelparty' ? (
             <ReisegruppeView terminId={selectedTermin.id} isAdmin={isAdmin} />
@@ -1168,10 +1177,7 @@ export default function TerminePage({
           {listView === 'calendar' && (
             <KalenderView
               termine={filteredTermine}
-              onSelectTermin={id => {
-                setSelectedId(id)
-                router.replace(`/?tab=appointments&terminId=${id}&view=details`, { scroll: false })
-              }}
+              onSelectTermin={id => { setSelectedId(id); persistNav(id, 'details') }}
             />
           )}
 
@@ -1185,10 +1191,7 @@ export default function TerminePage({
               ) : tableRows.map(t => (
                 <button
                   key={t.id}
-                  onClick={() => {
-                    setSelectedId(t.id)
-                    router.replace(`/?tab=appointments&terminId=${t.id}&view=details`, { scroll: false })
-                  }}
+                  onClick={() => { setSelectedId(t.id); persistNav(t.id, 'details') }}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
                   {/* Date column */}
@@ -1291,10 +1294,7 @@ export default function TerminePage({
                     </tr>
                   )
                   return filtered.map(termin => (
-                  <tr key={termin.id} className="clickable" onClick={() => {
-                    setSelectedId(termin.id)
-                    router.replace(`/?tab=appointments&terminId=${termin.id}&view=details`, { scroll: false })
-                  }}>
+                  <tr key={termin.id} className="clickable" onClick={() => { setSelectedId(termin.id); persistNav(termin.id, 'details') }}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.art
