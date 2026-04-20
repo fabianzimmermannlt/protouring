@@ -894,13 +894,14 @@ export default function TerminePage({
     }
   }, [initialSelectedId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // useCallback mit selectedId als Dep — Closure ist immer frisch, URL sofort schreiben
+  // useCallback mit selectedId als Dep — Closure ist immer frisch, URL + sessionStorage sofort schreiben
   const handleSetView = useCallback((e: Event) => {
     const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
     if (detail?.view) {
       setDetailView(detail.view)
       if (selectedId !== null) {
         window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detail.view}`)
+        try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: selectedId, view: detail.view })) } catch {}
       }
     }
   }, [selectedId])
