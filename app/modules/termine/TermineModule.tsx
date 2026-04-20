@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
@@ -799,8 +798,6 @@ export default function TerminePage({
   initialSelectedId?: number | null
   onNavigated?: () => void
 } = {}) {
-  const router = useRouter()
-
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -820,13 +817,11 @@ export default function TerminePage({
 
   const persistNav = useCallback((id: number, view: string) => {
     try { sessionStorage.setItem(SS_KEY, JSON.stringify({ id, view })) } catch {}
-    router.replace(`/?tab=appointments&terminId=${id}&view=${view}`, { scroll: false })
-  }, [router])
+  }, [])
 
   const clearNav = useCallback(() => {
     try { sessionStorage.removeItem(SS_KEY) } catch {}
-    router.replace(`/?tab=appointments`, { scroll: false })
-  }, [router])
+  }, [])
 
   // Ref: immer aktueller selectedId — kein Closure-Problem bei Event-Listenern
   const selectedIdRef = useRef<number | null>(null)
