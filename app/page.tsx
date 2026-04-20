@@ -17,12 +17,19 @@ import FeedbackPage from './modules/feedback/FeedbackPage'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 
 export default function ProTouringApp() {
-  const [activeTab, setActiveTab] = useState('desk')
-  const [activeSubTab, setActiveSubTab] = useState('artist')
-  const [authChecked, setAuthChecked] = useState(false)
-  const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','settings','feedback']
+  const initialTab = (() => {
+    const t = searchParams.get('tab')
+    return t && VALID_TABS.includes(t) ? t : 'desk'
+  })()
+
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [activeSubTab, setActiveSubTab] = useState(initialTab === 'settings' ? 'artist' : initialTab === 'contacts' ? 'overview' : '')
+  const [authChecked, setAuthChecked] = useState(false)
+  const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
 
   // Direktlink von /artists: /?terminId=123 öffnet Termin direkt
   useEffect(() => {
@@ -32,8 +39,7 @@ export default function ProTouringApp() {
       if (!isNaN(id)) {
         setNavigateToTerminId(id)
         setActiveTab('appointments')
-        // Param aus URL entfernen ohne Re-Render
-        router.replace('/')
+        router.replace('/?tab=appointments')
       }
     }
   }, [searchParams, router])
@@ -81,7 +87,6 @@ export default function ProTouringApp() {
   // Reset sub-tab when switching main tabs
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
-    // Set appropriate default sub-tab for each main tab
     if (tabId === 'settings') {
       setActiveSubTab('artist')
     } else if (tabId === 'contacts') {
@@ -89,6 +94,7 @@ export default function ProTouringApp() {
     } else {
       setActiveSubTab('')
     }
+    router.replace(`/?tab=${tabId}`)
   }
 
   const content = (
