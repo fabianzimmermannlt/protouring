@@ -52,7 +52,7 @@ export default function ProTouringApp() {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
         setActiveTab('appointments')
-        window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}`)
+        router.replace(`/?tab=appointments&terminId=${id}`, { scroll: false })
       }
     }
   }, [])
@@ -99,7 +99,7 @@ export default function ProTouringApp() {
 
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
-    window.history.replaceState(null, '', `/?tab=${activeTab}&sub=${subId}`)
+    router.replace(`/?tab=${activeTab}&sub=${subId}`, { scroll: false })
   }
 
   // Reset sub-tab when switching main tabs
@@ -109,7 +109,7 @@ export default function ProTouringApp() {
     if (tabId === 'settings') defaultSub = 'artist'
     else if (tabId === 'contacts') defaultSub = 'overview'
     setActiveSubTab(defaultSub)
-    window.history.replaceState(null, '', defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`)
+    router.replace(defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`, { scroll: false })
   }
 
   const content = (

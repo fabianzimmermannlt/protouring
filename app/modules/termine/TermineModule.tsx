@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
@@ -798,6 +799,8 @@ export default function TerminePage({
   initialSelectedId?: number | null
   onNavigated?: () => void
 } = {}) {
+  const router = useRouter()
+
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -812,9 +815,7 @@ export default function TerminePage({
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  // Detail view — URL-Params + sessionStorage als Fallback (replaceState wird auf mobilen Browsern/Next.js manchmal ignoriert)
-  const PT_SESSION_KEY = 'pt_termine_nav'
-
+  // Detail view — URL-Params via router.replace (kein replaceState-Hack mehr nötig)
   // Ref: immer aktueller selectedId — synchron in Render-Phase gesetzt, kein Closure-Problem
   const selectedIdRef = useRef<number | null>(null)
 
@@ -822,31 +823,13 @@ export default function TerminePage({
     if (typeof window === 'undefined') return null
     const p = new URLSearchParams(window.location.search)
     const urlId = p.get('terminId')
-    if (urlId) return parseInt(urlId, 10)
-    // Fallback: sessionStorage (Reload-Persistenz wenn URL-Write geblockt wurde)
-    try {
-      const s = sessionStorage.getItem(PT_SESSION_KEY)
-      if (s && p.get('tab') === 'appointments') {
-        const saved = JSON.parse(s)
-        if (saved?.terminId) return saved.terminId
-      }
-    } catch {}
-    return null
+    return urlId ? parseInt(urlId, 10) : null
   })
   const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
     if (typeof window === 'undefined') return 'details'
     const p = new URLSearchParams(window.location.search)
     const urlView = p.get('view')
-    if (urlView) return urlView as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
-    // Fallback: sessionStorage
-    try {
-      const s = sessionStorage.getItem(PT_SESSION_KEY)
-      if (s && p.get('tab') === 'appointments') {
-        const saved = JSON.parse(s)
-        if (saved?.view) return saved.view
-      }
-    } catch {}
-    return 'details'
+    return urlView ? urlView as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' : 'details'
   })
 
   // Ref synchron in Render-Phase aktualisieren — Event-Handler lesen immer aktuellen Wert
@@ -867,24 +850,20 @@ export default function TerminePage({
     }))
   }, [selectedId, detailView])
 
-  // URL-Persistenz + sessionStorage: beides schreiben bei Änderung
-  // sessionStorage ist der zuverlässige Fallback falls replaceState von Next.js/Mobile geblockt wird
+  // URL-Persistenz: router.replace geht durch Next.js, wird nicht revertiert
   useEffect(() => {
     if (selectedId !== null) {
-      window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detailView}`)
-      try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: selectedId, view: detailView })) } catch {}
+      router.replace(`/?tab=appointments&terminId=${selectedId}&view=${detailView}`, { scroll: false })
     } else {
-      window.history.replaceState(null, '', `/?tab=appointments&filter=${termineFilter}`)
-      try { sessionStorage.removeItem(PT_SESSION_KEY) } catch {}
+      router.replace(`/?tab=appointments&filter=${termineFilter}`, { scroll: false })
     }
-  }, [selectedId, detailView, termineFilter])
+  }, [selectedId, detailView, termineFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // useCallback mit frischen Werten — Event-Listener re-registriert wenn termineFilter ändert
   const handleGoToList = useCallback(() => {
     setSelectedId(null)
-    window.history.replaceState(null, '', `/?tab=appointments&filter=${termineFilter}`)
-    try { sessionStorage.removeItem(PT_SESSION_KEY) } catch {}
-  }, [termineFilter])
+    router.replace(`/?tab=appointments&filter=${termineFilter}`, { scroll: false })
+  }, [termineFilter, router])
 
   useEffect(() => {
     window.addEventListener('termine-go-to-list', handleGoToList)
@@ -906,11 +885,10 @@ export default function TerminePage({
       setDetailView(detail.view)
       const currentId = selectedIdRef.current
       if (currentId !== null) {
-        window.history.replaceState(null, '', `/?tab=appointments&terminId=${currentId}&view=${detail.view}`)
-        try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: currentId, view: detail.view })) } catch {}
+        router.replace(`/?tab=appointments&terminId=${currentId}&view=${detail.view}`, { scroll: false })
       }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     window.addEventListener('termine-set-view', handleSetView)
@@ -1125,8 +1103,7 @@ export default function TerminePage({
             termine={sortedTermine}
             onNavigate={id => {
               setSelectedId(id)
-              window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}&view=details`)
-              try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: id, view: 'details' })) } catch {}
+              router.replace(`/?tab=appointments&terminId=${id}&view=details`, { scroll: false })
             }}
           />
           {detailView === 'travelparty' ? (
@@ -1193,8 +1170,7 @@ export default function TerminePage({
               termine={filteredTermine}
               onSelectTermin={id => {
                 setSelectedId(id)
-                window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}&view=details`)
-                try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: id, view: 'details' })) } catch {}
+                router.replace(`/?tab=appointments&terminId=${id}&view=details`, { scroll: false })
               }}
             />
           )}
@@ -1211,8 +1187,7 @@ export default function TerminePage({
                   key={t.id}
                   onClick={() => {
                     setSelectedId(t.id)
-                    window.history.replaceState(null, '', `/?tab=appointments&terminId=${t.id}&view=details`)
-                    try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: t.id, view: 'details' })) } catch {}
+                    router.replace(`/?tab=appointments&terminId=${t.id}&view=details`, { scroll: false })
                   }}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
@@ -1318,8 +1293,7 @@ export default function TerminePage({
                   return filtered.map(termin => (
                   <tr key={termin.id} className="clickable" onClick={() => {
                     setSelectedId(termin.id)
-                    window.history.replaceState(null, '', `/?tab=appointments&terminId=${termin.id}&view=details`)
-                    try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: termin.id, view: 'details' })) } catch {}
+                    router.replace(`/?tab=appointments&terminId=${termin.id}&view=details`, { scroll: false })
                   }}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
