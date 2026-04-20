@@ -45,9 +45,8 @@ export default function ProTouringApp() {
     if (terminId) {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
-        setNavigateToTerminId(id)
         setActiveTab('appointments')
-        router.replace('/?tab=appointments')
+        router.replace(`/?tab=appointments&terminId=${id}`)
       }
     }
   }, [searchParams, router])
@@ -110,12 +109,7 @@ export default function ProTouringApp() {
   const content = (
     <>
       {activeTab === 'desk' && <DeskModule />}
-      {activeTab === 'appointments' && (
-        <TerminePage
-          initialSelectedId={navigateToTerminId}
-          onNavigated={() => setNavigateToTerminId(null)}
-        />
-      )}
+      {activeTab === 'appointments' && <TerminePage />}
       {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
       {activeTab === 'venues' && <VenuesPage />}
       {activeTab === 'partners' && <PartnersPage />}

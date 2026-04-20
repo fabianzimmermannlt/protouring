@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
@@ -808,9 +809,15 @@ export default function TerminePage({
   const [termineFilter, setTermineFilter] = useState<'aktuell' | 'vergangen' | 'alle'>('aktuell')
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  // Detail view
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>('details')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isFirstRender = useRef(true)
+
+  // Detail view — aus URL initialisieren
+  const urlTerminId = searchParams.get('terminId') ? parseInt(searchParams.get('terminId')!) : null
+  const urlView = (searchParams.get('view') ?? 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+  const [selectedId, setSelectedId] = useState<number | null>(urlTerminId)
+  const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(urlView)
 
   // Reset sub-view when switching termin or leaving detail
   useEffect(() => {
@@ -826,6 +833,16 @@ export default function TerminePage({
       detail: { inDetail: selectedId !== null, view: detailView }
     }))
   }, [selectedId, detailView])
+
+  // URL-Persistenz: selectedId + detailView in URL schreiben (nicht beim ersten Render)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (selectedId !== null) {
+      router.replace(`/?tab=appointments&terminId=${selectedId}&view=${detailView}`, { scroll: false } as any)
+    } else {
+      router.replace('/?tab=appointments', { scroll: false } as any)
+    }
+  }, [selectedId, detailView]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = () => setSelectedId(null)
