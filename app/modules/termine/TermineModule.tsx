@@ -812,9 +812,11 @@ export default function TerminePage({
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-
   // Detail view — URL-Params + sessionStorage als Fallback (replaceState wird auf mobilen Browsern/Next.js manchmal ignoriert)
   const PT_SESSION_KEY = 'pt_termine_nav'
+
+  // Ref: immer aktueller selectedId — synchron in Render-Phase gesetzt, kein Closure-Problem
+  const selectedIdRef = useRef<number | null>(null)
 
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null
@@ -846,6 +848,9 @@ export default function TerminePage({
     } catch {}
     return 'details'
   })
+
+  // Ref synchron in Render-Phase aktualisieren — Event-Handler lesen immer aktuellen Wert
+  selectedIdRef.current = selectedId
 
   // Reset sub-view when switching termin or leaving detail
   useEffect(() => {
@@ -894,17 +899,18 @@ export default function TerminePage({
     }
   }, [initialSelectedId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // useCallback mit selectedId als Dep — Closure ist immer frisch, URL + sessionStorage sofort schreiben
+  // Ref-basierter Handler — kein Re-register nötig, liest immer aktuellen selectedId
   const handleSetView = useCallback((e: Event) => {
     const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
     if (detail?.view) {
       setDetailView(detail.view)
-      if (selectedId !== null) {
-        window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detail.view}`)
-        try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: selectedId, view: detail.view })) } catch {}
+      const currentId = selectedIdRef.current
+      if (currentId !== null) {
+        window.history.replaceState(null, '', `/?tab=appointments&terminId=${currentId}&view=${detail.view}`)
+        try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: currentId, view: detail.view })) } catch {}
       }
     }
-  }, [selectedId])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     window.addEventListener('termine-set-view', handleSetView)
@@ -1125,6 +1131,7 @@ export default function TerminePage({
             onNavigate={id => {
               setSelectedId(id)
               window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}&view=details`)
+              try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: id, view: 'details' })) } catch {}
             }}
           />
           {detailView === 'travelparty' ? (
@@ -1192,6 +1199,7 @@ export default function TerminePage({
               onSelectTermin={id => {
                 setSelectedId(id)
                 window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}&view=details`)
+                try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: id, view: 'details' })) } catch {}
               }}
             />
           )}
@@ -1209,6 +1217,7 @@ export default function TerminePage({
                   onClick={() => {
                     setSelectedId(t.id)
                     window.history.replaceState(null, '', `/?tab=appointments&terminId=${t.id}&view=details`)
+                    try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: t.id, view: 'details' })) } catch {}
                   }}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
@@ -1315,6 +1324,7 @@ export default function TerminePage({
                   <tr key={termin.id} className="clickable" onClick={() => {
                     setSelectedId(termin.id)
                     window.history.replaceState(null, '', `/?tab=appointments&terminId=${termin.id}&view=details`)
+                    try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: termin.id, view: 'details' })) } catch {}
                   }}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
