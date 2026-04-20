@@ -813,17 +813,38 @@ export default function TerminePage({
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
 
-  // Detail view — aus window.location initialisieren (robust auf Mobile)
+  // Detail view — URL-Params + sessionStorage als Fallback (replaceState wird auf mobilen Browsern/Next.js manchmal ignoriert)
+  const PT_SESSION_KEY = 'pt_termine_nav'
+
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null
     const p = new URLSearchParams(window.location.search)
-    const id = p.get('terminId')
-    return id ? parseInt(id, 10) : null
+    const urlId = p.get('terminId')
+    if (urlId) return parseInt(urlId, 10)
+    // Fallback: sessionStorage (Reload-Persistenz wenn URL-Write geblockt wurde)
+    try {
+      const s = sessionStorage.getItem(PT_SESSION_KEY)
+      if (s && p.get('tab') === 'appointments') {
+        const saved = JSON.parse(s)
+        if (saved?.terminId) return saved.terminId
+      }
+    } catch {}
+    return null
   })
   const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
     if (typeof window === 'undefined') return 'details'
     const p = new URLSearchParams(window.location.search)
-    return (p.get('view') ?? 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+    const urlView = p.get('view')
+    if (urlView) return urlView as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+    // Fallback: sessionStorage
+    try {
+      const s = sessionStorage.getItem(PT_SESSION_KEY)
+      if (s && p.get('tab') === 'appointments') {
+        const saved = JSON.parse(s)
+        if (saved?.view) return saved.view
+      }
+    } catch {}
+    return 'details'
   })
 
   // Reset sub-view when switching termin or leaving detail
@@ -841,29 +862,29 @@ export default function TerminePage({
     }))
   }, [selectedId, detailView])
 
-  // URL-Persistenz: URL nur updaten wenn sie sich von aktuellem State unterscheidet
+  // URL-Persistenz + sessionStorage: beides schreiben bei Änderung
+  // sessionStorage ist der zuverlässige Fallback falls replaceState von Next.js/Mobile geblockt wird
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search)
-    const urlTerminId = p.get('terminId') ? parseInt(p.get('terminId')!) : null
-    const urlView = p.get('view') ?? 'details'
-    const urlFilter = p.get('filter') ?? 'aktuell'
-
     if (selectedId !== null) {
-      if (urlTerminId !== selectedId || urlView !== detailView) {
-        window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detailView}`)
-      }
+      window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detailView}`)
+      try { sessionStorage.setItem(PT_SESSION_KEY, JSON.stringify({ terminId: selectedId, view: detailView })) } catch {}
     } else {
-      if (urlTerminId !== null || urlFilter !== termineFilter) {
-        window.history.replaceState(null, '', `/?tab=appointments&filter=${termineFilter}`)
-      }
+      window.history.replaceState(null, '', `/?tab=appointments&filter=${termineFilter}`)
+      try { sessionStorage.removeItem(PT_SESSION_KEY) } catch {}
     }
-  }, [selectedId, detailView, termineFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, detailView, termineFilter])
+
+  // useCallback mit frischen Werten — Event-Listener re-registriert wenn termineFilter ändert
+  const handleGoToList = useCallback(() => {
+    setSelectedId(null)
+    window.history.replaceState(null, '', `/?tab=appointments&filter=${termineFilter}`)
+    try { sessionStorage.removeItem(PT_SESSION_KEY) } catch {}
+  }, [termineFilter])
 
   useEffect(() => {
-    const handler = () => setSelectedId(null)
-    window.addEventListener('termine-go-to-list', handler)
-    return () => window.removeEventListener('termine-go-to-list', handler)
-  }, [])
+    window.addEventListener('termine-go-to-list', handleGoToList)
+    return () => window.removeEventListener('termine-go-to-list', handleGoToList)
+  }, [handleGoToList])
 
   // Von Schreibtisch: direkt zu einem Termin springen
   useEffect(() => {
@@ -873,14 +894,21 @@ export default function TerminePage({
     }
   }, [initialSelectedId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
-      if (detail?.view) setDetailView(detail.view)
+  // useCallback mit selectedId als Dep — Closure ist immer frisch, URL sofort schreiben
+  const handleSetView = useCallback((e: Event) => {
+    const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
+    if (detail?.view) {
+      setDetailView(detail.view)
+      if (selectedId !== null) {
+        window.history.replaceState(null, '', `/?tab=appointments&terminId=${selectedId}&view=${detail.view}`)
+      }
     }
-    window.addEventListener('termine-set-view', handler)
-    return () => window.removeEventListener('termine-set-view', handler)
-  }, [])
+  }, [selectedId])
+
+  useEffect(() => {
+    window.addEventListener('termine-set-view', handleSetView)
+    return () => window.removeEventListener('termine-set-view', handleSetView)
+  }, [handleSetView])
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -1074,6 +1102,11 @@ export default function TerminePage({
   return (
     <div className="module-content">
 
+      {/* TEMP DEBUG */}
+      <div style={{background:'#ffcc00',color:'#000',padding:'8px',fontSize:'13px',fontWeight:'bold',fontFamily:'monospace',marginBottom:'4px'}}>
+        id={selectedId ?? 'null'} | view={detailView} | ss={(() => { try { const s=sessionStorage.getItem(PT_SESSION_KEY); return s ? JSON.parse(s).terminId+'/'+JSON.parse(s).view : 'empty' } catch { return 'err' } })()}
+      </div>
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
           <AlertCircle size={16} /> {error}
@@ -1088,7 +1121,10 @@ export default function TerminePage({
           <TerminDatumzeile
             termin={selectedTermin}
             termine={sortedTermine}
-            onNavigate={id => setSelectedId(id)}
+            onNavigate={id => {
+              setSelectedId(id)
+              window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}&view=details`)
+            }}
           />
           {detailView === 'travelparty' ? (
             <ReisegruppeView terminId={selectedTermin.id} isAdmin={isAdmin} />
@@ -1152,7 +1188,10 @@ export default function TerminePage({
           {listView === 'calendar' && (
             <KalenderView
               termine={filteredTermine}
-              onSelectTermin={id => setSelectedId(id)}
+              onSelectTermin={id => {
+                setSelectedId(id)
+                window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}&view=details`)
+              }}
             />
           )}
 
@@ -1166,7 +1205,10 @@ export default function TerminePage({
               ) : tableRows.map(t => (
                 <button
                   key={t.id}
-                  onClick={() => setSelectedId(t.id)}
+                  onClick={() => {
+                    setSelectedId(t.id)
+                    window.history.replaceState(null, '', `/?tab=appointments&terminId=${t.id}&view=details`)
+                  }}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
                   {/* Date column */}
@@ -1269,7 +1311,10 @@ export default function TerminePage({
                     </tr>
                   )
                   return filtered.map(termin => (
-                  <tr key={termin.id} className="clickable" onClick={() => setSelectedId(termin.id)}>
+                  <tr key={termin.id} className="clickable" onClick={() => {
+                    setSelectedId(termin.id)
+                    window.history.replaceState(null, '', `/?tab=appointments&terminId=${termin.id}&view=details`)
+                  }}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.art

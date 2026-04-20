@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Navigation } from '@/app/components/shared/Navigation'
 import DeskModule from './modules/desk/page'
 import HotelsPage from './modules/hotels/page'
@@ -18,7 +18,6 @@ import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottom
 
 export default function ProTouringApp() {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','settings','feedback']
 
@@ -44,17 +43,19 @@ export default function ProTouringApp() {
   const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
 
   // Direktlink von /artists: /?terminId=123 (ohne tab-Param) öffnet Termin direkt
+  // Einmalig beim Mount, kein useSearchParams → keine Re-renders durch history.replaceState
   useEffect(() => {
-    const terminId = searchParams.get('terminId')
-    const tab = searchParams.get('tab')
+    const p = new URLSearchParams(window.location.search)
+    const terminId = p.get('terminId')
+    const tab = p.get('tab')
     if (terminId && !tab) {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
         setActiveTab('appointments')
-        router.replace(`/?tab=appointments&terminId=${id}`)
+        window.history.replaceState(null, '', `/?tab=appointments&terminId=${id}`)
       }
     }
-  }, [searchParams, router])
+  }, [])
 
   // Globales Event: vom Schreibtisch zu einem Termin navigieren
   useEffect(() => {
