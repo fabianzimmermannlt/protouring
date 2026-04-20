@@ -26,8 +26,16 @@ export default function ProTouringApp() {
     return t && VALID_TABS.includes(t) ? t : 'desk'
   })()
 
+  const initialSubTab = (() => {
+    const s = searchParams.get('sub')
+    if (s) return s
+    if (initialTab === 'settings') return 'artist'
+    if (initialTab === 'contacts') return 'overview'
+    return ''
+  })()
+
   const [activeTab, setActiveTab] = useState(initialTab)
-  const [activeSubTab, setActiveSubTab] = useState(initialTab === 'settings' ? 'artist' : initialTab === 'contacts' ? 'overview' : '')
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab)
   const [authChecked, setAuthChecked] = useState(false)
   const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
 
@@ -84,17 +92,19 @@ export default function ProTouringApp() {
   const currentTenant = getCurrentTenant()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
 
+  const handleSubTabChange = (subId: string) => {
+    setActiveSubTab(subId)
+    router.replace(`/?tab=${activeTab}&sub=${subId}`)
+  }
+
   // Reset sub-tab when switching main tabs
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
-    if (tabId === 'settings') {
-      setActiveSubTab('artist')
-    } else if (tabId === 'contacts') {
-      setActiveSubTab('overview')
-    } else {
-      setActiveSubTab('')
-    }
-    router.replace(`/?tab=${tabId}`)
+    let defaultSub = ''
+    if (tabId === 'settings') defaultSub = 'artist'
+    else if (tabId === 'contacts') defaultSub = 'overview'
+    setActiveSubTab(defaultSub)
+    router.replace(defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`)
   }
 
   const content = (
@@ -131,7 +141,7 @@ export default function ProTouringApp() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           activeSubTab={activeSubTab}
-          onSubTabChange={setActiveSubTab}
+          onSubTabChange={handleSubTabChange}
           showMobileNavigation={true}
         />
 
@@ -156,7 +166,7 @@ export default function ProTouringApp() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           activeSubTab={activeSubTab}
-          onSubTabChange={setActiveSubTab}
+          onSubTabChange={handleSubTabChange}
           showMobileNavigation={false}
         />
         <FeedbackButton />
