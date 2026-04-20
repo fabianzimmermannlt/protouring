@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
