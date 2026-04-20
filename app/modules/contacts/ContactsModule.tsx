@@ -7,7 +7,6 @@ import {
   UserIcon,
 } from '@heroicons/react/24/outline'
 import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
-import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
 import GastAnlegenModal from './GastAnlegenModal'
 import {
@@ -34,51 +33,6 @@ export interface ContactsProps {
   activeSubTab?: string
 }
 
-// ProfileEditor-Daten ↔ Contact konvertieren
-function profileToContact(data: ProfileData): ContactFormData {
-  return {
-    firstName: data.firstName || '', lastName: data.lastName || '',
-    function1: data.function1 || '', function2: data.function2 || '', function3: data.function3 || '',
-    specification: (data as any).specification || data.specialNotes || '',
-    accessRights: data.accessRights || 'Crew',
-    email: data.email || '', phone: data.phone || '', mobile: data.mobile || '',
-    address: data.address || '', postalCode: data.postalCode || '', residence: data.residence || '',
-    taxId: data.taxId || '', website: '', birthDate: data.birthDate || '',
-    gender: data.gender || '', pronouns: data.pronouns || '', birthPlace: data.birthPlace || '',
-    nationality: data.nationality || '', idNumber: data.idNumber || '', socialSecurity: data.socialSecurity || '',
-    diet: data.diet || '', glutenFree: data.glutenFree || false, lactoseFree: data.lactoseFree || false,
-    allergies: data.allergies || '', emergencyContact: data.emergencyContact || '', emergencyPhone: data.emergencyPhone || '',
-    shirtSize: data.shirtSize || '', hoodieSize: data.hoodieSize || '', pantsSize: data.pantsSize || '',
-    shoeSize: data.shoeSize || '', languages: data.languages || '', driversLicense: data.driversLicense || '',
-    railcard: data.railcard || '', frequentFlyer: data.frequentFlyer || '',
-    bankAccount: data.bankAccount || '', bankIban: data.bankIban || '', bankBic: data.bankBic || '',
-    taxNumber: data.taxNumber || '', vatId: data.vatId || '', crewToolActive: data.crewToolActive || false,
-    hourlyRate: 0, dailyRate: 0, notes: data.specialNotes || '',
-    hotelInfo: '', hotelAlias: '',
-  }
-}
-
-function contactToProfile(c: Contact): ProfileData {
-  return {
-    firstName: c.firstName, lastName: c.lastName,
-    function1: c.function1, function2: c.function2, function3: c.function3,
-    specification: c.specification,
-    accessRights: c.tenantRole ? (ROLE_LABELS[c.tenantRole as TenantRole] ?? c.tenantRole) : c.accessRights,
-    email: c.email, phone: c.phone, mobile: c.mobile,
-    address: c.address, postalCode: c.postalCode, residence: c.residence,
-    taxId: c.taxId, birthDate: c.birthDate, gender: c.gender, pronouns: c.pronouns,
-    birthPlace: c.birthPlace, nationality: c.nationality, idNumber: c.idNumber,
-    socialSecurity: c.socialSecurity, diet: c.diet, glutenFree: c.glutenFree,
-    lactoseFree: c.lactoseFree, allergies: c.allergies,
-    emergencyContact: c.emergencyContact, emergencyPhone: c.emergencyPhone,
-    shirtSize: c.shirtSize, hoodieSize: c.hoodieSize, pantsSize: c.pantsSize,
-    shoeSize: c.shoeSize, languages: c.languages, driversLicense: c.driversLicense,
-    railcard: c.railcard, frequentFlyer: c.frequentFlyer,
-    bankAccount: c.bankAccount, bankIban: c.bankIban, bankBic: c.bankBic,
-    taxNumber: c.taxNumber, vatId: c.vatId, crewToolActive: c.crewToolActive,
-    specialNotes: c.notes, hotelInfo: '', hotelAlias: '', personalFiles: [],
-  } as unknown as ProfileData
-}
 
 export default function ContactsModule({ activeSubTab = 'overview' }: ContactsProps) {
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -87,7 +41,6 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [showAddModal, setShowAddModal] = useState(false)
   const [showGastModal, setShowGastModal] = useState(false)
   const [editingGast, setEditingGast] = useState<Contact | null>(null)
-  const [editingContact, setEditingContact] = useState<Contact | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
@@ -128,40 +81,6 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       setError('Kontakte konnten nicht geladen werden.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleAddContact = async (profileData: ProfileData) => {
-    try {
-      const newContact = await createContact(profileToContact(profileData))
-      setContacts(prev => [...prev, newContact])
-      setShowAddModal(false)
-    } catch (e) {
-      setError('Kontakt konnte nicht gespeichert werden.')
-    }
-  }
-
-  const handleUpdateContact = async (profileData: ProfileData) => {
-    if (!editingContact) return
-    try {
-      const updated = await updateContact(editingContact.id, profileToContact(profileData))
-      setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
-      setEditingContact(null)
-      setShowAddModal(false)
-    } catch (e) {
-      setError('Kontakt konnte nicht aktualisiert werden.')
-    }
-  }
-
-  const handleDeleteContact = async (contactId: string) => {
-    if (!confirm('Möchten Sie diesen Kontakt wirklich löschen?')) return
-    try {
-      await deleteContact(contactId)
-      setContacts(prev => prev.filter(c => c.id !== contactId))
-      setEditingContact(null)
-      setShowAddModal(false)
-    } catch (e) {
-      setError('Kontakt konnte nicht gelöscht werden.')
     }
   }
 
@@ -306,12 +225,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const isMobile = useIsMobile()
 
   const handleEdit = (contact: Contact) => {
-    if (contact.contactType === 'guest') {
-      setEditingGast(contact)
-    } else {
-      setEditingContact(contact)
-      setShowAddModal(true)
-    }
+    setEditingGast(contact)
   }
 
   const renderContent = () => {
@@ -479,7 +393,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       {renderContent()}
 
       {/* Neuer-Kontakt-Modal (nur Einladen) */}
-      {showAddModal && !editingContact && (
+      {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -571,43 +485,6 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         </div>
       )}
 
-      {/* Kontakt bearbeiten — volles ProfileEditor-Modal */}
-      {showAddModal && editingContact && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Kontakt bearbeiten</h3>
-              <div className="flex items-center gap-2">
-                {!editingContact.userId && (
-                  <button
-                    onClick={() => handleDeleteContact(editingContact.id)}
-                    className="flex items-center gap-2 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
-                  >
-                    Löschen
-                  </button>
-                )}
-                <button
-                  onClick={() => { setShowAddModal(false); setEditingContact(null) }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <ProfileEditor
-              isOpen={true}
-              onClose={() => { setShowAddModal(false); setEditingContact(null) }}
-              profileData={contactToProfile(editingContact)}
-              onSave={handleUpdateContact}
-              onDelete={!editingContact.userId ? () => handleDeleteContact(editingContact.id) : undefined}
-              isAdmin={isAdmin}
-              isSelf={!!editingContact.userId && editingContact.userId === getCurrentUser()?.id}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Manuell-Anlegen-Modal */}
       {showGastModal && (
