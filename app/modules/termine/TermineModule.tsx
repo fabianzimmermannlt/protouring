@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
@@ -810,14 +810,20 @@ export default function TerminePage({
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
   const router = useRouter()
-  const searchParams = useSearchParams()
   const isFirstRender = useRef(true)
 
-  // Detail view — aus URL initialisieren
-  const urlTerminId = searchParams.get('terminId') ? parseInt(searchParams.get('terminId')!) : null
-  const urlView = (searchParams.get('view') ?? 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
-  const [selectedId, setSelectedId] = useState<number | null>(urlTerminId)
-  const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(urlView)
+  // Detail view — aus window.location initialisieren (robust auf Mobile)
+  const [selectedId, setSelectedId] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null
+    const p = new URLSearchParams(window.location.search)
+    const id = p.get('terminId')
+    return id ? parseInt(id, 10) : null
+  })
+  const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
+    if (typeof window === 'undefined') return 'details'
+    const p = new URLSearchParams(window.location.search)
+    return (p.get('view') ?? 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+  })
 
   // Reset sub-view when switching termin or leaving detail
   useEffect(() => {

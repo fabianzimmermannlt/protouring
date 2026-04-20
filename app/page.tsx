@@ -21,25 +21,29 @@ export default function ProTouringApp() {
   const searchParams = useSearchParams()
 
   const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','settings','feedback']
-  const initialTab = (() => {
-    const t = searchParams.get('tab')
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'desk'
+    const p = new URLSearchParams(window.location.search)
+    const t = p.get('tab')
     return t && VALID_TABS.includes(t) ? t : 'desk'
-  })()
+  })
 
-  const initialSubTab = (() => {
-    const s = searchParams.get('sub')
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const p = new URLSearchParams(window.location.search)
+    const s = p.get('sub')
+    const t = p.get('tab')
     if (s) return s
-    if (initialTab === 'settings') return 'artist'
-    if (initialTab === 'contacts') return 'overview'
+    if (t === 'settings') return 'artist'
+    if (t === 'contacts') return 'overview'
     return ''
-  })()
+  })
 
-  const [activeTab, setActiveTab] = useState(initialTab)
-  const [activeSubTab, setActiveSubTab] = useState(initialSubTab)
   const [authChecked, setAuthChecked] = useState(false)
   const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
 
-  // Direktlink von /artists: /?terminId=123 öffnet Termin direkt (nur wenn kein tab-Param gesetzt)
+  // Direktlink von /artists: /?terminId=123 (ohne tab-Param) öffnet Termin direkt
   useEffect(() => {
     const terminId = searchParams.get('terminId')
     const tab = searchParams.get('tab')
