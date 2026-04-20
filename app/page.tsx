@@ -98,7 +98,7 @@ export default function ProTouringApp() {
 
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
-    router.replace(`/?tab=${activeTab}&sub=${subId}`)
+    window.history.replaceState(null, '', `/?tab=${activeTab}&sub=${subId}`)
   }
 
   // Reset sub-tab when switching main tabs
@@ -108,7 +108,7 @@ export default function ProTouringApp() {
     if (tabId === 'settings') defaultSub = 'artist'
     else if (tabId === 'contacts') defaultSub = 'overview'
     setActiveSubTab(defaultSub)
-    router.replace(defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`)
+    window.history.replaceState(null, '', defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`)
   }
 
   const content = (

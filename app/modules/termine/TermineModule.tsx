@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import TerminDetailMobile from './TerminDetailMobile'
@@ -809,7 +808,6 @@ export default function TerminePage({
   const [termineFilter, setTermineFilter] = useState<'aktuell' | 'vergangen' | 'alle'>('aktuell')
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  const router = useRouter()
   const isFirstRender = useRef(true)
 
   // Detail view — aus window.location initialisieren (robust auf Mobile)
@@ -840,14 +838,13 @@ export default function TerminePage({
     }))
   }, [selectedId, detailView])
 
-  // URL-Persistenz: selectedId + detailView in URL schreiben (nicht beim ersten Render)
+  // URL-Persistenz: selectedId + detailView still in URL schreiben ohne Next.js Navigation zu triggern
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
-    if (selectedId !== null) {
-      router.replace(`/?tab=appointments&terminId=${selectedId}&view=${detailView}`, { scroll: false } as any)
-    } else {
-      router.replace('/?tab=appointments', { scroll: false } as any)
-    }
+    const url = selectedId !== null
+      ? `/?tab=appointments&terminId=${selectedId}&view=${detailView}`
+      : '/?tab=appointments'
+    window.history.replaceState(null, '', url)
   }, [selectedId, detailView]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
