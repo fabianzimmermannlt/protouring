@@ -1109,11 +1109,6 @@ export default function TerminePage({
   return (
     <div className="module-content">
 
-      {/* TEMP DEBUG */}
-      <div style={{background:'#ffcc00',color:'#000',padding:'8px',fontSize:'13px',fontWeight:'bold',fontFamily:'monospace',marginBottom:'4px'}}>
-        id={selectedId ?? 'null'} | view={detailView} | ss={(() => { try { const s=sessionStorage.getItem(PT_SESSION_KEY); return s ? JSON.parse(s).terminId+'/'+JSON.parse(s).view : 'empty' } catch { return 'err' } })()}
-      </div>
-
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
           <AlertCircle size={16} /> {error}
