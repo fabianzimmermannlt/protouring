@@ -71,7 +71,11 @@ export function Navigation({
   const [artistName, setArtistName] = useState('')
   const [termineInDetail, setTermineInDetail] = useState(false)
   const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>('details')
-  const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
+  const [termineFilter, setTermineFilter] = useState<TermineListFilter>(() => {
+    if (typeof window === 'undefined') return 'aktuell'
+    const f = new URLSearchParams(window.location.search).get('filter') as TermineListFilter
+    return f ?? 'aktuell'
+  })
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [tenantCount, setTenantCount] = useState(0)
@@ -395,6 +399,9 @@ export function Navigation({
           onFilterChange={(f) => {
             setTermineFilter(f)
             window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f } }))
+            const p = new URLSearchParams(window.location.search)
+            p.set('filter', f)
+            window.history.replaceState(null, '', `/?${p.toString()}`)
           }}
           onListViewChange={(v) => {
             setTermineListView(v)

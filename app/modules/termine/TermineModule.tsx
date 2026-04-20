@@ -805,7 +805,11 @@ export default function TerminePage({
   const [searchTerm, setSearchTerm] = useState('')
 
   // Filter + View (synced with Navigation SubMenu)
-  const [termineFilter, setTermineFilter] = useState<'aktuell' | 'vergangen' | 'alle'>('aktuell')
+  const [termineFilter, setTermineFilter] = useState<'aktuell' | 'vergangen' | 'alle'>(() => {
+    if (typeof window === 'undefined') return 'aktuell'
+    const f = new URLSearchParams(window.location.search).get('filter') as 'aktuell' | 'vergangen' | 'alle'
+    return f ?? 'aktuell'
+  })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
   const isFirstRender = useRef(true)
@@ -838,14 +842,14 @@ export default function TerminePage({
     }))
   }, [selectedId, detailView])
 
-  // URL-Persistenz: selectedId + detailView still in URL schreiben ohne Next.js Navigation zu triggern
+  // URL-Persistenz: selectedId + detailView + filter still in URL schreiben
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
     const url = selectedId !== null
       ? `/?tab=appointments&terminId=${selectedId}&view=${detailView}`
-      : '/?tab=appointments'
+      : `/?tab=appointments&filter=${termineFilter}`
     window.history.replaceState(null, '', url)
-  }, [selectedId, detailView]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, detailView, termineFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = () => setSelectedId(null)
