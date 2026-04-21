@@ -33,6 +33,11 @@ export default function AppointmentDetailPage() {
     ? params.view as DetailView
     : 'details')
 
+  // Wenn via Aktuell-Button navigiert: diesen Button aktiv halten
+  const fromAktuell = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('from') === 'aktuell'
+  const activeNavItem = fromAktuell ? 'aktuell' : 'appointments'
+
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -212,6 +217,7 @@ export default function AppointmentDetailPage() {
           activeTab="appointments"
           onTabChange={handleTabChange}
           isSuperadmin={isSuperadmin}
+          initialActiveItem={activeNavItem}
         />
       </div>
 

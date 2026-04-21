@@ -22,6 +22,7 @@ interface Props {
   activeTab: string
   onTabChange: (tabId: string, subTabId?: string) => void
   isSuperadmin: boolean
+  initialActiveItem?: string
 }
 
 const MORE_ITEMS = [
@@ -34,13 +35,13 @@ const MORE_ITEMS = [
   { id: 'settings',  name: 'Einstellungen',  icon: Cog6ToothIcon },
 ]
 
-export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props) {
+export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialActiveItem }: Props) {
   const router = useRouter()
   const [showMore, setShowMore] = useState(false)
   const [nextTerminId, setNextTerminId] = useState<number | null>(null)
   // activeNavItem: welcher Button zuletzt aktiv angetippt wurde
   // 'aktuell' wenn Aktuell geklickt, sonst = activeTab
-  const [activeNavItem, setActiveNavItem] = useState(activeTab)
+  const [activeNavItem, setActiveNavItem] = useState(initialActiveItem ?? activeTab)
   const role = getEffectiveRole()
 
   // activeNavItem mit activeTab synchron halten (außer wenn aktuell aktiv)
@@ -70,7 +71,7 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
     setActiveNavItem('aktuell')
     if (nextTerminId) {
       // Direkt zur Detail-URL navigieren — kein Event-Timing-Problem
-      router.push(`/appointments/${nextTerminId}/details`)
+      router.push(`/appointments/${nextTerminId}/details?from=aktuell`)
     } else {
       onTabChange('appointments')
     }
