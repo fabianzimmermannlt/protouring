@@ -40,7 +40,6 @@ export default function ProTouringApp() {
   })
 
   const [authChecked, setAuthChecked] = useState(false)
-  const [navigateToTerminId, setNavigateToTerminId] = useState<number | null>(null)
 
   // Direktlink von /artists: /?terminId=123 (ohne tab-Param) öffnet Termin direkt
   // Einmalig beim Mount, kein useSearchParams → keine Re-renders durch history.replaceState
@@ -57,18 +56,15 @@ export default function ProTouringApp() {
     }
   }, [])
 
-  // Globales Event: vom Schreibtisch zu einem Termin navigieren
+  // Globales Event: vom Schreibtisch zu einem Termin navigieren → direkt zur Detail-URL
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent<{ terminId: number }>).detail?.terminId
-      if (id) {
-        setNavigateToTerminId(id)
-        setActiveTab('appointments')
-      }
+      if (id) router.push(`/appointments/${id}/details`)
     }
     window.addEventListener('navigate-to-termin', handler)
     return () => window.removeEventListener('navigate-to-termin', handler)
-  }, [])
+  }, [router])
 
   // Globales Event: zum Feedback-Tab navigieren (z.B. vom FeedbackButton)
   useEffect(() => {

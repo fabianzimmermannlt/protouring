@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
-import TerminDetailMobile from './TerminDetailMobile'
 import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
@@ -11,9 +11,6 @@ import VenueModal from '../venues/VenueModal'
 import PartnerModal from '../partners/PartnerModal'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
-import ReisegruppeView from './ReisegruppeView'
-import AdvanceSheetView from './AdvanceSheetView'
-import GaestelisteView from './GaestelisteView'
 import KalenderView from './KalenderView'
 import AnreiseCard from './AnreiseCard'
 import HotelCard from './HotelCard'
@@ -97,18 +94,18 @@ const EMPTY_FORM: TerminFormData = {
 // Helpers
 // ============================================================
 
-function formatDateLong(dateStr: string, withWeekday = true) {
+export function formatDateLong(dateStr: string, withWeekday = true) {
   return new Date(dateStr).toLocaleDateString('de-DE', {
     ...(withWeekday ? { weekday: 'long' } : {}),
     day: 'numeric', month: 'long', year: 'numeric',
   })
 }
 
-function formatDateShort(dateStr: string) {
+export function formatDateShort(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
 }
 
-function formatDateTable(dateStr: string) {
+export function formatDateTable(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
@@ -583,11 +580,11 @@ function PlaceholderCard({ title }: { title: string }) {
 }
 
 // ============================================================
-// Detail view (inline, SPA)
+// Detail view components (exported for use in standalone route pages)
 // ============================================================
 
 // Neighbour termin button (prev/next, with distance-based opacity/size)
-function TerminDatumzeile({ termin, termine, onNavigate }: {
+export function TerminDatumzeile({ termin, termine, onNavigate }: {
   termin: Termin
   termine: Termin[]
   onNavigate: (id: number) => void
@@ -650,7 +647,7 @@ function NeighbourBtn({ t, distance, dir, onClick }: {
   )
 }
 
-function TerminDetail({
+export function TerminDetail({
   termin,
   termine,
   isAdmin,
@@ -791,13 +788,8 @@ function TerminDetail({
 // Main component
 // ============================================================
 
-export default function TerminePage({
-  initialSelectedId,
-  onNavigated,
-}: {
-  initialSelectedId?: number | null
-  onNavigated?: () => void
-} = {}) {
+export default function TerminePage() {
+  const router = useRouter()
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -812,95 +804,12 @@ export default function TerminePage({
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  // Persistenz: sessionStorage (zuverlässig bei Reload) + URL best-effort
-  const SS_KEY = 'pt_nav'
-
-  const persistNav = useCallback((id: number, view: string) => {
-    try { sessionStorage.setItem(SS_KEY, JSON.stringify({ id, view })) } catch {}
-  }, [])
-
-  const clearNav = useCallback(() => {
-    try { sessionStorage.removeItem(SS_KEY) } catch {}
-  }, [])
-
-  // Ref: immer aktueller selectedId — kein Closure-Problem bei Event-Listenern
-  const selectedIdRef = useRef<number | null>(null)
-
-  const [selectedId, setSelectedId] = useState<number | null>(() => {
-    if (typeof window === 'undefined') return null
-    // 1. URL-Param (funktioniert wenn router.replace durchkam)
-    const urlId = new URLSearchParams(window.location.search).get('terminId')
-    if (urlId) return parseInt(urlId, 10)
-    // 2. sessionStorage — kein tab-Check nötig, TerminePage mountet nur wenn activeTab=appointments
-    try {
-      const s = sessionStorage.getItem(SS_KEY)
-      if (s) { const saved = JSON.parse(s); if (saved?.id) return saved.id }
-    } catch {}
-    return null
-  })
-  const [detailView, setDetailView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
-    if (typeof window === 'undefined') return 'details'
-    const urlView = new URLSearchParams(window.location.search).get('view')
-    if (urlView) return urlView as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
-    try {
-      const s = sessionStorage.getItem(SS_KEY)
-      if (s) { const saved = JSON.parse(s); if (saved?.view) return saved.view }
-    } catch {}
-    return 'details'
-  })
-
-  // Ref synchron in Render-Phase aktualisieren — Event-Handler lesen immer aktuellen Wert
-  selectedIdRef.current = selectedId
-
-  // Reset sub-view when switching termin or leaving detail
-  useEffect(() => {
-    if (selectedId === null) {
-      setDetailView('details')
-      loadData()
-    }
-  }, [selectedId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Notify Navigation when detail view changes; listen for "go to list" event
+  // Notify Navigation: we are in list mode
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('termine-view-changed', {
-      detail: { inDetail: selectedId !== null, view: detailView }
+      detail: { inDetail: false }
     }))
-  }, [selectedId, detailView])
-
-  const handleGoToList = useCallback(() => {
-    setSelectedId(null)
-    clearNav()
-  }, [clearNav])
-
-  useEffect(() => {
-    window.addEventListener('termine-go-to-list', handleGoToList)
-    return () => window.removeEventListener('termine-go-to-list', handleGoToList)
-  }, [handleGoToList])
-
-  // Von Schreibtisch: direkt zu einem Termin springen
-  useEffect(() => {
-    if (initialSelectedId) {
-      setSelectedId(initialSelectedId)
-      onNavigated?.()
-    }
-  }, [initialSelectedId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Ref-basierter Handler — liest immer aktuellen selectedId via Ref
-  const handleSetView = useCallback((e: Event) => {
-    const detail = (e as CustomEvent<{ view: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
-    if (detail?.view) {
-      setDetailView(detail.view)
-      const currentId = selectedIdRef.current
-      if (currentId !== null) {
-        persistNav(currentId, detail.view)
-      }
-    }
-  }, [persistNav])
-
-  useEffect(() => {
-    window.addEventListener('termine-set-view', handleSetView)
-    return () => window.removeEventListener('termine-set-view', handleSetView)
-  }, [handleSetView])
+  }, [])
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -978,7 +887,6 @@ export default function TerminePage({
     try {
       await deleteTermin(id)
       setTermine(prev => prev.filter(t => t.id !== id))
-      if (selectedId === id) setSelectedId(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Löschen fehlgeschlagen')
     }
@@ -1068,9 +976,6 @@ export default function TerminePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTermine, tableSortKey, tableSortDir])
 
-  // ---- Detail navigation helpers ----
-  const selectedTermin = selectedId !== null ? termine.find(t => t.id === selectedId) ?? null : null
-
   // ---- Guards ----
 
   if (authError) return (
@@ -1101,54 +1006,8 @@ export default function TerminePage({
         </div>
       )}
 
-      {/* ---- DETAIL VIEW ---- */}
-      {selectedTermin ? (
-        <>
-          {/* Datumzeile bleibt in beiden Sub-Views sichtbar */}
-          <TerminDatumzeile
-            termin={selectedTermin}
-            termine={sortedTermine}
-            onNavigate={id => { setSelectedId(id); persistNav(id, 'details') }}
-          />
-          {detailView === 'travelparty' ? (
-            <ReisegruppeView terminId={selectedTermin.id} isAdmin={isAdmin} />
-          ) : detailView === 'advance-sheet' ? (
-            <AdvanceSheetView terminId={selectedTermin.id} />
-          ) : detailView === 'guestlist' ? (
-            <GaestelisteView key={selectedTermin.id} terminId={selectedTermin.id} />
-          ) : isMobile ? (
-            <TerminDetailMobile
-              termin={selectedTermin}
-              termine={sortedTermine}
-              isAdmin={isEditor}
-              canSeeFiles={canSeeFiles}
-              onUpdated={updated => {
-                setTermine(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t))
-              }}
-              onDeleted={() => {
-                setTermine(prev => prev.filter(t => t.id !== selectedId))
-                setSelectedId(null)
-              }}
-              onEditClick={() => { setEditingTermin(selectedTermin); setIsModalOpen(true) }}
-            />
-          ) : (
-            <TerminDetail
-              termin={selectedTermin}
-              termine={sortedTermine}
-              isAdmin={isEditor}
-              canSeeFiles={canSeeFiles}
-              onUpdated={updated => {
-                setTermine(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t))
-              }}
-              onDeleted={() => {
-                setTermine(prev => prev.filter(t => t.id !== selectedId))
-                setSelectedId(null)
-              }}
-            />
-          )}
-        </>
-      ) : (
-        /* ---- LIST VIEW ---- */
+      {/* ---- LIST VIEW ---- */}
+      {(
         <>
           {/* Header */}
           {canCreate && (
@@ -1172,7 +1031,7 @@ export default function TerminePage({
           {listView === 'calendar' && (
             <KalenderView
               termine={filteredTermine}
-              onSelectTermin={id => { setSelectedId(id); persistNav(id, 'details') }}
+              onSelectTermin={id => router.push(`/appointments/${id}/details`)}
             />
           )}
 
@@ -1186,7 +1045,7 @@ export default function TerminePage({
               ) : tableRows.map(t => (
                 <button
                   key={t.id}
-                  onClick={() => { setSelectedId(t.id); persistNav(t.id, 'details') }}
+                  onClick={() => router.push(`/appointments/${t.id}/details`)}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
                   {/* Date column */}
@@ -1289,7 +1148,7 @@ export default function TerminePage({
                     </tr>
                   )
                   return filtered.map(termin => (
-                  <tr key={termin.id} className="clickable" onClick={() => { setSelectedId(termin.id); persistNav(termin.id, 'details') }}>
+                  <tr key={termin.id} className="clickable" onClick={() => router.push(`/appointments/${termin.id}/details`)}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.art
@@ -1357,7 +1216,7 @@ export default function TerminePage({
         </>
       )}
 
-      {/* ---- Modal: Neuer/Edit Termin ---- */}
+      {/* ---- Modal: Neuer Termin ---- */}
       {isModalOpen && (
         <TerminModal
           termin={editingTermin}
@@ -1371,7 +1230,6 @@ export default function TerminePage({
           }}
           onDeleted={id => {
             setTermine(prev => prev.filter(t => t.id !== id))
-            if (selectedId === id) setSelectedId(null)
             closeModal()
           }}
           allowAddAnother

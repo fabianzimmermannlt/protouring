@@ -69,8 +69,17 @@ export function Navigation({
   // Prop-Sync: wenn page.tsx activeTab extern ändert (z.B. via navigate-to-termin Event), übernehmen
   useEffect(() => { setCurrentTab(activeTab) }, [activeTab])
   const [artistName, setArtistName] = useState('')
-  const [termineInDetail, setTermineInDetail] = useState(false)
-  const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>('details')
+  const [termineInDetail, setTermineInDetail] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.location.pathname.startsWith('/appointments/')
+  })
+  const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
+    if (typeof window === 'undefined') return 'details'
+    const parts = window.location.pathname.split('/')
+    const view = parts[3] // /appointments/[id]/[view]
+    const validViews = ['details', 'travelparty', 'advance-sheet', 'guestlist']
+    return (validViews.includes(view) ? view : 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+  })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>(() => {
     if (typeof window === 'undefined') return 'aktuell'
     const f = new URLSearchParams(window.location.search).get('filter') as TermineListFilter
