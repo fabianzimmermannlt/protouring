@@ -80,9 +80,11 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
   const handleTermine = useCallback(() => {
     setShowMore(false)
     setActiveNavItem('appointments')
-    // Immer zuerst zur Liste — wenn wir schon in appointments sind, zurück zur Liste
-    // Wenn nicht, Tab wechseln
-    if (activeTab === 'appointments') {
+    // Auf echten Appointments-Routen (/appointments/...) direkt navigieren
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/appointments/')) {
+      onTabChange('appointments')
+    } else if (activeTab === 'appointments') {
+      // SPA-Modus: zurück zur Liste via Event
       window.dispatchEvent(new CustomEvent('termine-go-to-list'))
     } else {
       onTabChange('appointments')
