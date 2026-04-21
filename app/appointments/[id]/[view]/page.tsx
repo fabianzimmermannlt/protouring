@@ -97,11 +97,13 @@ export default function AppointmentDetailPage() {
   }, [terminId, router])
 
   const handleTabChange = useCallback((tabId: string) => {
+    // window.location.href statt router.push: umgeht Next.js Router-Cache
+    // (router.push würde den alten SPA-State wiederherstellen)
     let defaultSub = ''
     if (tabId === 'settings') defaultSub = 'artist'
     else if (tabId === 'contacts') defaultSub = 'overview'
-    router.push(defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`)
-  }, [router])
+    window.location.href = defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`
+  }, [])
 
   if (!authChecked) {
     return (
