@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   HomeIcon,
   CalendarDaysIcon,
@@ -34,13 +35,12 @@ const MORE_ITEMS = [
 ]
 
 export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props) {
+  const router = useRouter()
   const [showMore, setShowMore] = useState(false)
   const [nextTerminId, setNextTerminId] = useState<number | null>(null)
   // activeNavItem: welcher Button zuletzt aktiv angetippt wurde
   // 'aktuell' wenn Aktuell geklickt, sonst = activeTab
   const [activeNavItem, setActiveNavItem] = useState(activeTab)
-  const aktuellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const role = getEffectiveRole()
 
   // activeNavItem mit activeTab synchron halten (außer wenn aktuell aktiv)
@@ -68,14 +68,13 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin }: Props)
   const handleAktuell = useCallback(() => {
     setShowMore(false)
     setActiveNavItem('aktuell')
-    onTabChange('appointments')
     if (nextTerminId) {
-      if (aktuellTimerRef.current) clearTimeout(aktuellTimerRef.current)
-      aktuellTimerRef.current = setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('navigate-to-termin', { detail: { terminId: nextTerminId } }))
-      }, 100)
+      // Direkt zur Detail-URL navigieren — kein Event-Timing-Problem
+      router.push(`/appointments/${nextTerminId}/details`)
+    } else {
+      onTabChange('appointments')
     }
-  }, [nextTerminId, onTabChange])
+  }, [nextTerminId, onTabChange, router])
 
   const handleTermine = useCallback(() => {
     setShowMore(false)
