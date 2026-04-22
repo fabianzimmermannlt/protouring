@@ -134,15 +134,17 @@ export default function TerminDetailMobile({
         </div>
       </Section>
 
-      {/* ── 2. Zeitplan & Catering ──────────────────────── */}
-      <Section title="Zeitplan & Catering" defaultOpen>
+      {/* ── 2. Zeitplan ─────────────────────────────────── */}
+      <Section title="Zeitplan" defaultOpen>
         <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
-        <div className="border-t border-gray-100">
-          <CateringCard terminId={termin.id} isAdmin={isAdmin} />
-        </div>
       </Section>
 
-      {/* ── 3. Spielstätte & Partner ────────────────────── */}
+      {/* ── 3. Catering ─────────────────────────────────── */}
+      <Section title="Catering" defaultOpen>
+        <CateringCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── 4. Spielstätte & Partner ────────────────────── */}
       <Section title="Spielstätte & Partner">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm px-4 py-3">
           <dt className="text-gray-400 font-medium">Spielstätte</dt>
@@ -158,29 +160,29 @@ export default function TerminDetailMobile({
         </dl>
       </Section>
 
-      {/* ── 4. Lokale Kontakte ──────────────────────────── */}
+      {/* ── 5. Lokale Kontakte ──────────────────────────── */}
       <Section title="Lokale Kontakte">
         <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
-      {/* ── 5. Aufgaben ─────────────────────────────────── */}
+      {/* ── 6. Aufgaben ─────────────────────────────────── */}
       <Section title="Aufgaben" defaultOpen>
         <ToDoCard terminId={termin.id} />
       </Section>
 
-      {/* ── 6. Chat ─────────────────────────────────────── */}
+      {/* ── 7. Chat ─────────────────────────────────────── */}
       <Section title="Konversation">
         <TerminChatCard terminId={termin.id} />
       </Section>
 
-      {/* ── 7. Dateien ──────────────────────────────────── */}
+      {/* ── 8. Dateien ──────────────────────────────────── */}
       {canSeeFiles && (
         <Section title="Dateien">
           <TerminFileCard terminId={String(termin.id)} />
         </Section>
       )}
 
-      {/* ── 8. Private Notiz ────────────────────────────── */}
+      {/* ── 9. Private Notiz ────────────────────────────── */}
       <Section title="Private Notiz">
         <div className="p-3">
           <ContentBoard
