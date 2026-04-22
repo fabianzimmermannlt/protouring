@@ -790,6 +790,9 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE contacts ADD COLUMN contact_type TEXT NOT NULL DEFAULT 'crew'`) } catch {}
   await db.run(`UPDATE contacts SET contact_type = 'crew' WHERE contact_type IS NULL`)
 
+  // invite_pending: Kontakt wurde eingeladen aber hat noch nicht angenommen
+  try { await db.run(`ALTER TABLE contacts ADD COLUMN invite_pending INTEGER NOT NULL DEFAULT 0`) } catch {}
+
   // Tabelle für deaktivierte Funktionen pro Tenant
   await db.run(`
     CREATE TABLE IF NOT EXISTS tenant_disabled_functions (
@@ -1887,6 +1890,7 @@ const contactFromRow = (r) => ({
   userId: r.user_id || null,
   tenantRole: r.tenant_role || null,
   contactType: r.contact_type || 'crew',
+  invitePending: !!r.invite_pending,
 });
 
 app.get('/api/contacts', authenticateToken, requireTenant, async (req, res) => {
@@ -4244,11 +4248,33 @@ app.post('/api/settings/invite', authenticateToken, requireTenant, requireAdmin,
     // Alten Pending-Token für diese E-Mail + Tenant löschen
     await db.run('DELETE FROM invite_tokens WHERE email=? AND tenant_id=? AND used_at IS NULL', [email, req.tenant.id])
 
+    // Kontakt anlegen falls noch keiner vorhanden (damit er in der Liste erscheint)
+    let resolvedContactId = contact_id ?? null
+    if (!resolvedContactId) {
+      const existingContact = await db.get(
+        'SELECT id FROM contacts WHERE email=? AND tenant_id=?', [email, req.tenant.id]
+      )
+      if (existingContact) {
+        resolvedContactId = existingContact.id
+        await db.run('UPDATE contacts SET invite_pending=1 WHERE id=?', [resolvedContactId])
+      } else {
+        const parts = email.split('@')[0].split('.')
+        const firstName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : ''
+        const lastName  = parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1) : ''
+        const newContact = await db.run(
+          `INSERT INTO contacts (tenant_id, email, first_name, last_name, contact_type, invite_pending, crew_tool_active)
+           VALUES (?, ?, ?, ?, 'crew', 1, 0)`,
+          [req.tenant.id, email, firstName, lastName]
+        )
+        resolvedContactId = newContact.lastID
+      }
+    }
+
     const token = crypto.randomBytes(32).toString('hex')
     const result = await db.run(
       `INSERT INTO invite_tokens (tenant_id, token, email, role, contact_id, invited_by, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+7 days'))`,
-      [req.tenant.id, token, email, role, contact_id ?? null, req.user.id]
+      [req.tenant.id, token, email, role, resolvedContactId, req.user.id]
     )
     const invite = await db.get('SELECT * FROM invite_tokens WHERE id=?', [result.lastID])
     res.status(201).json({ ...invite, invite_url: `/invite/${token}` })
@@ -4361,9 +4387,12 @@ app.post('/api/invite/:token/accept', async (req, res) => {
         )
       }
 
-      // Wenn contact_id vorhanden: user_id verknüpfen
+      // Wenn contact_id vorhanden: user_id verknüpfen + invite_pending aufheben
       if (row.contact_id) {
-        await db.run('UPDATE contacts SET user_id=? WHERE id=?', [userId, row.contact_id])
+        await db.run(
+          'UPDATE contacts SET user_id=?, invite_pending=0 WHERE id=?',
+          [userId, row.contact_id]
+        )
       }
 
       // Token als verwendet markieren

@@ -294,8 +294,9 @@ export interface Contact {
   userId?: number | null;
   tenantRole?: string | null;
   contactType?: 'crew' | 'guest';
+  invitePending?: boolean;
 }
-export type ContactFormData = Omit<Contact, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'contactType' | 'tenantRole'>;
+export type ContactFormData = Omit<Contact, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'contactType' | 'tenantRole' | 'invitePending'>;
 
 // TenantUser wird unten neu definiert (Rollen-System)
 

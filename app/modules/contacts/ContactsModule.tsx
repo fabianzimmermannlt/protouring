@@ -402,7 +402,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                   return (
                     <div
                       key={contact.id}
-                      className={`bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-3 ${contact.tenantRole === null && contact.userId ? 'opacity-50' : ''}`}
+                      className={`bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-3 ${contact.tenantRole === null && contact.userId ? 'opacity-50' : ''} ${contact.invitePending ? 'opacity-50' : ''}`}
                       onClick={isEditor ? () => handleEdit(contact) : undefined}
                     >
                       {/* Initials avatar */}
@@ -412,11 +412,14 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm text-gray-900">
+                          <span className={`font-semibold text-sm text-gray-900 ${contact.invitePending ? 'italic' : ''}`}>
                             {contact.firstName} {contact.lastName}
                           </span>
                           {contact.contactType === 'guest' && (
                             <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">Manuell</span>
+                          )}
+                          {contact.invitePending && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">Eingeladen</span>
                           )}
                         </div>
                         {functions && <div className="text-xs text-gray-500 mt-0.5">{functions}</div>}
@@ -745,12 +748,19 @@ function ContactTable({
       </thead>
       <tbody>
         {(sorted as unknown as Contact[]).map((contact) => (
-          <tr key={contact.id} className={`${canEdit ? 'clickable' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}`} onClick={canEdit ? () => onEdit(contact) : undefined}>
+          <tr key={contact.id}
+            className={`${canEdit ? 'clickable' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}${contact.invitePending ? ' opacity-50 italic' : ''}`}
+            onClick={canEdit ? () => onEdit(contact) : undefined}>
             <td>
               {contact.firstName}
               {contact.contactType === 'guest' && (
                 <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#9ca3af', letterSpacing: '0.04em' }}>
                   Manuell
+                </span>
+              )}
+              {contact.invitePending && (
+                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
+                  Eingeladen
                 </span>
               )}
             </td>
