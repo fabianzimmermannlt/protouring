@@ -38,6 +38,8 @@ export default function SchreibtischModule() {
   const currentUser = getCurrentUser()
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
 
+  const [announcementTitle, setAnnouncementTitle] = useState('Ankündigung')
+
   const [profileData, setProfileData] = useState<EditorProfileData>({
     firstName: currentUser?.firstName || '',
     lastName: currentUser?.lastName || '',
@@ -292,13 +294,14 @@ export default function SchreibtischModule() {
 
       {/* ── MOBILE: Accordion ── */}
       <div className="md:hidden flex flex-col gap-2">
-        <AccordionSection title="Ankündigung" defaultOpen>
+        <AccordionSection title={announcementTitle} defaultOpen>
           <ContentBoard
             entityType="desk"
             entityId="announcement"
             title=""
             isAdmin={canDo(effectiveRole, CAN_EDIT_ANKUENDIGUNG)}
             singleItem
+            hideHeader
             hideEmptyButton
             allowDelete={false}
             modalTitle={{ new: 'Ankündigung erstellen', edit: 'Ankündigung bearbeiten' }}
@@ -308,6 +311,7 @@ export default function SchreibtischModule() {
               title: 'Willkommen bei ProTouring 👋',
               content: 'Hier kannst du aktuelle Infos, Ankündigungen oder Hinweise für dein Team hinterlegen.'
             }}
+            onItemLoaded={t => setAnnouncementTitle(t ?? 'Ankündigung')}
           />
         </AccordionSection>
 

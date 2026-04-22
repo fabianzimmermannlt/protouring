@@ -104,6 +104,8 @@ interface ContentBoardProps {
   className?: string
   /** singleItem-Modus: internen Header ausblenden (z.B. wenn AccordionSection den Titel bereits zeigt) */
   hideHeader?: boolean
+  /** Callback wenn Item geladen wurde – liefert Titel oder null (für dynamische AccordionSection-Titel) */
+  onItemLoaded?: (title: string | null) => void
 }
 
 export default function ContentBoard({
@@ -124,6 +126,7 @@ export default function ContentBoard({
   defaultContent,
   className = '',
   hideHeader = false,
+  onItemLoaded,
 }: ContentBoardProps) {
   const [items, setItems] = useState<BoardItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,11 +142,14 @@ export default function ContentBoard({
           try {
             const created = await createBoardItem(entityType, entityId, { title: defaultContent.title, content: defaultContent.content, notFinal: false, sortOrder: 0 })
             setItems([created])
+            onItemLoaded?.(created.title ?? null)
           } catch {
             setItems([])
+            onItemLoaded?.(null)
           }
         } else {
           setItems(loaded)
+          onItemLoaded?.(loaded[0]?.title ?? null)
         }
       })
       .catch(e => {
