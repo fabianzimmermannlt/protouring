@@ -308,19 +308,19 @@ function SuperadminConsole() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setOpen(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[90dvh] sm:max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-red-400" />
-                <h2 className="text-white font-semibold">Superadmin – Alle User</h2>
+                <h2 className="text-white font-semibold text-sm">Superadmin – Alle User</h2>
               </div>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
             </div>
 
             {/* Search */}
-            <div className="px-5 py-3 border-b border-gray-800">
+            <div className="px-4 py-2.5 border-b border-gray-800">
               <input
                 type="text"
                 placeholder="Suchen …"
@@ -335,56 +335,89 @@ function SuperadminConsole() {
               {loading && (
                 <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={20} /></div>
               )}
-              {error && <p className="text-red-400 text-sm px-5 py-4">{error}</p>}
+              {error && <p className="text-red-400 text-sm px-4 py-4">{error}</p>}
               {!loading && !error && (
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-gray-900 border-b border-gray-700">
-                    <tr>
-                      <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Name</th>
-                      <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">E-Mail</th>
-                      <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Tenants</th>
-                      <th className="px-4 py-2.5"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-800">
+                <>
+                  {/* Mobile: Cards */}
+                  <div className="sm:hidden divide-y divide-gray-800">
                     {filtered.map(u => (
-                      <tr key={u.id} className="hover:bg-gray-800/50">
-                        <td className="px-4 py-2.5 text-white">
-                          {u.firstName} {u.lastName}
-                          {u.isSuperadmin && <span className="ml-1.5 text-xs bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded">SA</span>}
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-400">{u.email}</td>
-                        <td className="px-4 py-2.5 text-xs">
-                          {u.tenantCount === 0
-                            ? <span className="text-orange-400 font-medium">Kein Tenant</span>
-                            : <span className="text-gray-400" title={u.tenantNames}>{u.tenantCount}×</span>
-                          }
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex gap-1.5 justify-end">
+                      <div key={u.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">
+                            {u.firstName} {u.lastName}
+                            {u.isSuperadmin && <span className="ml-1.5 text-xs bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded">SA</span>}
+                          </p>
+                          <p className="text-gray-400 text-xs truncate mt-0.5">{u.email}</p>
+                          <p className="text-xs mt-1">
+                            {u.tenantCount === 0
+                              ? <span className="text-orange-400">Kein Tenant</span>
+                              : <span className="text-gray-500" title={u.tenantNames}>{u.tenantCount} Tenant{u.tenantCount !== 1 ? 's' : ''}</span>
+                            }
+                          </p>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0 pt-0.5">
+                          <button
+                            onClick={() => { setPwTarget(u); setPwValue(''); setPwError(''); setPwSuccess('') }}
+                            className="text-xs px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg"
+                          >
+                            PW
+                          </button>
+                          {!u.isSuperadmin && (
                             <button
-                              onClick={() => { setPwTarget(u); setPwValue(''); setPwError(''); setPwSuccess('') }}
-                              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+                              onClick={() => { setDelTarget(u); setDelConfirm(''); setDelError('') }}
+                              className="text-xs px-2.5 py-1.5 bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded-lg"
                             >
-                              PW
+                              Löschen
                             </button>
-                            {!u.isSuperadmin && (
-                              <button
-                                onClick={() => { setDelTarget(u); setDelConfirm(''); setDelError('') }}
-                                className="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded"
-                              >
-                                Löschen
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                    {filtered.length === 0 && !loading && (
-                      <tr><td colSpan={4} className="text-center py-6 text-gray-600">Keine User</td></tr>
+                    {filtered.length === 0 && (
+                      <p className="text-center py-8 text-gray-600 text-sm">Keine User</p>
                     )}
-                  </tbody>
-                </table>
+                  </div>
+
+                  {/* Desktop: Tabelle */}
+                  <table className="hidden sm:table w-full text-sm">
+                    <thead className="sticky top-0 bg-gray-900 border-b border-gray-700">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Name</th>
+                        <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">E-Mail</th>
+                        <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Tenants</th>
+                        <th className="px-4 py-2.5"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {filtered.map(u => (
+                        <tr key={u.id} className="hover:bg-gray-800/50">
+                          <td className="px-4 py-2.5 text-white">
+                            {u.firstName} {u.lastName}
+                            {u.isSuperadmin && <span className="ml-1.5 text-xs bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded">SA</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-400">{u.email}</td>
+                          <td className="px-4 py-2.5 text-xs">
+                            {u.tenantCount === 0
+                              ? <span className="text-orange-400 font-medium">Kein Tenant</span>
+                              : <span className="text-gray-400" title={u.tenantNames}>{u.tenantCount}×</span>
+                            }
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex gap-1.5 justify-end">
+                              <button onClick={() => { setPwTarget(u); setPwValue(''); setPwError(''); setPwSuccess('') }} className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded">PW</button>
+                              {!u.isSuperadmin && (
+                                <button onClick={() => { setDelTarget(u); setDelConfirm(''); setDelError('') }} className="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded">Löschen</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {filtered.length === 0 && (
+                        <tr><td colSpan={4} className="text-center py-6 text-gray-600">Keine User</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </>
               )}
             </div>
           </div>
