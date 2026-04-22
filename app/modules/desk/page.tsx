@@ -527,8 +527,20 @@ export default function SchreibtischModule() {
         )}
       </div>
 
-      {/* Zeile 2: 3 Spalten */}
-      <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Zeile 2: 4 Spalten */}
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        {/* ALLGEMEINE KONVERSATION Section */}
+        <div className="pt-card h-[400px] flex flex-col">
+          <div className="flex-1 min-h-0">
+            <Communication
+              title="Allgemeine Konversation"
+              entityType="desk"
+              entityId="general"
+              className="h-full"
+            />
+          </div>
+        </div>
 
         {/* PINNWAND — ContentBoard (identisch zu Zeitplan-Kacheln) */}
         <div className="pt-card h-[400px] flex flex-col">
@@ -570,20 +582,6 @@ export default function SchreibtischModule() {
             defaultContent={{ title: 'Persönliche Notizen', content: '' }}
             className="flex-1"
           />
-        </div>
-      </div>
-
-      {/* Zeile 3: Allgemeiner Chat (volle Breite) */}
-      <div className="hidden md:block mt-4">
-        <div className="pt-card h-[320px] flex flex-col">
-          <div className="flex-1 min-h-0">
-            <Communication
-              title="Allgemeiner Chat"
-              entityType="desk"
-              entityId="general"
-              className="h-full"
-            />
-          </div>
         </div>
       </div>
 
