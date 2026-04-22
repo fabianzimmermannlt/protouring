@@ -261,6 +261,32 @@ body {
   flex-shrink: 0;
 }
 
+/* ── Mobile: Bottom Sheet statt zentriertem Modal ── */
+@media (max-width: 767px) {
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-container {
+    border-radius: 1rem 1rem 0 0;
+    max-height: 92dvh;
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .modal-header {
+    background: #fff;
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .modal-title {
+    font-size: 1rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+}
+
 /* Form elements inside modals (matching Profil style) */
 .form-label {
   display: block;

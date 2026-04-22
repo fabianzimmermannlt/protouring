@@ -91,6 +91,11 @@ export default function ContentBoardModal({
     <div className="modal-overlay" onKeyDown={handleKeyDown}>
       <div className="modal-container max-w-3xl">
 
+        {/* Drag-Handle — nur auf Mobile sichtbar */}
+        <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+
         <div className="modal-header">
           <h2 className="modal-title">
             {isEdit ? modalTitle.edit : modalTitle.new}
