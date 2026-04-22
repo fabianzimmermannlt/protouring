@@ -30,7 +30,11 @@ function isOverdue(deadline: string | null) {
 
 type Filter = 'all' | 'open' | 'overdue'
 
-export default function GlobalTodoOverview() {
+interface GlobalTodoOverviewProps {
+  hideHeader?: boolean
+}
+
+export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOverviewProps) {
   const [todos, setTodos]           = useState<Todo[]>([])
   const [loading, setLoading]       = useState(true)
   const [filter, setFilter]         = useState<Filter>('open')
@@ -94,14 +98,16 @@ export default function GlobalTodoOverview() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="pt-card-header">
-        <span className="pt-card-title">{isAdmin ? 'Offene Aufgaben' : 'Meine Aufgaben'}</span>
-        {overdueCount > 0 && (
-          <span className="flex items-center gap-1 text-xs font-medium text-red-500">
-            <AlertCircle size={12} /> {overdueCount} überfällig
-          </span>
-        )}
-      </div>
+      {!hideHeader && (
+        <div className="pt-card-header">
+          <span className="pt-card-title">{isAdmin ? 'Offene Aufgaben' : 'Meine Aufgaben'}</span>
+          {overdueCount > 0 && (
+            <span className="flex items-center gap-1 text-xs font-medium text-red-500">
+              <AlertCircle size={12} /> {overdueCount} überfällig
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Filter-Tabs */}
       <div className="flex gap-1 px-4 py-2 border-b border-gray-100">

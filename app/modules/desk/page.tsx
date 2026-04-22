@@ -313,7 +313,7 @@ export default function SchreibtischModule() {
 
         <AccordionSection title="Offene Aufgaben" defaultOpen>
           <div className="p-1">
-            <GlobalTodoOverview />
+            <GlobalTodoOverview hideHeader />
           </div>
         </AccordionSection>
 
@@ -389,11 +389,11 @@ export default function SchreibtischModule() {
           </AccordionSection>
         )}
 
-        <AccordionSection title="Chat" defaultOpen>
+        <AccordionSection title="Allgemeiner Chat" defaultOpen>
           <Communication
-            title="Allgemeine Konversation"
             entityType="desk"
             entityId="general"
+            showHeader={false}
             className="h-64"
           />
         </AccordionSection>
@@ -573,12 +573,12 @@ export default function SchreibtischModule() {
         </div>
       </div>
 
-      {/* Zeile 3: Chat (volle Breite) */}
+      {/* Zeile 3: Allgemeiner Chat (volle Breite) */}
       <div className="hidden md:block mt-4">
         <div className="pt-card h-[320px] flex flex-col">
           <div className="flex-1 min-h-0">
             <Communication
-              title="Chat"
+              title="Allgemeiner Chat"
               entityType="desk"
               entityId="general"
               className="h-full"
