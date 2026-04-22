@@ -147,7 +147,7 @@ export default function ContentBoardModal({
           {isEdit && onDelete ? (
             <button onClick={handleDelete} disabled={deleting} className="btn btn-danger disabled:opacity-50">
               {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-              Löschen
+              <span className="hidden md:inline">Löschen</span>
             </button>
           ) : <div />}
           <div className="flex gap-2">

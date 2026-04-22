@@ -214,7 +214,7 @@ export default function TerminModal({
                 className="btn btn-danger disabled:opacity-50"
               >
                 {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={13} />}
-                Termin löschen
+                <span className="hidden md:inline">Termin löschen</span>
               </button>
             )}
           </div>
