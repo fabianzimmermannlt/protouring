@@ -15,9 +15,15 @@ export default function PreviewBanner() {
     const preview = getPreviewRole()
     setPreviewRoleState(preview)
     setRealRole(getRealTenantRole())
-    // Seite nach unten schieben wenn Banner aktiv
-    if (preview) document.body.style.paddingTop = BANNER_HEIGHT
-    return () => { document.body.style.paddingTop = '' }
+    // CSS-Variable setzen damit mobile 100dvh-Container die Höhe abziehen können
+    if (preview) {
+      document.body.style.paddingTop = BANNER_HEIGHT
+      document.documentElement.style.setProperty('--pt-preview-height', BANNER_HEIGHT)
+    }
+    return () => {
+      document.body.style.paddingTop = ''
+      document.documentElement.style.removeProperty('--pt-preview-height')
+    }
   }, [])
 
   // Nur für echte Admins/Owner sichtbar

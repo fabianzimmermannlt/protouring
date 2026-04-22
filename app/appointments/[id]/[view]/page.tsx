@@ -204,7 +204,7 @@ export default function AppointmentDetailPage() {
   return (
     <>
       {/* ── MOBILE ── */}
-      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: '100dvh' }}>
+      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: 'calc(100dvh - var(--pt-preview-height, 0px))' , marginTop: 'var(--pt-preview-height, 0px)' }}>
         <Navigation
           activeTab="appointments"
           onTabChange={handleTabChange}
