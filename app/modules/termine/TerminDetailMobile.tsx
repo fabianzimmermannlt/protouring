@@ -177,12 +177,7 @@ export default function TerminDetailMobile({
         </Section>
       )}
 
-      {/* ── 8. Chat ─────────────────────────────────────── */}
-      <Section title="Chat" stateKey="termin_chat">
-        <TerminChatCard terminId={termin.id} />
-      </Section>
-
-      {/* ── 9. Private Notiz ────────────────────────────── */}
+      {/* ── 8. Private Notiz ────────────────────────────── */}
       <Section title="Private Notiz" stateKey="termin_notiz">
         <div className="p-3">
           <ContentBoard
@@ -198,6 +193,11 @@ export default function TerminDetailMobile({
             allowDelete={false}
           />
         </div>
+      </Section>
+
+      {/* ── 9. Chat ─────────────────────────────────────── */}
+      <Section title="Chat" stateKey="termin_chat">
+        <TerminChatCard terminId={termin.id} hideHeader />
       </Section>
 
     </div>

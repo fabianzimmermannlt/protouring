@@ -11,7 +11,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
     : 'http://localhost:3002'
 )
 
-export default function TerminChatCard({ terminId }: { terminId: number }) {
+export default function TerminChatCard({ terminId, hideHeader }: { terminId: number; hideHeader?: boolean }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [clearing, setClearing] = useState(false)
   // Key-Trick: Communication neu mounten nach Clear → leert den State
@@ -37,7 +37,7 @@ export default function TerminChatCard({ terminId }: { terminId: number }) {
 
   return (
     <div className="pt-card flex flex-col" style={{ height: '400px' }}>
-      <div className="pt-card-header">
+      {!hideHeader && <div className="pt-card-header">
         <span className="pt-card-title">Chat</span>
         {isAdmin && !showDeleteConfirm && (
           <button
@@ -66,7 +66,7 @@ export default function TerminChatCard({ terminId }: { terminId: number }) {
             </button>
           </div>
         )}
-      </div>
+      </div>}
 
       <div className="flex-1 min-h-0">
         <Communication
