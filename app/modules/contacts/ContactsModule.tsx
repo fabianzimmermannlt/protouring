@@ -9,9 +9,8 @@ import {
 import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
-import GastAnlegenModal from './GastAnlegenModal'
 import {
-  getContacts, createContact, updateContact, deleteContact,
+  getContacts, createContact, updateContact, deleteContact, createGuestContact,
   getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
   ROLE_LABELS, isAdminRole, isEditorRole, getEffectiveRole,
   type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup
@@ -273,6 +272,28 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const handleEdit = (contact: Contact) => {
     setEditingContact(contact)
+  }
+
+  const handleCreateGast = async (profileData: ProfileData) => {
+    try {
+      const created = await createGuestContact({
+        firstName: profileData.firstName || '',
+        lastName: profileData.lastName || '',
+        phone: profileData.phone || '',
+        function1: profileData.function1 || '',
+        function2: profileData.function2 || '',
+        function3: profileData.function3 || '',
+      })
+      if (created.id) {
+        const updated = await updateContact(created.id, profileToContact(profileData))
+        setContacts(prev => [...prev, updated])
+      } else {
+        setContacts(prev => [...prev, created])
+      }
+      setShowGastModal(false)
+    } catch (e) {
+      setError('Kontakt konnte nicht angelegt werden.')
+    }
   }
 
   const handleUpdateContact = async (profileData: ProfileData) => {
@@ -556,12 +577,26 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       )}
 
 
-      {/* Manuell-Anlegen-Modal */}
+      {/* Manuell-Anlegen-Modal – gleiche Ansicht wie Bearbeiten */}
       {showGastModal && (
-        <GastAnlegenModal
-          onClose={() => setShowGastModal(false)}
-          onAdded={(contact) => setContacts(prev => [...prev, contact])}
-        />
+        <div className="modal-overlay">
+          <div className="modal-container max-w-3xl">
+            <div className="modal-header">
+              <h2 className="modal-title">Manuellen Kontakt anlegen</h2>
+              <button onClick={() => setShowGastModal(false)} className="text-gray-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+            <ProfileEditor
+              isOpen={true}
+              onClose={() => setShowGastModal(false)}
+              profileData={{} as ProfileData}
+              onSave={handleCreateGast}
+              isAdmin={isAdmin}
+              isSelf={false}
+            />
+          </div>
+        </div>
       )}
 
       {/* Kontakt bearbeiten – ProfileEditor (keine Tabs) */}
