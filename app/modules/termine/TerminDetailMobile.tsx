@@ -170,17 +170,17 @@ export default function TerminDetailMobile({
         <ToDoCard terminId={termin.id} />
       </Section>
 
-      {/* ── 7. Chat ─────────────────────────────────────── */}
-      <Section title="Konversation" stateKey="termin_chat">
-        <TerminChatCard terminId={termin.id} />
-      </Section>
-
-      {/* ── 8. Dateien ──────────────────────────────────── */}
+      {/* ── 7. Dateien ──────────────────────────────────── */}
       {canSeeFiles && (
         <Section title="Dateien" stateKey="termin_dateien">
           <TerminFileCard terminId={String(termin.id)} />
         </Section>
       )}
+
+      {/* ── 8. Chat ─────────────────────────────────────── */}
+      <Section title="Chat" stateKey="termin_chat">
+        <TerminChatCard terminId={termin.id} />
+      </Section>
 
       {/* ── 9. Private Notiz ────────────────────────────── */}
       <Section title="Private Notiz" stateKey="termin_notiz">
