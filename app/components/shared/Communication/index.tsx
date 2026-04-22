@@ -221,8 +221,8 @@ export function Communication({
   return (
     <div className={`bg-white flex flex-col ${maxHeight} ${className}`}>
       {showHeader && (
-        <div className="flex items-center justify-between p-3 border-b">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        <div className="pt-card-header">
+          <span className="pt-card-title">{title}</span>
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="text-gray-400 hover:text-red-500 transition-colors"
