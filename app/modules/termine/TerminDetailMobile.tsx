@@ -104,7 +104,7 @@ export default function TerminDetailMobile({
       </div>
 
       {/* ── 1. Reise & Hotel ────────────────────────────── */}
-      <Section title="Reise & Hotel" defaultOpen>
+      <Section title="Reise & Hotel" defaultOpen stateKey="termin_reise">
         <AnreiseCard
           terminId={termin.id}
           legType="anreise"
@@ -135,17 +135,17 @@ export default function TerminDetailMobile({
       </Section>
 
       {/* ── 2. Zeitplan ─────────────────────────────────── */}
-      <Section title="Zeitplan" defaultOpen>
+      <Section title="Zeitplan" defaultOpen stateKey="termin_zeitplan">
         <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
       {/* ── 3. Catering ─────────────────────────────────── */}
-      <Section title="Catering" defaultOpen>
+      <Section title="Catering" defaultOpen stateKey="termin_catering">
         <CateringCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
       {/* ── 4. Spielstätte & Partner ────────────────────── */}
-      <Section title="Spielstätte & Partner">
+      <Section title="Spielstätte & Partner" stateKey="termin_spielstaette">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm px-4 py-3">
           <dt className="text-gray-400 font-medium">Spielstätte</dt>
           <dd className="text-gray-800">{termin.venueName || <span className="text-gray-300">–</span>}</dd>
@@ -161,29 +161,29 @@ export default function TerminDetailMobile({
       </Section>
 
       {/* ── 5. Lokale Kontakte ──────────────────────────── */}
-      <Section title="Lokale Kontakte">
+      <Section title="Lokale Kontakte" stateKey="termin_kontakte">
         <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
       {/* ── 6. Aufgaben ─────────────────────────────────── */}
-      <Section title="Aufgaben" defaultOpen>
+      <Section title="Aufgaben" defaultOpen stateKey="termin_aufgaben">
         <ToDoCard terminId={termin.id} />
       </Section>
 
       {/* ── 7. Chat ─────────────────────────────────────── */}
-      <Section title="Konversation">
+      <Section title="Konversation" stateKey="termin_chat">
         <TerminChatCard terminId={termin.id} />
       </Section>
 
       {/* ── 8. Dateien ──────────────────────────────────── */}
       {canSeeFiles && (
-        <Section title="Dateien">
+        <Section title="Dateien" stateKey="termin_dateien">
           <TerminFileCard terminId={String(termin.id)} />
         </Section>
       )}
 
       {/* ── 9. Private Notiz ────────────────────────────── */}
-      <Section title="Private Notiz">
+      <Section title="Private Notiz" stateKey="termin_notiz">
         <div className="p-3">
           <ContentBoard
             entityType="termin_private"

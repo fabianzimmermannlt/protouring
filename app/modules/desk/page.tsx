@@ -294,7 +294,7 @@ export default function SchreibtischModule() {
 
       {/* ── MOBILE: Accordion ── */}
       <div className="md:hidden flex flex-col gap-2">
-        <AccordionSection title={announcementTitle} defaultOpen>
+        <AccordionSection title={announcementTitle} defaultOpen stateKey="desk_ankuendigung">
           <ContentBoard
             entityType="desk"
             entityId="announcement"
@@ -315,13 +315,13 @@ export default function SchreibtischModule() {
           />
         </AccordionSection>
 
-        <AccordionSection title="Offene Aufgaben" defaultOpen>
+        <AccordionSection title="Offene Aufgaben" defaultOpen stateKey="desk_aufgaben">
           <div className="p-1">
             <GlobalTodoOverview hideHeader />
           </div>
         </AccordionSection>
 
-        <AccordionSection title="Persönliche Notizen" defaultOpen>
+        <AccordionSection title="Persönliche Notizen" defaultOpen stateKey="desk_notizen">
           <div className="p-3">
             <ContentBoard
               entityType="desk_personal"
@@ -341,7 +341,7 @@ export default function SchreibtischModule() {
           </div>
         </AccordionSection>
 
-        <AccordionSection title="Dein Profil">
+        <AccordionSection title="Dein Profil" stateKey="desk_profil">
           <div className="px-4 py-3 text-sm space-y-1">
             <div className="font-medium text-gray-900">{profileData.firstName} {profileData.lastName}</div>
             <div className="text-gray-500">{profileData.email}</div>
@@ -352,7 +352,7 @@ export default function SchreibtischModule() {
           </div>
         </AccordionSection>
 
-        <AccordionSection title="Pinnwand">
+        <AccordionSection title="Pinnwand" stateKey="desk_pinnwand">
           <div className="p-3">
             <ContentBoard
               entityType="desk"
@@ -367,7 +367,7 @@ export default function SchreibtischModule() {
         </AccordionSection>
 
         {effectiveRole !== 'guest' && (
-          <AccordionSection title="Allgemeine Dateien">
+          <AccordionSection title="Allgemeine Dateien" stateKey="desk_dateien_allgemein">
             <FileCard
               title=""
               entityType="desk"
@@ -381,7 +381,7 @@ export default function SchreibtischModule() {
         )}
 
         {effectiveRole !== 'guest' && (
-          <AccordionSection title="Persönliche Dateien">
+          <AccordionSection title="Persönliche Dateien" stateKey="desk_dateien_persoenlich">
             <FileCard
               title=""
               entityType="desk"
@@ -394,7 +394,7 @@ export default function SchreibtischModule() {
           </AccordionSection>
         )}
 
-        <AccordionSection title="Allgemeiner Chat" defaultOpen>
+        <AccordionSection title="Allgemeiner Chat" defaultOpen stateKey="desk_chat">
           <Communication
             entityType="desk"
             entityId="general"
