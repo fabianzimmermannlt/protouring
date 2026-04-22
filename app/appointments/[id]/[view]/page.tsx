@@ -79,10 +79,10 @@ export default function AppointmentDetailPage() {
 
   // Navigation back button → list page
   useEffect(() => {
-    const handler = () => router.push('/?tab=appointments')
+    const handler = () => { window.location.href = '/?tab=appointments' }
     window.addEventListener('termine-go-to-list', handler)
     return () => window.removeEventListener('termine-go-to-list', handler)
-  }, [router])
+  }, [])
 
   // Sub-tab view change → new URL
   useEffect(() => {
