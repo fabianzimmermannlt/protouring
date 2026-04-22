@@ -1902,6 +1902,7 @@ export const NAV_VISIBLE: Record<string, TenantRole[]> = {
   vehicles:     ['admin', 'tourmanagement', 'agency'],
   templates:    ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
   settings:     ['admin', 'tourmanagement', 'agency'],
+  feedback:     ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
 }
 
 export function canDo(role: string | null | undefined, permission: TenantRole[]): boolean {

@@ -15,6 +15,7 @@ import {
   TruckIcon,
   DocumentTextIcon,
   Cog6ToothIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline'
 import { getTermine, isAuthenticated, canDo, getEffectiveRole, NAV_VISIBLE } from '@/lib/api-client'
 
@@ -33,6 +34,7 @@ const MORE_ITEMS = [
   { id: 'vehicles',  name: 'Fahrzeuge',      icon: TruckIcon },
   { id: 'templates', name: 'Vorlagen',       icon: DocumentTextIcon },
   { id: 'settings',  name: 'Einstellungen',  icon: Cog6ToothIcon },
+  { id: 'feedback',  name: 'Feedback',       icon: ChatBubbleLeftRightIcon },
 ]
 
 export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialActiveItem }: Props) {
@@ -93,6 +95,10 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
 
   const handleMore = useCallback((tabId: string) => {
     setShowMore(false)
+    if (tabId === 'feedback') {
+      window.dispatchEvent(new CustomEvent('open-feedback-panel'))
+      return
+    }
     setActiveNavItem(tabId)
     onTabChange(tabId, tabId === 'settings' ? 'profil' : undefined)
   }, [onTabChange])

@@ -127,12 +127,19 @@ export function FeedbackButton() {
     }
   }, [isSuperadmin])
 
+  // Auf Mobile kann das Panel per Custom Event geöffnet werden (aus dem Mehr-Menü)
+  useEffect(() => {
+    const handler = () => { handleOpen() }
+    window.addEventListener('open-feedback-panel', handler)
+    return () => window.removeEventListener('open-feedback-panel', handler)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button — auf Mobile ausgeblendet, Zugang über Mehr-Menü */}
       <button
         onClick={handleOpen}
-        className="fixed bottom-20 md:bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-40 hidden md:flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
         title="Feedback senden"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
