@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Check, Loader2, Trash2 } from 'lucide-react'
 import {
   createTermin,
@@ -59,6 +59,8 @@ export default function TerminModal({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { containerRef.current?.scrollTo(0, 0) }, [])
 
   const field = (key: keyof TerminFormData, value: string | number | boolean | null) =>
     setForm(prev => ({ ...prev, [key]: value }))
@@ -112,7 +114,7 @@ export default function TerminModal({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container max-w-lg">
+      <div ref={containerRef} className="modal-container max-w-lg">
 
         {/* Header */}
         <div className="modal-header">

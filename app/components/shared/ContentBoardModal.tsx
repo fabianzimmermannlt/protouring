@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Save, Trash2, Loader2 } from 'lucide-react'
 import { RichTextEditorField, type RichTextEditorFieldHandle } from '@/app/components/shared/RichTextEditor'
 import type { BoardItem, BoardItemFormData } from '@/lib/api-client'
@@ -51,6 +51,8 @@ export default function ContentBoardModal({
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const editorRef = useRef<RichTextEditorFieldHandle>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { containerRef.current?.scrollTo(0, 0) }, [])
 
   const handleSave = async () => {
     setSaving(true)
@@ -89,7 +91,7 @@ export default function ContentBoardModal({
 
   return (
     <div className="modal-overlay" onKeyDown={handleKeyDown}>
-      <div className="modal-container max-w-3xl">
+      <div ref={containerRef} className="modal-container max-w-3xl">
 
         {/* Drag-Handle — nur auf Mobile sichtbar */}
         <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
