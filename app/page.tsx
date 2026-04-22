@@ -148,6 +148,7 @@ export default function ProTouringApp() {
           </div>
         </div>
 
+        <FeedbackButton />
         {/* Bottom Nav — normaler Flex-Item, kein fixed */}
         <MobileBottomNav
           activeTab={activeTab}

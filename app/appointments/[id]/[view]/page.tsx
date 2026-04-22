@@ -215,6 +215,7 @@ export default function AppointmentDetailPage() {
             {content}
           </div>
         </div>
+        <FeedbackButton />
         <MobileBottomNav
           activeTab="appointments"
           onTabChange={handleTabChange}
