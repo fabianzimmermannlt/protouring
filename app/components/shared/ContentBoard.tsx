@@ -102,6 +102,8 @@ interface ContentBoardProps {
    */
   defaultContent?: { title: string; content: string }
   className?: string
+  /** singleItem-Modus: internen Header ausblenden (z.B. wenn AccordionSection den Titel bereits zeigt) */
+  hideHeader?: boolean
 }
 
 export default function ContentBoard({
@@ -121,6 +123,7 @@ export default function ContentBoard({
   allowDelete = true,
   defaultContent,
   className = '',
+  hideHeader = false,
 }: ContentBoardProps) {
   const [items, setItems] = useState<BoardItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -193,23 +196,37 @@ export default function ContentBoard({
     return (
       <>
         <div className={`flex flex-col h-full ${className}`}>
-          {/* Header — identisch zu pt-card-header */}
-          <div className="pt-card-header">
-            <span className="pt-card-title">
-              {fixedTitle ?? singleItemValue?.title ?? (
-                <span className="normal-case font-normal tracking-normal text-gray-400 italic">Kein Eintrag</span>
+          {/* Header — identisch zu pt-card-header; ausblendbar wenn AccordionSection den Titel zeigt */}
+          {!hideHeader ? (
+            <div className="pt-card-header">
+              <span className="pt-card-title">
+                {fixedTitle ?? singleItemValue?.title ?? (
+                  <span className="normal-case font-normal tracking-normal text-gray-400 italic">Kein Eintrag</span>
+                )}
+              </span>
+              {isAdmin && (singleItemValue || hideEmptyButton) && (
+                <button
+                  onClick={() => singleItemValue ? openEdit(singleItemValue) : openNew()}
+                  className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                  title="Bearbeiten"
+                >
+                  <Pencil size={13} />
+                </button>
               )}
-            </span>
-            {isAdmin && (singleItemValue || hideEmptyButton) && (
-              <button
-                onClick={() => singleItemValue ? openEdit(singleItemValue) : openNew()}
-                className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                title="Bearbeiten"
-              >
-                <Pencil size={13} />
-              </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            isAdmin && (singleItemValue || hideEmptyButton) && (
+              <div className="flex justify-end px-3 pt-2">
+                <button
+                  onClick={() => singleItemValue ? openEdit(singleItemValue) : openNew()}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Bearbeiten"
+                >
+                  <Pencil size={13} />
+                </button>
+              </div>
+            )
+          )}
 
           {/* Inhalt */}
           {singleItemValue?.content ? (

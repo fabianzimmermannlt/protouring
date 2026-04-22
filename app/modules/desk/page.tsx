@@ -325,6 +325,7 @@ export default function SchreibtischModule() {
               title=""
               isAdmin={true}
               singleItem
+              hideHeader
               hideEmptyButton
               allowDelete={false}
               fixedTitle="Persönliche Notizen"
