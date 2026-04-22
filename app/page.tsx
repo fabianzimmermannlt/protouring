@@ -34,7 +34,7 @@ export default function ProTouringApp() {
     const s = p.get('sub')
     const t = p.get('tab')
     if (s) return s
-    if (t === 'settings') return 'artist'
+    if (t === 'settings') return 'profil'
     if (t === 'contacts') return 'overview'
     return ''
   })
@@ -102,7 +102,7 @@ export default function ProTouringApp() {
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
     let defaultSub = ''
-    if (tabId === 'settings') defaultSub = 'artist'
+    if (tabId === 'settings') defaultSub = 'profil'
     else if (tabId === 'contacts') defaultSub = 'overview'
     setActiveSubTab(defaultSub)
     router.replace(defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`, { scroll: false })

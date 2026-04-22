@@ -100,7 +100,7 @@ export default function AppointmentDetailPage() {
     // window.location.href statt router.push: umgeht Next.js Router-Cache
     // (router.push würde den alten SPA-State wiederherstellen)
     let defaultSub = ''
-    if (tabId === 'settings') defaultSub = 'artist'
+    if (tabId === 'settings') defaultSub = 'profil'
     else if (tabId === 'contacts') defaultSub = 'overview'
     window.location.href = defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`
   }, [])
