@@ -669,15 +669,15 @@ function UserProfil() {
   )
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex flex-col md:flex-row gap-6 items-start">
 
       {/* Linke Spalte: Avatar + Kurzinfo */}
-      <div className="w-44 flex-shrink-0 flex flex-col items-center gap-3 pt-1">
+      <div className="md:w-44 flex-shrink-0 flex md:flex-col items-center gap-3 md:pt-1">
         {/* Avatar */}
-        <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-semibold select-none">
+        <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl md:text-2xl font-semibold select-none flex-shrink-0">
           {initials}
         </div>
-        <div className="text-center">
+        <div className="text-left md:text-center">
           <p className="text-sm font-semibold text-gray-900 leading-tight">
             {displayFirst} {displayLast}
           </p>
@@ -686,11 +686,10 @@ function UserProfil() {
             {ROLE_LABELS[currentTenant?.role as TenantRole] ?? currentTenant?.role}
           </span>
         </div>
-        <p className="text-xs text-gray-400 italic text-center mt-1">Profilbild folgt</p>
       </div>
 
       {/* Mittlere Spalte: Profildaten */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 w-full">
         <ProfileEditor
           isOpen={true}
           onClose={() => {}}
@@ -703,7 +702,7 @@ function UserProfil() {
       </div>
 
       {/* Rechte Spalte: Passwort */}
-      <div className="w-56 flex-shrink-0">
+      <div className="w-full md:w-56 flex-shrink-0">
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
           <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -776,121 +775,127 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
     'lastName'
   )
 
-  return (
-    <div className="data-table-wrapper">
-      <table className="data-table">
-        <thead>
-          <tr>
-            {USER_COLS.map(([label, key]) => (
-              <th key={key as string} className="sortable" onClick={() => toggleSort(key as string)}>
-                {label}
-                <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
-                  {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-                </span>
-              </th>
-            ))}
-            <th className="text-center w-20"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {(sorted as unknown as TenantUser[]).map(user => (
-            <tr key={user.id} className={`clickable${user.memberStatus === 'inactive' ? ' opacity-50' : ''}`} onClick={() => onOpenProfile(user)}>
-              <td className="font-medium">
-                {user.firstName}
-                {user.id === currentUserId && (
-                  <span className="ml-1 text-xs text-blue-500">(du)</span>
-                )}
-              </td>
-              <td className="font-medium">
-                {user.lastName}
-                {user.memberStatus === 'inactive' && (
-                  <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">inaktiv</span>
-                )}
-              </td>
-              <td className="text-gray-500">{user.email}</td>
-              <td>
-                {user.id === currentUserId ? (
-                  <span className="text-gray-600">{ROLE_LABELS[user.role as TenantRole] ?? user.role}</span>
-                ) : (
-                  <select
-                    value={user.role}
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => { e.stopPropagation(); onRoleChange(user.id, e.target.value as TenantRole) }}
-                    className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {(Object.entries(ROLE_LABELS) as [TenantRole, string][]).map(([val, label]) => (
-                      <option key={val} value={val}>{label}</option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="text-center">
-                <div className="flex items-center justify-center gap-1">
-                  {/* E-Mail ändern */}
-                  <button
-                    onClick={e => { e.stopPropagation(); onEditEmail(user) }}
-                    className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                    title="E-Mail ändern"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                  {/* Passwort setzen */}
-                  <button
-                    onClick={e => { e.stopPropagation(); onEditPassword(user) }}
-                    className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
-                    title="Passwort setzen"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                  </button>
-                  {/* Aktivieren / Deaktivieren */}
-                  {user.id !== currentUserId ? (
-                    <button
-                      onClick={e => { e.stopPropagation(); onToggleStatus(user.id) }}
-                      className={`p-1 transition-colors ${user.memberStatus === 'inactive' ? 'text-green-500 hover:text-green-600' : 'text-gray-400 hover:text-orange-500'}`}
-                      title={user.memberStatus === 'inactive' ? 'Aktivieren' : 'Deaktivieren'}
-                    >
-                      {user.memberStatus === 'inactive' ? (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      )}
-                    </button>
-                  ) : (
-                    <span className="inline-block w-6 h-6" />
-                  )}
-                  {/* User entfernen */}
-                  {user.id !== currentUserId ? (
-                    <button
-                      onClick={e => { e.stopPropagation(); onRemove(user.id) }}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Entfernen"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
-                  ) : (
-                    <span className="inline-block w-6 h-6" />
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-          {filtered.length === 0 && (
-            <tr>
-              <td colSpan={5} className="text-center text-gray-400 text-xs py-4">Keine Ergebnisse</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+  const actionButtons = (user: TenantUser) => (
+    <div className="flex items-center gap-1">
+      <button onClick={e => { e.stopPropagation(); onEditEmail(user) }} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="E-Mail ändern">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+      </button>
+      <button onClick={e => { e.stopPropagation(); onEditPassword(user) }} className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="Passwort setzen">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+      </button>
+      {user.id !== currentUserId && (
+        <>
+          <button onClick={e => { e.stopPropagation(); onToggleStatus(user.id) }} className={`p-1.5 transition-colors ${user.memberStatus === 'inactive' ? 'text-green-500 hover:text-green-600' : 'text-gray-400 hover:text-orange-500'}`} title={user.memberStatus === 'inactive' ? 'Aktivieren' : 'Deaktivieren'}>
+            {user.memberStatus === 'inactive'
+              ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            }
+          </button>
+          <button onClick={e => { e.stopPropagation(); onRemove(user.id) }} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Entfernen">
+            <TrashIcon className="w-4 h-4" />
+          </button>
+        </>
+      )}
     </div>
+  )
+
+  return (
+    <>
+      {/* Mobile: Card-Liste */}
+      <div className="md:hidden space-y-2">
+        {(sorted as unknown as TenantUser[]).map(user => (
+          <div key={user.id} className={`bg-white border border-gray-200 rounded-xl p-3${user.memberStatus === 'inactive' ? ' opacity-50' : ''}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0" onClick={() => onOpenProfile(user)}>
+                <p className="font-semibold text-gray-900 text-sm truncate">
+                  {user.firstName} {user.lastName}
+                  {user.id === currentUserId && <span className="ml-1 text-xs text-blue-500">(du)</span>}
+                  {user.memberStatus === 'inactive' && <span className="ml-1 text-xs text-gray-400">inaktiv</span>}
+                </p>
+                <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
+              </div>
+              {actionButtons(user)}
+            </div>
+            <div className="mt-2" onClick={e => e.stopPropagation()}>
+              {user.id === currentUserId ? (
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                  {ROLE_LABELS[user.role as TenantRole] ?? user.role}
+                </span>
+              ) : (
+                <select
+                  value={user.role}
+                  onChange={e => onRoleChange(user.id, e.target.value as TenantRole)}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
+                >
+                  {(Object.entries(ROLE_LABELS) as [TenantRole, string][]).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-center text-gray-400 text-xs py-4">Keine Ergebnisse</p>
+        )}
+      </div>
+
+      {/* Desktop: Tabelle */}
+      <div className="hidden md:block data-table-wrapper">
+        <table className="data-table">
+          <thead>
+            <tr>
+              {USER_COLS.map(([label, key]) => (
+                <th key={key as string} className="sortable" onClick={() => toggleSort(key as string)}>
+                  {label}
+                  <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
+                    {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                  </span>
+                </th>
+              ))}
+              <th className="text-center w-20"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(sorted as unknown as TenantUser[]).map(user => (
+              <tr key={user.id} className={`clickable${user.memberStatus === 'inactive' ? ' opacity-50' : ''}`} onClick={() => onOpenProfile(user)}>
+                <td className="font-medium">
+                  {user.firstName}
+                  {user.id === currentUserId && <span className="ml-1 text-xs text-blue-500">(du)</span>}
+                </td>
+                <td className="font-medium">
+                  {user.lastName}
+                  {user.memberStatus === 'inactive' && (
+                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">inaktiv</span>
+                  )}
+                </td>
+                <td className="text-gray-500">{user.email}</td>
+                <td>
+                  {user.id === currentUserId ? (
+                    <span className="text-gray-600">{ROLE_LABELS[user.role as TenantRole] ?? user.role}</span>
+                  ) : (
+                    <select
+                      value={user.role}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => { e.stopPropagation(); onRoleChange(user.id, e.target.value as TenantRole) }}
+                      className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {(Object.entries(ROLE_LABELS) as [TenantRole, string][]).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td className="text-center">{actionButtons(user)}</td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="text-center text-gray-400 text-xs py-4">Keine Ergebnisse</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
@@ -1116,7 +1121,39 @@ function UserManagement() {
           {pending.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold text-gray-700 mb-2">Offene Einladungen</h4>
-              <div className="data-table-wrapper">
+
+              {/* Mobile: Cards */}
+              <div className="md:hidden space-y-2">
+                {pending.map(inv => (
+                  <div key={inv.id} className="bg-white border border-gray-200 rounded-xl p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">
+                          {inv.firstName || inv.lastName ? `${inv.firstName ?? ''} ${inv.lastName ?? ''}`.trim() : <span className="text-gray-400 italic text-xs">Kein Name</span>}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{inv.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded">
+                            {ROLE_LABELS[inv.role] ?? inv.role}
+                          </span>
+                          <span className="text-xs text-gray-400">bis {new Date(inv.expiresAt).toLocaleDateString('de-DE')}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }} className="p-1.5 text-gray-400 hover:text-blue-500" title="Link anzeigen">
+                          <LinkIcon className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleRevokeInvite(inv.id)} className="p-1.5 text-gray-400 hover:text-red-500" title="Widerrufen">
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: Tabelle */}
+              <div className="hidden md:block data-table-wrapper">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1144,18 +1181,10 @@ function UserManagement() {
                         </td>
                         <td className="text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }}
-                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                              title="Einladungslink anzeigen"
-                            >
+                            <button onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Einladungslink anzeigen">
                               <LinkIcon className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => handleRevokeInvite(inv.id)}
-                              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                              title="Widerrufen"
-                            >
+                            <button onClick={() => handleRevokeInvite(inv.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Widerrufen">
                               <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
