@@ -1939,6 +1939,7 @@ export interface TenantUser {
 
 export interface PendingInvite {
   id: number
+  token: string
   email: string
   role: TenantRole
   firstName?: string
@@ -1976,8 +1977,11 @@ function tenantUserFromRow(r: Record<string, unknown>): TenantUser {
 function pendingInviteFromRow(r: Record<string, unknown>): PendingInvite {
   return {
     id:        r.id as number,
+    token:     (r.token as string) ?? '',
     email:     (r.email as string) ?? '',
     role:      (r.role as TenantRole) ?? 'crew',
+    firstName: r.firstName as string | undefined,
+    lastName:  r.lastName as string | undefined,
     createdAt: (r.created_at as string) ?? '',
     expiresAt: (r.expires_at as string) ?? '',
     invitedBy: (r.invited_by as number) ?? 0,

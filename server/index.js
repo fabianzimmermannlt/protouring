@@ -4690,7 +4690,7 @@ app.get('/api/settings/users', authenticateToken, requireTenant, requireAdmin, a
       [req.tenant.id]
     )
     const pending = await db.all(
-      `SELECT it.id, it.email, it.role, it.created_at, it.expires_at, it.invited_by,
+      `SELECT it.id, it.token, it.email, it.role, it.created_at, it.expires_at, it.invited_by,
               c.first_name AS firstName, c.last_name AS lastName
        FROM invite_tokens it
        LEFT JOIN contacts c ON c.id = it.contact_id

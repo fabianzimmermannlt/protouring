@@ -14,6 +14,9 @@ import {
   CalendarDaysIcon,
   TrashIcon,
   CheckCircleIcon,
+  LinkIcon,
+  ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline'
 import { Loader2 } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
@@ -1030,6 +1033,30 @@ function UserManagement() {
     }
   }
 
+  // Link-Popup für offene Einladungen
+  const [linkPopup, setLinkPopup] = useState<{ token: string; email: string } | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  const handleCopyInviteLink = async (token: string) => {
+    const url = `${window.location.origin}/invite/${token}`
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const el = document.createElement('textarea')
+        el.value = url
+        el.style.position = 'fixed'
+        el.style.left = '-9999px'
+        document.body.appendChild(el)
+        el.focus(); el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {}
+  }
+
   if (!isAdmin) {
     return (
       <div className="bg-gray-50 rounded-lg p-6">
@@ -1116,13 +1143,22 @@ function UserManagement() {
                           {new Date(inv.expiresAt).toLocaleDateString('de-DE')}
                         </td>
                         <td className="text-center">
-                          <button
-                            onClick={() => handleRevokeInvite(inv.id)}
-                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                            title="Widerrufen"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }}
+                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                              title="Einladungslink anzeigen"
+                            >
+                              <LinkIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRevokeInvite(inv.id)}
+                              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                              title="Widerrufen"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1132,6 +1168,43 @@ function UserManagement() {
             </div>
           )}
         </>
+      )}
+
+      {/* Einladungslink-Popup */}
+      {linkPopup && (
+        <div className="modal-overlay" onClick={() => setLinkPopup(null)}>
+          <div className="modal-container max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Einladungslink</h2>
+              <button onClick={() => setLinkPopup(null)} className="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-gray-600">
+                Link für <span className="font-medium">{linkPopup.email}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${linkPopup.token}`}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 text-sm font-mono select-all"
+                  onFocus={e => e.target.select()}
+                />
+                <button
+                  onClick={() => handleCopyInviteLink(linkPopup.token)}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+                  title="Kopieren"
+                >
+                  {linkCopied
+                    ? <ClipboardDocumentCheckIcon className="w-5 h-5 text-green-500" />
+                    : <ClipboardDocumentIcon className="w-5 h-5 text-gray-500" />
+                  }
+                </button>
+              </div>
+              {linkCopied && <p className="text-xs text-green-600">Link kopiert!</p>}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Profil-Modal */}
