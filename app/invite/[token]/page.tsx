@@ -49,7 +49,7 @@ export default function InvitePage() {
       const res = await acceptInvite(token, invite.userExists ? undefined : password, firstName.trim() || undefined, lastName.trim() || undefined)
       setAuthSession(res.token, res.currentTenant, res.user)
       setDone(true)
-      setTimeout(() => router.push('/'), 1500)
+      setTimeout(() => { window.location.href = '/' }, 1500)
     } catch (err: any) {
       setSaveError(err?.message ?? 'Fehler beim Aktivieren')
     } finally {

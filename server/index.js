@@ -5243,6 +5243,93 @@ app.get('/api/guest-lists/:id/export/pdf', authenticateToken, requireTenant, asy
 })
 
 // ============================================
+// SUPERADMIN — globale User-Verwaltung (kein Tenant nötig)
+// ============================================
+
+const requireSuperadmin = (req, res, next) => {
+  if (!req.user?.isSuperadmin) return res.status(403).json({ error: 'Superadmin erforderlich' })
+  next()
+}
+
+// GET /api/superadmin/users — alle User global
+app.get('/api/superadmin/users', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const users = await db.all(`
+      SELECT
+        u.id, u.email, u.first_name, u.last_name,
+        u.is_superadmin,
+        u.created_at,
+        (SELECT COUNT(*) FROM user_tenants ut WHERE ut.user_id = u.id AND ut.status = 'active') AS tenant_count,
+        (SELECT GROUP_CONCAT(t.name, ', ')
+         FROM user_tenants ut2
+         JOIN tenants t ON t.id = ut2.tenant_id
+         WHERE ut2.user_id = u.id AND ut2.status = 'active'
+        ) AS tenant_names
+      FROM users u
+      ORDER BY u.created_at DESC
+    `)
+    res.json({ users: users.map(u => ({
+      id: u.id,
+      email: u.email,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      isSuperadmin: !!u.is_superadmin,
+      createdAt: u.created_at,
+      tenantCount: u.tenant_count || 0,
+      tenantNames: u.tenant_names || '',
+    })) })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// PUT /api/superadmin/users/:userId/password — PW setzen (kein altes nötig)
+app.put('/api/superadmin/users/:userId/password', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.userId)
+    const { password } = req.body
+    if (!password || password.length < 6) return res.status(400).json({ error: 'Passwort min. 6 Zeichen' })
+    const user = await db.get('SELECT id FROM users WHERE id=?', [targetId])
+    if (!user) return res.status(404).json({ error: 'User nicht gefunden' })
+    const hash = await bcrypt.hash(password, 10)
+    await db.run('UPDATE users SET password_hash=? WHERE id=?', [hash, targetId])
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/superadmin/users/:userId — User global löschen
+app.delete('/api/superadmin/users/:userId', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.userId)
+    if (targetId === req.user.id) return res.status(400).json({ error: 'Sich selbst nicht löschbar' })
+    const user = await db.get('SELECT id, is_superadmin FROM users WHERE id=?', [targetId])
+    if (!user) return res.status(404).json({ error: 'User nicht gefunden' })
+    if (user.is_superadmin) return res.status(400).json({ error: 'Superadmin nicht löschbar' })
+
+    await db.run('BEGIN TRANSACTION')
+    try {
+      // user_id in contacts auf NULL setzen (Kontaktdaten bleiben erhalten)
+      await db.run('UPDATE contacts SET user_id=NULL, invite_pending=0 WHERE user_id=?', [targetId])
+      // Aus allen Tenants entfernen
+      await db.run('DELETE FROM user_tenants WHERE user_id=?', [targetId])
+      // Offene Invite-Tokens des Users löschen
+      await db.run('DELETE FROM invite_tokens WHERE invited_by=? AND used_at IS NULL', [targetId])
+      // User selbst löschen
+      await db.run('DELETE FROM users WHERE id=?', [targetId])
+      await db.run('COMMIT')
+      res.json({ ok: true })
+    } catch (err) {
+      await db.run('ROLLBACK')
+      throw err
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ============================================
 // START
 // ============================================
 

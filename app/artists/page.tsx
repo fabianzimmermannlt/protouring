@@ -12,9 +12,11 @@ import {
   getAuthToken,
   getCurrentUser,
   logout,
+  superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   CURRENT_TENANT_KEY,
-  type MyTermin,
+  type MyTermin, type SuperadminUser,
 } from '@/lib/api-client'
+import { Shield, Loader2 } from 'lucide-react'
 
 interface Tenant {
   id: number
@@ -160,6 +162,11 @@ export default function ArtistsPage() {
           </button>
         )}
 
+        {/* Superadmin-Konsole */}
+        {!!(currentUser as any)?.isSuperadmin && (
+          <SuperadminConsole />
+        )}
+
         {/* Meine Termine */}
         {termine.length > 0 && (
           <div className="mt-8">
@@ -224,6 +231,234 @@ export default function ArtistsPage() {
           onCreated={handleTenantCreated}
           onClose={() => setShowCreateModal(false)}
         />
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// SuperadminConsole
+// ============================================================
+
+function SuperadminConsole() {
+  const [open, setOpen] = useState(false)
+  const [users, setUsers] = useState<SuperadminUser[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+
+  // PW-Modal
+  const [pwTarget, setPwTarget] = useState<SuperadminUser | null>(null)
+  const [pwValue, setPwValue] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwSuccess, setPwSuccess] = useState('')
+
+  // Delete-Modal
+  const [delTarget, setDelTarget] = useState<SuperadminUser | null>(null)
+  const [delConfirm, setDelConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [delError, setDelError] = useState('')
+
+  const load = () => {
+    setLoading(true); setError('')
+    superadminGetUsers()
+      .then(u => setUsers(u))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }
+
+  const handleOpen = () => { setOpen(true); load() }
+
+  const filtered = users.filter(u =>
+    `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const handlePwSave = async () => {
+    if (!pwTarget) return
+    if (pwValue.length < 6) { setPwError('Mindestens 6 Zeichen'); return }
+    setPwSaving(true); setPwError(''); setPwSuccess('')
+    try {
+      await superadminSetPassword(pwTarget.id, pwValue)
+      setPwSuccess('Passwort gesetzt.')
+      setTimeout(() => setPwTarget(null), 1200)
+    } catch (e: any) { setPwError(e.message) }
+    finally { setPwSaving(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!delTarget || delConfirm !== delTarget.email) { setDelError('E-Mail stimmt nicht'); return }
+    setDeleting(true); setDelError('')
+    try {
+      await superadminDeleteUser(delTarget.id)
+      setUsers(prev => prev.filter(u => u.id !== delTarget.id))
+      setDelTarget(null); setDelConfirm('')
+    } catch (e: any) { setDelError(e.message) }
+    finally { setDeleting(false) }
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={handleOpen}
+        className="w-full flex items-center justify-center gap-2 border border-dashed border-red-800 hover:border-red-500 text-red-500 hover:text-red-400 rounded-xl px-5 py-3 transition-all text-sm font-medium"
+      >
+        <Shield className="w-4 h-4" />
+        Superadmin — User-Verwaltung
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-red-400" />
+                <h2 className="text-white font-semibold">Superadmin – Alle User</h2>
+              </div>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+
+            {/* Search */}
+            <div className="px-5 py-3 border-b border-gray-800">
+              <input
+                type="text"
+                placeholder="Suchen …"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto">
+              {loading && (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={20} /></div>
+              )}
+              {error && <p className="text-red-400 text-sm px-5 py-4">{error}</p>}
+              {!loading && !error && (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-900 border-b border-gray-700">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Name</th>
+                      <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">E-Mail</th>
+                      <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Tenants</th>
+                      <th className="px-4 py-2.5"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {filtered.map(u => (
+                      <tr key={u.id} className="hover:bg-gray-800/50">
+                        <td className="px-4 py-2.5 text-white">
+                          {u.firstName} {u.lastName}
+                          {u.isSuperadmin && <span className="ml-1.5 text-xs bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded">SA</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-400">{u.email}</td>
+                        <td className="px-4 py-2.5 text-xs">
+                          {u.tenantCount === 0
+                            ? <span className="text-orange-400 font-medium">Kein Tenant</span>
+                            : <span className="text-gray-400" title={u.tenantNames}>{u.tenantCount}×</span>
+                          }
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex gap-1.5 justify-end">
+                            <button
+                              onClick={() => { setPwTarget(u); setPwValue(''); setPwError(''); setPwSuccess('') }}
+                              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+                            >
+                              PW
+                            </button>
+                            {!u.isSuperadmin && (
+                              <button
+                                onClick={() => { setDelTarget(u); setDelConfirm(''); setDelError('') }}
+                                className="text-xs px-2 py-1 bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded"
+                              >
+                                Löschen
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filtered.length === 0 && !loading && (
+                      <tr><td colSpan={4} className="text-center py-6 text-gray-600">Keine User</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PW-Modal */}
+      {pwTarget && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setPwTarget(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-semibold">Passwort setzen</h3>
+            <p className="text-sm text-gray-400">{pwTarget.firstName} {pwTarget.lastName} ({pwTarget.email})</p>
+            <input
+              type="password"
+              autoFocus
+              value={pwValue}
+              onChange={e => setPwValue(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handlePwSave()}
+              placeholder="Neues Passwort (min. 6 Zeichen)"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {pwError && <p className="text-xs text-red-400">{pwError}</p>}
+            {pwSuccess && <p className="text-xs text-green-400">{pwSuccess}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setPwTarget(null)} className="text-sm px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg">Abbrechen</button>
+              <button
+                onClick={handlePwSave}
+                disabled={pwSaving}
+                className="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-1"
+              >
+                {pwSaving && <Loader2 size={12} className="animate-spin" />}
+                Setzen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete-Modal */}
+      {delTarget && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setDelTarget(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-semibold">User löschen</h3>
+            <p className="text-sm text-gray-400">
+              <span className="text-white">{delTarget.firstName} {delTarget.lastName}</span> wird global gelöscht.
+              Kontaktdaten bleiben erhalten, werden aber vom Account getrennt.
+            </p>
+            <div className="p-3 bg-red-950/50 border border-red-900 rounded-lg text-xs text-red-400">
+              Nicht rückgängig machbar.
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">E-Mail zur Bestätigung: <span className="font-mono text-gray-300">{delTarget.email}</span></label>
+              <input
+                type="text"
+                autoFocus
+                value={delConfirm}
+                onChange={e => setDelConfirm(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            {delError && <p className="text-xs text-red-400">{delError}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDelTarget(null)} className="text-sm px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg">Abbrechen</button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || delConfirm !== delTarget.email}
+                className="text-sm px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 flex items-center gap-1"
+              >
+                {deleting && <Loader2 size={12} className="animate-spin" />}
+                Löschen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -2249,3 +2249,35 @@ export function getGuestListPdfUrl(listId: number): string {
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
   return `${API_BASE}/api/guest-lists/${listId}/export/pdf`
 }
+
+// ============================================
+// SUPERADMIN
+// ============================================
+
+export interface SuperadminUser {
+  id: number
+  email: string
+  firstName: string
+  lastName: string
+  isSuperadmin: boolean
+  createdAt: string
+  tenantCount: number
+  tenantNames: string
+}
+
+export async function superadminGetUsers(): Promise<SuperadminUser[]> {
+  const res = await request<{ users: SuperadminUser[] }>('/api/superadmin/users', { skipTenant: true })
+  return res.users
+}
+
+export async function superadminSetPassword(userId: number, password: string): Promise<void> {
+  await request(`/api/superadmin/users/${userId}/password`, {
+    method: 'PUT',
+    body: { password },
+    skipTenant: true,
+  })
+}
+
+export async function superadminDeleteUser(userId: number): Promise<void> {
+  await request(`/api/superadmin/users/${userId}`, { method: 'DELETE', skipTenant: true })
+}

@@ -25,9 +25,10 @@ import {
   getTenantBilling, updateTenantBilling,
   getUserFormat, updateUserFormat,
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
+  superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
-  type TenantArtistSettings, type TenantBilling, type UserFormat,
+  type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
 } from '@/lib/api-client'
 
 import { ProfileEditor, type ProfileData } from '@/app/components/shared/ProfileEditor'
@@ -506,6 +507,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             </div>
           </div>
         )
+
+      case 'superadmin':
+        return <SuperadminPanel />
 
       default:
         return (
@@ -1264,6 +1268,238 @@ function UserManagement() {
                 {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
                 Speichern
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// SuperadminPanel — globale User-Verwaltung (nur für Superadmin)
+// ============================================================
+
+function SuperadminPanel() {
+  const [users, setUsers] = useState<SuperadminUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // PW-Modal
+  const [pwModal, setPwModal] = useState<SuperadminUser | null>(null)
+  const [pwValue, setPwValue] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwSuccess, setPwSuccess] = useState('')
+
+  // Delete-Confirm
+  const [deleteTarget, setDeleteTarget] = useState<SuperadminUser | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  useEffect(() => {
+    superadminGetUsers()
+      .then(u => { setUsers(u); setLoading(false) })
+      .catch(e => { setError(e.message); setLoading(false) })
+  }, [])
+
+  const filtered = users.filter(u =>
+    `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const openPwModal = (u: SuperadminUser) => {
+    setPwModal(u); setPwValue(''); setPwError(''); setPwSuccess('')
+  }
+
+  const handlePwSave = async () => {
+    if (!pwModal) return
+    if (pwValue.length < 6) { setPwError('Mindestens 6 Zeichen'); return }
+    setPwSaving(true); setPwError(''); setPwSuccess('')
+    try {
+      await superadminSetPassword(pwModal.id, pwValue)
+      setPwSuccess('Passwort gesetzt.')
+      setTimeout(() => setPwModal(null), 1200)
+    } catch (e: any) {
+      setPwError(e.message)
+    } finally {
+      setPwSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    if (deleteConfirmText !== deleteTarget.email) { setDeleteError('E-Mail stimmt nicht überein'); return }
+    setDeleting(true); setDeleteError('')
+    try {
+      await superadminDeleteUser(deleteTarget.id)
+      setUsers(prev => prev.filter(u => u.id !== deleteTarget.id))
+      setDeleteTarget(null)
+      setDeleteConfirmText('')
+    } catch (e: any) {
+      setDeleteError(e.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={20} /></div>
+  if (error) return <div className="text-red-600 text-sm p-4">{error}</div>
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+          <UsersIcon className="w-5 h-5 text-red-500" />
+          Superadmin – Globale User-Verwaltung
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">Alle User systemweit. Unabhängig von Tenant-Mitgliedschaft.</p>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Suchen …"
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+      />
+
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-3 py-2 text-gray-600 font-medium">Name</th>
+              <th className="text-left px-3 py-2 text-gray-600 font-medium">E-Mail</th>
+              <th className="text-left px-3 py-2 text-gray-600 font-medium">Tenants</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filtered.map(u => (
+              <tr key={u.id} className="hover:bg-gray-50">
+                <td className="px-3 py-2">
+                  <span className="font-medium text-gray-900">{u.firstName} {u.lastName}</span>
+                  {u.isSuperadmin && (
+                    <span className="ml-2 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">SA</span>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-gray-600">{u.email}</td>
+                <td className="px-3 py-2 text-gray-500 text-xs">
+                  {u.tenantCount === 0
+                    ? <span className="text-orange-500 font-medium">Kein Tenant</span>
+                    : <span title={u.tenantNames}>{u.tenantCount} Tenant{u.tenantCount !== 1 ? 's' : ''}</span>
+                  }
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => openPwModal(u)}
+                      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
+                    >
+                      PW setzen
+                    </button>
+                    {!u.isSuperadmin && (
+                      <button
+                        onClick={() => { setDeleteTarget(u); setDeleteConfirmText(''); setDeleteError('') }}
+                        className="text-xs px-2 py-1 border border-red-200 rounded hover:bg-red-50 text-red-600"
+                      >
+                        Löschen
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={4} className="text-center py-6 text-gray-400">Keine User gefunden</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* PW-Modal */}
+      {pwModal && (
+        <div className="modal-overlay" onClick={() => setPwModal(null)}>
+          <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Passwort setzen</h2>
+              <button onClick={() => setPwModal(null)} className="text-gray-400 hover:text-white"><span className="text-xl">✕</span></button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-gray-600">
+                User: <span className="font-medium">{pwModal.firstName} {pwModal.lastName}</span> ({pwModal.email})
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Neues Passwort</label>
+                <input
+                  type="password"
+                  autoFocus
+                  value={pwValue}
+                  onChange={e => setPwValue(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handlePwSave()}
+                  placeholder="Mindestens 6 Zeichen"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {pwError && <p className="text-xs text-red-600">{pwError}</p>}
+              {pwSuccess && <p className="text-xs text-green-600">{pwSuccess}</p>}
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setPwModal(null)} className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50">Abbrechen</button>
+                <button
+                  onClick={handlePwSave}
+                  disabled={pwSaving}
+                  className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {pwSaving ? <Loader2 size={12} className="animate-spin" /> : null}
+                  Setzen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete-Confirm-Modal */}
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">User löschen</h2>
+              <button onClick={() => setDeleteTarget(null)} className="text-gray-400 hover:text-white"><span className="text-xl">✕</span></button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">{deleteTarget.firstName} {deleteTarget.lastName}</span> ({deleteTarget.email}) wird global gelöscht.
+                Kontaktdaten bleiben in den Tenants erhalten, werden aber vom User-Account getrennt.
+              </p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                Diese Aktion kann nicht rückgängig gemacht werden.
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Zur Bestätigung E-Mail eingeben: <span className="font-mono">{deleteTarget.email}</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+              {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setDeleteTarget(null)} className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50">Abbrechen</button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting || deleteConfirmText !== deleteTarget.email}
+                  className="text-sm px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {deleting ? <Loader2 size={12} className="animate-spin" /> : null}
+                  Endgültig löschen
+                </button>
+              </div>
             </div>
           </div>
         </div>
