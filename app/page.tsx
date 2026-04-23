@@ -21,40 +21,40 @@ export default function ProTouringApp() {
 
   const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','settings','feedback']
 
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window === 'undefined') return 'desk'
-    const p = new URLSearchParams(window.location.search)
-    const t = p.get('tab')
-    return t && VALID_TABS.includes(t) ? t : 'desk'
-  })
-
-  const [activeSubTab, setActiveSubTab] = useState(() => {
-    if (typeof window === 'undefined') return ''
-    const p = new URLSearchParams(window.location.search)
-    const s = p.get('sub')
-    const t = p.get('tab')
-    if (s) return s
-    if (t === 'settings') return 'profil'
-    if (t === 'contacts') return 'overview'
-    return ''
-  })
-
+  // SSR-sicher: immer mit 'desk' starten, URL nach Mount lesen
+  // (State-Initializer mit window.location würde SSR-Hydration-Mismatch erzeugen)
+  const [activeTab, setActiveTab] = useState('desk')
+  const [activeSubTab, setActiveSubTab] = useState('')
   const [authChecked, setAuthChecked] = useState(false)
 
-  // Direktlink von /artists: /?terminId=123 (ohne tab-Param) öffnet Termin direkt
-  // Einmalig beim Mount, kein useSearchParams → keine Re-renders durch history.replaceState
+  // Auth-Check + URL-Params lesen — beides vor dem ersten Render
+  // Kein Flash weil authChecked=false → Loading-Screen bis hier fertig
   useEffect(() => {
+    if (!isAuthenticated()) {
+      router.replace('/login')
+      return
+    }
+    // URL-Params nach Mount lesen (SSR-sicher)
     const p = new URLSearchParams(window.location.search)
+    const t = p.get('tab')
+    const s = p.get('sub')
     const terminId = p.get('terminId')
-    const tab = p.get('tab')
-    if (terminId && !tab) {
+
+    if (t && VALID_TABS.includes(t)) {
+      setActiveTab(t)
+      if (s) setActiveSubTab(s)
+      else if (t === 'settings') setActiveSubTab('profil')
+      else if (t === 'contacts') setActiveSubTab('overview')
+    } else if (terminId) {
+      // Direktlink von /artists: /?terminId=123
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
         setActiveTab('appointments')
-        router.replace(`/?tab=appointments&terminId=${id}`, { scroll: false })
+        history.replaceState(null, '', `/?tab=appointments&terminId=${id}`)
       }
     }
-  }, [])
+    setAuthChecked(true)
+  }, [router])
 
   // Globales Event: vom Schreibtisch zu einem Termin navigieren → direkt zur Detail-URL
   useEffect(() => {
@@ -72,14 +72,6 @@ export default function ProTouringApp() {
     window.addEventListener('navigate-to-feedback', handler)
     return () => window.removeEventListener('navigate-to-feedback', handler)
   }, [])
-
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.replace('/login')
-    } else {
-      setAuthChecked(true)
-    }
-  }, [router])
 
   if (!authChecked) {
     return (
