@@ -13,8 +13,9 @@ import {
   getCurrentUser,
   logout,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
+  superadminGetTenants, superadminExtendTrial,
   CURRENT_TENANT_KEY,
-  type MyTermin, type SuperadminUser,
+  type MyTermin, type SuperadminUser, type SuperadminTenant,
 } from '@/lib/api-client'
 import { Shield, Loader2 } from 'lucide-react'
 
@@ -243,10 +244,21 @@ export default function ArtistsPage() {
 
 function SuperadminConsole() {
   const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<'users' | 'tenants'>('users')
+
+  // Users
   const [users, setUsers] = useState<SuperadminUser[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+
+  // Tenants
+  const [tenants, setTenants] = useState<SuperadminTenant[]>([])
+  const [tenantsLoading, setTenantsLoading] = useState(false)
+  const [extendTarget, setExtendTarget] = useState<SuperadminTenant | null>(null)
+  const [extendDays, setExtendDays] = useState('30')
+  const [extending, setExtending] = useState(false)
+  const [extendError, setExtendError] = useState('')
 
   // PW-Modal
   const [pwTarget, setPwTarget] = useState<SuperadminUser | null>(null)
@@ -261,6 +273,27 @@ function SuperadminConsole() {
   const [deleting, setDeleting] = useState(false)
   const [delError, setDelError] = useState('')
 
+  const loadTenants = () => {
+    setTenantsLoading(true)
+    superadminGetTenants()
+      .then(t => setTenants(t))
+      .catch(e => setError(e.message))
+      .finally(() => setTenantsLoading(false))
+  }
+
+  const handleExtendTrial = async () => {
+    if (!extendTarget) return
+    const d = parseInt(extendDays)
+    if (isNaN(d) || d < 1) { setExtendError('Ungültige Anzahl Tage'); return }
+    setExtending(true); setExtendError('')
+    try {
+      const newDate = await superadminExtendTrial(extendTarget.id, d)
+      setTenants(prev => prev.map(t => t.id === extendTarget.id ? { ...t, trialEndsAt: newDate, status: 'trial' } : t))
+      setExtendTarget(null)
+    } catch (e: any) { setExtendError(e.message) }
+    finally { setExtending(false) }
+  }
+
   const load = () => {
     setLoading(true); setError('')
     superadminGetUsers()
@@ -269,7 +302,7 @@ function SuperadminConsole() {
       .finally(() => setLoading(false))
   }
 
-  const handleOpen = () => { setOpen(true); load() }
+  const handleOpen = () => { setOpen(true); load(); loadTenants() }
 
   const filtered = users.filter(u =>
     `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(search.toLowerCase())
@@ -315,29 +348,77 @@ function SuperadminConsole() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-red-400" />
-                <h2 className="text-white font-semibold text-sm">Superadmin – Alle User</h2>
+                <h2 className="text-white font-semibold text-sm">Superadmin</h2>
               </div>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
             </div>
 
-            {/* Search */}
-            <div className="px-4 py-2.5 border-b border-gray-800">
-              <input
-                type="text"
-                placeholder="Suchen …"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
-              />
+            {/* Tabs */}
+            <div className="flex border-b border-gray-800 px-4">
+              {(['users', 'tenants'] as const).map(t => (
+                <button key={t} onClick={() => setTab(t)}
+                  className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-colors ${tab === t ? 'border-red-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
+                  {t === 'users' ? 'User' : 'Artists / Trial'}
+                </button>
+              ))}
             </div>
+
+            {/* Search (nur bei Users) */}
+            {tab === 'users' && (
+              <div className="px-4 py-2.5 border-b border-gray-800">
+                <input type="text" placeholder="Suchen …" value={search} onChange={e => setSearch(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+            )}
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto">
-              {loading && (
+
+              {/* ── Tenants Tab ── */}
+              {tab === 'tenants' && (
+                <>
+                  {tenantsLoading && <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={20} /></div>}
+                  {!tenantsLoading && (
+                    <div className="divide-y divide-gray-800">
+                      {tenants.map(t => {
+                        const endsAt = t.trialEndsAt ? new Date(t.trialEndsAt) : null
+                        const daysLeft = endsAt ? Math.ceil((endsAt.getTime() - Date.now()) / 86400000) : null
+                        const expired = daysLeft !== null && daysLeft <= 0
+                        return (
+                          <div key={t.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-sm font-medium truncate">{t.name}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {t.userCount} User · {t.status === 'trial' ? (
+                                  expired
+                                    ? <span className="text-red-400 font-medium">Trial abgelaufen</span>
+                                    : <span className="text-yellow-400">Trial: noch {daysLeft} {daysLeft === 1 ? 'Tag' : 'Tage'}</span>
+                                ) : (
+                                  <span className="text-green-400">{t.status}</span>
+                                )}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => { setExtendTarget(t); setExtendDays('30'); setExtendError('') }}
+                              className="text-xs px-2.5 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded-lg flex-shrink-0"
+                            >
+                              Trial verlängern
+                            </button>
+                          </div>
+                        )
+                      })}
+                      {tenants.length === 0 && <p className="text-center py-8 text-gray-600 text-sm">Keine Artists</p>}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Users Tab ── */}
+              {tab === 'users' && loading && (
                 <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={20} /></div>
               )}
-              {error && <p className="text-red-400 text-sm px-4 py-4">{error}</p>}
-              {!loading && !error && (
+              {tab === 'users' && error && <p className="text-red-400 text-sm px-4 py-4">{error}</p>}
+              {tab === 'users' && !loading && !error && (
                 <>
                   {/* Mobile: Cards */}
                   <div className="sm:hidden divide-y divide-gray-800">
@@ -420,6 +501,43 @@ function SuperadminConsole() {
                   </table>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trial-Verlängern-Modal */}
+      {extendTarget && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setExtendTarget(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-semibold">Trial verlängern</h3>
+            <p className="text-sm text-gray-400">
+              Artist: <span className="text-white">{extendTarget.name}</span>
+              {extendTarget.trialEndsAt && (
+                <span className="block mt-0.5 text-xs">Aktuell bis: {new Date(extendTarget.trialEndsAt).toLocaleDateString('de-DE')}</span>
+              )}
+            </p>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Verlängern um … Tage</label>
+              <div className="flex gap-2">
+                {[14, 30, 60, 90].map(d => (
+                  <button key={d} onClick={() => setExtendDays(String(d))}
+                    className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${extendDays === String(d) ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+              <input type="number" value={extendDays} onChange={e => setExtendDays(e.target.value)} min="1"
+                className="mt-2 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-yellow-500" />
+            </div>
+            {extendError && <p className="text-xs text-red-400">{extendError}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setExtendTarget(null)} className="text-sm px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg">Abbrechen</button>
+              <button onClick={handleExtendTrial} disabled={extending}
+                className="text-sm px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg disabled:opacity-50 flex items-center gap-1">
+                {extending && <Loader2 size={12} className="animate-spin" />}
+                Verlängern
+              </button>
             </div>
           </div>
         </div>

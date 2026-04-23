@@ -5637,6 +5637,44 @@ app.delete('/api/superadmin/users/:userId', authenticateToken, requireSuperadmin
   }
 })
 
+// GET /api/superadmin/tenants — alle Tenants mit Trial-Info
+app.get('/api/superadmin/tenants', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const tenants = await db.all(`
+      SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status,
+             t.trial_ends_at,
+             (SELECT COUNT(*) FROM user_tenants ut WHERE ut.tenant_id=t.id AND ut.status='active') AS user_count
+      FROM tenants t
+      ORDER BY t.created_at DESC
+    `)
+    res.json({ tenants: tenants.map(t => ({
+      id: t.id, name: t.name, slug: t.slug, status: t.status,
+      trialEndsAt: t.trial_ends_at, userCount: t.user_count,
+    })) })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// PUT /api/superadmin/tenants/:id/trial — Trial verlängern
+app.put('/api/superadmin/tenants/:id/trial', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const { days } = req.body
+    if (!days || isNaN(parseInt(days))) return res.status(400).json({ error: 'days erforderlich' })
+    const d = parseInt(days)
+    // trial_ends_at: wenn noch in Zukunft → von dort verlängern, sonst ab heute
+    const tenant = await db.get('SELECT trial_ends_at FROM tenants WHERE id=?', [req.params.id])
+    if (!tenant) return res.status(404).json({ error: 'Tenant nicht gefunden' })
+    const base = tenant.trial_ends_at && new Date(tenant.trial_ends_at) > new Date()
+      ? tenant.trial_ends_at : 'now'
+    const newDate = base === 'now'
+      ? `datetime('now', '+${d} days')`
+      : `datetime('${tenant.trial_ends_at}', '+${d} days')`
+    await db.run(`UPDATE tenants SET trial_ends_at=${newDate}, status='trial' WHERE id=?`, [req.params.id])
+    await db.run(`UPDATE tenant_subscriptions SET status='trial', current_period_end=${newDate} WHERE tenant_id=?`, [req.params.id])
+    const updated = await db.get('SELECT trial_ends_at FROM tenants WHERE id=?', [req.params.id])
+    res.json({ trialEndsAt: updated.trial_ends_at })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
 // ============================================
 // START
 // ============================================

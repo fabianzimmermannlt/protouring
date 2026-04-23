@@ -2313,3 +2313,24 @@ export function getIcalUrl(token: string): string {
   // .ics Endung für maximale Kompatibilität
   return `${API_BASE}/api/ical/${token}.ics`.replace(/^https?:\/\//, 'webcal://')
 }
+
+export interface SuperadminTenant {
+  id: number
+  name: string
+  slug: string
+  status: string
+  trialEndsAt: string | null
+  userCount: number
+}
+
+export async function superadminGetTenants(): Promise<SuperadminTenant[]> {
+  const res = await request<{ tenants: SuperadminTenant[] }>('/api/superadmin/tenants', { skipTenant: true })
+  return res.tenants
+}
+
+export async function superadminExtendTrial(tenantId: number, days: number): Promise<string> {
+  const res = await request<{ trialEndsAt: string }>(`/api/superadmin/tenants/${tenantId}/trial`, {
+    method: 'PUT', body: { days }, skipTenant: true,
+  })
+  return res.trialEndsAt
+}
