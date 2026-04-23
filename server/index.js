@@ -674,6 +674,8 @@ async function initDatabase() {
     `ALTER TABLE users ADD COLUMN format_currency TEXT DEFAULT 'EUR'`,
     // Superadmin
     `ALTER TABLE users ADD COLUMN is_superadmin INTEGER DEFAULT 0`,
+    // iCal Feed Token
+    `ALTER TABLE users ADD COLUMN ical_token TEXT`,
     // Feedback: Bemerkung des Superadmins
     `ALTER TABLE feedback_items ADD COLUMN bemerkung TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
@@ -5266,6 +5268,88 @@ app.get('/api/guest-lists/:id/export/pdf', authenticateToken, requireTenant, asy
     console.error('PDF export failed', e)
     res.status(500).json({ error: 'Failed' })
   }
+})
+
+// ============================================
+// ICAL FEED
+// ============================================
+
+// GET /api/me/ical-token — eigenen iCal-Token abrufen (oder generieren)
+app.get('/api/me/ical-token', authenticateToken, async (req, res) => {
+  try {
+    let user = await db.get('SELECT ical_token FROM users WHERE id=?', [req.user.id])
+    if (!user.ical_token) {
+      const token = crypto.randomBytes(24).toString('hex')
+      await db.run('UPDATE users SET ical_token=? WHERE id=?', [token, req.user.id])
+      user = { ical_token: token }
+    }
+    res.json({ token: user.ical_token })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// POST /api/me/ical-token/regenerate — neuen Token generieren (invalidiert alten Link)
+app.post('/api/me/ical-token/regenerate', authenticateToken, async (req, res) => {
+  try {
+    const token = crypto.randomBytes(24).toString('hex')
+    await db.run('UPDATE users SET ical_token=? WHERE id=?', [token, req.user.id])
+    res.json({ token })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// GET /api/ical/:token — öffentlicher iCal Feed (kein Auth nötig)
+app.get('/api/ical/:token', async (req, res) => {
+  try {
+    const user = await db.get('SELECT id, first_name, last_name FROM users WHERE ical_token=?', [req.params.token])
+    if (!user) return res.status(404).send('Feed nicht gefunden')
+
+    const rows = await db.all(`
+      SELECT DISTINCT
+        t.id, t.date, t.title, t.city, t.art,
+        ten.name AS tenant_name,
+        v.name AS venue_name, v.address AS venue_address
+      FROM termine t
+      JOIN tenants ten ON t.tenant_id = ten.id
+      JOIN termin_travel_party ttp ON ttp.termin_id = t.id
+      JOIN contacts c ON ttp.contact_id = c.id
+      LEFT JOIN venues v ON t.venue_id = v.id
+      WHERE c.user_id = ?
+      ORDER BY t.date ASC
+    `, [user.id])
+
+    const escIcal = s => (s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+    const fmtDate = dateStr => dateStr ? dateStr.replace(/-/g, '') : null
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ProTouring//ProTouring//DE',
+      'X-WR-CALNAME:ProTouring',
+      'X-WR-CALDESC:Bestätigte Termine aus ProTouring',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-TIMEZONE:Europe/Berlin',
+    ]
+
+    for (const t of rows) {
+      const dateStr = fmtDate(t.date)
+      if (!dateStr) continue
+      const summary = [t.tenant_name, t.title || t.art || 'Termin'].filter(Boolean).join(' – ')
+      const location = [t.venue_name, t.city].filter(Boolean).join(', ')
+      lines.push('BEGIN:VEVENT')
+      lines.push(`DTSTART;VALUE=DATE:${dateStr}`)
+      lines.push(`DTEND;VALUE=DATE:${dateStr}`)
+      lines.push(`SUMMARY:${escIcal(summary)}`)
+      if (location) lines.push(`LOCATION:${escIcal(location)}`)
+      lines.push(`UID:protouring-${t.id}-${user.id}@protouring.de`)
+      lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`)
+      lines.push('END:VEVENT')
+    }
+    lines.push('END:VCALENDAR')
+
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
+    res.setHeader('Content-Disposition', 'inline; filename="protouring.ics"')
+    res.send(lines.join('\r\n'))
+  } catch (err) { res.status(500).send('Fehler beim Generieren') }
 })
 
 // ============================================

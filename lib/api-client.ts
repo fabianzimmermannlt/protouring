@@ -2285,3 +2285,29 @@ export async function superadminSetPassword(userId: number, password: string): P
 export async function superadminDeleteUser(userId: number): Promise<void> {
   await request(`/api/superadmin/users/${userId}`, { method: 'DELETE', skipTenant: true })
 }
+
+// ============================================
+// ICAL FEED
+// ============================================
+
+export async function getIcalToken(): Promise<string> {
+  const res = await request<{ token: string }>('/api/me/ical-token', { skipTenant: true })
+  return res.token
+}
+
+export async function regenerateIcalToken(): Promise<string> {
+  const res = await request<{ token: string }>('/api/me/ical-token/regenerate', {
+    method: 'POST',
+    skipTenant: true,
+  })
+  return res.token
+}
+
+export function getIcalUrl(token: string): string {
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
+    typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:3002`
+      : 'http://localhost:3002'
+  )
+  return `${API_BASE}/api/ical/${token}`
+}

@@ -29,6 +29,7 @@ import {
   getUserFormat, updateUserFormat,
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
+  getIcalToken, regenerateIcalToken, getIcalUrl,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
@@ -670,6 +671,7 @@ function UserProfil() {
   )
 
   return (
+    <div className="space-y-6">
     <div className="flex flex-col md:flex-row gap-6 items-start">
 
       {/* Linke Spalte: Avatar + Kurzinfo */}
@@ -770,6 +772,96 @@ function UserProfil() {
         </div>
       </div>
 
+    </div>
+
+    {/* iCal Feed */}
+    <IcalSection />
+
+  </div>
+  )
+}
+
+// ============================================================
+// IcalSection — Kalender-Abo
+// ============================================================
+
+function IcalSection() {
+  const [token, setToken] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+
+  useEffect(() => {
+    getIcalToken()
+      .then(setToken)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const url = token ? getIcalUrl(token) : ''
+
+  const handleCopy = async () => {
+    if (!url) return
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const el = document.createElement('textarea')
+        el.value = url; el.style.position = 'fixed'; el.style.left = '-9999px'
+        document.body.appendChild(el); el.focus(); el.select()
+        document.execCommand('copy'); document.body.removeChild(el)
+      }
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+
+  const handleRegenerate = async () => {
+    if (!confirm('Den Link neu generieren? Der alte Link funktioniert dann nicht mehr.')) return
+    setRegenerating(true)
+    try {
+      const newToken = await regenerateIcalToken()
+      setToken(newToken)
+    } finally { setRegenerating(false) }
+  }
+
+  return (
+    <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+      <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
+        <CalendarDaysIcon className="w-4 h-4 text-gray-400" />
+        Kalender-Abo (iCal)
+      </h4>
+      <p className="text-xs text-gray-500 mb-3">
+        Bestätigte Termine in Google Calendar, Apple Calendar oder Outlook abonnieren. Den Link einmalig einfügen — danach sync automatisch.
+      </p>
+      {loading ? (
+        <div className="flex items-center gap-2 text-gray-400 text-xs"><Loader2 className="animate-spin w-3 h-3" /> Wird geladen…</div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={url}
+              onFocus={e => e.target.select()}
+              className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white text-gray-600 text-xs font-mono select-all truncate"
+            />
+            <button
+              onClick={handleCopy}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+            >
+              {copied ? '✓ Kopiert' : 'Kopieren'}
+            </button>
+          </div>
+          <button
+            onClick={handleRegenerate}
+            disabled={regenerating}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 disabled:opacity-50"
+          >
+            {regenerating ? <Loader2 size={10} className="animate-spin" /> : null}
+            Link neu generieren (invalidiert alten Link)
+          </button>
+        </div>
+      )}
     </div>
   )
 }
