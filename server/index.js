@@ -5307,7 +5307,7 @@ app.get('/api/ical/:token', async (req, res) => {
       SELECT DISTINCT
         t.id, t.date, t.title, t.city, t.art,
         ten.name AS tenant_name,
-        v.name AS venue_name, v.address AS venue_address
+        v.name AS venue_name
       FROM termine t
       JOIN tenants ten ON t.tenant_id = ten.id
       JOIN termin_travel_party ttp ON ttp.termin_id = t.id
@@ -5350,7 +5350,10 @@ app.get('/api/ical/:token', async (req, res) => {
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
     res.setHeader('Content-Disposition', 'inline; filename="protouring.ics"')
     res.send(lines.join('\r\n'))
-  } catch (err) { res.status(500).send('Fehler beim Generieren') }
+  } catch (err) {
+    console.error('iCal feed error:', err)
+    res.status(500).send(`Fehler: ${err.message}`)
+  }
 })
 
 // ============================================
