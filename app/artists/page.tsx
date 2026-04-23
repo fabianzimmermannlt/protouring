@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Plus, X, ChevronRight, LogOut } from 'lucide-react'
 import {
@@ -28,7 +28,16 @@ interface Tenant {
   role: string
 }
 
+// Suspense-Wrapper für useSearchParams (Next.js 14 Pflicht)
 export default function ArtistsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-950" />}>
+      <ArtistsPageInner />
+    </Suspense>
+  )
+}
+
+function ArtistsPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [tenants, setTenants] = useState<Tenant[]>([])
