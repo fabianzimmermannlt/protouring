@@ -57,7 +57,9 @@ export default function KalenderView({ termine, onSelectTermin }: KalenderViewPr
         days.push({ date: null, dateStr: null })
       } else {
         const d = new Date(year, month, dayNum)
-        days.push({ date: d, dateStr: d.toISOString().slice(0, 10) })
+        // Lokales Datum als String — NICHT toISOString() (würde UTC liefern und in MEZ/MESZ einen Tag abweichen)
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+        days.push({ date: d, dateStr })
       }
     }
     return { days }
@@ -73,7 +75,7 @@ export default function KalenderView({ termine, onSelectTermin }: KalenderViewPr
     return map
   }, [termine])
 
-  const todayStr = today.toISOString().slice(0, 10)
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const monthLabel = new Date(year, month, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
 
   const weeks = []
