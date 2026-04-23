@@ -40,18 +40,20 @@ export default function ProTouringApp() {
     const s = p.get('sub')
     const terminId = p.get('terminId')
 
+    if (terminId && !t) {
+      // Direktlink von /artists: /?terminId=123 → direkt zur Detailseite
+      const id = parseInt(terminId, 10)
+      if (!isNaN(id)) {
+        window.location.href = `/appointments/${id}/details`
+        return // kein authChecked setzen — wir navigieren weg
+      }
+    }
+
     if (t && VALID_TABS.includes(t)) {
       setActiveTab(t)
       if (s) setActiveSubTab(s)
       else if (t === 'settings') setActiveSubTab('profil')
       else if (t === 'contacts') setActiveSubTab('overview')
-    } else if (terminId) {
-      // Direktlink von /artists: /?terminId=123
-      const id = parseInt(terminId, 10)
-      if (!isNaN(id)) {
-        setActiveTab('appointments')
-        history.replaceState(null, '', `/?tab=appointments&terminId=${id}`)
-      }
     }
     setAuthChecked(true)
   }, [router])
