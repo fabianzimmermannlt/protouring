@@ -10,7 +10,7 @@ import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
 import {
-  getContacts, createContact, updateContact, deleteContact, createGuestContact,
+  getContacts, createContact, updateContact, updateMyContact, deleteContact, createGuestContact,
   getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
   ROLE_LABELS, isAdminRole, isEditorRole, getEffectiveRole,
   type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup
@@ -53,7 +53,7 @@ function profileToContact(data: ProfileData): ContactFormData {
     bankAccount: data.bankAccount || '', bankIban: data.bankIban || '', bankBic: data.bankBic || '',
     taxNumber: data.taxNumber || '', vatId: data.vatId || '', crewToolActive: data.crewToolActive || false,
     hourlyRate: 0, dailyRate: 0, notes: data.specialNotes || '',
-    hotelInfo: '', hotelAlias: '',
+    hotelInfo: data.hotelInfo || '', hotelAlias: data.hotelAlias || '',
   }
 }
 
@@ -75,7 +75,7 @@ function contactToProfile(c: Contact): ProfileData {
     railcard: c.railcard, frequentFlyer: c.frequentFlyer,
     bankAccount: c.bankAccount, bankIban: c.bankIban, bankBic: c.bankBic,
     taxNumber: c.taxNumber, vatId: c.vatId, crewToolActive: c.crewToolActive,
-    specialNotes: c.notes, hotelInfo: '', hotelAlias: '', personalFiles: [],
+    specialNotes: c.notes, hotelInfo: c.hotelInfo || '', hotelAlias: c.hotelAlias || '', personalFiles: [],
   } as unknown as ProfileData
 }
 
@@ -298,12 +298,21 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const handleUpdateContact = async (profileData: ProfileData) => {
     if (!editingContact) return
+    const currentUser = getCurrentUser()
+    const isOwnContact = editingContact.userId && String(editingContact.userId) === String(currentUser?.id)
     try {
-      const updated = await updateContact(editingContact.id, profileToContact(profileData))
+      let updated: Contact
+      if (isOwnContact) {
+        // Eigenes Profil: PUT /api/me/contact (kein requireEditor, schreibt global in users)
+        updated = await updateMyContact(profileToContact(profileData))
+      } else {
+        updated = await updateContact(editingContact.id, profileToContact(profileData))
+      }
       setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
       setEditingContact(null)
     } catch (e) {
       setError('Kontakt konnte nicht aktualisiert werden.')
+      throw e // re-throw damit ProfileEditor den Fehler kennt
     }
   }
 
