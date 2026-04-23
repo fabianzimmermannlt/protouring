@@ -153,6 +153,10 @@ function OrderList({
   // Reisegruppe als Auswahl für Kontaktname
   const memberOptions = members.map(m => `${m.firstName} ${m.lastName}`.trim())
 
+  // Namen die bereits eine Bestellung haben (für Ausgrauen im Dropdown)
+  const orderedNames = (editingId: number | 'new' | null) =>
+    new Set(orders.filter(o => o.id !== editingId).map(o => o.contactName).filter(Boolean) as string[])
+
   if (loading) return <div className="py-2 text-center"><Loader2 size={13} className="animate-spin text-gray-300 mx-auto" /></div>
 
   return (
@@ -181,6 +185,7 @@ function OrderList({
                   text={editText}
                   contactName={editContact}
                   memberOptions={memberOptions}
+                  orderedNames={orderedNames(o.id)}
                   isAdmin={isAdmin}
                   saving={saving}
                   onTextChange={setEditText}
@@ -218,6 +223,7 @@ function OrderList({
             text={editText}
             contactName={editContact}
             memberOptions={memberOptions}
+            orderedNames={orderedNames('new')}
             isAdmin={isAdmin}
             saving={saving}
             onTextChange={setEditText}
@@ -250,10 +256,11 @@ function OrderList({
 }
 
 function OrderEditRow({
-  text, contactName, memberOptions, isAdmin, saving,
+  text, contactName, memberOptions, orderedNames, isAdmin, saving,
   onTextChange, onContactChange, onSave, onCancel,
 }: {
   text: string; contactName: string; memberOptions: string[]
+  orderedNames: Set<string>
   isAdmin: boolean; saving: boolean
   onTextChange: (v: string) => void
   onContactChange: (v: string) => void
@@ -269,7 +276,11 @@ function OrderEditRow({
           onChange={e => onContactChange(e.target.value)}
         >
           <option value="">– Person –</option>
-          {memberOptions.map(n => <option key={n} value={n}>{n}</option>)}
+          {memberOptions.map(n => (
+            <option key={n} value={n} disabled={orderedNames.has(n)} style={orderedNames.has(n) ? { color: '#9ca3af' } : undefined}>
+              {n}{orderedNames.has(n) ? ' ✓' : ''}
+            </option>
+          ))}
         </select>
       )}
       <div className="flex gap-1 items-start">
