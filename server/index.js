@@ -4181,39 +4181,65 @@ app.get('/api/termine/:terminId/catering/orders', authenticateToken, requireTena
 });
 
 // POST /api/termine/:terminId/catering/orders
-app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const { contact_id, contact_name, order_text } = req.body;
+    const isEditor = ['admin', 'agency', 'tourmanagement'].includes(req.tenant.role)
+    let { contact_id, contact_name, order_text } = req.body
+    if (!isEditor) {
+      // Crew: nur eigenen Kontakt erlaubt
+      const myContact = await db.get(
+        'SELECT id, first_name, last_name FROM contacts WHERE user_id=? AND tenant_id=?',
+        [req.user.id, req.tenant.id]
+      )
+      if (!myContact) return res.status(403).json({ error: 'Kein Kontakt gefunden' })
+      contact_id   = myContact.id
+      contact_name = `${myContact.first_name} ${myContact.last_name}`.trim()
+    }
     const result = await db.run(
       `INSERT INTO termin_catering_orders (tenant_id, termin_id, contact_id, contact_name, order_text)
        VALUES (?,?,?,?,?)`,
       [req.tenant.id, req.params.terminId, contact_id ?? null, contact_name ?? null, order_text ?? '']
-    );
-    const row = await db.get('SELECT * FROM termin_catering_orders WHERE id=?', [result.lastID]);
-    res.status(201).json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+    )
+    const row = await db.get('SELECT * FROM termin_catering_orders WHERE id=?', [result.lastID])
+    res.status(201).json(row)
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
 
 // PUT /api/termine/:terminId/catering/orders/:orderId
-app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const { order_text } = req.body;
+    const isEditor = ['admin', 'agency', 'tourmanagement'].includes(req.tenant.role)
+    const { order_text } = req.body
+    if (!isEditor) {
+      // Crew: nur eigene Zeile bearbeitbar
+      const myContact = await db.get(
+        'SELECT id FROM contacts WHERE user_id=? AND tenant_id=?',
+        [req.user.id, req.tenant.id]
+      )
+      const order = await db.get(
+        'SELECT contact_id FROM termin_catering_orders WHERE id=? AND tenant_id=?',
+        [req.params.orderId, req.tenant.id]
+      )
+      if (!myContact || !order || order.contact_id !== myContact.id) {
+        return res.status(403).json({ error: 'Keine Berechtigung' })
+      }
+    }
     await db.run(
       'UPDATE termin_catering_orders SET order_text=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
       [order_text, req.params.orderId, req.tenant.id]
-    );
-    const row = await db.get('SELECT * FROM termin_catering_orders WHERE id=?', [req.params.orderId]);
-    res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+    )
+    const row = await db.get('SELECT * FROM termin_catering_orders WHERE id=?', [req.params.orderId])
+    res.json(row)
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
 
 // DELETE /api/termine/:terminId/catering/orders/:orderId
 app.delete('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    await db.run('DELETE FROM termin_catering_orders WHERE id=? AND tenant_id=?', [req.params.orderId, req.tenant.id]);
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+    await db.run('DELETE FROM termin_catering_orders WHERE id=? AND tenant_id=?', [req.params.orderId, req.tenant.id])
+    res.json({ success: true })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
 
 // ============================================
 // ROUTES: EINLADUNGEN & BENUTZER-VERWALTUNG

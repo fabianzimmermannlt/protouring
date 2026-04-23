@@ -129,6 +129,7 @@ function OrderList({
     try {
       if (editingId === 'new') {
         const created = await createCateringOrder(terminId, {
+          contactId:   isAdmin ? undefined : (myContactId ?? undefined),
           contactName: editContact.trim() || undefined,
           orderText:   editText.trim(),
         })
@@ -236,20 +237,29 @@ function OrderList({
 
       {/* Crew: eigene Zeile hinzufügen — nur wenn in der Reisegruppe */}
       {!isAdmin && myContactId !== null && editingId === null &&
-        members.some(m => m.contactId === myContactId) && (
+        members.some(m => m.contactId === myContactId) &&
         !orders.some(o => o.contactId === myContactId) && (
-          <button
-            onClick={() => {
+          <div className="mt-2 border-t border-gray-100 pt-2">
+            {(() => {
               const me = members.find(m => m.contactId === myContactId)
-              setEditContact(me ? `${me.firstName} ${me.lastName}` : '')
-              setEditingId('new')
-              setEditText('')
-            }}
-            className="mt-2 text-xs text-indigo-500 hover:text-indigo-700 flex items-center gap-1"
-          >
-            <Plus size={11} /> Meine Bestellung eintragen
-          </button>
-        )
+              const myName = me ? `${me.firstName} ${me.lastName}`.trim() : ''
+              return (
+                <button
+                  onClick={() => {
+                    setEditContact(myName)
+                    setEditingId('new')
+                    setEditText('')
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-xs text-gray-500 hover:text-indigo-600 transition-colors"
+                >
+                  <Plus size={11} className="flex-shrink-0" />
+                  <span className="truncate">
+                    {myName ? <><span className="font-medium">{myName}</span> — Bestellung eintragen</> : 'Meine Bestellung eintragen'}
+                  </span>
+                </button>
+              )
+            })()}
+          </div>
       )}
     </div>
   )
@@ -269,7 +279,7 @@ function OrderEditRow({
 }) {
   return (
     <div className="space-y-1">
-      {isAdmin && (
+      {isAdmin ? (
         <select
           className="form-select text-xs py-0.5"
           value={contactName}
@@ -282,7 +292,9 @@ function OrderEditRow({
             </option>
           ))}
         </select>
-      )}
+      ) : contactName ? (
+        <div className="text-xs font-medium text-gray-500 px-0.5">{contactName}</div>
+      ) : null}
       <div className="flex gap-1 items-start">
         <input
           className="form-input text-xs py-0.5 flex-1"
