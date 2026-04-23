@@ -697,12 +697,6 @@ function UserProfil() {
 
       {/* Mittlere Spalte: Profildaten */}
       <div className="flex-1 min-w-0 w-full">
-        {profileSaved && (
-          <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-            <CheckCircleIcon className="w-4 h-4 flex-shrink-0" />
-            Profil gespeichert
-          </div>
-        )}
         <ProfileEditor
           isOpen={true}
           onClose={() => {}}
@@ -713,6 +707,14 @@ function UserProfil() {
           inline={true}
         />
       </div>
+
+      {/* Speichern-Toast — fix positioniert, immer sichtbar */}
+      {profileSaved && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl shadow-lg text-sm font-medium animate-fade-in">
+          <CheckCircleIcon className="w-4 h-4 flex-shrink-0" />
+          Profil gespeichert
+        </div>
+      )}
 
       {/* Rechte Spalte: Passwort */}
       <div className="w-full md:w-56 flex-shrink-0">
