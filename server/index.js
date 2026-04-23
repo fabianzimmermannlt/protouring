@@ -676,6 +676,8 @@ async function initDatabase() {
     `ALTER TABLE users ADD COLUMN is_superadmin INTEGER DEFAULT 0`,
     // iCal Feed Token
     `ALTER TABLE users ADD COLUMN ical_token TEXT`,
+    // Globales Profil: specification
+    `ALTER TABLE users ADD COLUMN specification TEXT`,
     // Feedback: Bemerkung des Superadmins
     `ALTER TABLE feedback_items ADD COLUMN bemerkung TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
@@ -695,6 +697,32 @@ async function initDatabase() {
 
   // Bestehende Kontakte ohne crew_tool_active auf 1 setzen (rückwirkend)
   await db.run(`UPDATE contacts SET crew_tool_active = 1 WHERE crew_tool_active IS NULL`)
+
+  // Einmalige Migration: globale Profildaten aus aktuellstem Kontakt in users-Tabelle schreiben
+  // (nur Felder die noch leer sind, damit bestehende user-Daten nicht überschrieben werden)
+  await db.run(`
+    UPDATE users SET
+      phone         = COALESCE(NULLIF(phone,''),         (SELECT NULLIF(c.phone,'')          FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.phone,'')          IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      mobile        = COALESCE(NULLIF(mobile,''),        (SELECT NULLIF(c.mobile,'')         FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.mobile,'')         IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      address       = COALESCE(NULLIF(address,''),       (SELECT NULLIF(c.address,'')        FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.address,'')        IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      postal_code   = COALESCE(NULLIF(postal_code,''),   (SELECT NULLIF(c.postal_code,'')    FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.postal_code,'')    IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      residence     = COALESCE(NULLIF(residence,''),     (SELECT NULLIF(c.residence,'')      FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.residence,'')      IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      birth_date    = COALESCE(NULLIF(birth_date,''),    (SELECT NULLIF(c.birth_date,'')     FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.birth_date,'')     IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      gender        = COALESCE(NULLIF(gender,''),        (SELECT NULLIF(c.gender,'')         FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.gender,'')         IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      diet          = COALESCE(NULLIF(diet,''),          (SELECT NULLIF(c.diet,'')           FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.diet,'')           IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      allergies     = COALESCE(NULLIF(allergies,''),     (SELECT NULLIF(c.allergies,'')      FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.allergies,'')      IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      shirt_size    = COALESCE(NULLIF(shirt_size,''),    (SELECT NULLIF(c.shirt_size,'')     FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.shirt_size,'')     IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      hoodie_size   = COALESCE(NULLIF(hoodie_size,''),   (SELECT NULLIF(c.hoodie_size,'')    FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.hoodie_size,'')    IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      pants_size    = COALESCE(NULLIF(pants_size,''),    (SELECT NULLIF(c.pants_size,'')     FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.pants_size,'')     IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      shoe_size     = COALESCE(NULLIF(shoe_size,''),     (SELECT NULLIF(c.shoe_size,'')      FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.shoe_size,'')      IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      hotel_info    = COALESCE(NULLIF(hotel_info,''),    (SELECT NULLIF(c.hotel_info,'')     FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.hotel_info,'')     IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      hotel_alias   = COALESCE(NULLIF(hotel_alias,''),   (SELECT NULLIF(c.hotel_alias,'')    FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.hotel_alias,'')    IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      bank_iban     = COALESCE(NULLIF(bank_iban,''),     (SELECT NULLIF(c.bank_iban,'')      FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.bank_iban,'')      IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      bank_bic      = COALESCE(NULLIF(bank_bic,''),      (SELECT NULLIF(c.bank_bic,'')       FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.bank_bic,'')       IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      special_notes = COALESCE(NULLIF(special_notes,''), (SELECT NULLIF(c.notes,'')          FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.notes,'')          IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1)),
+      specification = COALESCE(NULLIF(specification,''), (SELECT NULLIF(c.specification,'')  FROM contacts c WHERE c.user_id=users.id AND NULLIF(c.specification,'')  IS NOT NULL ORDER BY c.updated_at DESC LIMIT 1))
+    WHERE id IN (SELECT DISTINCT user_id FROM contacts WHERE user_id IS NOT NULL)
+  `)
 
   // Travel legs (Anreise / Rückreise)
   await db.run(`
@@ -1540,7 +1568,10 @@ app.get('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
       contact = await db.get('SELECT * FROM contacts WHERE id = ?', [result.lastID]);
     }
 
-    res.json({ contact: contactFromRow(contact) });
+    // Globale Felder aus users-Tabelle überlagern (Quelle der Wahrheit)
+    const user = await db.get(`SELECT ${USER_GLOBAL_SELECT.replace(/\n/g,' ')} FROM users u WHERE u.id = ?`, [req.user.id])
+    const merged = user ? applyUserGlobals({ ...contact, ...Object.fromEntries(Object.entries(user).map(([k,v]) => [k,v])) }) : contact
+    res.json({ contact: contactFromRow(merged) });
   } catch (err) {
     console.error('GET /api/me/contact error:', err);
     res.status(500).json({ error: 'Failed to load contact' });
@@ -1602,7 +1633,7 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
     const b = req.body;
     // req.body kommt als camelCase von updateMyContact() in api-client.ts
 
-    // 1. Globale Felder in users-Tabelle schreiben
+    // 1. Globale Felder in users-Tabelle schreiben (Quelle der Wahrheit)
     await db.run(`
       UPDATE users SET
         first_name=?, last_name=?, phone=?, mobile=?,
@@ -1611,8 +1642,9 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
         id_number=?, social_security=?, diet=?, gluten_free=?, lactose_free=?,
         allergies=?, emergency_contact=?, emergency_phone=?,
         shirt_size=?, hoodie_size=?, pants_size=?, shoe_size=?,
-        languages=?, drivers_license=?, railcard=?, frequent_flyer=?,
-        bank_account=?, bank_iban=?, bank_bic=?, tax_number=?, vat_id=?
+        hotel_info=?, hotel_alias=?, languages=?, drivers_license=?, railcard=?, frequent_flyer=?,
+        bank_account=?, bank_iban=?, bank_bic=?, tax_number=?, vat_id=?,
+        specification=?, special_notes=?
       WHERE id = ?`,
       [
         b.firstName, b.lastName, b.phone, b.mobile,
@@ -1621,8 +1653,9 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
         b.idNumber, b.socialSecurity, b.diet, b.glutenFree ? 1 : 0, b.lactoseFree ? 1 : 0,
         b.allergies, b.emergencyContact, b.emergencyPhone,
         b.shirtSize, b.hoodieSize, b.pantsSize, b.shoeSize,
-        b.languages, b.driversLicense, b.railcard, b.frequentFlyer,
+        b.hotelInfo, b.hotelAlias, b.languages, b.driversLicense, b.railcard, b.frequentFlyer,
         b.bankAccount, b.bankIban, b.bankBic, b.taxNumber, b.vatId,
+        b.specification, b.notes,
         req.user.id,
       ]
     );
@@ -1895,30 +1928,101 @@ const contactFromRow = (r) => ({
   invitePending: !!r.invite_pending,
 });
 
+// Globale User-Felder die in users-Tabelle gespeichert werden (Quelle der Wahrheit)
+// Per-Tenant bleiben: function1/2/3, access_rights, contact_type, invite_pending, crew_tool_active, hourly_rate, daily_rate
+const USER_GLOBAL_SELECT = `
+  u.first_name AS u_first_name, u.last_name AS u_last_name,
+  u.phone AS u_phone, u.mobile AS u_mobile,
+  u.address AS u_address, u.postal_code AS u_postal_code, u.residence AS u_residence,
+  u.birth_date AS u_birth_date, u.gender AS u_gender, u.pronouns AS u_pronouns,
+  u.birth_place AS u_birth_place, u.nationality AS u_nationality,
+  u.id_number AS u_id_number, u.tax_id AS u_tax_id,
+  u.social_security AS u_social_security, u.tax_number AS u_tax_number, u.vat_id AS u_vat_id,
+  u.diet AS u_diet, u.gluten_free AS u_gluten_free, u.lactose_free AS u_lactose_free,
+  u.allergies AS u_allergies, u.emergency_contact AS u_emergency_contact,
+  u.emergency_phone AS u_emergency_phone, u.shirt_size AS u_shirt_size,
+  u.hoodie_size AS u_hoodie_size, u.pants_size AS u_pants_size, u.shoe_size AS u_shoe_size,
+  u.hotel_info AS u_hotel_info, u.hotel_alias AS u_hotel_alias,
+  u.languages AS u_languages, u.drivers_license AS u_drivers_license,
+  u.railcard AS u_railcard, u.frequent_flyer AS u_frequent_flyer,
+  u.bank_account AS u_bank_account, u.bank_iban AS u_bank_iban, u.bank_bic AS u_bank_bic,
+  u.website AS u_website, u.specification AS u_specification, u.special_notes AS u_notes
+`
+
+// Liest globale User-Felder aus dem u_* JOIN; Fallback auf contacts-Felder (für Guest-Kontakte ohne user_id)
+const applyUserGlobals = (r) => {
+  if (!r.user_id || r.u_first_name === undefined) return r // kein JOIN oder kein User
+  const g = (uVal, cVal) => (uVal !== undefined && uVal !== null && uVal !== '') ? uVal : (cVal ?? '')
+  const gb = (uVal, cVal) => (uVal !== undefined && uVal !== null) ? uVal : (cVal ?? 0)
+  return {
+    ...r,
+    first_name:        g(r.u_first_name, r.first_name),
+    last_name:         g(r.u_last_name,  r.last_name),
+    phone:             g(r.u_phone, r.phone),
+    mobile:            g(r.u_mobile, r.mobile),
+    address:           g(r.u_address, r.address),
+    postal_code:       g(r.u_postal_code, r.postal_code),
+    residence:         g(r.u_residence, r.residence),
+    birth_date:        g(r.u_birth_date, r.birth_date),
+    gender:            g(r.u_gender, r.gender),
+    pronouns:          g(r.u_pronouns, r.pronouns),
+    birth_place:       g(r.u_birth_place, r.birth_place),
+    nationality:       g(r.u_nationality, r.nationality),
+    id_number:         g(r.u_id_number, r.id_number),
+    tax_id:            g(r.u_tax_id, r.tax_id),
+    social_security:   g(r.u_social_security, r.social_security),
+    tax_number:        g(r.u_tax_number, r.tax_number),
+    vat_id:            g(r.u_vat_id, r.vat_id),
+    diet:              g(r.u_diet, r.diet),
+    gluten_free:       gb(r.u_gluten_free, r.gluten_free),
+    lactose_free:      gb(r.u_lactose_free, r.lactose_free),
+    allergies:         g(r.u_allergies, r.allergies),
+    emergency_contact: g(r.u_emergency_contact, r.emergency_contact),
+    emergency_phone:   g(r.u_emergency_phone, r.emergency_phone),
+    shirt_size:        g(r.u_shirt_size, r.shirt_size),
+    hoodie_size:       g(r.u_hoodie_size, r.hoodie_size),
+    pants_size:        g(r.u_pants_size, r.pants_size),
+    shoe_size:         g(r.u_shoe_size, r.shoe_size),
+    hotel_info:        g(r.u_hotel_info, r.hotel_info),
+    hotel_alias:       g(r.u_hotel_alias, r.hotel_alias),
+    languages:         g(r.u_languages, r.languages),
+    drivers_license:   g(r.u_drivers_license, r.drivers_license),
+    railcard:          g(r.u_railcard, r.railcard),
+    frequent_flyer:    g(r.u_frequent_flyer, r.frequent_flyer),
+    bank_account:      g(r.u_bank_account, r.bank_account),
+    bank_iban:         g(r.u_bank_iban, r.bank_iban),
+    bank_bic:          g(r.u_bank_bic, r.bank_bic),
+    website:           g(r.u_website, r.website),
+    specification:     g(r.u_specification, r.specification),
+    notes:             g(r.u_notes, r.notes),
+  }
+}
+
 app.get('/api/contacts', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(`
-      SELECT c.*, ut.role AS tenant_role
+      SELECT c.*, ut.role AS tenant_role, ${USER_GLOBAL_SELECT}
       FROM contacts c
       LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
       LEFT JOIN users u ON u.id = c.user_id
       WHERE c.tenant_id = ? AND (u.is_superadmin IS NULL OR u.is_superadmin = 0)
       ORDER BY c.last_name, c.first_name
     `, [req.tenant.id]);
-    res.json({ contacts: rows.map(contactFromRow) });
+    res.json({ contacts: rows.map(r => contactFromRow(applyUserGlobals(r))) });
   } catch (e) { res.status(500).json({ error: 'Failed to get contacts' }); }
 });
 
 app.get('/api/contacts/:id', authenticateToken, requireTenant, async (req, res) => {
   try {
     const row = await db.get(`
-      SELECT c.*, ut.role AS tenant_role
+      SELECT c.*, ut.role AS tenant_role, ${USER_GLOBAL_SELECT}
       FROM contacts c
       LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
+      LEFT JOIN users u ON u.id = c.user_id
       WHERE c.id = ? AND c.tenant_id = ?
     `, [req.params.id, req.tenant.id])
     if (!row) return res.status(404).json({ error: 'Kontakt nicht gefunden' })
-    res.json({ contact: contactFromRow(row) })
+    res.json({ contact: contactFromRow(applyUserGlobals(row)) })
   } catch (e) { res.status(500).json({ error: 'Failed to get contact' }) }
 })
 
@@ -1980,17 +2084,20 @@ app.post('/api/contacts/guest', authenticateToken, requireTenant, requireEditor,
 app.put('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { id } = req.params; const c = req.body;
-    const existing = await db.get('SELECT id FROM contacts WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
+    const existing = await db.get('SELECT id, user_id FROM contacts WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Contact not found' });
+
+    // Tenant-spezifische Felder in contacts schreiben
     await db.run(`
       UPDATE contacts SET first_name=?, last_name=?, function1=?, function2=?, function3=?,
         specification=?, access_rights=?, email=?, phone=?, mobile=?, address=?, postal_code=?,
         residence=?, tax_id=?, website=?, birth_date=?, gender=?, pronouns=?, birth_place=?,
         nationality=?, id_number=?, social_security=?, diet=?, gluten_free=?, lactose_free=?,
         allergies=?, emergency_contact=?, emergency_phone=?, shirt_size=?, hoodie_size=?,
-        pants_size=?, shoe_size=?, languages=?, drivers_license=?, railcard=?, frequent_flyer=?,
-        bank_account=?, bank_iban=?, bank_bic=?, tax_number=?, vat_id=?, crew_tool_active=?,
-        hourly_rate=?, daily_rate=?, notes=?, updated_at=datetime('now')
+        pants_size=?, shoe_size=?, hotel_info=?, hotel_alias=?, languages=?, drivers_license=?,
+        railcard=?, frequent_flyer=?, bank_account=?, bank_iban=?, bank_bic=?,
+        tax_number=?, vat_id=?, crew_tool_active=?, hourly_rate=?, daily_rate=?, notes=?,
+        updated_at=datetime('now')
       WHERE id=? AND tenant_id=?
     `, [c.firstName||'', c.lastName||'', c.function1||'', c.function2||'', c.function3||'',
         c.specification||'', c.accessRights||'', c.email||'', c.phone||'', c.mobile||'',
@@ -1998,12 +2105,43 @@ app.put('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, as
         c.birthDate||'', c.gender||'', c.pronouns||'', c.birthPlace||'', c.nationality||'',
         c.idNumber||'', c.socialSecurity||'', c.diet||'', c.glutenFree?1:0, c.lactoseFree?1:0,
         c.allergies||'', c.emergencyContact||'', c.emergencyPhone||'', c.shirtSize||'',
-        c.hoodieSize||'', c.pantsSize||'', c.shoeSize||'', c.languages||'', c.driversLicense||'',
+        c.hoodieSize||'', c.pantsSize||'', c.shoeSize||'',
+        c.hotelInfo||'', c.hotelAlias||'', c.languages||'', c.driversLicense||'',
         c.railcard||'', c.frequentFlyer||'', c.bankAccount||'', c.bankIban||'', c.bankBic||'',
         c.taxNumber||'', c.vatId||'', c.crewToolActive!==false?1:0, c.hourlyRate||0, c.dailyRate||0,
         c.notes||'', id, req.tenant.id]);
-    const row = await db.get('SELECT * FROM contacts WHERE id = ?', [id]);
-    res.json({ contact: contactFromRow(row) });
+
+    // Wenn User-Konto verknüpft: globale Felder auch in users schreiben
+    if (existing.user_id) {
+      await db.run(`
+        UPDATE users SET
+          first_name=?, last_name=?, phone=?, mobile=?, address=?, postal_code=?,
+          residence=?, tax_id=?, website=?, birth_date=?, gender=?, pronouns=?,
+          birth_place=?, nationality=?, id_number=?, social_security=?,
+          diet=?, gluten_free=?, lactose_free=?, allergies=?,
+          emergency_contact=?, emergency_phone=?, shirt_size=?, hoodie_size=?,
+          pants_size=?, shoe_size=?, hotel_info=?, hotel_alias=?, languages=?,
+          drivers_license=?, railcard=?, frequent_flyer=?,
+          bank_account=?, bank_iban=?, bank_bic=?, tax_number=?, vat_id=?,
+          specification=?, special_notes=?
+        WHERE id=?`,
+        [c.firstName||'', c.lastName||'', c.phone||'', c.mobile||'',
+         c.address||'', c.postalCode||'', c.residence||'', c.taxId||'', c.website||'',
+         c.birthDate||'', c.gender||'', c.pronouns||'', c.birthPlace||'', c.nationality||'',
+         c.idNumber||'', c.socialSecurity||'', c.diet||'', c.glutenFree?1:0, c.lactoseFree?1:0,
+         c.allergies||'', c.emergencyContact||'', c.emergencyPhone||'',
+         c.shirtSize||'', c.hoodieSize||'', c.pantsSize||'', c.shoeSize||'',
+         c.hotelInfo||'', c.hotelAlias||'', c.languages||'', c.driversLicense||'',
+         c.railcard||'', c.frequentFlyer||'', c.bankAccount||'', c.bankIban||'', c.bankBic||'',
+         c.taxNumber||'', c.vatId||'', c.specification||'', c.notes||'',
+         existing.user_id])
+    }
+
+    const row = await db.get(`
+      SELECT c.*, ${USER_GLOBAL_SELECT}
+      FROM contacts c LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.id = ?`, [id])
+    res.json({ contact: contactFromRow(applyUserGlobals(row)) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to update contact' }); }
 });
 
