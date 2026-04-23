@@ -2138,8 +2138,10 @@ app.put('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, as
     }
 
     const row = await db.get(`
-      SELECT c.*, ${USER_GLOBAL_SELECT}
-      FROM contacts c LEFT JOIN users u ON u.id = c.user_id
+      SELECT c.*, ut.role AS tenant_role, ${USER_GLOBAL_SELECT}
+      FROM contacts c
+      LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
+      LEFT JOIN users u ON u.id = c.user_id
       WHERE c.id = ?`, [id])
     res.json({ contact: contactFromRow(applyUserGlobals(row)) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to update contact' }); }
