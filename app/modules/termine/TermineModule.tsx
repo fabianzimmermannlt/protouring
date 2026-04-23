@@ -1092,12 +1092,15 @@ export default function TerminePage() {
                         )
                       })}
                     </div>
-                    {canSeeGebucht && (
+                    {/* Gebucht-Status: Admins sehen ihn immer, Crew sieht eigenen Status */}
+                    {(canSeeGebucht || t.inTravelParty || t.isRejected) && (
                       t.inTravelParty
-                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#3b82f6' }}>✓</span>
+                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title="Gebucht">✓</span>
                         : t.isRejected
-                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }}>✗</span>
-                          : <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }}>–</span>
+                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }} title="Abgesagt">✗</span>
+                          : canSeeGebucht
+                            ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title="Offen">–</span>
+                            : null
                     )}
                   </div>
                 </button>
