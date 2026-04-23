@@ -38,7 +38,7 @@ function profileToContact(data: ProfileData): ContactFormData {
   return {
     firstName: data.firstName || '', lastName: data.lastName || '',
     function1: data.function1 || '', function2: data.function2 || '', function3: data.function3 || '',
-    specification: (data as any).specification || data.specialNotes || '',
+    specification: data.specification || '',
     accessRights: data.accessRights || 'Crew',
     email: data.email || '', phone: data.phone || '', mobile: data.mobile || '',
     address: data.address || '', postalCode: data.postalCode || '', residence: data.residence || '',
