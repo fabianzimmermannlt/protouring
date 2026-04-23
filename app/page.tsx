@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Navigation } from '@/app/components/shared/Navigation'
 import DeskModule from './modules/desk/page'
@@ -27,6 +27,7 @@ export default function ProTouringApp() {
   const [activeTab, setActiveTab] = useState('desk')
   const [activeSubTab, setActiveSubTab] = useState('')
   const [authChecked, setAuthChecked] = useState(false)
+  const activeTabRef = useRef('desk') // Ref für stale-closure-sichere Tab-Zugriffe
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -52,6 +53,7 @@ export default function ProTouringApp() {
     const s = sUrl || sessionStorage.getItem(STORAGE_SUB)
 
     if (t && VALID_TABS.includes(t)) {
+      activeTabRef.current = t
       setActiveTab(t)
       setActiveSubTab(s || (t === 'settings' ? 'profil' : t === 'contacts' ? 'overview' : ''))
     }
@@ -90,10 +92,12 @@ export default function ProTouringApp() {
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
     sessionStorage.setItem(STORAGE_SUB, subId)
-    history.replaceState(null, '', `/?tab=${activeTab}&sub=${subId}`)
+    // activeTabRef statt activeTab: Closure-sicher auch wenn handleTabChange davor aufgerufen wurde
+    history.replaceState(null, '', `/?tab=${activeTabRef.current}&sub=${subId}`)
   }
 
   const handleTabChange = (tabId: string) => {
+    activeTabRef.current = tabId  // sofort aktualisieren, bevor Sub-Tab-Handler feuert
     setActiveTab(tabId)
     let defaultSub = ''
     if (tabId === 'settings') defaultSub = 'profil'
