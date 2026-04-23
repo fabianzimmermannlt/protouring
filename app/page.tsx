@@ -21,39 +21,39 @@ export default function ProTouringApp() {
 
   const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','settings','feedback']
 
-  // SSR-sicher: immer mit 'desk' starten, URL nach Mount lesen
-  // (State-Initializer mit window.location würde SSR-Hydration-Mismatch erzeugen)
+  const STORAGE_TAB = 'pt_tab'
+  const STORAGE_SUB = 'pt_sub'
+
   const [activeTab, setActiveTab] = useState('desk')
   const [activeSubTab, setActiveSubTab] = useState('')
   const [authChecked, setAuthChecked] = useState(false)
 
-  // Auth-Check + URL-Params lesen — beides vor dem ersten Render
-  // Kein Flash weil authChecked=false → Loading-Screen bis hier fertig
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace('/login')
       return
     }
-    // URL-Params nach Mount lesen (SSR-sicher)
     const p = new URLSearchParams(window.location.search)
-    const t = p.get('tab')
-    const s = p.get('sub')
+    const tUrl = p.get('tab')
+    const sUrl = p.get('sub')
     const terminId = p.get('terminId')
 
-    if (terminId && !t) {
-      // Direktlink von /artists: /?terminId=123 → direkt zur Detailseite
+    if (terminId && !tUrl) {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
         window.location.href = `/appointments/${id}/details`
-        return // kein authChecked setzen — wir navigieren weg
+        return
       }
     }
 
+    // URL-Params haben Priorität (z.B. window.location.href von appointments-Seite)
+    // Fallback: sessionStorage (überlebt F5-Reload auch wenn Next.js URL zurücksetzt)
+    const t = (tUrl && VALID_TABS.includes(tUrl)) ? tUrl : sessionStorage.getItem(STORAGE_TAB)
+    const s = sUrl || sessionStorage.getItem(STORAGE_SUB)
+
     if (t && VALID_TABS.includes(t)) {
       setActiveTab(t)
-      if (s) setActiveSubTab(s)
-      else if (t === 'settings') setActiveSubTab('profil')
-      else if (t === 'contacts') setActiveSubTab('overview')
+      setActiveSubTab(s || (t === 'settings' ? 'profil' : t === 'contacts' ? 'overview' : ''))
     }
     setAuthChecked(true)
   }, [router])
@@ -89,18 +89,18 @@ export default function ProTouringApp() {
 
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
-    // history.replaceState statt router.replace: umgeht Next.js Router-Cache
-    // (router.replace würde alten State cachen → nach Reload falscher Tab)
+    sessionStorage.setItem(STORAGE_SUB, subId)
     history.replaceState(null, '', `/?tab=${activeTab}&sub=${subId}`)
   }
 
-  // Reset sub-tab when switching main tabs
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
     let defaultSub = ''
     if (tabId === 'settings') defaultSub = 'profil'
     else if (tabId === 'contacts') defaultSub = 'overview'
     setActiveSubTab(defaultSub)
+    sessionStorage.setItem(STORAGE_TAB, tabId)
+    sessionStorage.setItem(STORAGE_SUB, defaultSub)
     history.replaceState(null, '', defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`)
   }
 
