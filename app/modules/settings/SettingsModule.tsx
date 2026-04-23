@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   UserIcon,
   CreditCardIcon,
@@ -638,6 +638,7 @@ function UserProfil() {
   const [pwError, setPwError] = useState('')
   const [pwSuccess, setPwSuccess] = useState(false)
   const [showPwForm, setShowPwForm] = useState(false)
+  const pwAccordionRef = useRef<HTMLDivElement>(null)
 
   const handlePwChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -704,10 +705,14 @@ function UserProfil() {
       {/* Rechte Spalte: Passwort */}
       <div className="w-full md:w-56 flex-shrink-0">
         {/* Mobile: Akkordion */}
-        <div className="md:hidden">
+        <div className="md:hidden" ref={pwAccordionRef}>
           <button
             type="button"
-            onClick={() => setShowPwForm(v => !v)}
+            onClick={() => {
+              const next = !showPwForm
+              setShowPwForm(next)
+              if (next) setTimeout(() => pwAccordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+            }}
             className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700"
           >
             <span className="flex items-center gap-2">
