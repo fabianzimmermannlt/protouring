@@ -1692,8 +1692,13 @@ app.put('/api/me/contact', authenticateToken, requireTenant, async (req, res) =>
       ]
     );
 
-    const updated = await db.get('SELECT * FROM contacts WHERE id = ?', [contact.id]);
-    res.json({ contact: contactFromRow(updated) });
+    const updated = await db.get(`
+      SELECT c.*, ut.role AS tenant_role, ${USER_GLOBAL_SELECT}
+      FROM contacts c
+      LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.id = ?`, [contact.id]);
+    res.json({ contact: contactFromRow(applyUserGlobals(updated)) });
   } catch (err) {
     console.error('PUT /api/me/contact error:', err);
     res.status(500).json({ error: 'Failed to update contact' });
