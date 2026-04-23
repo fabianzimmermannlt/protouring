@@ -228,8 +228,9 @@ function OrderList({
         )}
       </div>
 
-      {/* Crew: eigene Zeile hinzufügen wenn noch nicht vorhanden */}
-      {!isAdmin && myContactId !== null && editingId === null && (
+      {/* Crew: eigene Zeile hinzufügen — nur wenn in der Reisegruppe */}
+      {!isAdmin && myContactId !== null && editingId === null &&
+        members.some(m => m.contactId === myContactId) && (
         !orders.some(o => o.contactId === myContactId) && (
           <button
             onClick={() => {
