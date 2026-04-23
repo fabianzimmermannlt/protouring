@@ -4421,6 +4421,55 @@ app.post('/api/invite/:token/accept', async (req, res) => {
           'UPDATE contacts SET user_id=?, invite_pending=0 WHERE id=?',
           [userId, row.contact_id]
         )
+
+        // Für bestehende User: Profildaten aus einem anderen Tenant-Kontakt übernehmen
+        // (außer function1/2/3 und access_rights — die sind tenant-spezifisch)
+        if (existingUser) {
+          const sourceContact = await db.get(`
+            SELECT first_name, last_name, phone, mobile, address, postal_code, residence,
+                   birth_date, gender, pronouns, birth_place, nationality, id_number,
+                   tax_id, social_security, tax_number, vat_id, diet, gluten_free,
+                   lactose_free, allergies, emergency_contact, emergency_phone,
+                   shirt_size, hoodie_size, pants_size, shoe_size, languages,
+                   drivers_license, railcard, frequent_flyer, bank_account, bank_iban,
+                   bank_bic, specification, notes, hotel_info, hotel_alias, crew_tool_active
+            FROM contacts
+            WHERE user_id=? AND tenant_id != ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+          `, [userId, row.tenant_id])
+
+          if (sourceContact) {
+            await db.run(`
+              UPDATE contacts SET
+                first_name=?, last_name=?, phone=?, mobile=?, address=?, postal_code=?,
+                residence=?, birth_date=?, gender=?, pronouns=?, birth_place=?, nationality=?,
+                id_number=?, tax_id=?, social_security=?, tax_number=?, vat_id=?,
+                diet=?, gluten_free=?, lactose_free=?, allergies=?, emergency_contact=?,
+                emergency_phone=?, shirt_size=?, hoodie_size=?, pants_size=?, shoe_size=?,
+                languages=?, drivers_license=?, railcard=?, frequent_flyer=?, bank_account=?,
+                bank_iban=?, bank_bic=?, specification=?, notes=?, hotel_info=?, hotel_alias=?,
+                crew_tool_active=?, updated_at=CURRENT_TIMESTAMP
+              WHERE id=?
+            `, [
+              sourceContact.first_name, sourceContact.last_name,
+              sourceContact.phone, sourceContact.mobile,
+              sourceContact.address, sourceContact.postal_code, sourceContact.residence,
+              sourceContact.birth_date, sourceContact.gender, sourceContact.pronouns,
+              sourceContact.birth_place, sourceContact.nationality, sourceContact.id_number,
+              sourceContact.tax_id, sourceContact.social_security, sourceContact.tax_number,
+              sourceContact.vat_id, sourceContact.diet, sourceContact.gluten_free,
+              sourceContact.lactose_free, sourceContact.allergies, sourceContact.emergency_contact,
+              sourceContact.emergency_phone, sourceContact.shirt_size, sourceContact.hoodie_size,
+              sourceContact.pants_size, sourceContact.shoe_size, sourceContact.languages,
+              sourceContact.drivers_license, sourceContact.railcard, sourceContact.frequent_flyer,
+              sourceContact.bank_account, sourceContact.bank_iban, sourceContact.bank_bic,
+              sourceContact.specification, sourceContact.notes, sourceContact.hotel_info,
+              sourceContact.hotel_alias, sourceContact.crew_tool_active,
+              row.contact_id
+            ])
+          }
+        }
       }
 
       // Token als verwendet markieren
