@@ -65,7 +65,8 @@ export default function ArtistsPage() {
       status: tenant.status,
       role: tenant.role,
     }))
-    router.push(terminId ? `/?terminId=${terminId}` : '/')
+    // window.location.href statt router.push: Router-Cache würde useEffect in page.tsx nicht neu triggern
+    window.location.href = terminId ? `/?terminId=${terminId}` : '/'
   }
 
   const handleTenantCreated = (newTenant: Tenant) => {
