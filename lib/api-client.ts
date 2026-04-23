@@ -2309,5 +2309,7 @@ export function getIcalUrl(token: string): string {
       ? `${window.location.protocol}//${window.location.hostname}:3002`
       : 'http://localhost:3002'
   )
-  return `${API_BASE}/api/ical/${token}`
+  // webcal:// statt https:// damit Kalender-Apps es als Abo erkennen
+  // .ics Endung für maximale Kompatibilität
+  return `${API_BASE}/api/ical/${token}.ics`.replace(/^https?:\/\//, 'webcal://')
 }

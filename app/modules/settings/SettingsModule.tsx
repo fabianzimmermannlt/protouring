@@ -799,6 +799,8 @@ function IcalSection() {
   }, [])
 
   const url = token ? getIcalUrl(token) : ''
+  // https:// Version zum Testen im Browser
+  const httpsUrl = url.replace(/^webcal:\/\//, 'https://')
 
   const handleCopy = async () => {
     if (!url) return
@@ -852,6 +854,9 @@ function IcalSection() {
               {copied ? '✓ Kopiert' : 'Kopieren'}
             </button>
           </div>
+          <a href={httpsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+            Im Browser testen ↗
+          </a>
           <button
             onClick={handleRegenerate}
             disabled={regenerating}

@@ -5296,10 +5296,11 @@ app.post('/api/me/ical-token/regenerate', authenticateToken, async (req, res) =>
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-// GET /api/ical/:token — öffentlicher iCal Feed (kein Auth nötig)
+// GET /api/ical/:token — öffentlicher iCal Feed (kein Auth nötig, .ics-Suffix optional)
 app.get('/api/ical/:token', async (req, res) => {
   try {
-    const user = await db.get('SELECT id, first_name, last_name FROM users WHERE ical_token=?', [req.params.token])
+    const rawToken = req.params.token.replace(/\.ics$/, '')
+    const user = await db.get('SELECT id, first_name, last_name FROM users WHERE ical_token=?', [rawToken])
     if (!user) return res.status(404).send('Feed nicht gefunden')
 
     const rows = await db.all(`
