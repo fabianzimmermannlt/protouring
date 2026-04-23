@@ -611,8 +611,6 @@ function UserProfil() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const [profileSaved, setProfileSaved] = useState(false)
-
   const handleProfileSave = async (data: ProfileData) => {
     setProfileData(data)
     await updateMyContact({
@@ -633,8 +631,6 @@ function UserProfil() {
       vatId: data.vatId, notes: data.specialNotes, hotelInfo: data.hotelInfo,
       hotelAlias: data.hotelAlias, crewToolActive: data.crewToolActive,
     } as ContactFormData)
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 2500)
   }
 
   // Passwort
@@ -708,13 +704,6 @@ function UserProfil() {
         />
       </div>
 
-      {/* Speichern-Toast — fix positioniert, immer sichtbar */}
-      {profileSaved && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl shadow-lg text-sm font-medium animate-fade-in">
-          <CheckCircleIcon className="w-4 h-4 flex-shrink-0" />
-          Profil gespeichert
-        </div>
-      )}
 
       {/* Rechte Spalte: Passwort */}
       <div className="w-full md:w-56 flex-shrink-0">

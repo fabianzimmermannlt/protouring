@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { X, Save, Trash2 } from 'lucide-react'
+import { X, Save, Trash2, Loader2, Check } from 'lucide-react'
 import { getActiveFunctions, type ActiveFunction } from '@/lib/api-client'
 
 export interface ProfileData {
@@ -56,7 +56,7 @@ interface ProfileEditorProps {
   isOpen: boolean
   onClose: () => void
   profileData: ProfileData
-  onSave: (data: ProfileData) => void
+  onSave: (data: ProfileData) => Promise<void> | void
   onDelete?: () => void
   isAdmin?: boolean
   isSelf?: boolean  // eigenes Profil → accessRights immer read-only
@@ -66,6 +66,8 @@ interface ProfileEditorProps {
 export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, isAdmin = false, isSelf = false, inline = false }: ProfileEditorProps) {
   const [formData, setFormData] = useState<ProfileData>(profileData)
   const [activeFunctions, setActiveFunctions] = useState<ActiveFunction[]>([])
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   // Update form data when props change
   useEffect(() => {
@@ -85,9 +87,17 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = () => {
-    onSave(formData)
-    onClose()
+  const handleSave = async () => {
+    setSaving(true)
+    setSaved(false)
+    try {
+      await onSave(formData)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } finally {
+      setSaving(false)
+    }
+    if (!inline) onClose()
   }
 
   const handleDelete = () => {
@@ -491,9 +501,13 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
             {!inline && (
               <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
             )}
-            <button onClick={handleSave} className="btn btn-primary">
-              <Save className="h-4 w-4" />
-              Speichern
+            <button onClick={handleSave} disabled={saving} className="btn btn-primary">
+              {saving
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichern…</>
+                : saved
+                ? <><Check className="h-4 w-4" /> Gespeichert</>
+                : <><Save className="h-4 w-4" /> Speichern</>
+              }
             </button>
           </div>
         </div>
