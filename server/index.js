@@ -4073,6 +4073,82 @@ app.get('/api/termine/:terminId/advance-sheet/pdf', async (req, res) => {
   }
 });
 
+// GET /api/termine/:terminId/call-sheet/pdf — Call Sheet (Crew-Perspektive)
+app.get('/api/termine/:terminId/call-sheet/pdf', async (req, res) => {
+  try {
+    // Auth (identisch zum Advance Sheet)
+    const tokenStr = (req.headers['authorization']?.split(' ')[1]) || req.query.token;
+    if (!tokenStr) return res.status(401).json({ error: 'Access token required' });
+    let user;
+    try { user = jwt.verify(tokenStr, JWT_SECRET); }
+    catch (e) { return res.status(403).json({ error: 'Invalid or expired token' }); }
+    const tenantSlug = req.headers['x-tenant-slug'] || req.query.tenant;
+    if (!tenantSlug) return res.status(400).json({ error: 'Tenant required' });
+    let tenant;
+    if (user.isSuperadmin) {
+      tenant = await db.get('SELECT id FROM tenants WHERE slug = ?', [tenantSlug]);
+    } else {
+      tenant = await db.get(`SELECT t.id FROM tenants t JOIN user_tenants ut ON t.id = ut.tenant_id WHERE t.slug = ? AND ut.user_id = ? AND ut.status = 'active'`, [tenantSlug, user.id]);
+    }
+    if (!tenant) return res.status(403).json({ error: 'No access to this tenant' });
+
+    const terminId = req.params.terminId;
+    const sectionsParam = req.query.sections || 'travelparty,schedules,travel,hotel,catering,contacts';
+    const sections = sectionsParam.split(',').map(s => s.trim());
+
+    const termin = await db.get('SELECT t.*, v.name AS venue_name FROM termine t LEFT JOIN venues v ON v.id = t.venue_id WHERE t.id = ? AND t.tenant_id = ?', [terminId, tenant.id]);
+    if (!termin) return res.status(404).json({ error: 'Termin not found' });
+
+    const data = {};
+
+    if (sections.includes('travelparty')) {
+      data.travelParty = await db.all(`SELECT tp.*, c.first_name, c.last_name, c.function1, c.function2, c.function3 FROM termin_travel_party tp JOIN contacts c ON c.id = tp.contact_id WHERE tp.termin_id = ? AND tp.tenant_id = ? ORDER BY c.last_name COLLATE NOCASE ASC`, [terminId, tenant.id]);
+    }
+    if (sections.includes('schedules')) {
+      data.schedules = await db.all('SELECT * FROM termin_schedules WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC', [terminId, tenant.id]);
+    }
+    if (sections.includes('travel')) {
+      const legRows = await db.all(`SELECT ${LEG_FIELDS} FROM termin_travel_legs tl LEFT JOIN vehicles v ON v.id = tl.vehicle_id WHERE tl.termin_id = ? AND tl.tenant_id = ? ORDER BY tl.leg_type ASC, tl.sort_order ASC, tl.id ASC`, [terminId, tenant.id]);
+      data.legs = await Promise.all(legRows.map(async leg => {
+        const persons = await db.all(`SELECT tlp.id, c.first_name, c.last_name FROM termin_travel_leg_persons tlp JOIN termin_travel_party tp ON tp.id = tlp.travel_party_member_id JOIN contacts c ON c.id = tp.contact_id WHERE tlp.leg_id = ? ORDER BY c.last_name COLLATE NOCASE ASC`, [leg.id]);
+        return { ...leg, persons };
+      }));
+    }
+    if (sections.includes('hotel')) {
+      const stayRows = await db.all(`SELECT hs.*, h.name AS hotel_name, h.city AS hotel_city, h.street AS hotel_street, h.postal_code AS hotel_postal_code, h.phone AS hotel_phone, h.website AS hotel_website FROM termin_hotel_stays hs LEFT JOIN hotels h ON h.id = hs.hotel_id WHERE hs.termin_id = ? AND hs.tenant_id = ? ORDER BY hs.sort_order ASC`, [terminId, tenant.id]);
+      data.hotelStays = await Promise.all(stayRows.map(async stay => {
+        const rooms = await db.all('SELECT * FROM termin_hotel_rooms WHERE stay_id = ? ORDER BY id ASC', [stay.id]);
+        const roomsWithPersons = await Promise.all(rooms.map(async room => {
+          const persons = await db.all(`SELECT c.first_name, c.last_name FROM termin_hotel_room_persons hrp JOIN termin_travel_party tp ON tp.id = hrp.travel_party_member_id JOIN contacts c ON c.id = tp.contact_id WHERE hrp.room_id = ? ORDER BY c.last_name COLLATE NOCASE ASC`, [room.id]);
+          return { ...room, persons };
+        }));
+        return { ...stay, rooms: roomsWithPersons };
+      }));
+    }
+    if (sections.includes('catering')) {
+      data.catering = await db.get('SELECT * FROM termin_catering WHERE termin_id = ? AND tenant_id = ?', [terminId, tenant.id]);
+      if (data.catering) {
+        data.cateringOrders = await db.all('SELECT * FROM termin_catering_orders WHERE termin_id = ? AND tenant_id = ? ORDER BY id ASC', [terminId, tenant.id]);
+      }
+    }
+    if (sections.includes('contacts')) {
+      data.localContacts = await db.all('SELECT * FROM termin_contacts WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC', [terminId, tenant.id]);
+    }
+
+    const { generateCallSheetPdf } = require('./generate_call_sheet');
+    const pdf = await generateCallSheetPdf({ termin, sections, data });
+
+    const safeName = `callsheet_${(termin.city || termin.title || 'crew').replace(/[^a-zA-Z0-9_\-]/g, '_')}_${(termin.date || '').replace(/-/g, '')}`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${safeName}.pdf"`);
+    res.setHeader('Content-Length', pdf.length);
+    res.end(pdf);
+  } catch (err) {
+    console.error('call-sheet-pdf error', err);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
 app.delete('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run(
