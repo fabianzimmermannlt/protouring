@@ -205,29 +205,71 @@ function generateCallSheetPdf({ termin, sections, data }) {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // ZEITPLÄNE
+    // ZEITPLÄNE — identisches Rendering wie Advance Sheet
     // ══════════════════════════════════════════════════════════════════════════
+    function normalizeScheduleLines(content) {
+      return (content || '')
+        .replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>/gi, '\n').replace(/<\/p>/gi, '\n')
+        .replace(/<div>/gi, '').replace(/<p>/gi, '').replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+        .replace(/\n{3,}/g, '\n\n').split('\n')
+    }
+
     if (sections.includes('schedules') && data.schedules?.length) {
       for (const sched of data.schedules) {
-        sectionHeader(`ZEITPLAN: ${(sched.title || 'Zeitplan').toUpperCase()}`);
-        const rows = (sched.content || '').split('\n').map(l => l.split('\t'));
-        const timeW = 80;
-        const descW = CONTENT_W - timeW - 8;
+        sectionHeader((sched.title || 'Zeitplan').toUpperCase());
+        const lines = normalizeScheduleLines(sched.content);
 
-        for (const row of rows) {
-          if (!row[0]?.trim() && !row[1]?.trim()) continue;
-          ensureSpace(14);
-          const desc = (row[0] || '').trim();
-          const time = (row[1] || '').trim();
-
-          doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
-            .text(time, MARGIN_H, y, { width: timeW });
-          doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
-            .text(desc, MARGIN_H + timeW + 8, y, { width: descW });
-          y = doc.y + 2;
-          rule(C_RULE, 0.2); y += 2;
+        // Spaltenbreiten messen
+        let maxLeftW = 0, maxRightW = 0;
+        doc.font(FONT_BOLD).fontSize(8.5);
+        for (const line of lines) {
+          if (line.includes('-//-')) {
+            const sep = line.indexOf('-//-');
+            const lw = doc.widthOfString(line.slice(0, sep).trim());
+            if (lw > maxLeftW) maxLeftW = lw;
+          }
         }
-        y += 4;
+        doc.font(FONT_REG).fontSize(8.5);
+        for (const line of lines) {
+          if (line.includes('-//-')) {
+            const sep = line.indexOf('-//-');
+            const rw = doc.widthOfString(line.slice(sep + 4).trim());
+            if (rw > maxRightW) maxRightW = rw;
+          }
+        }
+        const tabX = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 22 : 40);
+        const rightColEnd = tabX + (maxRightW > 0 ? maxRightW : 120);
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) { y += 4; continue; }
+          if (trimmed === '---') {
+            ensureSpace(10);
+            doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
+              .lineWidth(0.5).strokeColor(C_MUTED).stroke();
+            y += 6; continue;
+          }
+          if (line.includes('-//-')) {
+            ensureSpace(18);
+            const sepIdx = line.indexOf('-//-');
+            const leftText  = line.slice(0, sepIdx).trim();
+            const rightText = line.slice(sepIdx + 4).trim();
+            const lineY = y;
+            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
+              .text(leftText, MARGIN_H, lineY, { lineBreak: false });
+            doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK);
+            const rw = doc.widthOfString(rightText);
+            doc.text(rightText, rightColEnd - rw, lineY, { lineBreak: false });
+            y = lineY + 18; continue;
+          }
+          ensureSpace(18);
+          doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
+            .text(trimmed, MARGIN_H, y, { width: CONTENT_W });
+          y += doc.heightOfString(trimmed, { width: CONTENT_W, fontSize: 8.5 }) + 7;
+        }
+        y += 8;
       }
     }
 
