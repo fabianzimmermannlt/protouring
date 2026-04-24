@@ -188,7 +188,6 @@ export default function TerminModal({
               value={form.title}
               onChange={e => field('title', e.target.value)}
               className="form-input"
-              autoFocus
             />
           </div>
 

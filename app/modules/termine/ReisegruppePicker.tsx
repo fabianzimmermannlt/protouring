@@ -75,7 +75,6 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
 
         <div className="modal-body">
           <input
-            autoFocus
             type="text"
             placeholder="Suche: Name, Funktion, Stadt …"
             value={search}
