@@ -58,13 +58,6 @@ function generateCallSheetPdf({ termin, sections, data }) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const footerText = `ProTouring  ·  ${new Date().toLocaleDateString('de-DE')}`;
-    const addFooter = () => {
-      doc.font(FONT_REG).fontSize(7).fillColor(C_LIGHT)
-        .text(footerText, MARGIN_H, PAGE_H - MARGIN_V - 2, { width: CONTENT_W, align: 'center', lineBreak: false });
-    };
-    doc.on('pageAdded', addFooter);
-
     let y = MARGIN_V;
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -397,9 +390,6 @@ function generateCallSheetPdf({ termin, sections, data }) {
       }
       y += 4;
     }
-
-    // Footer auf erster Seite (pageAdded feuert nur bei addPage, nicht bei Seite 1)
-    addFooter();
 
     doc.end();
   });
