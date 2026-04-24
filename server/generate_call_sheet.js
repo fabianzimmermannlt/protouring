@@ -53,10 +53,17 @@ function fmtTime(t) {
 function generateCallSheetPdf({ termin, sections, data }) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const doc = new PDFDocument({ size: 'A4', margin: MARGIN_V, autoFirstPage: true, bufferPages: true });
+    const doc = new PDFDocument({ size: 'A4', margin: MARGIN_V, autoFirstPage: true });
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+
+    const footerText = `ProTouring  ·  ${new Date().toLocaleDateString('de-DE')}`;
+    const addFooter = () => {
+      doc.font(FONT_REG).fontSize(7).fillColor(C_LIGHT)
+        .text(footerText, MARGIN_H, PAGE_H - MARGIN_V - 2, { width: CONTENT_W, align: 'center', lineBreak: false });
+    };
+    doc.on('pageAdded', addFooter);
 
     let y = MARGIN_V;
 
@@ -342,21 +349,9 @@ function generateCallSheetPdf({ termin, sections, data }) {
       y += 4;
     }
 
-    // ── Footer ───────────────────────────────────────────────────────────────
-    // bufferPages:true nötig damit switchToPage + bufferedPageRange funktionieren
-    const range = doc.bufferedPageRange()
-    const totalPages = range.count
-    for (let i = 0; i < totalPages; i++) {
-      doc.switchToPage(i)
-      doc.font(FONT_REG).fontSize(7).fillColor(C_LIGHT)
-        .text(
-          `Seite ${i + 1} von ${totalPages}  ·  ProTouring  ·  ${new Date().toLocaleDateString('de-DE')}`,
-          MARGIN_H, PAGE_H - MARGIN_V + 8,
-          { width: CONTENT_W, align: 'center', lineBreak: false }
-        )
-    }
+    // Footer auf erster Seite (pageAdded feuert nur bei addPage, nicht bei Seite 1)
+    addFooter();
 
-    doc.flushPages()  // Pflicht bei bufferPages:true
     doc.end();
   });
 }
