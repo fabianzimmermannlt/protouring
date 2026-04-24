@@ -512,6 +512,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
           </div>
         )
 
+      case 'erste-schritte':
+        return <ErsteSchritte />
+
       case 'superadmin':
         return <SuperadminPanel />
 
@@ -1734,6 +1737,111 @@ function SuperadminPanel() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ============================================================
+// ErsteSchritte
+// ============================================================
+
+function ErsteSchritte() {
+  const sections = [
+    {
+      title: 'Schreibtisch',
+      roles: 'Alle Rollen',
+      edit: 'Admin, Agentur (Ankündigung)',
+      icon: '🖥️',
+      content: 'Der Schreibtisch ist die Startseite nach dem Login. Hier findet ihr die Ankündigung des Tourmanagements, persönliche Notizen, offene To-dos aus allen Terminen und den allgemeinen Chat. Crew-Mitglieder sehen ihre eigenen Notizen und können im Chat schreiben. Die Ankündigung kann nur von Admins und der Agentur bearbeitet werden.',
+    },
+    {
+      title: 'Termine',
+      roles: 'Alle Rollen',
+      edit: 'Admin, Agentur (anlegen & bearbeiten)',
+      icon: '📅',
+      content: 'Alle Konzerte, Festivals und sonstigen Termine der Tour. In der Listenansicht könnt ihr eure Verfügbarkeit eintragen (✓ verfügbar / ? vielleicht / ✗ nicht verfügbar). Ein Klick auf einen Termin öffnet die Detailansicht mit Spielstätte, Reisegruppe, Zeitplänen, Catering, Anreise, Hotel, To-dos, Dateien und Chat. Die Reisegruppe zeigt wer beim jeweiligen Termin dabei ist. Admins können Termine anlegen und alle Felder bearbeiten.',
+    },
+    {
+      title: 'Kontakte',
+      roles: 'Alle außer Gast',
+      edit: 'Admin, Agentur, Tourmanagement',
+      icon: '👥',
+      content: 'Das Adressbuch der Tour. Hier sind alle Crew-Mitglieder, Techniker und sonstige Kontakte hinterlegt. Jeder kann sein eigenes Profil bearbeiten (Kontaktdaten, Ernährung, Kleidungsgrößen, Bankdaten, Hotel-Vorlieben). Admins sehen zusätzlich Funktionen für die Crew-Buchung: wer ist für welchen Termin verfügbar und gebucht? Ihr eigenes Profil findet ihr auch unter Einstellungen → Mein Profil.',
+    },
+    {
+      title: 'Spielstätten',
+      roles: 'Admin, Agentur',
+      edit: 'Admin, Agentur',
+      icon: '🎪',
+      content: 'Datenbank aller Venues — Hallen, Clubs, Festivals. Hier werden Stammdaten wie Adresse, Kapazität, technische Infos und Kontakte gepflegt. Die Daten werden automatisch in die Termin-Detailansicht übernommen wenn ihr eine Spielstätte zuweist.',
+    },
+    {
+      title: 'Partner',
+      roles: 'Admin, Agentur',
+      edit: 'Admin, Agentur',
+      icon: '🤝',
+      content: 'Veranstalter, Promoter und andere Geschäftspartner. Ähnlich wie Spielstätten können Partner einem Termin zugewiesen werden und erscheinen dann in der Detailansicht.',
+    },
+    {
+      title: 'Hotels',
+      roles: 'Admin, Agentur, Tourmanagement',
+      edit: 'Admin, Agentur, Tourmanagement',
+      icon: '🏨',
+      content: 'Hotel-Stammdaten für die Unterkunftsplanung. Hotels können in der Anreise-Planung eines Termins zugewiesen werden. Zimmer-Zuweisungen für Crew-Mitglieder werden direkt im Termin verwaltet.',
+    },
+    {
+      title: 'Fahrzeuge',
+      roles: 'Admin, Agentur, Tourmanagement',
+      edit: 'Admin, Agentur, Tourmanagement',
+      icon: '🚐',
+      content: 'Tourbusse, Sprinter, PKWs — alle Fahrzeuge des Tour-Fuhrparks. Fahrzeuge können in der Anreise-Planung eines Termins eingesetzt werden und erscheinen dann in der Reisegruppen-Ansicht.',
+    },
+    {
+      title: 'Einstellungen',
+      roles: 'Admin, Agentur, Tourmanagement (eingeschränkt)',
+      edit: 'Admin (alle), Agentur, Tourmanagement (eigenes Profil)',
+      icon: '⚙️',
+      content: 'Hier verwaltest du dein persönliches Profil, Passwort und Kalender-Abo. Admins sehen zusätzlich: Berechtigungen (User einladen, Rollen vergeben, Einladungen verwalten), Artist-Einstellungen (Name, Genre, Homebase) und Funktionen-Katalog (welche Crew-Funktionen im System verfügbar sind).',
+    },
+  ]
+
+  return (
+    <div className="space-y-1 max-w-3xl">
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-gray-900">Willkommen bei ProTouring</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Hier findest du eine Übersicht aller Bereiche — was sie können und wer Zugriff hat.
+        </p>
+      </div>
+
+      {sections.map((s, i) => (
+        <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-gray-50 px-4 py-3 flex items-start gap-3">
+            <span className="text-xl leading-none mt-0.5">{s.icon}</span>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-gray-900 text-sm">{s.title}</h3>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                <span className="text-xs text-gray-500">
+                  <span className="font-medium text-gray-600">Sichtbar für:</span> {s.roles}
+                </span>
+                <span className="text-xs text-gray-500">
+                  <span className="font-medium text-gray-600">Bearbeiten:</span> {s.edit}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-sm text-gray-600 leading-relaxed">{s.content}</p>
+          </div>
+        </div>
+      ))}
+
+      <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+        <p className="text-sm text-blue-700">
+          <span className="font-semibold">Fragen oder Feedback?</span>{' '}
+          Nutze den Feedback-Button unten rechts (Desktop) oder im Mehr-Menü (Mobile). Wir freuen uns über jeden Hinweis.
+        </p>
+      </div>
     </div>
   )
 }

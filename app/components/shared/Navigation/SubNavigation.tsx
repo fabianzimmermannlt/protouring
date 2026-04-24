@@ -23,7 +23,8 @@ const platformSubItems: SubNavigationItem[] = [
   { id: 'contacts',      name: 'KONTAKTE',             description: 'Kontaktverwaltung' },
   { id: 'guestlist',     name: 'GÄSTELISTE',           description: 'Gästenliste & VIPs' },
   { id: 'daysheet',      name: 'DAYSHEET',             description: 'Tagespläne & Routinen' },
-  { id: 'artist',        name: 'ARTIST',              description: 'Artist-Informationen' },
+  { id: 'artist',         name: 'ARTIST',              description: 'Artist-Informationen' },
+  { id: 'erste-schritte', name: 'ERSTE SCHRITTE',      description: 'Hilfe & Übersicht' },
 ]
 
 const SHORT_LABEL: Record<string, string> = {
@@ -35,6 +36,7 @@ const SHORT_LABEL: Record<string, string> = {
   guestlist: 'Gäste',
   daysheet: 'Daysheet',
   artist: 'Artist',
+  'erste-schritte': 'Hilfe',
 }
 
 export function SubNavigation({
@@ -46,9 +48,10 @@ export function SubNavigation({
   if (parentTab !== 'settings') return null
 
   const isAdmin = getEffectiveRole() === 'admin'
-  const visibleItems = platformSubItems.filter(item =>
-    (item.id !== 'permissions' && item.id !== 'artist') || isAdmin
-  )
+  const visibleItems = platformSubItems.filter(item => {
+    if (item.id === 'permissions' || item.id === 'artist') return isAdmin
+    return true // alle anderen inkl. 'erste-schritte' für alle Rollen
+  })
 
   return (
     <>
