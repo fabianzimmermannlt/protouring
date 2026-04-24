@@ -159,7 +159,7 @@ export default function AppointmentDetailPage() {
       <TerminDatumzeile
         termin={termin}
         termine={sortedTermine}
-        onNavigate={id => router.push(`/appointments/${id}/details`)}
+        onNavigate={id => router.push(`/appointments/${id}/${view}`)}
       />
 
       {view === 'travelparty' ? (
