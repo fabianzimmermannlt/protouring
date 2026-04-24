@@ -53,7 +53,7 @@ function fmtTime(t) {
 function generateCallSheetPdf({ termin, sections, data }) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const doc = new PDFDocument({ size: 'A4', margin: MARGIN_V, autoFirstPage: true });
+    const doc = new PDFDocument({ size: 'A4', margin: MARGIN_V, autoFirstPage: true, bufferPages: true });
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
@@ -343,14 +343,20 @@ function generateCallSheetPdf({ termin, sections, data }) {
     }
 
     // ── Footer ───────────────────────────────────────────────────────────────
-    const totalPages = doc.bufferedPageRange().count;
+    // bufferPages:true nötig damit switchToPage + bufferedPageRange funktionieren
+    const range = doc.bufferedPageRange()
+    const totalPages = range.count
     for (let i = 0; i < totalPages; i++) {
-      doc.switchToPage(i);
+      doc.switchToPage(i)
       doc.font(FONT_REG).fontSize(7).fillColor(C_LIGHT)
-        .text(`Seite ${i + 1} von ${totalPages}  ·  ProTouring  ·  ${new Date().toLocaleDateString('de-DE')}`,
-          MARGIN_H, PAGE_H - MARGIN_V + 8, { width: CONTENT_W, align: 'center' });
+        .text(
+          `Seite ${i + 1} von ${totalPages}  ·  ProTouring  ·  ${new Date().toLocaleDateString('de-DE')}`,
+          MARGIN_H, PAGE_H - MARGIN_V + 8,
+          { width: CONTENT_W, align: 'center', lineBreak: false }
+        )
     }
 
+    doc.flushPages()  // Pflicht bei bufferPages:true
     doc.end();
   });
 }
