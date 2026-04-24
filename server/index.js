@@ -1220,7 +1220,7 @@ app.post('/api/tenants/register', async (req, res) => {
       [userId, tenantId]
     );
 
-    const token = jwt.sign({ id: userId, email: userEmail }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId, email: userEmail }, JWT_SECRET, { expiresIn: '30d' });
 
     await db.run('COMMIT');
 
@@ -1295,7 +1295,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, isSuperadmin: !!user.is_superadmin },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     res.json({
@@ -4632,7 +4632,7 @@ app.post('/api/invite/:token/accept', async (req, res) => {
          WHERE t.id=? AND ut.user_id=?`,
         [row.tenant_id, userId]
       )
-      const jwtToken = jwt.sign({ id: userId, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
+      const jwtToken = jwt.sign({ id: userId, email: user.email }, JWT_SECRET, { expiresIn: '30d' })
       res.json({
         token: jwtToken,
         user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name },

@@ -150,6 +150,15 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: `Server-Fehler ${res.status} (keine JSON-Antwort)` }));
+    // 401: Token abgelaufen oder ungültig → Session löschen + zur Login-Seite
+    if (res.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('protouring_token')
+      localStorage.removeItem('protouring_current_tenant')
+      localStorage.removeItem('protouring_current_user')
+      localStorage.removeItem('protouring_all_tenants')
+      window.location.href = '/login'
+      return new Promise(() => {}) // blockiert weitere Fehlerbehandlung
+    }
     if (err.deactivated && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('account-deactivated', { detail: { tenantName: err.tenantName } }))
     }
