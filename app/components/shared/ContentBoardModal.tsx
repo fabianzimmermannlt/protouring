@@ -91,7 +91,7 @@ export default function ContentBoardModal({
 
   return (
     <div className="modal-overlay" onKeyDown={handleKeyDown}>
-      <div ref={containerRef} className="modal-container max-w-3xl">
+      <div className="modal-container max-w-3xl">
 
         {/* Drag-Handle — nur auf Mobile sichtbar */}
         <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -107,7 +107,7 @@ export default function ContentBoardModal({
           </button>
         </div>
 
-        <div className="modal-body space-y-4">
+        <div ref={containerRef} className="modal-body space-y-4">
           {error && (
             <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{error}</div>
           )}

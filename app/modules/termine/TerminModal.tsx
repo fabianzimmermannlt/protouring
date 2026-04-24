@@ -114,7 +114,7 @@ export default function TerminModal({
 
   return (
     <div className="modal-overlay">
-      <div ref={containerRef} className="modal-container max-w-lg">
+      <div className="modal-container max-w-lg">
 
         {/* Header */}
         <div className="modal-header">
@@ -127,7 +127,7 @@ export default function TerminModal({
         </div>
 
         {/* Body */}
-        <div className="modal-body space-y-4">
+        <div ref={containerRef} className="modal-body space-y-4">
           {error && (
             <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
               {error}
