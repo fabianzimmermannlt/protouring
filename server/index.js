@@ -4144,8 +4144,8 @@ app.get('/api/termine/:terminId/call-sheet/pdf', async (req, res) => {
     res.setHeader('Content-Length', pdf.length);
     res.end(pdf);
   } catch (err) {
-    console.error('call-sheet-pdf error', err);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error('call-sheet-pdf error:', err.message, err.stack);
+    res.status(500).json({ error: err.message || 'Failed to generate PDF' });
   }
 });
 

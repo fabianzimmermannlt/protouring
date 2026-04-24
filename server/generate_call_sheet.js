@@ -277,8 +277,8 @@ function generateCallSheetPdf({ termin, sections, data }) {
     // ANREISE / ABREISE
     // ══════════════════════════════════════════════════════════════════════════
     if (sections.includes('travel') && data.legs?.length) {
-      const anreise = data.legs.filter(l => l.leg_type === 'anreise');
-      const abreise = data.legs.filter(l => l.leg_type === 'abreise');
+      const anreise = data.legs.filter(l => l.leg_type === 'arrival');
+      const abreise = data.legs.filter(l => l.leg_type === 'departure');
 
       for (const group of [{ label: 'ANREISE', legs: anreise }, { label: 'ABREISE', legs: abreise }]) {
         if (!group.legs.length) continue;
@@ -286,13 +286,19 @@ function generateCallSheetPdf({ termin, sections, data }) {
 
         for (const leg of group.legs) {
           ensureSpace(18);
-          const vehicle = leg.vehicle_name ? `${leg.transport_type} · ${leg.vehicle_name}` : leg.transport_type || '';
-          const route   = [leg.departure_location, leg.arrival_location].filter(Boolean).join(' → ');
-          const timing  = [leg.departure_time ? `Abfahrt ${fmtTime(leg.departure_time)}` : '', leg.arrival_time ? `Ankunft ${fmtTime(leg.arrival_time)}` : ''].filter(Boolean).join('  ·  ');
+          const vehicle = leg.vehicle_designation
+            ? `${leg.transport_type || ''} · ${leg.vehicle_designation}${leg.vehicle_license_plate ? ` (${leg.vehicle_license_plate})` : ''}`
+            : leg.transport_type || '';
+          const route   = [leg.from_location, leg.to_location].filter(Boolean).join(' → ');
+          const timing  = [
+            leg.departure_time ? `Abfahrt ${fmtTime(leg.departure_time)}` : '',
+            leg.arrival_time   ? `Ankunft ${fmtTime(leg.arrival_time)}`   : '',
+          ].filter(Boolean).join('  ·  ');
 
-          doc.font(FONT_BOLD).fontSize(9).fillColor(C_DARK).text(route, MARGIN_H, y, { width: CONTENT_W });
-          y = doc.y + 1;
-
+          if (route) {
+            doc.font(FONT_BOLD).fontSize(9).fillColor(C_DARK).text(route, MARGIN_H, y, { width: CONTENT_W });
+            y = doc.y + 1;
+          }
           if (timing) {
             doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(timing, MARGIN_H, y, { width: CONTENT_W });
             y = doc.y + 1;
@@ -323,12 +329,12 @@ function generateCallSheetPdf({ termin, sections, data }) {
           .text(stay.hotel_name || 'Hotel', MARGIN_H, y, { width: CONTENT_W });
         y = doc.y + 1;
 
-        const addr = [stay.hotel_street, stay.hotel_postal_code, stay.hotel_city].filter(Boolean).join(', ');
+        const addr = [stay.hotel_street, [stay.hotel_postal_code, stay.hotel_city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
         if (addr) { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(addr, MARGIN_H, y); y = doc.y + 1; }
         if (stay.hotel_phone) { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(`Tel: ${stay.hotel_phone}`, MARGIN_H, y); y = doc.y + 1; }
 
-        const checkIn  = stay.check_in  ? `Check-in: ${stay.check_in}` : '';
-        const checkOut = stay.check_out ? `Check-out: ${stay.check_out}` : '';
+        const checkIn  = stay.check_in_date  ? `Check-in: ${fmtDateShort(stay.check_in_date)}` : '';
+        const checkOut = stay.check_out_date ? `Check-out: ${fmtDateShort(stay.check_out_date)}` : '';
         const times = [checkIn, checkOut].filter(Boolean).join('  ·  ');
         if (times) { doc.font(FONT_REG).fontSize(8).fillColor(C_MID).text(times, MARGIN_H, y); y = doc.y + 1; }
 
@@ -338,7 +344,7 @@ function generateCallSheetPdf({ termin, sections, data }) {
           for (const room of stay.rooms) {
             ensureSpace(14);
             const persons = room.persons?.map(p => `${p.first_name} ${p.last_name}`).join(', ') || '';
-            const roomLabel = [room.room_type, room.room_number].filter(Boolean).join(' ');
+            const roomLabel = [room.room_type, room.room_label].filter(Boolean).join(' · ');
             doc.font(FONT_REG).fontSize(8).fillColor(C_MID)
               .text(`  ${roomLabel || 'Zimmer'}${persons ? ':  ' + persons : ''}`, MARGIN_H, y, { width: CONTENT_W });
             y = doc.y + 2;
@@ -356,8 +362,9 @@ function generateCallSheetPdf({ termin, sections, data }) {
       const c = data.catering;
       const typeMap = { 'none': 'Kein Catering', 'catering': 'Catering', 'buyout': 'Buyout', 'order': 'Auf Bestellung' };
       kv('Art', typeMap[c.type] || c.type);
-      if (c.buyout_amount) kv('Buyout', `${c.buyout_amount} €`);
-      if (c.contact_name || c.contact_phone) kv('Kontakt', [c.contact_name, c.contact_phone].filter(Boolean).join('  ·  '));
+      if (c.type === 'buyout' && c.buyout_amount) kv('Buyout', `€ ${parseFloat(c.buyout_amount).toFixed(2)}`);
+      if (c.contact_name) kv('Kontakt', c.contact_name);
+      if (c.contact_phone) kv('Telefon', c.contact_phone);
       if (c.notes) bodyText(stripHtml(c.notes), 0);
 
       if (data.cateringOrders?.length) {
