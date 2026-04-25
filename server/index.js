@@ -1933,6 +1933,34 @@ app.get('/api/venues/:id/shows', authenticateToken, requireTenant, async (req, r
 });
 
 // ============================================
+// ROUTES: FLIGHTS (OpenSky proxy — avoids browser CORS)
+// ============================================
+
+app.get('/api/flights/live', authenticateToken, async (req, res) => {
+  const { begin, end } = req.query;
+  if (!begin || !end) return res.status(400).json({ error: 'begin und end erforderlich' });
+  const b = parseInt(begin, 10);
+  const e = parseInt(end, 10);
+  if (isNaN(b) || isNaN(e) || e - b > 7200) {
+    return res.status(400).json({ error: 'Zeitfenster max. 2 Stunden' });
+  }
+  try {
+    const upstream = await fetch(
+      `https://opensky-network.org/api/flights/all?begin=${b}&end=${e}`,
+      { signal: AbortSignal.timeout(12_000) }
+    );
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: `OpenSky: HTTP ${upstream.status}` });
+    }
+    const data = await upstream.json();
+    res.json(data);
+  } catch (err) {
+    console.error('OpenSky proxy error:', err);
+    res.status(502).json({ error: 'OpenSky nicht erreichbar' });
+  }
+});
+
+// ============================================
 // ROUTES: CONTACTS
 // ============================================
 
