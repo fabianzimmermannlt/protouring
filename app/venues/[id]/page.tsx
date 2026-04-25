@@ -6,7 +6,7 @@ import { Navigation } from '@/app/components/shared/Navigation'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 import {
-  ArrowLeft, Pencil, Upload, Trash2, X, AlertCircle,
+  ArrowLeft, ChevronLeft, ChevronRight as ChevronRightIcon, Pencil, Upload, Trash2, X, AlertCircle,
   File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight,
   Image as ImageIcon, ExternalLink, Loader2,
 } from 'lucide-react'
@@ -120,7 +120,10 @@ export default function VenueDetailPage() {
   const [shows, setShows] = useState<Show[]>([])
   const [showsLoading, setShowsLoading] = useState(true)
 
-  const [lightboxImg, setLightboxImg] = useState<{ file: FileItem; blobUrl: string } | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [lightboxBlobUrl, setLightboxBlobUrl] = useState<string | null>(null)
+  const [lightboxLoading, setLightboxLoading] = useState(false)
+  const lightboxIndexRef = useRef<number | null>(null)
 
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadType, setUploadType] = useState<'files' | 'photos'>('files')
@@ -246,19 +249,43 @@ export default function VenueDetailPage() {
     } catch { alert('Datei konnte nicht geöffnet werden') }
   }
 
-  async function openLightbox(file: FileItem) {
+  async function openLightbox(index: number) {
+    setLightboxLoading(true)
+    setLightboxIndex(index)
+    lightboxIndexRef.current = index
     try {
+      const file = photos[index]
       const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error()
       const blob = await res.blob()
-      setLightboxImg({ file, blobUrl: URL.createObjectURL(blob) })
+      setLightboxBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
     } catch { alert('Bild konnte nicht geladen werden') }
+    finally { setLightboxLoading(false) }
   }
 
   function closeLightbox() {
-    if (lightboxImg) URL.revokeObjectURL(lightboxImg.blobUrl)
-    setLightboxImg(null)
+    setLightboxBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    setLightboxIndex(null)
+    lightboxIndexRef.current = null
   }
+
+  function navigateLightbox(dir: 1 | -1) {
+    const idx = lightboxIndexRef.current
+    if (idx === null || photos.length === 0) return
+    openLightbox((idx + dir + photos.length) % photos.length)
+  }
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight') navigateLightbox(1)
+      else if (e.key === 'ArrowLeft') navigateLightbox(-1)
+      else if (e.key === 'Escape') closeLightbox()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIndex])
 
   // ─── Content ──────────────────────────────────────────────────────────────
   if (!authChecked) return null
@@ -375,9 +402,9 @@ export default function VenueDetailPage() {
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
-                {photos.map(photo => (
+                {photos.map((photo, idx) => (
                   <div key={photo.id} className="relative group aspect-square rounded overflow-hidden bg-gray-100 cursor-pointer"
-                    onClick={() => openLightbox(photo)}>
+                    onClick={() => openLightbox(idx)}>
                     <PhotoThumb file={photo} />
                     {isEditor && (
                       <button onClick={e => { e.stopPropagation(); handleDeleteFile(photo.id) }}
@@ -490,15 +517,44 @@ export default function VenueDetailPage() {
       )}
 
       {/* Lightbox */}
-      {lightboxImg && (
+      {lightboxIndex !== null && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={closeLightbox}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white" onClick={closeLightbox}>
+          {/* Close */}
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10" onClick={closeLightbox}>
             <X className="w-6 h-6" />
           </button>
-          <img src={lightboxImg.blobUrl} alt={lightboxImg.file.originalName}
-            className="max-w-full max-h-full object-contain rounded"
-            onClick={e => e.stopPropagation()} />
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">{lightboxImg.file.originalName}</p>
+          {/* Prev */}
+          {photos.length > 1 && (
+            <button
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/40 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+              onClick={e => { e.stopPropagation(); navigateLightbox(-1) }}>
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+          {/* Image */}
+          <div className="flex items-center justify-center w-full h-full" onClick={e => e.stopPropagation()}>
+            {lightboxLoading ? (
+              <Loader2 className="w-10 h-10 text-white/60 animate-spin" />
+            ) : lightboxBlobUrl ? (
+              <img src={lightboxBlobUrl} alt={photos[lightboxIndex]?.originalName}
+                className="max-w-full max-h-full object-contain rounded" />
+            ) : null}
+          </div>
+          {/* Next */}
+          {photos.length > 1 && (
+            <button
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/40 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+              onClick={e => { e.stopPropagation(); navigateLightbox(1) }}>
+              <ChevronRightIcon className="w-6 h-6" />
+            </button>
+          )}
+          {/* Caption + counter */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center">
+            <p className="text-white/60 text-sm">{photos[lightboxIndex]?.originalName}</p>
+            {photos.length > 1 && (
+              <p className="text-white/40 text-xs mt-0.5">{lightboxIndex + 1} / {photos.length}</p>
+            )}
+          </div>
         </div>
       )}
 
