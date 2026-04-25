@@ -6,7 +6,7 @@
 
 import { useState } from 'react'
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react'
-import type { TravelLeg } from '@/lib/api-client'
+import { getAuthToken, getCurrentTenant, type TravelLeg } from '@/lib/api-client'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,13 +18,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
 
 function authHeaders(): Record<string, string> {
   const h: Record<string, string> = {}
-  if (typeof window === 'undefined') return h
-  try {
-    const token = localStorage.getItem('auth_token')
-    const tenant = JSON.parse(localStorage.getItem('current_tenant') ?? 'null')
-    if (token) h['Authorization'] = `Bearer ${token}`
-    if (tenant?.slug) h['X-Tenant-Slug'] = tenant.slug
-  } catch { /* ignore */ }
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  if (token) h['Authorization'] = `Bearer ${token}`
+  if (tenant?.slug) h['X-Tenant-Slug'] = tenant.slug
   return h
 }
 
