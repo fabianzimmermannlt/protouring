@@ -532,14 +532,13 @@ export default function VenueDetailPage() {
             </button>
           )}
           {/* Image */}
-          <div className="flex items-center justify-center w-full h-full" onClick={e => e.stopPropagation()}>
-            {lightboxLoading ? (
-              <Loader2 className="w-10 h-10 text-white/60 animate-spin" />
-            ) : lightboxBlobUrl ? (
-              <img src={lightboxBlobUrl} alt={photos[lightboxIndex]?.originalName}
-                className="max-w-full max-h-full object-contain rounded" />
-            ) : null}
-          </div>
+          {lightboxLoading ? (
+            <Loader2 className="w-10 h-10 text-white/60 animate-spin" onClick={e => e.stopPropagation()} />
+          ) : lightboxBlobUrl ? (
+            <img src={lightboxBlobUrl} alt={photos[lightboxIndex]?.originalName}
+              className="max-w-full max-h-full object-contain rounded"
+              onClick={e => e.stopPropagation()} />
+          ) : null}
           {/* Next */}
           {photos.length > 1 && (
             <button
