@@ -9,11 +9,12 @@
 
 const PDFDocument = require('pdfkit');
 
-const MARGIN_H  = 50;
-const MARGIN_V  = 48;
-const PAGE_W    = 595;
-const PAGE_H    = 842;
-const CONTENT_W = PAGE_W - MARGIN_H * 2;
+const MARGIN_H    = 50;
+const MARGIN_V    = 48;
+const PAGE_W      = 595;
+const PAGE_H      = 842;
+const CONTENT_W   = PAGE_W - MARGIN_H * 2;
+const BOTTOM_LIMIT = PAGE_H - MARGIN_V - 40;  // 40px Puffer verhindert PDFKit-Auto-Paginierung
 
 const FONT_REG  = 'Helvetica';
 const FONT_BOLD = 'Helvetica-Bold';
@@ -63,7 +64,7 @@ function generateCallSheetPdf({ termin, sections, data }) {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     function ensureSpace(needed) {
-      if (y + needed > PAGE_H - MARGIN_V) {
+      if (y + needed > BOTTOM_LIMIT) {
         doc.addPage();
         y = MARGIN_V;
         drawPageHeader();

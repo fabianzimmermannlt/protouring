@@ -86,7 +86,7 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
     doc.on('error', reject);
 
     let y = MARGIN_V;
-    const bottom = PAGE_H - MARGIN_V;
+    const bottom = PAGE_H - MARGIN_V - 40;  // 40px Puffer verhindert PDFKit-Auto-Paginierung
 
     function ensureSpace(needed) {
       if (y + needed > bottom) {
