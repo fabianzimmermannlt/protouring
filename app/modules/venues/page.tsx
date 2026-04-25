@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Download, Upload, Save, X, Loader2, AlertCircle, ExternalLink } from 'lucide-react'
+import { Plus, Download, Upload, Save, X, Loader2, AlertCircle, Pencil } from 'lucide-react'
 import {
   getVenues,
   createVenue,
@@ -511,7 +511,7 @@ function VenueTable({ venues, canEdit = false, onEdit, onDetail }: {
       </thead>
       <tbody>
         {(sorted as unknown as Venue[]).map((venue) => (
-          <tr key={venue.id} className={canEdit ? 'clickable' : ''} onClick={canEdit ? () => onEdit(venue) : undefined}>
+          <tr key={venue.id} className="clickable" onClick={() => onDetail(venue.id)}>
             <td className="font-medium">{venue.name}</td>
             <td>{venue.street}</td>
             <td>{venue.postalCode}</td>
@@ -520,13 +520,15 @@ function VenueTable({ venues, canEdit = false, onEdit, onDetail }: {
             <td>{venue.country}</td>
             <td>{venue.capacity}</td>
             <td onClick={e => e.stopPropagation()}>
-              <button
-                onClick={() => onDetail(venue.id)}
-                className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded"
-                title="Venue-Details öffnen"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => onEdit(venue)}
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded"
+                  title="Venue bearbeiten"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
             </td>
           </tr>
         ))}
