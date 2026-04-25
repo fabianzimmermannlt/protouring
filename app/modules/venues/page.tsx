@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Download, Upload, Save, X, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Download, Upload, Save, X, Loader2, AlertCircle, ExternalLink } from 'lucide-react'
 import {
   getVenues,
   createVenue,
@@ -331,7 +331,7 @@ export default function VenuesPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} />
+            <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} onDetail={id => window.location.href = `/modules/venues/${id}`} />
           </div>
         )
       })()}
@@ -484,7 +484,12 @@ function TextareaField({
   )
 }
 
-function VenueTable({ venues, canEdit = false, onEdit }: { venues: Venue[]; canEdit?: boolean; onEdit: (v: Venue) => void }) {
+function VenueTable({ venues, canEdit = false, onEdit, onDetail }: {
+  venues: Venue[]
+  canEdit?: boolean
+  onEdit: (v: Venue) => void
+  onDetail: (id: string) => void
+}) {
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     venues as unknown as Record<string, unknown>[],
     'name'
@@ -501,6 +506,7 @@ function VenueTable({ venues, canEdit = false, onEdit }: { venues: Venue[]; canE
               </span>
             </th>
           ))}
+          <th style={{ width: 40 }} />
         </tr>
       </thead>
       <tbody>
@@ -513,6 +519,15 @@ function VenueTable({ venues, canEdit = false, onEdit }: { venues: Venue[]; canE
             <td>{venue.state}</td>
             <td>{venue.country}</td>
             <td>{venue.capacity}</td>
+            <td onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => onDetail(venue.id)}
+                className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded"
+                title="Venue-Details öffnen"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+            </td>
           </tr>
         ))}
       </tbody>

@@ -1904,6 +1904,34 @@ app.delete('/api/venues/:id', authenticateToken, requireTenant, requireEditor, a
   }
 });
 
+// GET single venue
+app.get('/api/venues/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT * FROM venues WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!row) return res.status(404).json({ error: 'Venue not found' });
+    res.json({ venue: venueFromRow(row) });
+  } catch (error) {
+    console.error('Get venue error:', error);
+    res.status(500).json({ error: 'Failed to get venue' });
+  }
+});
+
+// GET vergangene Shows an diesem Venue
+app.get('/api/venues/:id/shows', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT id, date, title, city, status_booking FROM termine
+       WHERE tenant_id = ? AND venue_id = ?
+       ORDER BY date DESC LIMIT 50`,
+      [req.tenant.id, req.params.id]
+    );
+    res.json({ shows: rows });
+  } catch (error) {
+    console.error('Get venue shows error:', error);
+    res.status(500).json({ error: 'Failed to get venue shows' });
+  }
+});
+
 // ============================================
 // ROUTES: CONTACTS
 // ============================================
