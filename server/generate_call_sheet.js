@@ -170,29 +170,33 @@ function generateCallSheetPdf({ termin, sections, data }) {
     function renderTravelparty() {
       if (!data.travelParty?.length) return;
       sectionHeader('REISEGRUPPE');
-      const party = data.travelParty;
-      const colW = Math.floor(CONTENT_W / 2) - 4;
-      for (let i = 0; i < party.length; i += 2) {
-        ensureSpace(16);
-        const left  = party[i];
-        const right = party[i + 1];
-        const name1 = `${left.first_name} ${left.last_name}`.trim();
-        const fn1   = [left.function1, left.function2, left.function3].filter(Boolean).join(', ');
-        const name2 = right ? `${right.first_name} ${right.last_name}`.trim() : '';
-        const fn2   = right ? [right.function1, right.function2, right.function3].filter(Boolean).join(', ') : '';
+
+      const nameW = 160;
+      const fnW   = 160;
+      const ctW   = CONTENT_W - nameW - fnW;
+
+      for (let i = 0; i < data.travelParty.length; i++) {
+        const p    = data.travelParty[i];
+        ensureSpace(18);
+        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+        const fn   = [p.function1, p.function2, p.function3].filter(Boolean).join(', ');
+        const contact = [p.phone, p.email].filter(Boolean).join('  ·  ');
+
+        const rowY = y;
         doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
-          .text(name1, MARGIN_H, y, { width: colW, continued: false });
-        if (name2) {
-          doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
-            .text(name2, MARGIN_H + colW + 8, y, { width: colW });
+          .text(name, MARGIN_H, rowY, { width: nameW, lineBreak: false });
+        if (fn) {
+          doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED)
+            .text(fn, MARGIN_H + nameW, rowY, { width: fnW, lineBreak: false });
         }
-        const lineY = doc.y;
-        if (fn1) doc.font(FONT_REG).fontSize(7.5).fillColor(C_MUTED).text(fn1, MARGIN_H, lineY, { width: colW });
-        if (fn2) doc.font(FONT_REG).fontSize(7.5).fillColor(C_MUTED).text(fn2, MARGIN_H + colW + 8, lineY, { width: colW });
-        y = doc.y + 4;
-        if (i + 2 < party.length) { rule(C_RULE, 0.3); y += 3; }
+        if (contact) {
+          doc.font(FONT_REG).fontSize(8).fillColor(C_LIGHT)
+            .text(contact, MARGIN_H + nameW + fnW, rowY, { width: ctW, lineBreak: false });
+        }
+        y = rowY + 14;
+        if (i + 1 < data.travelParty.length) { rule(C_RULE, 0.3); y += 3; }
       }
-      y += 4;
+      y += 6;
     }
 
     function renderSchedules() {

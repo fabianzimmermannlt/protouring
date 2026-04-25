@@ -4102,7 +4102,7 @@ app.get('/api/termine/:terminId/call-sheet/pdf', async (req, res) => {
     const data = {};
 
     if (sections.includes('travelparty')) {
-      data.travelParty = await db.all(`SELECT tp.*, c.first_name, c.last_name, c.function1, c.function2, c.function3 FROM termin_travel_party tp JOIN contacts c ON c.id = tp.contact_id WHERE tp.termin_id = ? AND tp.tenant_id = ? ORDER BY c.last_name COLLATE NOCASE ASC`, [terminId, tenant.id]);
+      data.travelParty = await db.all(`SELECT tp.*, c.first_name, c.last_name, c.function1, c.function2, c.function3, c.email, c.phone FROM termin_travel_party tp JOIN contacts c ON c.id = tp.contact_id WHERE tp.termin_id = ? AND tp.tenant_id = ? ORDER BY c.last_name COLLATE NOCASE ASC`, [terminId, tenant.id]);
     }
     if (sections.includes('schedules')) {
       data.schedules = await db.all('SELECT * FROM termin_schedules WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC', [terminId, tenant.id]);
