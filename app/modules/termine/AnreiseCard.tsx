@@ -12,6 +12,7 @@ import {
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import AnreiseModal from './AnreiseModal'
+import FlugTracker from './FlugTracker'
 
 interface AnreiseCardProps {
   terminId: number
@@ -191,6 +192,10 @@ export default function AnreiseCard({
                     <div className="rich-content pt-leg-card-notes">
                       {renderBoardContent(leg.notes)}
                     </div>
+                  )}
+                  {/* Flug-Tracker (nur bei Flug mit Flugnummer) */}
+                  {leg.transportType === 'flugzeug' && leg.flightNumber && (
+                    <FlugTracker leg={leg} />
                   )}
                 </div>
               )
