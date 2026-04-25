@@ -331,7 +331,7 @@ export default function VenuesPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} onDetail={id => window.location.href = `/modules/venues/${id}`} />
+            <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} onDetail={id => window.location.href = `/venues/${id}`} />
           </div>
         )
       })()}
