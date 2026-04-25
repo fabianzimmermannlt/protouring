@@ -79,10 +79,9 @@ export function FeedbackButton() {
 
   const handleOpen = () => {
     setIsOpen(true)
-    setView(isSuperadmin ? 'list' : 'form')
+    setView('form')
     setSubmitted(false)
     setSubmitError('')
-    if (isSuperadmin) loadItems()
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
