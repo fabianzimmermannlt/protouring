@@ -155,23 +155,31 @@ function generateCallSheetPdf({ termin, sections, data }) {
     y += 14;
 
     // ══════════════════════════════════════════════════════════════════════════
-    // REISEGRUPPE
+    // SECTION RENDER FUNCTIONS
     // ══════════════════════════════════════════════════════════════════════════
-    if (sections.includes('travelparty') && data.travelParty?.length) {
+
+    function normalizeScheduleLines(content) {
+      return (content || '')
+        .replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>/gi, '\n').replace(/<\/p>/gi, '\n')
+        .replace(/<div>/gi, '').replace(/<p>/gi, '').replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+        .replace(/\n{3,}/g, '\n\n').split('\n');
+    }
+
+    function renderTravelparty() {
+      if (!data.travelParty?.length) return;
       sectionHeader('REISEGRUPPE');
       const party = data.travelParty;
       const colW = Math.floor(CONTENT_W / 2) - 4;
-
       for (let i = 0; i < party.length; i += 2) {
         ensureSpace(16);
         const left  = party[i];
         const right = party[i + 1];
-
         const name1 = `${left.first_name} ${left.last_name}`.trim();
         const fn1   = [left.function1, left.function2, left.function3].filter(Boolean).join(', ');
         const name2 = right ? `${right.first_name} ${right.last_name}`.trim() : '';
         const fn2   = right ? [right.function1, right.function2, right.function3].filter(Boolean).join(', ') : '';
-
         doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
           .text(name1, MARGIN_H, y, { width: colW, continued: false });
         if (name2) {
@@ -179,43 +187,19 @@ function generateCallSheetPdf({ termin, sections, data }) {
             .text(name2, MARGIN_H + colW + 8, y, { width: colW });
         }
         const lineY = doc.y;
-
-        if (fn1) {
-          doc.font(FONT_REG).fontSize(7.5).fillColor(C_MUTED)
-            .text(fn1, MARGIN_H, lineY, { width: colW });
-        }
-        if (fn2) {
-          doc.font(FONT_REG).fontSize(7.5).fillColor(C_MUTED)
-            .text(fn2, MARGIN_H + colW + 8, lineY, { width: colW });
-        }
+        if (fn1) doc.font(FONT_REG).fontSize(7.5).fillColor(C_MUTED).text(fn1, MARGIN_H, lineY, { width: colW });
+        if (fn2) doc.font(FONT_REG).fontSize(7.5).fillColor(C_MUTED).text(fn2, MARGIN_H + colW + 8, lineY, { width: colW });
         y = doc.y + 4;
-
-        if (i + 2 < party.length) {
-          rule(C_RULE, 0.3);
-          y += 3;
-        }
+        if (i + 2 < party.length) { rule(C_RULE, 0.3); y += 3; }
       }
       y += 4;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // ZEITPLÄNE — identisches Rendering wie Advance Sheet
-    // ══════════════════════════════════════════════════════════════════════════
-    function normalizeScheduleLines(content) {
-      return (content || '')
-        .replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>/gi, '\n').replace(/<\/p>/gi, '\n')
-        .replace(/<div>/gi, '').replace(/<p>/gi, '').replace(/<[^>]+>/g, '')
-        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-        .replace(/\n{3,}/g, '\n\n').split('\n')
-    }
-
-    if (sections.includes('schedules') && data.schedules?.length) {
+    function renderSchedules() {
+      if (!data.schedules?.length) return;
       for (const sched of data.schedules) {
         sectionHeader((sched.title || 'Zeitplan').toUpperCase());
         const lines = normalizeScheduleLines(sched.content);
-
-        // Spaltenbreiten messen
         let maxLeftW = 0, maxRightW = 0;
         doc.font(FONT_BOLD).fontSize(8.5);
         for (const line of lines) {
@@ -235,14 +219,12 @@ function generateCallSheetPdf({ termin, sections, data }) {
         }
         const tabX = MARGIN_H + (maxLeftW > 0 ? maxLeftW + 22 : 40);
         const rightColEnd = tabX + (maxRightW > 0 ? maxRightW : 120);
-
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) { y += 4; continue; }
           if (trimmed === '---') {
             ensureSpace(10);
-            doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
-              .lineWidth(0.5).strokeColor(C_MUTED).stroke();
+            doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y).lineWidth(0.5).strokeColor(C_MUTED).stroke();
             y += 6; continue;
           }
           if (line.includes('-//-')) {
@@ -251,93 +233,70 @@ function generateCallSheetPdf({ termin, sections, data }) {
             const leftText  = line.slice(0, sepIdx).trim();
             const rightText = line.slice(sepIdx + 4).trim();
             const lineY = y;
-            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
-              .text(leftText, MARGIN_H, lineY, { lineBreak: false });
+            doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID).text(leftText, MARGIN_H, lineY, { lineBreak: false });
             doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK);
             const rw = doc.widthOfString(rightText);
             doc.text(rightText, rightColEnd - rw, lineY, { lineBreak: false });
             y = lineY + 18; continue;
           }
           ensureSpace(18);
-          doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
-            .text(trimmed, MARGIN_H, y, { width: CONTENT_W });
+          doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK).text(trimmed, MARGIN_H, y, { width: CONTENT_W });
           y += doc.heightOfString(trimmed, { width: CONTENT_W, fontSize: 8.5 }) + 7;
         }
         y += 8;
       }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // ANREISE / ABREISE
-    // ══════════════════════════════════════════════════════════════════════════
-    if (sections.includes('travel') && data.legs?.length) {
+    function renderTravel() {
+      if (!data.legs?.length) return;
       const anreise = data.legs.filter(l => l.leg_type === 'arrival');
       const abreise = data.legs.filter(l => l.leg_type === 'departure');
-
       for (const group of [{ label: 'ANREISE', legs: anreise }, { label: 'ABREISE', legs: abreise }]) {
         if (!group.legs.length) continue;
         sectionHeader(group.label);
-
         for (const leg of group.legs) {
           ensureSpace(18);
           const vehicle = leg.vehicle_designation
             ? `${leg.transport_type || ''} · ${leg.vehicle_designation}${leg.vehicle_license_plate ? ` (${leg.vehicle_license_plate})` : ''}`
             : leg.transport_type || '';
-          const route   = [leg.from_location, leg.to_location].filter(Boolean).join(' → ');
-          const timing  = [
+          const route  = [leg.from_location, leg.to_location].filter(Boolean).join(' → ');
+          const timing = [
             leg.departure_time ? `Abfahrt ${fmtTime(leg.departure_time)}` : '',
             leg.arrival_time   ? `Ankunft ${fmtTime(leg.arrival_time)}`   : '',
           ].filter(Boolean).join('  ·  ');
-
-          if (route) {
-            doc.font(FONT_BOLD).fontSize(9).fillColor(C_DARK).text(route, MARGIN_H, y, { width: CONTENT_W });
-            y = doc.y + 1;
-          }
-          if (timing) {
-            doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(timing, MARGIN_H, y, { width: CONTENT_W });
-            y = doc.y + 1;
-          }
-          if (vehicle) {
-            doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(vehicle, MARGIN_H, y, { width: CONTENT_W });
-            y = doc.y + 1;
-          }
+          if (route)   { doc.font(FONT_BOLD).fontSize(9).fillColor(C_DARK).text(route, MARGIN_H, y, { width: CONTENT_W }); y = doc.y + 1; }
+          if (timing)  { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(timing, MARGIN_H, y, { width: CONTENT_W }); y = doc.y + 1; }
+          if (vehicle) { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(vehicle, MARGIN_H, y, { width: CONTENT_W }); y = doc.y + 1; }
           if (leg.persons?.length) {
             const names = leg.persons.map(p => `${p.first_name} ${p.last_name}`).join(', ');
             doc.font(FONT_REG).fontSize(7.5).fillColor(C_LIGHT).text(names, MARGIN_H, y, { width: CONTENT_W });
             y = doc.y + 1;
           }
-          y += 6;
-          rule(); y += 4;
+          y += 6; rule(); y += 4;
         }
       }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // HOTEL
-    // ══════════════════════════════════════════════════════════════════════════
-    if (sections.includes('hotel') && data.hotelStays?.length) {
+    function renderHotel() {
+      if (!data.hotelStays?.length) return;
       sectionHeader('HOTEL');
       for (const stay of data.hotelStays) {
         ensureSpace(20);
-        doc.font(FONT_BOLD).fontSize(9.5).fillColor(C_DARK)
-          .text(stay.hotel_name || 'Hotel', MARGIN_H, y, { width: CONTENT_W });
+        doc.font(FONT_BOLD).fontSize(9.5).fillColor(C_DARK).text(stay.hotel_name || 'Hotel', MARGIN_H, y, { width: CONTENT_W });
         y = doc.y + 1;
-
         const addr = [stay.hotel_street, [stay.hotel_postal_code, stay.hotel_city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-        if (addr) { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(addr, MARGIN_H, y); y = doc.y + 1; }
-        if (stay.hotel_phone) { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(`Tel: ${stay.hotel_phone}`, MARGIN_H, y); y = doc.y + 1; }
-
-        const checkIn  = stay.check_in_date  ? `Check-in: ${fmtDateShort(stay.check_in_date)}` : '';
-        const checkOut = stay.check_out_date ? `Check-out: ${fmtDateShort(stay.check_out_date)}` : '';
-        const times = [checkIn, checkOut].filter(Boolean).join('  ·  ');
+        if (addr)            { doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(addr, MARGIN_H, y); y = doc.y + 1; }
+        if (stay.hotel_phone){ doc.font(FONT_REG).fontSize(8).fillColor(C_MUTED).text(`Tel: ${stay.hotel_phone}`, MARGIN_H, y); y = doc.y + 1; }
+        const times = [
+          stay.check_in_date  ? `Check-in: ${fmtDateShort(stay.check_in_date)}`   : '',
+          stay.check_out_date ? `Check-out: ${fmtDateShort(stay.check_out_date)}` : '',
+        ].filter(Boolean).join('  ·  ');
         if (times) { doc.font(FONT_REG).fontSize(8).fillColor(C_MID).text(times, MARGIN_H, y); y = doc.y + 1; }
-
-        // Zimmer
         if (stay.rooms?.length) {
           y += 3;
           for (const room of stay.rooms) {
             ensureSpace(14);
-            const persons = room.persons?.map(p => `${p.first_name} ${p.last_name}`).join(', ') || '';
+            const persons   = room.persons?.map(p => `${p.first_name} ${p.last_name}`).join(', ') || '';
             const roomLabel = [room.room_type, room.room_label].filter(Boolean).join(' · ');
             doc.font(FONT_REG).fontSize(8).fillColor(C_MID)
               .text(`  ${roomLabel || 'Zimmer'}${persons ? ':  ' + persons : ''}`, MARGIN_H, y, { width: CONTENT_W });
@@ -348,19 +307,16 @@ function generateCallSheetPdf({ termin, sections, data }) {
       }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // CATERING
-    // ══════════════════════════════════════════════════════════════════════════
-    if (sections.includes('catering') && data.catering) {
+    function renderCatering() {
+      if (!data.catering) return;
       sectionHeader('CATERING');
       const c = data.catering;
       const typeMap = { 'none': 'Kein Catering', 'catering': 'Catering', 'buyout': 'Buyout', 'order': 'Auf Bestellung' };
       kv('Art', typeMap[c.type] || c.type);
       if (c.type === 'buyout' && c.buyout_amount) kv('Buyout', `€ ${parseFloat(c.buyout_amount).toFixed(2)}`);
-      if (c.contact_name) kv('Kontakt', c.contact_name);
+      if (c.contact_name)  kv('Kontakt', c.contact_name);
       if (c.contact_phone) kv('Telefon', c.contact_phone);
       if (c.notes) bodyText(stripHtml(c.notes), 0);
-
       if (data.cateringOrders?.length) {
         y += 4;
         doc.font(FONT_BOLD).fontSize(8).fillColor(C_MUTED).text('BESTELLUNGEN', MARGIN_H, y); y = doc.y + 3;
@@ -375,10 +331,8 @@ function generateCallSheetPdf({ termin, sections, data }) {
       y += 4;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // LOKALE KONTAKTE
-    // ══════════════════════════════════════════════════════════════════════════
-    if (sections.includes('contacts') && data.localContacts?.length) {
+    function renderContacts() {
+      if (!data.localContacts?.length) return;
       sectionHeader('LOKALE KONTAKTE');
       for (const lc of data.localContacts) {
         ensureSpace(14);
@@ -390,6 +344,22 @@ function generateCallSheetPdf({ termin, sections, data }) {
         rule(C_RULE, 0.3); y += 3;
       }
       y += 4;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // RENDER — Reihenfolge aus sections-Array
+    // ══════════════════════════════════════════════════════════════════════════
+    const sectionRenderers = {
+      travelparty: renderTravelparty,
+      schedules:   renderSchedules,
+      travel:      renderTravel,
+      hotel:       renderHotel,
+      catering:    renderCatering,
+      contacts:    renderContacts,
+    };
+
+    for (const section of sections) {
+      if (sectionRenderers[section]) sectionRenderers[section]();
     }
 
     doc.end();
