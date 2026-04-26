@@ -408,11 +408,19 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
             )}
 
             {areas.length === 0 && !addingArea && (
-              <div className="flex flex-col items-center justify-center py-6 text-gray-400 text-center">
-                <ClipboardList className="w-5 h-5 mb-1 opacity-40" />
-                <p className="text-xs">Noch keine Bereiche angelegt</p>
+              <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <ClipboardList className="w-6 h-6 mb-2 text-gray-300" />
+                <p className="text-xs font-medium text-gray-500 mb-1">Noch kein Advancing angelegt</p>
+                <p className="text-xs text-gray-400 leading-relaxed max-w-xs">
+                  Hier sammelst du alle Absprachen mit der Venue — sortiert nach Bereichen wie <span className="italic">Technik, Catering</span> oder <span className="italic">Hospitality</span>.
+                </p>
                 {canEdit && (
-                  <button onClick={() => setAddingArea(true)} className="text-xs text-blue-500 hover:text-blue-700 mt-1.5">+ Bereich hinzufügen</button>
+                  <button
+                    onClick={() => setAddingArea(true)}
+                    className="mt-3 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                  >
+                    + Ersten Bereich anlegen
+                  </button>
                 )}
               </div>
             )}
