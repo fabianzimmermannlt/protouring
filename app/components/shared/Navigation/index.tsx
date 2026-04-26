@@ -29,6 +29,7 @@ import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
 import { SubNavigation } from './SubNavigation'
 import { ContactsSubNavigation } from './ContactsSubNavigation'
 import { TermineSubNavigation, TermineListSubNavigation, type TermineListFilter, type TermineListView } from './TermineSubNavigation'
+import { EquipmentSubNavigation } from './EquipmentSubNavigation'
 
 export interface NavigationItem {
   id: string
@@ -562,7 +563,15 @@ export function Navigation({
           }}
         />
       )}
-      {currentTab !== 'desk' && currentTab !== 'settings' && currentTab !== 'contacts' && currentTab !== 'appointments' && (
+      {currentTab === 'equipment' && (
+        <EquipmentSubNavigation
+          activeTab={activeSubTab}
+          parentTab={currentTab}
+          onTabChange={onSubTabChange}
+          maxWidth={maxWidth}
+        />
+      )}
+      {currentTab !== 'desk' && currentTab !== 'settings' && currentTab !== 'contacts' && currentTab !== 'appointments' && currentTab !== 'equipment' && (
         <div className="bg-gray-50 border-b h-12" />
       )}
     </>

@@ -56,7 +56,7 @@ export default function ProTouringApp() {
     if (t && VALID_TABS.includes(t)) {
       activeTabRef.current = t
       setActiveTab(t)
-      setActiveSubTab(s || (t === 'settings' ? 'profil' : t === 'contacts' ? 'overview' : ''))
+      setActiveSubTab(s || (t === 'settings' ? 'profil' : t === 'contacts' ? 'overview' : t === 'equipment' ? 'items' : ''))
     }
     setAuthChecked(true)
   }, [router])
@@ -103,6 +103,7 @@ export default function ProTouringApp() {
     let defaultSub = ''
     if (tabId === 'settings') defaultSub = 'profil'
     else if (tabId === 'contacts') defaultSub = 'overview'
+    else if (tabId === 'equipment') defaultSub = 'items'
     setActiveSubTab(defaultSub)
     sessionStorage.setItem(STORAGE_TAB, tabId)
     sessionStorage.setItem(STORAGE_SUB, defaultSub)
@@ -124,7 +125,7 @@ export default function ProTouringApp() {
           <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
         </div>
       )}
-      {activeTab === 'equipment' && <EquipmentModule />}
+      {activeTab === 'equipment' && <EquipmentModule activeSubTab={activeSubTab} />}
       {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
       {activeTab === 'feedback' && <FeedbackPage />}
     </>
