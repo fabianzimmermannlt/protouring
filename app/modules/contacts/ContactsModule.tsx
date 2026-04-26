@@ -330,13 +330,12 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const handleDeleteContact = async () => {
     if (!editingContact) return
-    if (!confirm('Möchten Sie diesen Kontakt wirklich löschen?')) return
     try {
       await deleteContact(editingContact.id)
       setContacts(prev => prev.filter(c => c.id !== editingContact.id))
       setEditingContact(null)
     } catch (e) {
-      setError('Kontakt konnte nicht gelöscht werden.')
+      setError('Kontakt konnte nicht entfernt werden.')
     }
   }
 
@@ -663,6 +662,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               onDelete={isAdmin ? handleDeleteContact : undefined}
               isAdmin={isAdmin}
               isSelf={false}
+              hasUserAccount={!!editingContact.userId}
             />
           </div>
         </div>

@@ -61,9 +61,10 @@ interface ProfileEditorProps {
   isAdmin?: boolean
   isSelf?: boolean  // eigenes Profil → accessRights immer read-only
   inline?: boolean  // kein Modal-Wrapper, direkt eingebettet
+  hasUserAccount?: boolean  // Kontakt hat App-Account → "Entfernen" statt "Löschen"
 }
 
-export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, isAdmin = false, isSelf = false, inline = false }: ProfileEditorProps) {
+export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, isAdmin = false, isSelf = false, inline = false, hasUserAccount = false }: ProfileEditorProps) {
   const [formData, setFormData] = useState<ProfileData>(profileData)
   const [activeFunctions, setActiveFunctions] = useState<ActiveFunction[]>([])
   const [saving, setSaving] = useState(false)
@@ -101,7 +102,10 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
   }
 
   const handleDelete = () => {
-    if (confirm('Möchten Sie wirklich alle Profildaten löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    const msg = hasUserAccount
+      ? `${profileData.firstName} ${profileData.lastName} wirklich aus diesem Artist entfernen? Der App-Account bleibt erhalten, der Zugang zu diesem Artist wird entzogen.`
+      : `${profileData.firstName} ${profileData.lastName} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+    if (confirm(msg)) {
       if (onDelete) {
         onDelete()
       }
@@ -494,7 +498,7 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
           {!inline && (onDelete ? (
             <button onClick={handleDelete} className="btn btn-danger">
               <Trash2 className="h-4 w-4" />
-              Löschen
+              {hasUserAccount ? 'Entfernen' : 'Löschen'}
             </button>
           ) : <div />)}
           <div className="flex space-x-3">

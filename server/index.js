@@ -2182,11 +2182,15 @@ app.put('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, as
 
 app.delete('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const existing = await db.get('SELECT id FROM contacts WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    const existing = await db.get('SELECT id, user_id FROM contacts WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Contact not found' });
+    // Hat der Kontakt einen verknüpften User-Account? → user_tenants-Eintrag ebenfalls entfernen
+    if (existing.user_id) {
+      await db.run('DELETE FROM user_tenants WHERE user_id = ? AND tenant_id = ?', [existing.user_id, req.tenant.id]);
+    }
     await db.run('DELETE FROM contacts WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
-    res.json({ message: 'Contact deleted' });
-  } catch (e) { res.status(500).json({ error: 'Failed to delete contact' }); }
+    res.json({ message: 'Contact removed' });
+  } catch (e) { res.status(500).json({ error: 'Failed to remove contact' }); }
 });
 
 // ============================================
