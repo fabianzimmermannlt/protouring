@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, Check, X, Loader2, ChevronDown, ChevronRight, ClipboardList } from 'lucide-react'
+// Check imported for area rename confirm button only
 import { getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole } from '@/lib/api-client'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
@@ -184,19 +185,6 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
     finally { setSaving(false) }
   }
 
-  const handleToggleStatus = async (entry: Entry) => {
-    const newStatus: EntryStatus = entry.status === 'open' ? 'resolved' : 'open'
-    try {
-      await fetch(`${API_BASE}/api/termine/${terminId}/advancing/areas/${entry.area_id}/entries/${entry.id}`, {
-        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status: newStatus }),
-      })
-      setEntriesByArea(prev => ({
-        ...prev,
-        [entry.area_id]: prev[entry.area_id].map(e => e.id === entry.id ? { ...e, status: newStatus } : e),
-      }))
-    } catch { /* silent */ }
-  }
-
   const handleSaveEntry = async () => {
     if (!editingEntry || !editForm.title.trim()) return
     setSaving(true)
@@ -331,25 +319,11 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                               </div>
                             </div>
                           ) : (
-                            <div className={`group flex items-start gap-2 py-1 ${entry.status === 'resolved' ? 'opacity-55' : ''}`}>
-                              {/* Status toggle */}
-                              {canEdit ? (
-                                <button
-                                  onClick={() => handleToggleStatus(entry)}
-                                  title={entry.status === 'open' ? 'Als geklärt markieren' : 'Wieder öffnen'}
-                                  className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-colors ${entry.status === 'resolved' ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-green-400'}`}
-                                >
-                                  {entry.status === 'resolved' && <Check className="w-2 h-2 text-white" />}
-                                </button>
-                              ) : (
-                                <div className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${entry.status === 'resolved' ? 'bg-green-500 border-green-500' : 'border-gray-200'}`}>
-                                  {entry.status === 'resolved' && <Check className="w-2 h-2 text-white" />}
-                                </div>
-                              )}
+                            <div className="group flex items-start gap-2 py-1">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <EntryBadge type={entry.type} />
-                                  <span className={`text-xs font-medium leading-tight ${entry.status === 'resolved' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{entry.title}</span>
+                                  <span className="text-xs font-medium leading-tight text-gray-800">{entry.title}</span>
                                 </div>
                                 {entry.details && (
                                   <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{entry.details}</p>
