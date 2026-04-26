@@ -2532,6 +2532,30 @@ app.patch('/api/files/:fileId', authenticateToken, requireTenant, requireEditor,
 // CHAT
 // ============================================================
 
+// GET /api/chat/recent?hours=48  → Letzte Nachrichten aus allen Termin-Chats (für Schreibtisch)
+app.get('/api/chat/recent', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const hours = Math.min(parseInt(req.query.hours) || 48, 168); // max 7 Tage
+    const messages = await db.all(
+      `SELECT
+         cm.id, cm.entity_id, cm.user_id, cm.user_name, cm.text, cm.created_at,
+         t.title as termin_title, t.date as termin_date, t.city as termin_city
+       FROM chat_messages cm
+       LEFT JOIN termine t ON t.id = CAST(cm.entity_id AS INTEGER) AND t.tenant_id = cm.tenant_id
+       WHERE cm.tenant_id = ?
+         AND cm.entity_type = 'termin'
+         AND cm.created_at >= datetime('now', '-' || ? || ' hours')
+       ORDER BY cm.created_at DESC
+       LIMIT 50`,
+      [req.tenant.id, hours]
+    );
+    res.json({ messages });
+  } catch (err) {
+    console.error('GET /api/chat/recent error:', err);
+    res.status(500).json({ error: 'Failed to get recent messages' });
+  }
+});
+
 // GET /api/chat/:entityType/:entityId?since=<id>  → Nachrichten laden
 app.get('/api/chat/:entityType/:entityId', authenticateToken, requireTenant, async (req, res) => {
   try {

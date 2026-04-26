@@ -9,6 +9,7 @@ import ContentBoard from '@/app/components/shared/ContentBoard'
 import GlobalTodoOverview from '@/app/components/shared/GlobalTodoOverview'
 import { getCurrentUser, getCurrentTenant, getMyContact, getMyRole, updateMyContact, changeMyPassword, isAdminRole, isEditorRole, getEffectiveRole, updateCurrentTenantRole, canDo, CAN_EDIT_ANKUENDIGUNG, ROLE_LABELS, type TenantRole } from '@/lib/api-client'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
+import RecentChatMessages from '@/app/components/shared/RecentChatMessages'
 
 // Helper functions for localStorage (user-scoped keys)
 const loadFromFile = async (key: string): Promise<string | null> => {
@@ -402,6 +403,12 @@ export default function SchreibtischModule() {
             className="h-64"
           />
         </AccordionSection>
+
+        <AccordionSection title="Letzte Nachrichten (Termine)" defaultOpen stateKey="desk_recent_chat">
+          <div className="p-1">
+            <RecentChatMessages currentUserId={currentUser?.id} hideHeader />
+          </div>
+        </AccordionSection>
       </div>
 
       {/* ── DESKTOP: Grid ── */}
@@ -533,7 +540,7 @@ export default function SchreibtischModule() {
       </div>
 
       {/* Zeile 2: 4 Spalten */}
-      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
         {/* ALLGEMEINE KONVERSATION Section */}
         <div className="pt-card h-[400px] flex flex-col">
@@ -587,6 +594,13 @@ export default function SchreibtischModule() {
             defaultContent={{ title: 'Persönliche Notizen', content: '' }}
             className="flex-1"
           />
+        </div>
+      </div>
+
+      {/* Zeile 3: Letzte Nachrichten */}
+      <div className="hidden md:grid grid-cols-1 gap-4 mb-4">
+        <div className="pt-card">
+          <RecentChatMessages currentUserId={currentUser?.id} />
         </div>
       </div>
 
