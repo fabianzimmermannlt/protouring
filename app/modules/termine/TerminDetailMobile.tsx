@@ -7,6 +7,8 @@ import HotelCard from './HotelCard'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
 import CateringCard from './CateringCard'
+import AdvancingCard from './AdvancingCard'
+import SonstigesCard from './SonstigesCard'
 import TerminChatCard from './TerminChatCard'
 import TerminFileCard from './TerminFileCard'
 import ToDoCard from './ToDoCard'
@@ -144,7 +146,17 @@ export default function TerminDetailMobile({
         <CateringCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
-      {/* ── 4. Spielstätte & Partner ────────────────────── */}
+      {/* ── 4. Advancing ────────────────────────────────── */}
+      <Section title="Advancing" stateKey="termin_advancing">
+        <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── 5. Sonstiges ────────────────────────────────── */}
+      <Section title="Sonstiges" stateKey="termin_sonstiges">
+        <SonstigesCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── 7. Spielstätte & Partner ────────────────────── */}
       <Section title="Spielstätte & Partner" stateKey="termin_spielstaette">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm px-4 py-3">
           <dt className="text-gray-400 font-medium">Spielstätte</dt>
@@ -160,24 +172,24 @@ export default function TerminDetailMobile({
         </dl>
       </Section>
 
-      {/* ── 5. Lokale Kontakte ──────────────────────────── */}
+      {/* ── 8. Lokale Kontakte ──────────────────────────── */}
       <Section title="Lokale Kontakte" stateKey="termin_kontakte">
         <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
-      {/* ── 6. Aufgaben ─────────────────────────────────── */}
+      {/* ── 9. Aufgaben ─────────────────────────────────── */}
       <Section title="Aufgaben" defaultOpen stateKey="termin_aufgaben">
         <ToDoCard terminId={termin.id} />
       </Section>
 
-      {/* ── 7. Dateien ──────────────────────────────────── */}
+      {/* ── 10. Dateien ─────────────────────────────────── */}
       {canSeeFiles && (
         <Section title="Dateien" stateKey="termin_dateien">
           <TerminFileCard terminId={String(termin.id)} />
         </Section>
       )}
 
-      {/* ── 8. Private Notiz ────────────────────────────── */}
+      {/* ── 11. Private Notiz ───────────────────────────── */}
       <Section title="Private Notiz" stateKey="termin_notiz">
         <div className="p-3">
           <ContentBoard
@@ -195,7 +207,7 @@ export default function TerminDetailMobile({
         </div>
       </Section>
 
-      {/* ── 9. Chat ─────────────────────────────────────── */}
+      {/* ── 12. Chat ────────────────────────────────────── */}
       <Section title="Chat" stateKey="termin_chat">
         <TerminChatCard terminId={termin.id} hideHeader />
       </Section>
