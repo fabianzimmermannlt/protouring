@@ -1933,54 +1933,6 @@ app.get('/api/venues/:id/shows', authenticateToken, requireTenant, async (req, r
 });
 
 // ============================================
-// ROUTES: FLIGHTS (OpenSky proxy — avoids browser CORS)
-// ============================================
-
-app.get('/api/flights/live', authenticateToken, async (req, res) => {
-  const { begin, end } = req.query;
-  if (!begin || !end) return res.status(400).json({ error: 'begin und end erforderlich' });
-  const b = parseInt(begin, 10);
-  const e = parseInt(end, 10);
-  if (isNaN(b) || isNaN(e) || e - b > 7200) {
-    return res.status(400).json({ error: 'Zeitfenster max. 2 Stunden' });
-  }
-
-  // OpenSky credentials (optional — free registration at opensky-network.org)
-  const osUser = process.env.OPENSKY_USER;
-  const osPass = process.env.OPENSKY_PASS;
-  const headers = {};
-  if (osUser && osPass) {
-    headers['Authorization'] = 'Basic ' + Buffer.from(`${osUser}:${osPass}`).toString('base64');
-  }
-
-  if (!osUser || !osPass) {
-    return res.status(503).json({
-      error: 'OpenSky-Zugangsdaten fehlen. Bitte OPENSKY_USER und OPENSKY_PASS in der .env setzen (kostenlose Registrierung auf opensky-network.org).'
-    });
-  }
-
-  try {
-    const upstream = await fetch(
-      `https://opensky-network.org/api/flights/all?begin=${b}&end=${e}`,
-      { headers, signal: AbortSignal.timeout(12_000) }
-    );
-    if (!upstream.ok) {
-      const msg = upstream.status === 404
-        ? 'Keine Flugdaten für diesen Zeitraum gefunden (Flug noch nicht gestartet oder zu alt)'
-        : upstream.status === 401
-        ? 'OpenSky: Zugangsdaten ungültig'
-        : `OpenSky: HTTP ${upstream.status}`;
-      return res.status(upstream.status).json({ error: msg });
-    }
-    const data = await upstream.json();
-    res.json(data);
-  } catch (err) {
-    console.error('OpenSky proxy error:', err);
-    res.status(502).json({ error: 'OpenSky nicht erreichbar' });
-  }
-});
-
-// ============================================
 // ROUTES: CONTACTS
 // ============================================
 
