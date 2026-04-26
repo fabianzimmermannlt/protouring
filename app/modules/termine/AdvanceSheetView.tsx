@@ -16,7 +16,9 @@ const ADVANCE_SECTIONS_DEFAULT: { key: string; label: string; desc: string }[] =
   { key: 'hotel',       label: 'Hotel',             desc: 'Hotelbelegung mit Zimmern' },
   { key: 'travelparty', label: 'Reisegruppe',       desc: 'Alle Crew-Mitglieder mit Funktionen' },
   { key: 'catering',    label: 'Catering',          desc: 'Art, Kontakt, Bestellungen' },
+  { key: 'advancing',   label: 'Advancing',         desc: 'Abgesprochene Details & Abweichungen pro Bereich' },
   { key: 'todos',       label: 'Aufgaben',          desc: 'Offene TODOs (ohne erledigte)' },
+  { key: 'sonstiges',   label: 'Sonstiges',         desc: 'Freie Notizen & sonstige Infos' },
 ]
 
 // ── Call Sheet ────────────────────────────────────────────────────────────────
@@ -28,6 +30,7 @@ const CALL_SECTIONS_DEFAULT: { key: string; label: string; desc: string }[] = [
   { key: 'hotel',       label: 'Hotel',             desc: 'Wo schlafen wir, Zimmerbelegung' },
   { key: 'catering',    label: 'Catering',          desc: 'Essen, Buyout, Bestellungen' },
   { key: 'contacts',    label: 'Lokale Kontakte',   desc: 'Ansprechpartner vor Ort' },
+  { key: 'sonstiges',   label: 'Sonstiges',         desc: 'Freie Notizen & sonstige Infos' },
 ]
 
 type Section = { key: string; label: string; desc: string }

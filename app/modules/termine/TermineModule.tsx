@@ -19,6 +19,7 @@ import TerminChatCard from './TerminChatCard'
 import ToDoCard from './ToDoCard'
 import CateringCard from './CateringCard'
 import AdvancingCard from './AdvancingCard'
+import SonstigesCard from './SonstigesCard'
 import {
   getTermine,
   createTermin,
@@ -769,7 +770,7 @@ export function TerminDetail({
           <CateringCard terminId={termin.id} isAdmin={isAdmin} />
           <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
           <PlaceholderCard title="Setlist" />
-          <PlaceholderCard title="Sonstiges" />
+          <SonstigesCard terminId={termin.id} isAdmin={isAdmin} />
         </div>
 
       </div>

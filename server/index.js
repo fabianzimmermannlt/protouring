@@ -4142,6 +4142,29 @@ app.get('/api/termine/:terminId/advance-sheet/pdf', async (req, res) => {
       }));
     }
 
+    // Advancing
+    if (sections.includes('advancing')) {
+      const areas = await db.all(
+        'SELECT * FROM advancing_areas WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC',
+        [terminId, tenant.id]
+      );
+      data.advancing = await Promise.all(areas.map(async area => {
+        const entries = await db.all(
+          'SELECT * FROM advancing_entries WHERE area_id = ? ORDER BY sort_order ASC, id ASC',
+          [area.id]
+        );
+        return { ...area, entries };
+      }));
+    }
+
+    // Sonstiges (boards)
+    if (sections.includes('sonstiges')) {
+      data.sonstiges = await db.all(
+        `SELECT * FROM boards WHERE entity_type = 'termin_sonstiges' AND entity_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC`,
+        [String(terminId), tenant.id]
+      );
+    }
+
     const { generateAdvanceSheetPdf } = require('./generate_advance_sheet');
     const pdf = await generateAdvanceSheetPdf({ termin, sections, data });
 
@@ -4216,6 +4239,14 @@ app.get('/api/termine/:terminId/call-sheet/pdf', async (req, res) => {
     }
     if (sections.includes('contacts')) {
       data.localContacts = await db.all('SELECT * FROM termin_contacts WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC', [terminId, tenant.id]);
+    }
+
+    // Sonstiges (boards)
+    if (sections.includes('sonstiges')) {
+      data.sonstiges = await db.all(
+        `SELECT * FROM boards WHERE entity_type = 'termin_sonstiges' AND entity_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC`,
+        [String(terminId), tenant.id]
+      );
     }
 
     const { generateCallSheetPdf } = require('./generate_call_sheet');

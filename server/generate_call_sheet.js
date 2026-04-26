@@ -350,6 +350,26 @@ function generateCallSheetPdf({ termin, sections, data }) {
       y += 4;
     }
 
+    function renderSonstiges() {
+      if (!data.sonstiges?.length) return;
+      sectionHeader('SONSTIGES');
+      for (const item of data.sonstiges) {
+        ensureSpace(18);
+        if (item.title) {
+          doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK).text(item.title, MARGIN_H, y, { width: CONTENT_W });
+          y = doc.y + 2;
+        }
+        if (item.content) {
+          const plain = stripHtml(item.content);
+          if (plain) {
+            doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID).text(plain, MARGIN_H, y, { width: CONTENT_W });
+            y = doc.y + 3;
+          }
+        }
+        y += 4;
+      }
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // RENDER — Reihenfolge aus sections-Array
     // ══════════════════════════════════════════════════════════════════════════
@@ -360,6 +380,7 @@ function generateCallSheetPdf({ termin, sections, data }) {
       hotel:       renderHotel,
       catering:    renderCatering,
       contacts:    renderContacts,
+      sonstiges:   renderSonstiges,
     };
 
     for (const section of sections) {

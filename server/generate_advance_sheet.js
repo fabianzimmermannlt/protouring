@@ -495,6 +495,68 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       }
     }
 
+    // ── ADVANCING ─────────────────────────────────────────────────────────────
+    const ENTRY_TYPE_LABELS = {
+      info: 'Info', abweichung: 'Abweichung', absprache: 'Absprache',
+      bestaetigung: 'Bestätigung', problem: 'Problem',
+    };
+    if (has('advancing') && data.advancing && data.advancing.length > 0) {
+      sectionTitle('Advancing');
+      for (const area of data.advancing) {
+        if (!area.entries || area.entries.length === 0) continue;
+        ensureSpace(20);
+        // Bereich-Header
+        doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_MID)
+          .text(area.name.toUpperCase(), MARGIN_H, y, { width: CONTENT_W });
+        y += 13;
+        doc.moveTo(MARGIN_H, y - 2).lineTo(MARGIN_H + CONTENT_W, y - 2)
+          .lineWidth(0.3).strokeColor(C_RULE_L).stroke();
+        for (const entry of area.entries) {
+          ensureSpace(20);
+          const typeLabel = ENTRY_TYPE_LABELS[entry.type] || entry.type || '';
+          // Badge + Titel
+          const badgeW = typeLabel ? doc.widthOfString(`[${typeLabel}]`, { fontSize: 7.5 }) + 4 : 0;
+          if (typeLabel) {
+            doc.font(FONT_BOLD).fontSize(7.5).fillColor(C_MUTED)
+              .text(`[${typeLabel}]`, MARGIN_H, y + 1, { width: badgeW, lineBreak: false });
+          }
+          doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
+            .text(entry.title, MARGIN_H + badgeW + (badgeW ? 4 : 0), y, { width: CONTENT_W - badgeW - (badgeW ? 4 : 0) });
+          y += 13;
+          if (entry.details) {
+            const detailsText = stripHtml(entry.details);
+            doc.font(FONT_REG).fontSize(8).fillColor(C_MID)
+              .text(detailsText, MARGIN_H + 8, y, { width: CONTENT_W - 8 });
+            y += doc.heightOfString(detailsText, { width: CONTENT_W - 8, fontSize: 8 }) + 2;
+          }
+          spacer(3);
+        }
+        spacer(4);
+      }
+    }
+
+    // ── SONSTIGES ─────────────────────────────────────────────────────────────
+    if (has('sonstiges') && data.sonstiges && data.sonstiges.length > 0) {
+      sectionTitle('Sonstiges');
+      for (const item of data.sonstiges) {
+        ensureSpace(20);
+        if (item.title) {
+          doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
+            .text(item.title, MARGIN_H, y, { width: CONTENT_W });
+          y += 13;
+        }
+        if (item.content) {
+          const plain = stripHtml(item.content);
+          if (plain) {
+            doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID)
+              .text(plain, MARGIN_H, y, { width: CONTENT_W });
+            y += doc.heightOfString(plain, { width: CONTENT_W, fontSize: 8.5 }) + 3;
+          }
+        }
+        spacer(4);
+      }
+    }
+
     doc.end();
   });
 }
