@@ -8,9 +8,10 @@ import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
+  getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
   initEquipmentKuerzel,
   canDo, getEffectiveRole,
-  type EquipmentCategory, type EquipmentItem, type EquipmentMaterial,
+  type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -192,53 +193,102 @@ function ItemModal({ item, categories, onSave, onClose }: {
 
 // ── Material-Modal ────────────────────────────────────────────────────────────
 
-function MaterialModal({ mat, items, categories, onSave, onClose }: {
+function MaterialModal({ mat, categories, onSave, onClose }: {
   mat: EquipmentMaterial | null
-  items: EquipmentItem[]
   categories: EquipmentCategory[]
-  onSave: (data: Partial<EquipmentMaterial>) => Promise<void>
+  onSave: (data: Partial<EquipmentMaterial>) => Promise<number> // returns material id
   onClose: () => void
 }) {
   const [form, setForm] = useState({
-    hersteller:            mat?.hersteller ?? '',
-    produkt:               mat?.produkt ?? '',
-    info:                  mat?.info ?? '',
-    category_id:           mat?.category_id != null ? String(mat.category_id) : '',
-    typ:                   mat?.typ ?? 'bulk',
-    herstellungsland:      mat?.herstellungsland ?? '',
-    wert_zeitwert:         mat?.wert_zeitwert != null ? String(mat.wert_zeitwert) : '',
+    hersteller:             mat?.hersteller ?? '',
+    produkt:                mat?.produkt ?? '',
+    info:                   mat?.info ?? '',
+    category_id:            mat?.category_id != null ? String(mat.category_id) : '',
+    typ:                    mat?.typ ?? 'bulk',
+    herstellungsland:       mat?.herstellungsland ?? '',
+    wert_zeitwert:          mat?.wert_zeitwert != null ? String(mat.wert_zeitwert) : '',
     wert_wiederbeschaffung: mat?.wert_wiederbeschaffung != null ? String(mat.wert_wiederbeschaffung) : '',
-    waehrung:              mat?.waehrung ?? 'EUR',
-    gewicht_kg:            mat?.gewicht_kg != null ? String(mat.gewicht_kg) : '',
-    anschaffungsdatum:     mat?.anschaffungsdatum ?? '',
-    notiz:                 mat?.notiz ?? '',
+    waehrung:               mat?.waehrung ?? 'EUR',
+    gewicht_kg:             mat?.gewicht_kg != null ? String(mat.gewicht_kg) : '',
+    anschaffungsdatum:      mat?.anschaffungsdatum ?? '',
+    notiz:                  mat?.notiz ?? '',
   })
+
+  // Seriennummern-Verwaltung
+  const [existingUnits, setExistingUnits] = useState<EquipmentMaterialUnit[]>([])
+  const [newSerials, setNewSerials] = useState<string[]>(['']) // neue Eingabefelder
+  const [deletedUnitIds, setDeletedUnitIds] = useState<number[]>([])
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+
+  // Bestehende Units laden (nur beim Bearbeiten eines Serienartikels)
+  useEffect(() => {
+    if (mat && mat.typ === 'serial') {
+      getMaterialUnits(mat.id).then(setExistingUnits).catch(() => {})
+    }
+  }, [mat])
+
+  // Typ-Wechsel: Inputs zurücksetzen
+  const handleTypChange = (t: 'bulk' | 'serial') => {
+    setForm(f => ({ ...f, typ: t }))
+    setNewSerials([''])
+    setErr('')
+  }
 
   const n = (v: string) => v === '' ? null : parseFloat(v)
 
   const handle = async () => {
     if (!form.produkt.trim()) { setErr('Produkt ist Pflicht'); return }
+
+    // Neue Serials validieren (darf keine Duplikate haben)
+    const filled = newSerials.map(s => s.trim()).filter(Boolean)
+    if (form.typ === 'serial' && filled.length > 0) {
+      const dupes = filled.filter((s, i) => filled.indexOf(s) !== i)
+      if (dupes.length > 0) { setErr(`Doppelte Seriennummer: ${dupes[0]}`); return }
+    }
+
     setSaving(true)
     try {
-      await onSave({
-        hersteller:            form.hersteller || null,
-        produkt:               form.produkt.trim(),
-        info:                  form.info || null,
-        category_id:           form.category_id ? Number(form.category_id) : null,
-        typ:                   form.typ as 'serial' | 'bulk',
-        herstellungsland:      form.herstellungsland || null,
-        wert_zeitwert:         n(form.wert_zeitwert),
+      const matId = await onSave({
+        hersteller:             form.hersteller || null,
+        produkt:                form.produkt.trim(),
+        info:                   form.info || null,
+        category_id:            form.category_id ? Number(form.category_id) : null,
+        typ:                    form.typ as 'serial' | 'bulk',
+        herstellungsland:       form.herstellungsland || null,
+        wert_zeitwert:          n(form.wert_zeitwert),
         wert_wiederbeschaffung: n(form.wert_wiederbeschaffung),
-        waehrung:              form.waehrung,
-        gewicht_kg:            n(form.gewicht_kg),
-        anschaffungsdatum:     form.anschaffungsdatum || null,
-        notiz:                 form.notiz || null,
+        waehrung:               form.waehrung,
+        gewicht_kg:             n(form.gewicht_kg),
+        anschaffungsdatum:      form.anschaffungsdatum || null,
+        notiz:                  form.notiz || null,
       })
+
+      // Units löschen
+      await Promise.all(deletedUnitIds.map(id => deleteMaterialUnit(id)))
+
+      // Neue Units anlegen
+      if (form.typ === 'serial') {
+        await Promise.all(filled.map(s => createMaterialUnit(matId, { seriennummer: s })))
+      }
+
       onClose()
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
   }
+
+  const removeExisting = (unitId: number) => {
+    setDeletedUnitIds(p => [...p, unitId])
+    setExistingUnits(p => p.filter(u => u.id !== unitId))
+  }
+
+  const updateSerial = (idx: number, val: string) => {
+    setNewSerials(p => { const n = [...p]; n[idx] = val; return n })
+  }
+
+  const addSerial = () => setNewSerials(p => [...p, ''])
+
+  const removeSerial = (idx: number) =>
+    setNewSerials(p => p.length > 1 ? p.filter((_, i) => i !== idx) : [''])
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -248,6 +298,8 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
         <div className="modal-body space-y-4">
+
+          {/* Basisfelder */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Hersteller</label>
@@ -275,7 +327,7 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
               <div className="flex gap-2 mt-1">
                 {(['bulk', 'serial'] as const).map(t => (
                   <button key={t} type="button"
-                    onClick={() => setForm({...form, typ: t})}
+                    onClick={() => handleTypChange(t)}
                     className={`flex-1 py-1.5 text-sm rounded border font-medium transition-colors ${
                       form.typ === t ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300 hover:bg-gray-50'
                     }`}>
@@ -283,18 +335,78 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
-                {form.typ === 'bulk' ? 'Anzahl pro Case festlegbar (z.B. XLR Kabel)' : 'Seriennummern werden separat gepflegt'}
-              </p>
             </div>
           </div>
+
+          {/* Seriennummern-Bereich */}
+          {form.typ === 'serial' && (
+            <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Seriennummern</p>
+
+              {/* Bestehende */}
+              {existingUnits.map(u => (
+                <div key={u.id} className="flex items-center gap-2">
+                  <span className={`flex-1 font-mono text-sm px-2 py-1.5 rounded border ${
+                    u.in_case_id
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-700'
+                  }`}>
+                    {u.seriennummer}
+                    {u.in_case_id && (
+                      <span className="ml-2 text-xs text-blue-400 font-sans">→ {u.in_case_id}</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeExisting(u.id)}
+                    disabled={!!u.in_case_id}
+                    title={u.in_case_id ? `In Case ${u.in_case_id} — nicht löschbar` : 'Löschen'}
+                    className="p-1 text-gray-300 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Neue Eingabefelder */}
+              {newSerials.map((s, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    className="form-input font-mono flex-1"
+                    value={s}
+                    onChange={e => updateSerial(idx, e.target.value)}
+                    placeholder="Seriennummer eingeben…"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSerial(idx)}
+                    className="p-1 text-gray-300 hover:text-red-500"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+
+              {/* + Zeile hinzufügen */}
+              <button
+                type="button"
+                onClick={addSerial}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium pt-1"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                Weitere Seriennummer
+              </button>
+            </div>
+          )}
+
+          {/* Technische Felder */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Herstellungsland</label>
               <input className="form-input" value={form.herstellungsland} onChange={e => setForm({...form, herstellungsland: e.target.value})} placeholder="z.B. DE, US" />
             </div>
             <div>
-              <label className="form-label">Gewicht (kg, pro Stück)</label>
+              <label className="form-label">Gewicht kg/Stk</label>
               <input type="number" className="form-input" value={form.gewicht_kg} onChange={e => setForm({...form, gewicht_kg: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
@@ -309,7 +421,7 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
               </select>
             </div>
             <div>
-              <label className="form-label">Zeitwert</label>
+              <label className="form-label">Zeitwert/Stk</label>
               <input type="number" className="form-input" value={form.wert_zeitwert} onChange={e => setForm({...form, wert_zeitwert: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
             <div>
@@ -685,12 +797,18 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       {matModal.open && (
         <MaterialModal
           mat={matModal.mat}
-          items={items}
           categories={categories}
           onSave={async data => {
-            if (matModal.mat) await updateEquipmentMaterial(matModal.mat.id, data)
-            else await createEquipmentMaterial(data)
+            let id: number
+            if (matModal.mat) {
+              await updateEquipmentMaterial(matModal.mat.id, data)
+              id = matModal.mat.id
+            } else {
+              const m = await createEquipmentMaterial(data)
+              id = m.id
+            }
             load()
+            return id
           }}
           onClose={() => setMatModal({ open: false, mat: null })}
         />
