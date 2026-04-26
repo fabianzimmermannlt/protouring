@@ -1878,7 +1878,7 @@ export const EDITOR_ROLES: TenantRole[] = CAN_EDIT
 export const CAN_MANAGE: TenantRole[] = ['admin', 'agency']
 
 /** Kann neuen Termin anlegen */
-export const CAN_CREATE_TERMIN: TenantRole[] = ['admin', 'agency']
+export const CAN_CREATE_TERMIN: TenantRole[] = ['admin', 'agency', 'tourmanagement']
 
 /** Kann Ankündigung auf dem Schreibtisch bearbeiten */
 export const CAN_EDIT_ANKUENDIGUNG: TenantRole[] = ['admin', 'agency']
