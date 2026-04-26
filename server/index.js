@@ -932,6 +932,33 @@ async function initDatabase() {
     )
   `)
 
+  // Advancing
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS advancing_areas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS advancing_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      area_id INTEGER NOT NULL REFERENCES advancing_areas(id) ON DELETE CASCADE,
+      type TEXT NOT NULL DEFAULT 'info',
+      title TEXT NOT NULL,
+      details TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
   const utSchema = await db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_tenants'")
   if (utSchema && utSchema.sql && utSchema.sql.includes("'owner'")) {
@@ -4518,6 +4545,112 @@ app.delete('/api/termine/:terminId/catering/orders/:orderId', authenticateToken,
     await db.run('DELETE FROM termin_catering_orders WHERE id=? AND tenant_id=?', [req.params.orderId, req.tenant.id])
     res.json({ success: true })
   } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// ============================================
+// ROUTES: ADVANCING
+// ============================================
+
+// GET all areas for a termin
+app.get('/api/termine/:terminId/advancing/areas', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const areas = await db.all(
+      `SELECT a.*, COUNT(e.id) as entry_count
+       FROM advancing_areas a
+       LEFT JOIN advancing_entries e ON e.area_id = a.id
+       WHERE a.tenant_id = ? AND a.termin_id = ?
+       GROUP BY a.id ORDER BY a.sort_order, a.created_at`,
+      [req.tenant.id, req.params.terminId]
+    )
+    res.json({ areas })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST create area
+app.post('/api/termine/:terminId/advancing/areas', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name, sort_order = 0 } = req.body
+    if (!name?.trim()) return res.status(400).json({ error: 'Name fehlt' })
+    const result = await db.run(
+      `INSERT INTO advancing_areas (tenant_id, termin_id, name, sort_order, created_by) VALUES (?,?,?,?,?)`,
+      [req.tenant.id, req.params.terminId, name.trim(), sort_order, req.user.id]
+    )
+    const area = await db.get('SELECT * FROM advancing_areas WHERE id=?', [result.lastID])
+    res.status(201).json({ area })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT update area (rename / reorder)
+app.put('/api/termine/:terminId/advancing/areas/:areaId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name, sort_order } = req.body
+    await db.run(
+      `UPDATE advancing_areas SET name=COALESCE(?,name), sort_order=COALESCE(?,sort_order) WHERE id=? AND tenant_id=?`,
+      [name ?? null, sort_order ?? null, req.params.areaId, req.tenant.id]
+    )
+    const area = await db.get('SELECT * FROM advancing_areas WHERE id=?', [req.params.areaId])
+    res.json({ area })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE area (cascades entries)
+app.delete('/api/termine/:terminId/advancing/areas/:areaId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run('DELETE FROM advancing_areas WHERE id=? AND tenant_id=?', [req.params.areaId, req.tenant.id])
+    res.json({ message: 'ok' })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET entries for area
+app.get('/api/termine/:terminId/advancing/areas/:areaId/entries', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const entries = await db.all(
+      `SELECT e.*, u.first_name, u.last_name FROM advancing_entries e
+       LEFT JOIN users u ON u.id = e.created_by
+       WHERE e.area_id=? AND e.tenant_id=? ORDER BY e.created_at`,
+      [req.params.areaId, req.tenant.id]
+    )
+    res.json({ entries })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST create entry
+app.post('/api/termine/:terminId/advancing/areas/:areaId/entries', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { type = 'info', title, details = '', status = 'open' } = req.body
+    if (!title?.trim()) return res.status(400).json({ error: 'Titel fehlt' })
+    const result = await db.run(
+      `INSERT INTO advancing_entries (tenant_id, area_id, type, title, details, status, created_by) VALUES (?,?,?,?,?,?,?)`,
+      [req.tenant.id, req.params.areaId, type, title.trim(), details, status, req.user.id]
+    )
+    const entry = await db.get('SELECT * FROM advancing_entries WHERE id=?', [result.lastID])
+    res.status(201).json({ entry })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT update entry
+app.put('/api/termine/:terminId/advancing/areas/:areaId/entries/:entryId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { type, title, details, status } = req.body
+    await db.run(
+      `UPDATE advancing_entries SET
+         type=COALESCE(?,type), title=COALESCE(?,title),
+         details=COALESCE(?,details), status=COALESCE(?,status),
+         updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND tenant_id=?`,
+      [type ?? null, title ?? null, details ?? null, status ?? null, req.params.entryId, req.tenant.id]
+    )
+    const entry = await db.get('SELECT * FROM advancing_entries WHERE id=?', [req.params.entryId])
+    res.json({ entry })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE entry
+app.delete('/api/termine/:terminId/advancing/areas/:areaId/entries/:entryId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run('DELETE FROM advancing_entries WHERE id=? AND tenant_id=?', [req.params.entryId, req.tenant.id])
+    res.json({ message: 'ok' })
+  } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // ============================================

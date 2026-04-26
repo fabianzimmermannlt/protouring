@@ -18,6 +18,7 @@ import ContentBoard from '@/app/components/shared/ContentBoard'
 import TerminChatCard from './TerminChatCard'
 import ToDoCard from './ToDoCard'
 import CateringCard from './CateringCard'
+import AdvancingCard from './AdvancingCard'
 import {
   getTermine,
   createTermin,
@@ -766,8 +767,9 @@ export function TerminDetail({
         <div className="flex flex-col gap-4">
           <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
           <CateringCard terminId={termin.id} isAdmin={isAdmin} />
-          <PlaceholderCard title="Sonstiges" />
+          <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
           <PlaceholderCard title="Setlist" />
+          <PlaceholderCard title="Sonstiges" />
         </div>
 
       </div>
