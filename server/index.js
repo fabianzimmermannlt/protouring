@@ -1944,13 +1944,33 @@ app.get('/api/flights/live', authenticateToken, async (req, res) => {
   if (isNaN(b) || isNaN(e) || e - b > 7200) {
     return res.status(400).json({ error: 'Zeitfenster max. 2 Stunden' });
   }
+
+  // OpenSky credentials (optional — free registration at opensky-network.org)
+  const osUser = process.env.OPENSKY_USER;
+  const osPass = process.env.OPENSKY_PASS;
+  const headers = {};
+  if (osUser && osPass) {
+    headers['Authorization'] = 'Basic ' + Buffer.from(`${osUser}:${osPass}`).toString('base64');
+  }
+
+  if (!osUser || !osPass) {
+    return res.status(503).json({
+      error: 'OpenSky-Zugangsdaten fehlen. Bitte OPENSKY_USER und OPENSKY_PASS in der .env setzen (kostenlose Registrierung auf opensky-network.org).'
+    });
+  }
+
   try {
     const upstream = await fetch(
       `https://opensky-network.org/api/flights/all?begin=${b}&end=${e}`,
-      { signal: AbortSignal.timeout(12_000) }
+      { headers, signal: AbortSignal.timeout(12_000) }
     );
     if (!upstream.ok) {
-      return res.status(upstream.status).json({ error: `OpenSky: HTTP ${upstream.status}` });
+      const msg = upstream.status === 404
+        ? 'Keine Flugdaten für diesen Zeitraum gefunden (Flug noch nicht gestartet oder zu alt)'
+        : upstream.status === 401
+        ? 'OpenSky: Zugangsdaten ungültig'
+        : `OpenSky: HTTP ${upstream.status}`;
+      return res.status(upstream.status).json({ error: msg });
     }
     const data = await upstream.json();
     res.json(data);
