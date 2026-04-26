@@ -1,6 +1,6 @@
 'use client'
 
-import { getEffectiveRole } from '@/lib/api-client'
+import { getEffectiveRole, type TenantRole } from '@/lib/api-client'
 
 export interface SubNavigationItem {
   id: string
@@ -15,15 +15,25 @@ export interface SubNavigationProps {
   maxWidth?: string
 }
 
-const platformSubItems: SubNavigationItem[] = [
-  { id: 'profil',        name: 'MEIN PROFIL',         description: 'Profil & Passwort' },
-  { id: 'permissions',   name: 'BERECHTIGUNGEN',      description: 'User-Berechtigungen' },
-  { id: 'appearance',    name: 'DARSTELLUNG',          description: 'Aussehen & Layout' },
-  { id: 'notifications', name: 'BENACHRICHTIGUNGEN',   description: 'Benachrichtigungseinstellungen' },
-  { id: 'contacts',      name: 'KONTAKTE',             description: 'Kontaktverwaltung' },
-  { id: 'guestlist',     name: 'GÄSTELISTE',           description: 'Gästenliste & VIPs' },
-  { id: 'daysheet',      name: 'DAYSHEET',             description: 'Tagespläne & Routinen' },
-  { id: 'artist',         name: 'ARTIST',              description: 'Artist-Informationen' },
+// Rollen-Zuordnung pro Sub-Tab:
+// profil, appearance, notifications, erste-schritte → alle
+// permissions, contacts, guestlist, daysheet        → Rollen 1–3 (editor)
+// artist                                             → nur admin (Rolle 1)
+const EDITOR_ROLES: TenantRole[] = ['admin', 'agency', 'tourmanagement']
+
+interface SubNavigationItemDef extends SubNavigationItem {
+  allowedRoles?: TenantRole[] // undefined = alle Rollen
+}
+
+const platformSubItems: SubNavigationItemDef[] = [
+  { id: 'profil',         name: 'MEIN PROFIL',        description: 'Profil & Passwort' },
+  { id: 'permissions',    name: 'BERECHTIGUNGEN',     description: 'User-Berechtigungen',          allowedRoles: EDITOR_ROLES },
+  { id: 'appearance',     name: 'DARSTELLUNG',         description: 'Aussehen & Layout' },
+  { id: 'notifications',  name: 'BENACHRICHTIGUNGEN',  description: 'Benachrichtigungseinstellungen' },
+  { id: 'contacts',       name: 'KONTAKTE',            description: 'Kontaktverwaltung',            allowedRoles: EDITOR_ROLES },
+  { id: 'guestlist',      name: 'GÄSTELISTE',          description: 'Gästenliste & VIPs',           allowedRoles: EDITOR_ROLES },
+  { id: 'daysheet',       name: 'DAYSHEET',            description: 'Tagespläne & Routinen',        allowedRoles: EDITOR_ROLES },
+  { id: 'artist',         name: 'ARTIST',              description: 'Artist-Informationen',         allowedRoles: ['admin'] },
   { id: 'erste-schritte', name: 'ERSTE SCHRITTE',      description: 'Hilfe & Übersicht' },
 ]
 
@@ -47,11 +57,10 @@ export function SubNavigation({
 }: SubNavigationProps) {
   if (parentTab !== 'settings') return null
 
-  const isAdmin = getEffectiveRole() === 'admin'
-  const visibleItems = platformSubItems.filter(item => {
-    if (item.id === 'permissions' || item.id === 'artist') return isAdmin
-    return true // alle anderen inkl. 'erste-schritte' für alle Rollen
-  })
+  const role = getEffectiveRole() as TenantRole
+  const visibleItems = platformSubItems.filter(item =>
+    !item.allowedRoles || item.allowedRoles.includes(role)
+  )
 
   return (
     <>

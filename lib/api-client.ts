@@ -1911,7 +1911,7 @@ export const NAV_VISIBLE: Record<string, TenantRole[]> = {
   hotels:       ['admin', 'tourmanagement', 'agency'],
   vehicles:     ['admin', 'tourmanagement', 'agency'],
   templates:    ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
-  settings:     ['admin', 'tourmanagement', 'agency'],
+  settings:     ['admin', 'agency', 'tourmanagement', 'artist', 'crew_plus', 'crew', 'guest'],
   feedback:     ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
 }
 
