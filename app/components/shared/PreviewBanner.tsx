@@ -26,9 +26,13 @@ export default function PreviewBanner() {
     }
   }, [])
 
-  // Nur für echte Admins/Owner sichtbar
-  const isRealAdmin = realRole && ['admin', 'agency', 'tourmanagement'].includes(realRole)
-  if (!isRealAdmin) return null
+  // Nur für Rollen 1–3 sichtbar (4–7 brauchen keinen Preview)
+  const ROLE_ORDER = ['admin', 'agency', 'tourmanagement', 'artist', 'crew_plus', 'crew', 'guest']
+  const realRoleIndex = realRole ? ROLE_ORDER.indexOf(realRole) : -1
+  if (realRoleIndex < 0 || realRoleIndex > 2) return null
+
+  // Nur Rollen ab der eigenen aufwärts anzeigen
+  const availableRoles = ROLE_ORDER.slice(realRoleIndex)
 
   const activate = (role: string) => {
     setPreviewRole(role)
@@ -94,7 +98,7 @@ export default function PreviewBanner() {
               <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.3rem 0.75rem 0.4rem' }}>
                 Ansicht als…
               </div>
-              {Object.entries(ROLE_LABELS).map(([role, label]) => (
+              {availableRoles.map(role => (
                 <button
                   key={role}
                   onClick={() => activate(role)}
@@ -107,7 +111,7 @@ export default function PreviewBanner() {
                   onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                 >
-                  {label}
+                  {(ROLE_LABELS as Record<string, string>)[role]}
                 </button>
               ))}
             </div>
