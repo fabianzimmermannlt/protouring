@@ -16,6 +16,7 @@ import {
   DocumentTextIcon,
   Cog6ToothIcon,
   ChatBubbleLeftRightIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
 import { getTermine, isAuthenticated, canDo, getEffectiveRole, NAV_VISIBLE } from '@/lib/api-client'
 
@@ -27,14 +28,15 @@ interface Props {
 }
 
 const MORE_ITEMS = [
-  { id: 'contacts',  name: 'Kontakte',      icon: UsersIcon },
-  { id: 'venues',    name: 'Venues',         icon: MusicalNoteIcon },
-  { id: 'partners',  name: 'Partner',        icon: BriefcaseIcon },
-  { id: 'hotels',    name: 'Hotels',         icon: BuildingOfficeIcon },
-  { id: 'vehicles',  name: 'Fahrzeuge',      icon: TruckIcon },
-  { id: 'templates', name: 'Vorlagen',       icon: DocumentTextIcon },
-  { id: 'settings',  name: 'Einstellungen',  icon: Cog6ToothIcon },
-  { id: 'feedback',  name: 'Feedback',       icon: ChatBubbleLeftRightIcon },
+  { id: 'contacts',   name: 'Kontakte',      icon: UsersIcon },
+  { id: 'venues',     name: 'Venues',        icon: MusicalNoteIcon },
+  { id: 'partners',   name: 'Partner',       icon: BriefcaseIcon },
+  { id: 'hotels',     name: 'Hotels',        icon: BuildingOfficeIcon },
+  { id: 'vehicles',   name: 'Fahrzeuge',     icon: TruckIcon },
+  { id: 'templates',  name: 'Vorlagen',      icon: DocumentTextIcon },
+  { id: 'equipment',  name: 'Equipment',     icon: WrenchScrewdriverIcon },
+  { id: 'settings',   name: 'Einstellungen', icon: Cog6ToothIcon },
+  { id: 'feedback',   name: 'Feedback',      icon: ChatBubbleLeftRightIcon },
 ]
 
 export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialActiveItem }: Props) {

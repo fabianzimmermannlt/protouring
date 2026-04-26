@@ -17,6 +17,9 @@ import {
   CheckIcon,
   PlusIcon,
   ChatBubbleLeftRightIcon,
+  CircleStackIcon,
+  PuzzlePieceIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
 import { MobileBottomNav } from './MobileBottomNav'
 import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole } from '@/lib/api-client'
@@ -44,16 +47,26 @@ export interface NavigationProps {
   onSubTabChange?: (subTabId: string) => void
 }
 
+// Haupt-Nav-Items (ohne Stammdaten-Gruppe und Module-Gruppe)
 const navigationItems: NavigationItem[] = [
-  { id: 'desk', name: 'SCHREIBTISCH', icon: HomeIcon, description: 'Haupt-Dashboard' },
-  { id: 'appointments', name: 'TERMINE', icon: CalendarDaysIcon, description: 'Termine & Planung' },
-  { id: 'contacts', name: 'KONTAKTE', icon: UsersIcon, description: 'Kontaktverwaltung' },
-  { id: 'venues', name: 'VENUES', icon: MusicalNoteIcon, description: 'Spielstätten & Locations' },
-  { id: 'partners', name: 'PARTNER', icon: BriefcaseIcon, description: 'Partner & Dienstleister' },
-  { id: 'hotels', name: 'HOTELS', icon: BuildingOfficeIcon, description: 'Unterkünfte' },
-  { id: 'vehicles', name: 'FAHRZEUGE', icon: TruckIcon, description: 'Transport & Logistik' },
-  { id: 'templates', name: 'VORLAGEN', icon: DocumentTextIcon, description: 'Dokumentenvorlagen' },
-  { id: 'settings', name: 'EINSTELLUNGEN', icon: Cog6ToothIcon, description: 'Anwendungseinstellungen' },
+  { id: 'desk',         name: 'SCHREIBTISCH',  icon: HomeIcon,         description: 'Haupt-Dashboard' },
+  { id: 'appointments', name: 'TERMINE',        icon: CalendarDaysIcon, description: 'Termine & Planung' },
+  { id: 'contacts',     name: 'KONTAKTE',       icon: UsersIcon,        description: 'Kontaktverwaltung' },
+  { id: 'templates',    name: 'VORLAGEN',       icon: DocumentTextIcon, description: 'Dokumentenvorlagen' },
+  { id: 'settings',     name: 'EINSTELLUNGEN',  icon: Cog6ToothIcon,    description: 'Anwendungseinstellungen' },
+]
+
+// Stammdaten-Gruppe (Dropdown unter STAMMDATEN)
+const STAMMDATEN_CHILDREN = [
+  { id: 'venues',   name: 'Venues',    icon: MusicalNoteIcon },
+  { id: 'partners', name: 'Partner',   icon: BriefcaseIcon },
+  { id: 'hotels',   name: 'Hotels',    icon: BuildingOfficeIcon },
+  { id: 'vehicles', name: 'Fahrzeuge', icon: TruckIcon },
+]
+
+// Module-Gruppe (Addon-Dropdown)
+const MODULE_CHILDREN = [
+  { id: 'equipment', name: 'Equipment', icon: WrenchScrewdriverIcon },
 ]
 
 export function Navigation({
@@ -66,8 +79,9 @@ export function Navigation({
 }: NavigationProps) {
   const [currentTab, setCurrentTab] = useState(activeTab)
 
-  // Prop-Sync: wenn page.tsx activeTab extern ändert (z.B. via navigate-to-termin Event), übernehmen
+  // Prop-Sync
   useEffect(() => { setCurrentTab(activeTab) }, [activeTab])
+
   const [artistName, setArtistName] = useState('')
   const [termineInDetail, setTermineInDetail] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -76,7 +90,7 @@ export function Navigation({
   const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
     if (typeof window === 'undefined') return 'details'
     const parts = window.location.pathname.split('/')
-    const view = parts[3] // /appointments/[id]/[view]
+    const view = parts[3]
     const validViews = ['details', 'travelparty', 'advance-sheet', 'guestlist']
     return (validViews.includes(view) ? view : 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
   })
@@ -87,14 +101,21 @@ export function Navigation({
   })
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showStammdatenDropdown, setShowStammdatenDropdown] = useState(false)
+  const [showModulesDropdown, setShowModulesDropdown] = useState(false)
   const [tenantCount, setTenantCount] = useState(0)
   const [allTenants, setAllTenantsState] = useState<Array<{ id: number; name: string; slug: string; status: string; role: string }>>([])
   const [activeTenantSlug, setActiveTenantSlug] = useState<string | null>(null)
+
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const stammdatenRef = useRef<HTMLDivElement>(null)
+  const modulesRef = useRef<HTMLDivElement>(null)
+
   const currentUser = getCurrentUser()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const router = useRouter()
   const hasMultipleTenants = tenantCount > 1
+  const role = getEffectiveRole()
 
   // Tenant-Liste beim Mount aktualisieren
   useEffect(() => {
@@ -109,42 +130,45 @@ export function Navigation({
       })
       .catch(() => {/* ignore */})
   }, [])
+
   const initials = [currentUser?.firstName, currentUser?.lastName]
     .filter(Boolean)
     .map(n => n![0].toUpperCase())
     .join('') || currentUser?.email?.[0]?.toUpperCase() || '?'
 
-  // Dropdown schließen bei Klick außerhalb
+  // Alle Dropdowns bei Klick außerhalb schließen
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false)
+      }
+      if (stammdatenRef.current && !stammdatenRef.current.contains(e.target as Node)) {
+        setShowStammdatenDropdown(false)
+      }
+      if (modulesRef.current && !modulesRef.current.contains(e.target as Node)) {
+        setShowModulesDropdown(false)
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Load artist name from API
+  // Artist-Name laden
   useEffect(() => {
     const loadArtistName = () => {
       getTenantArtistSettings()
         .then(s => setArtistName(s.displayName || getCurrentTenant()?.name || ''))
         .catch(() => setArtistName(getCurrentTenant()?.name || ''))
     }
-
     loadArtistName()
-
-    // Nach Speichern in Settings neu laden
     window.addEventListener('artistUpdated', loadArtistName)
     return () => window.removeEventListener('artistUpdated', loadArtistName)
-  }, []);
+  }, [])
 
-  // Listen for Termine detail view changes
+  // Termine Detail-View Events
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ inDetail: boolean; view?: 'details' | 'travelparty' | 'advance-sheet' | 'guestlist' }>).detail
-      // Only set to true from event — false is handled by onBack + termine-go-to-list
       if (detail.inDetail) {
         setTermineInDetail(true)
         if (detail.view) setTermineView(detail.view)
@@ -154,7 +178,6 @@ export function Navigation({
     return () => window.removeEventListener('termine-view-changed', handler)
   }, [])
 
-  // Listen for explicit "go to list" — this is the single source of truth for leaving detail
   useEffect(() => {
     const handler = () => {
       setTermineInDetail(false)
@@ -166,6 +189,8 @@ export function Navigation({
 
   const handleTabChange = (tabId: string, subTabId?: string) => {
     setCurrentTab(tabId)
+    setShowStammdatenDropdown(false)
+    setShowModulesDropdown(false)
     onTabChange?.(tabId)
     if (subTabId) onSubTabChange?.(subTabId)
   }
@@ -183,6 +208,36 @@ export function Navigation({
     window.location.href = '/'
   }
 
+  // Aktiv-States für Dropdown-Gruppen
+  const isStammdatenActive = STAMMDATEN_CHILDREN.some(c => c.id === currentTab)
+  const isModulesActive = MODULE_CHILDREN.some(c => c.id === currentTab)
+
+  // Sichtbarkeit: Stammdaten zeigen wenn mindestens ein Kind sichtbar
+  const canSeeStammdaten = STAMMDATEN_CHILDREN.some(c => canDo(role, NAV_VISIBLE[c.id] ?? []))
+  const canSeeModules = canDo(role, NAV_VISIBLE['modules'] ?? [])
+
+  // Nav-Button Helper
+  const NavButton = ({ item }: { item: NavigationItem }) => (
+    <button
+      key={item.id}
+      onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
+      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+        currentTab === item.id
+          ? 'bg-blue-600 text-white'
+          : 'text-gray-300 hover:text-white hover:bg-gray-800'
+      }`}
+    >
+      <item.icon className="w-4 h-4" />
+      {item.name}
+    </button>
+  )
+
+  const visibleItems = (ids: string[]) =>
+    navigationItems.filter(item =>
+      ids.includes(item.id) &&
+      (item.superadminOnly ? isSuperadmin : canDo(role, NAV_VISIBLE[item.id] ?? []))
+    )
+
   return (
     <>
       <DeactivatedScreen />
@@ -199,33 +254,123 @@ export function Navigation({
                 )}
               </div>
             </div>
-            {/* Mitte: Hauptnavigation zentriert */}
+
+            {/* Mitte: Hauptnavigation */}
             <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.filter(item =>
-  (item.superadminOnly ? isSuperadmin : canDo(getEffectiveRole(), NAV_VISIBLE[item.id] ?? []))
-).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id, item.id === 'settings' ? 'profil' : undefined)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    currentTab === item.id
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.name}
-                </button>
+
+              {/* Schreibtisch, Termine, Kontakte */}
+              {visibleItems(['desk', 'appointments', 'contacts']).map(item => (
+                <NavButton key={item.id} item={item} />
               ))}
+
+              {/* STAMMDATEN Dropdown */}
+              {canSeeStammdaten && (
+                <div className="relative" ref={stammdatenRef}>
+                  <button
+                    onClick={() => {
+                      setShowStammdatenDropdown(v => !v)
+                      setShowModulesDropdown(false)
+                      setShowUserMenu(false)
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isStammdatenActive || showStammdatenDropdown
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    <CircleStackIcon className="w-4 h-4" />
+                    STAMMDATEN
+                    <ChevronDownIcon className={`w-3 h-3 transition-transform ${showStammdatenDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showStammdatenDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                      {STAMMDATEN_CHILDREN
+                        .filter(c => canDo(role, NAV_VISIBLE[c.id] ?? []))
+                        .map(child => (
+                          <button
+                            key={child.id}
+                            onClick={() => handleTabChange(child.id)}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
+                              currentTab === child.id
+                                ? 'text-blue-600 bg-blue-50 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            <child.icon className="w-4 h-4 text-gray-400" />
+                            {child.name}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Vorlagen */}
+              {visibleItems(['templates']).map(item => (
+                <NavButton key={item.id} item={item} />
+              ))}
+
+              {/* MODULE Dropdown */}
+              {canSeeModules && (
+                <div className="relative" ref={modulesRef}>
+                  <button
+                    onClick={() => {
+                      setShowModulesDropdown(v => !v)
+                      setShowStammdatenDropdown(false)
+                      setShowUserMenu(false)
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isModulesActive || showModulesDropdown
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    <PuzzlePieceIcon className="w-4 h-4" />
+                    MODULE
+                    <ChevronDownIcon className={`w-3 h-3 transition-transform ${showModulesDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showModulesDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                      {MODULE_CHILDREN.map(child => (
+                        <button
+                          key={child.id}
+                          onClick={() => handleTabChange(child.id)}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
+                            currentTab === child.id
+                              ? 'text-blue-600 bg-blue-50 font-medium'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <child.icon className="w-4 h-4 text-gray-400" />
+                          {child.name}
+                          <span className="ml-auto text-[10px] font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">
+                            ADDON
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Einstellungen */}
+              {visibleItems(['settings']).map(item => (
+                <NavButton key={item.id} item={item} />
+              ))}
+
             </nav>
+
             {/* Rechts: User-Menu */}
             <div className="flex-1 flex justify-end items-center">
               <div className="flex items-center gap-2">
                 <PreviewBanner />
-                {/* User-Dropdown */}
                 <div className="relative" ref={userMenuRef}>
                   <button
-                    onClick={() => setShowUserMenu(v => !v)}
+                    onClick={() => {
+                      setShowUserMenu(v => !v)
+                      setShowStammdatenDropdown(false)
+                      setShowModulesDropdown(false)
+                    }}
                     className="flex items-center gap-1.5 px-1.5 py-1 rounded-md text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
                   >
                     <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
@@ -311,7 +456,7 @@ export function Navigation({
         </div>
       </header>
 
-      {/* Mobile: slim Header (nur Logo + Initials, Nav ist unten) */}
+      {/* Mobile: slim Header */}
       {showMobileNavigation && (
         <div className="md:hidden bg-gray-900 text-white border-b border-gray-700 px-4 h-14 flex items-center justify-between">
           {/* Links: Initials / User-Dropdown */}
@@ -360,13 +505,12 @@ export function Navigation({
             {artistName && <p className="text-[10px] text-gray-400 mt-0.5">{artistName}</p>}
           </div>
 
-          {/* Rechts: PreviewBanner (falls aktiv) */}
+          {/* Rechts: PreviewBanner */}
           <div className="flex items-center">
             <PreviewBanner />
           </div>
         </div>
       )}
-
 
       {/* Sub Navigation */}
       {currentTab === 'settings' && (
