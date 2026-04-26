@@ -1893,7 +1893,7 @@ export const CAN_SEE_KALENDER: TenantRole[] = ['admin', 'tourmanagement', 'agenc
 export const CAN_SEE_GEBUCHT: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew']
 
 /** Sieht Dateien auf Termin-Detailseite */
-export const CAN_SEE_FILES_TERMIN: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus']
+export const CAN_SEE_FILES_TERMIN: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew']
 
 /** Sieht Honorar/Gage-Daten */
 export const CAN_SEE_FINANCIALS: TenantRole[] = ['admin', 'tourmanagement', 'agency']
