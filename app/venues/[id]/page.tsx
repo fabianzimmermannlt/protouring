@@ -334,6 +334,11 @@ export default function VenueDetailPage() {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Venue Info</span>
+            {isEditor && venue && (
+              <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="pt-card-body">
             {loading ? <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
@@ -351,7 +356,8 @@ export default function VenueDetailPage() {
                 <KV label="WLAN" value={venue.wifi || undefined} />
                 <KV label="Garderoben" value={venue.wardrobe || undefined} />
                 <KV label="Duschen" value={venue.showers || undefined} />
-                <KV label="Anfahrt" value={venue.arrival || undefined} />
+                <KV label="Anfahrt (Notiz)" value={venue.arrival || undefined} />
+                <KV label="Anfahrtsadresse" value={[venue.arrivalStreet, [venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ')].filter(Boolean).join(', ') || undefined} />
                 <KV label="Parkplatz" value={venue.parking || undefined} />
                 <KV label="Nightliner" value={venue.nightlinerParking || undefined} />
                 <KV label="Ladeweg" value={venue.loadingPath || undefined} />
@@ -365,6 +371,11 @@ export default function VenueDetailPage() {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />Technische Specs</span>
+            {isEditor && venue && (
+              <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="pt-card-body">
             {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
@@ -386,10 +397,15 @@ export default function VenueDetailPage() {
           <div className="pt-card-header">
             <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />Fotos</span>
             {isEditor && (
-              <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }}
-                className="text-gray-400 hover:text-blue-600 transition-colors" title="Foto hochladen">
-                <Upload className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Venue bearbeiten">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }}
+                  className="text-gray-400 hover:text-blue-600 transition-colors" title="Foto hochladen">
+                  <Upload className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
           <div className="pt-card-body">
@@ -424,10 +440,15 @@ export default function VenueDetailPage() {
           <div className="pt-card-header">
             <span className="pt-card-title"><File className="w-3.5 h-3.5 inline mr-1" />Dokumente</span>
             {isEditor && (
-              <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }}
-                className="text-gray-400 hover:text-blue-600 transition-colors" title="Dokument hochladen">
-                <Upload className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Venue bearbeiten">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }}
+                  className="text-gray-400 hover:text-blue-600 transition-colors" title="Dokument hochladen">
+                  <Upload className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
           <div className="pt-card-body">
