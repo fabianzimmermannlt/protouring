@@ -5179,12 +5179,31 @@ app.put('/api/tenant/settings', authenticateToken, requireTenant, async (req, re
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-// GET /api/equipment/kuerzel/check — prüft ob Kürzel global verfügbar ist
-app.get('/api/equipment/kuerzel/check', authenticateToken, requireTenant, async (req, res) => {
-  const k = (req.query.kuerzel || '').toString().trim().toUpperCase()
-  if (!/^[A-Z][A-Z0-9]{2}$/.test(k)) return res.json({ available: false, reason: 'Ungültiges Format' })
-  const existing = await db.get('SELECT id FROM tenants WHERE equipment_kuerzel = ? AND id != ?', [k, req.tenant.id])
-  res.json({ available: !existing })
+// POST /api/equipment/init — generiert automatisch ein eindeutiges Kürzel für den Tenant
+app.post('/api/equipment/init', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    // Falls bereits gesetzt, einfach zurückgeben
+    const existing = await db.get('SELECT equipment_kuerzel FROM tenants WHERE id = ?', [req.tenant.id])
+    if (existing?.equipment_kuerzel) return res.json({ kuerzel: existing.equipment_kuerzel })
+
+    // Eindeutigen 3-Zeichen-Code generieren (Buchstabe + 2× alphanumerisch)
+    const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ' // ohne I und O (verwechslungsgefahr)
+    const ALPHANUM = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'
+    let kuerzel = null
+    for (let attempts = 0; attempts < 200; attempts++) {
+      const candidate =
+        CHARS[Math.floor(Math.random() * CHARS.length)] +
+        ALPHANUM[Math.floor(Math.random() * ALPHANUM.length)] +
+        ALPHANUM[Math.floor(Math.random() * ALPHANUM.length)]
+      const taken = await db.get('SELECT id FROM tenants WHERE equipment_kuerzel = ?', [candidate])
+      if (!taken) { kuerzel = candidate; break }
+    }
+    if (!kuerzel) return res.status(500).json({ error: 'Kein freier Code gefunden' })
+
+    await db.run(`UPDATE tenants SET equipment_kuerzel=?, updated_at=datetime('now') WHERE id=?`, [kuerzel, req.tenant.id])
+    res.json({ kuerzel })
+  } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // ── Equipment: Kategorien ────────────────────────────────────────────────────

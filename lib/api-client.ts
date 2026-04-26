@@ -425,9 +425,9 @@ export async function updateTenantArtistSettings(data: Omit<TenantArtistSettings
   };
 }
 
-export async function checkEquipmentKuerzel(kuerzel: string): Promise<{ available: boolean; reason?: string }> {
-  const res = await request<{ available: boolean; reason?: string }>(`/api/equipment/kuerzel/check?kuerzel=${encodeURIComponent(kuerzel)}`);
-  return res;
+export async function initEquipmentKuerzel(): Promise<string> {
+  const res = await request<{ kuerzel: string }>('/api/equipment/init', { method: 'POST', body: {} });
+  return res.kuerzel;
 }
 
 // ============================================
