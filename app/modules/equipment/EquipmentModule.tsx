@@ -7,7 +7,7 @@ import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
-  getTenantArtistSettings,
+  getTenantArtistSettings, updateTenantArtistSettings, checkEquipmentKuerzel,
   canDo, getEffectiveRole,
   type EquipmentCategory, type EquipmentItem, type EquipmentMaterial,
 } from '@/lib/api-client'
@@ -358,6 +358,114 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
   )
 }
 
+// ── Kürzel-Setup (einmalig beim ersten Öffnen) ────────────────────────────────
+
+function KuerzelSetup({ onDone, canEdit }: { onDone: (k: string) => void; canEdit: boolean }) {
+  const [value, setValue] = useState('')
+  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  const handleChange = (v: string) => {
+    setValue(v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3))
+    setStatus('idle')
+    setErr('')
+  }
+
+  const handleBlur = async () => {
+    if (!value) { setStatus('idle'); return }
+    if (!/^[A-Z][A-Z0-9]{2}$/.test(value)) { setStatus('invalid'); return }
+    setStatus('checking')
+    try {
+      const r = await checkEquipmentKuerzel(value)
+      setStatus(r.available ? 'ok' : 'taken')
+    } catch { setStatus('idle') }
+  }
+
+  const handleSave = async () => {
+    if (!/^[A-Z][A-Z0-9]{2}$/.test(value)) { setErr('Ungültiges Format'); return }
+    if (status === 'taken') { setErr('Bereits vergeben'); return }
+    setSaving(true)
+    try {
+      const current = await getTenantArtistSettings()
+      await updateTenantArtistSettings({ ...current, equipmentKuerzel: value })
+      onDone(value)
+    } catch (e: any) {
+      setErr(e.message || 'Fehler beim Speichern')
+      setSaving(false)
+    }
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center px-8">
+        <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Das Equipment-Modul wurde noch nicht eingerichtet.</p>
+        <p className="text-xs text-gray-400 mt-1">Bitte einen Admin darum, das Kürzel zu setzen.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-8">
+      <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mb-5">
+        <WrenchScrewdriverIcon className="w-8 h-8 text-orange-400" />
+      </div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Equipment-Modul einrichten</h2>
+      <p className="text-sm text-gray-500 max-w-sm text-center mb-6">
+        Wähle ein <strong>3-stelliges Kürzel</strong> für diesen Tenant. Es wird Teil jeder Case-ID
+        (z.B. <span className="font-mono font-semibold">BTD</span> → <span className="font-mono font-semibold">BTD10000</span>)
+        und kann danach nicht mehr geändert werden.
+      </p>
+      <div className="w-full max-w-xs space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Tenant-Kürzel <span className="text-gray-400">(3 Zeichen, beginnt mit Buchstabe, global einmalig)</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={value}
+              onChange={e => handleChange(e.target.value)}
+              onBlur={handleBlur}
+              className={`w-28 px-3 py-2 text-lg font-mono font-bold tracking-widest border rounded-lg focus:outline-none focus:ring-2 text-center ${
+                status === 'ok' ? 'border-green-400 focus:ring-green-400 text-green-700' :
+                status === 'taken' || status === 'invalid' ? 'border-red-400 focus:ring-red-400 text-red-700' :
+                'border-gray-300 focus:ring-blue-500 text-gray-900'
+              }`}
+              placeholder="BTD"
+              maxLength={3}
+              autoFocus
+            />
+            <div className="text-sm">
+              {status === 'checking' && <span className="text-gray-400">Prüfe…</span>}
+              {status === 'ok' && <span className="text-green-600 font-medium">✓ Verfügbar</span>}
+              {status === 'taken' && <span className="text-red-600">✗ Bereits vergeben</span>}
+              {status === 'invalid' && <span className="text-red-600">Muss mit Buchstabe beginnen</span>}
+            </div>
+          </div>
+        </div>
+        {(err || status === 'ok') && value && (
+          <div className={`text-xs px-3 py-2 rounded-lg ${status === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {status === 'ok' && !err && `Case-IDs werden z.B. so aussehen: ${value}10000, ${value}10001, ${value}10002 …`}
+            {err && err}
+          </div>
+        )}
+        <button
+          onClick={handleSave}
+          disabled={saving || status !== 'ok'}
+          className="w-full px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {saving ? 'Speichern…' : 'Kürzel festlegen & Equipment starten'}
+        </button>
+        <p className="text-xs text-gray-400 text-center">
+          Dieses Kürzel ist global einmalig — kein anderer Tenant kann es verwenden.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── Haupt-Modul ───────────────────────────────────────────────────────────────
 
 export default function EquipmentModule() {
@@ -377,40 +485,31 @@ export default function EquipmentModule() {
   const role = getEffectiveRole()
   const canEdit = canDo(role, ['admin', 'agency', 'tourmanagement'])
 
-  const load = async () => {
+  const load = async (initial = false) => {
     setLoading(true)
     try {
-      const [cats, itms, mats, settings] = await Promise.all([
+      const [cats, itms, mats] = await Promise.all([
         getEquipmentCategories(),
         getEquipmentItems(),
         getEquipmentMaterials(),
-        getTenantArtistSettings(),
       ])
       setCategories(cats)
       setItems(itms)
       setMaterials(mats)
-      setKuerzel(settings.equipmentKuerzel ?? '')
+      if (initial) {
+        // Kürzel nur beim ersten Laden aus den Settings holen
+        const settings = await getTenantArtistSettings()
+        setKuerzel(settings.equipmentKuerzel ?? '')
+      }
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(true) }, [])
 
-  // ── Kein Kürzel konfiguriert ─────────────────────────────────────────────
+  // ── Kein Kürzel konfiguriert: Setup-Screen ──────────────────────────────
   if (!loading && !kuerzel) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center px-8">
-        <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mb-4">
-          <TagIcon className="w-7 h-7 text-orange-400" />
-        </div>
-        <h2 className="text-base font-semibold text-gray-800 mb-1">Equipment-Kürzel fehlt</h2>
-        <p className="text-sm text-gray-500 max-w-xs mb-4">
-          Bevor du Gegenstände anlegen kannst, muss das Equipment-Kürzel in den Artist-Einstellungen gesetzt werden.
-          Es wird Teil jeder Case-ID (z.B. <span className="font-mono font-medium">BTD10001</span>).
-        </p>
-        <p className="text-xs text-gray-400">Einstellungen → Artist → Equipment-Kürzel</p>
-      </div>
-    )
+    return <KuerzelSetup onDone={(k) => { setKuerzel(k); load(false) }} canEdit={canEdit} />
   }
 
   // ── Gegenstände-Tab ──────────────────────────────────────────────────────
