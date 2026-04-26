@@ -119,12 +119,7 @@ export default function ProTouringApp() {
       {activeTab === 'partners' && <PartnersPage />}
       {activeTab === 'hotels' && <HotelsPage />}
       {activeTab === 'vehicles' && <VehiclesPage />}
-      {activeTab === 'templates' && (
-        <div className="text-center py-8">
-          <div className="text-gray-500">VORLAGEN</div>
-          <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
-        </div>
-      )}
+
       {activeTab === 'equipment' && <EquipmentModule activeSubTab={activeSubTab} />}
       {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
       {activeTab === 'feedback' && <FeedbackPage />}

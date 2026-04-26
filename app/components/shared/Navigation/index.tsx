@@ -48,16 +48,19 @@ export interface NavigationProps {
   onSubTabChange?: (subTabId: string) => void
 }
 
-// Haupt-Nav-Items (ohne Stammdaten-Gruppe und Module-Gruppe)
+// Haupt-Nav-Items
 const navigationItems: NavigationItem[] = [
   { id: 'desk',         name: 'SCHREIBTISCH',  icon: HomeIcon,         description: 'Haupt-Dashboard' },
   { id: 'appointments', name: 'TERMINE',        icon: CalendarDaysIcon, description: 'Termine & Planung' },
   { id: 'contacts',     name: 'KONTAKTE',       icon: UsersIcon,        description: 'Kontaktverwaltung' },
-  { id: 'templates',    name: 'VORLAGEN',       icon: DocumentTextIcon, description: 'Dokumentenvorlagen' },
+  { id: 'venues',       name: 'VENUES',         icon: MusicalNoteIcon,  description: 'Spielstätten' },
+  { id: 'partners',     name: 'PARTNER',        icon: BriefcaseIcon,    description: 'Partnerunternehmen' },
+  { id: 'hotels',       name: 'HOTELS',         icon: BuildingOfficeIcon, description: 'Hotels & Unterkünfte' },
+  { id: 'vehicles',     name: 'FAHRZEUGE',      icon: TruckIcon,        description: 'Fahrzeugverwaltung' },
   { id: 'settings',     name: 'EINSTELLUNGEN',  icon: Cog6ToothIcon,    description: 'Anwendungseinstellungen' },
 ]
 
-// Stammdaten-Gruppe (Dropdown unter STAMMDATEN)
+// Stammdaten-Gruppe (nur noch für canSeeStammdaten-Check intern genutzt)
 const STAMMDATEN_CHILDREN = [
   { id: 'venues',   name: 'Venues',    icon: MusicalNoteIcon },
   { id: 'partners', name: 'Partner',   icon: BriefcaseIcon },
@@ -259,55 +262,8 @@ export function Navigation({
             {/* Mitte: Hauptnavigation */}
             <nav className="hidden md:flex items-center space-x-1">
 
-              {/* Schreibtisch, Termine, Kontakte */}
-              {visibleItems(['desk', 'appointments', 'contacts']).map(item => (
-                <NavButton key={item.id} item={item} />
-              ))}
-
-              {/* STAMMDATEN Dropdown */}
-              {canSeeStammdaten && (
-                <div className="relative" ref={stammdatenRef}>
-                  <button
-                    onClick={() => {
-                      setShowStammdatenDropdown(v => !v)
-                      setShowModulesDropdown(false)
-                      setShowUserMenu(false)
-                    }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isStammdatenActive || showStammdatenDropdown
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                    }`}
-                  >
-                    <CircleStackIcon className="w-4 h-4" />
-                    STAMMDATEN
-                    <ChevronDownIcon className={`w-3 h-3 transition-transform ${showStammdatenDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  {showStammdatenDropdown && (
-                    <div className="absolute top-full left-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                      {STAMMDATEN_CHILDREN
-                        .filter(c => canDo(role, NAV_VISIBLE[c.id] ?? []))
-                        .map(child => (
-                          <button
-                            key={child.id}
-                            onClick={() => handleTabChange(child.id)}
-                            className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
-                              currentTab === child.id
-                                ? 'text-blue-600 bg-blue-50 font-medium'
-                                : 'text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            <child.icon className="w-4 h-4 text-gray-400" />
-                            {child.name}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Vorlagen */}
-              {visibleItems(['templates']).map(item => (
+              {/* Schreibtisch, Termine, Kontakte, Venues, Partner, Hotels, Fahrzeuge */}
+              {visibleItems(['desk', 'appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles']).map(item => (
                 <NavButton key={item.id} item={item} />
               ))}
 

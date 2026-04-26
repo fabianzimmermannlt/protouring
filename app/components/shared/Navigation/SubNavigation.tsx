@@ -33,6 +33,7 @@ const platformSubItems: SubNavigationItemDef[] = [
   { id: 'contacts',       name: 'KONTAKTE',            description: 'Kontaktverwaltung',            allowedRoles: EDITOR_ROLES },
   { id: 'guestlist',      name: 'GÄSTELISTE',          description: 'Gästenliste & VIPs',           allowedRoles: EDITOR_ROLES },
   { id: 'daysheet',       name: 'DAYSHEET',            description: 'Tagespläne & Routinen',        allowedRoles: EDITOR_ROLES },
+  { id: 'vorlagen',       name: 'VORLAGEN',            description: 'Dokumentenvorlagen',           allowedRoles: EDITOR_ROLES },
   { id: 'artist',         name: 'ARTIST',              description: 'Artist-Informationen',         allowedRoles: ['admin'] },
   { id: 'erste-schritte', name: 'ERSTE SCHRITTE',      description: 'Hilfe & Übersicht' },
 ]
@@ -45,6 +46,7 @@ const SHORT_LABEL: Record<string, string> = {
   contacts: 'Kontakte',
   guestlist: 'Gäste',
   daysheet: 'Daysheet',
+  vorlagen: 'Vorlagen',
   artist: 'Artist',
   'erste-schritte': 'Hilfe',
 }

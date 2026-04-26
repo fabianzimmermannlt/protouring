@@ -513,6 +513,14 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
           </div>
         )
 
+      case 'vorlagen':
+        return (
+          <div className="text-center py-8">
+            <div className="text-gray-500">VORLAGEN</div>
+            <div className="text-sm text-gray-400 mt-2">Bald verfügbar…</div>
+          </div>
+        )
+
       case 'erste-schritte':
         return <ErsteSchritte />
 
