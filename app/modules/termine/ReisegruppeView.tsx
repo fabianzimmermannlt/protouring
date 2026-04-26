@@ -256,7 +256,10 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 {editingMember.firstName} {editingMember.lastName}
               </p>
               {(['role1', 'role2', 'role3'] as const).map((field, i) => {
-                const opts = [editingMember.function1, editingMember.function2, editingMember.function3].filter(Boolean) as string[]
+                const allOpts = [editingMember.function1, editingMember.function2, editingMember.function3].filter(Boolean) as string[]
+                const otherFields = (['role1', 'role2', 'role3'] as const).filter(f => f !== field)
+                const usedElsewhere = new Set(otherFields.map(f => editRoles[f]).filter(Boolean))
+                const opts = allOpts.filter(fn => !usedElsewhere.has(fn) || fn === editRoles[field])
                 return (
                   <div key={field} className="mb-3">
                     <label className="block text-xs text-gray-400 mb-1">Funktion {i + 1}</label>
@@ -306,16 +309,21 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             </thead>
             <tbody>
               {sortedMembers.map(m => {
-                const opts = [m.function1, m.function2, m.function3].filter(Boolean)
+                const allOpts = [m.function1, m.function2, m.function3].filter(Boolean) as string[]
                 const saving = savingId === m.id
+                const optsFor = (field: 'role1'|'role2'|'role3') => {
+                  const others = (['role1','role2','role3'] as const).filter(f => f !== field)
+                  const used = new Set(others.map(f => m[f]).filter(Boolean))
+                  return allOpts.filter(fn => !used.has(fn) || fn === m[field])
+                }
                 return (
                   <tr key={m.id}>
                     {isVisible('avail')      && <td><AvailCell status={m.availabilityStatus} /></td>}
                     {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge">Gast</span>}</td>}
                     {isVisible('firstName')  && <td>{m.firstName || EMPTY}</td>}
-                    {isVisible('role1')      && <td>{isAdmin ? <RolleDropdown value={m.role1} options={opts} saving={saving} onChange={v => updateRole(m, 'role1', v)} /> : (m.role1 || EMPTY)}</td>}
-                    {isVisible('role2')      && <td>{isAdmin ? <RolleDropdown value={m.role2} options={opts} saving={saving} onChange={v => updateRole(m, 'role2', v)} /> : (m.role2 || EMPTY)}</td>}
-                    {isVisible('role3')      && <td>{isAdmin ? <RolleDropdown value={m.role3} options={opts} saving={saving} onChange={v => updateRole(m, 'role3', v)} /> : (m.role3 || EMPTY)}</td>}
+                    {isVisible('role1')      && <td>{isAdmin ? <RolleDropdown value={m.role1} options={optsFor('role1')} saving={saving} onChange={v => updateRole(m, 'role1', v)} /> : (m.role1 || EMPTY)}</td>}
+                    {isVisible('role2')      && <td>{isAdmin ? <RolleDropdown value={m.role2} options={optsFor('role2')} saving={saving} onChange={v => updateRole(m, 'role2', v)} /> : (m.role2 || EMPTY)}</td>}
+                    {isVisible('role3')      && <td>{isAdmin ? <RolleDropdown value={m.role3} options={optsFor('role3')} saving={saving} onChange={v => updateRole(m, 'role3', v)} /> : (m.role3 || EMPTY)}</td>}
                     {isVisible('email')      && <td>{m.email ? <a href={`mailto:${m.email}`}>{m.email}</a> : EMPTY}</td>}
                     {isVisible('phone')      && <td>{(m.phone || m.mobile) ? <a href={`tel:${m.phone || m.mobile}`}>{m.phone || m.mobile}</a> : EMPTY}</td>}
                     {isVisible('postalCode') && <td>{m.postalCode || EMPTY}</td>}
