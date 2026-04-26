@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
@@ -11,7 +11,6 @@ import {
   canDo, getEffectiveRole,
   type EquipmentCategory, type EquipmentItem, type EquipmentMaterial,
 } from '@/lib/api-client'
-
 
 const TYP_LABELS: Record<string, string> = {
   case: 'Case', dolly: 'Dolly', kulisse: 'Kulisse', flightcase: 'Flightcase', sonstiges: 'Sonstiges'
@@ -46,28 +45,27 @@ function CategoryModal({ cat, onSave, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">{cat ? 'Kategorie bearbeiten' : 'Neue Kategorie'}</h3>
-          <button onClick={onClose}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">{cat ? 'Kategorie bearbeiten' : 'Neue Kategorie'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
-        <div className="space-y-3">
+        <div className="modal-body space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-            <input className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Audio" autoFocus />
+            <label className="form-label">Name</label>
+            <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Audio" autoFocus />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Kürzel <span className="text-gray-400 font-normal">(max. 5 Zeichen)</span></label>
-            <input className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono uppercase"
+            <label className="form-label">Kürzel <span className="text-gray-400 font-normal">(max. 5 Zeichen)</span></label>
+            <input className="form-input font-mono uppercase" style={{ width: '6rem' }}
               value={kuerzel} onChange={e => setKuerzel(e.target.value.toUpperCase().slice(0, 5))} placeholder="AUD" maxLength={5} />
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
-        <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Abbrechen</button>
-          <button onClick={handle} disabled={saving} className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
@@ -122,34 +120,28 @@ function ItemModal({ item, categories, onSave, onClose }: {
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
   }
 
-  const inp = 'w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500'
-  const sel = inp + ' bg-white'
-  const lbl = 'block text-xs font-medium text-gray-700 mb-1'
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">
-            {item ? `${item.case_id} bearbeiten` : 'Neuer Gegenstand'}
-          </h3>
-          <button onClick={onClose}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">{item ? `${item.case_id} bearbeiten` : 'Neuer Gegenstand'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="modal-body space-y-4">
           <div>
-            <label className={lbl}>Name *</label>
-            <input className={inp} value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="z.B. FOH-Rack" autoFocus />
+            <label className="form-label">Name *</label>
+            <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="z.B. FOH-Rack" autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Typ</label>
-              <select className={sel} value={form.typ} onChange={e => setForm({...form, typ: e.target.value as any})}>
+              <label className="form-label">Typ</label>
+              <select className="form-select" value={form.typ} onChange={e => setForm({...form, typ: e.target.value as any})}>
                 {Object.entries(TYP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className={lbl}>Kategorie</label>
-              <select className={sel} value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}>
+              <label className="form-label">Kategorie</label>
+              <select className="form-select" value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}>
                 <option value="">— keine —</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -157,38 +149,38 @@ function ItemModal({ item, categories, onSave, onClose }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Position (Bühne)</label>
-              <select className={sel} value={form.position} onChange={e => setForm({...form, position: e.target.value})}>
+              <label className="form-label">Position (Bühne)</label>
+              <select className="form-select" value={form.position} onChange={e => setForm({...form, position: e.target.value})}>
                 <option value="">— keine —</option>
                 {Object.entries(POSITION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className={lbl}>Ladereihenfolge</label>
-              <input type="number" className={inp} value={form.load_order} onChange={e => setForm({...form, load_order: e.target.value})} placeholder="1" min={1} />
+              <label className="form-label">Ladereihenfolge</label>
+              <input type="number" className="form-input" value={form.load_order} onChange={e => setForm({...form, load_order: e.target.value})} placeholder="1" min={1} />
             </div>
           </div>
           <div>
-            <label className={lbl}>Maße (cm) — Höhe / Breite / Tiefe</label>
+            <label className="form-label">Maße (cm) — Höhe / Breite / Tiefe</label>
             <div className="grid grid-cols-3 gap-2">
-              <input type="number" className={inp} value={form.height_cm} onChange={e => setForm({...form, height_cm: e.target.value})} placeholder="H" />
-              <input type="number" className={inp} value={form.width_cm} onChange={e => setForm({...form, width_cm: e.target.value})} placeholder="B" />
-              <input type="number" className={inp} value={form.depth_cm} onChange={e => setForm({...form, depth_cm: e.target.value})} placeholder="T" />
+              <input type="number" className="form-input" value={form.height_cm} onChange={e => setForm({...form, height_cm: e.target.value})} placeholder="H" />
+              <input type="number" className="form-input" value={form.width_cm} onChange={e => setForm({...form, width_cm: e.target.value})} placeholder="B" />
+              <input type="number" className="form-input" value={form.depth_cm} onChange={e => setForm({...form, depth_cm: e.target.value})} placeholder="T" />
             </div>
           </div>
           <div>
-            <label className={lbl}>Leergewicht (kg)</label>
-            <input type="number" className={inp} value={form.weight_empty_kg} onChange={e => setForm({...form, weight_empty_kg: e.target.value})} placeholder="0.0" step="0.1" />
+            <label className="form-label">Leergewicht (kg)</label>
+            <input type="number" className="form-input" value={form.weight_empty_kg} onChange={e => setForm({...form, weight_empty_kg: e.target.value})} placeholder="0.0" step="0.1" />
           </div>
           <div>
-            <label className={lbl}>Notiz</label>
-            <textarea className={inp} rows={2} value={form.notiz} onChange={e => setForm({...form, notiz: e.target.value})} placeholder="Interne Notizen…" />
+            <label className="form-label">Notiz</label>
+            <textarea className="form-textarea" rows={2} value={form.notiz} onChange={e => setForm({...form, notiz: e.target.value})} placeholder="Interne Notizen…" />
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
-        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Abbrechen</button>
-          <button onClick={handle} disabled={saving} className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
@@ -251,43 +243,39 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
   }
 
-  const inp = 'w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500'
-  const sel = inp + ' bg-white'
-  const lbl = 'block text-xs font-medium text-gray-700 mb-1'
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">{mat ? 'Material bearbeiten' : 'Neues Material'}</h3>
-          <button onClick={onClose}><XMarkIcon className="w-5 h-5 text-gray-400" /></button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">{mat ? 'Material bearbeiten' : 'Neues Material'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="modal-body space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Hersteller</label>
-              <input className={inp} value={form.hersteller} onChange={e => setForm({...form, hersteller: e.target.value})} placeholder="z.B. Shure" autoFocus />
+              <label className="form-label">Hersteller</label>
+              <input className="form-input" value={form.hersteller} onChange={e => setForm({...form, hersteller: e.target.value})} placeholder="z.B. Shure" autoFocus />
             </div>
             <div>
-              <label className={lbl}>Produkt *</label>
-              <input className={inp} value={form.produkt} onChange={e => setForm({...form, produkt: e.target.value})} placeholder="z.B. SM58" />
+              <label className="form-label">Produkt *</label>
+              <input className="form-input" value={form.produkt} onChange={e => setForm({...form, produkt: e.target.value})} placeholder="z.B. SM58" />
             </div>
           </div>
           <div>
-            <label className={lbl}>Beschreibung / Info</label>
-            <input className={inp} value={form.info} onChange={e => setForm({...form, info: e.target.value})} placeholder="Kurzbeschreibung für Carnet" />
+            <label className="form-label">Beschreibung / Info</label>
+            <input className="form-input" value={form.info} onChange={e => setForm({...form, info: e.target.value})} placeholder="Kurzbeschreibung für Carnet" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Kategorie</label>
-              <select className={sel} value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}>
+              <label className="form-label">Kategorie</label>
+              <select className="form-select" value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}>
                 <option value="">— keine —</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={lbl}>In Gegenstand</label>
-              <select className={sel} value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}>
+              <label className="form-label">In Gegenstand</label>
+              <select className="form-select" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}>
                 <option value="">— kein Case —</option>
                 {items.map(i => <option key={i.id} value={i.id}>{i.case_id} — {i.name}</option>)}
               </select>
@@ -295,28 +283,28 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Anzahl</label>
-              <input type="number" className={inp} value={form.anzahl} onChange={e => setForm({...form, anzahl: e.target.value})} min={1} />
+              <label className="form-label">Anzahl</label>
+              <input type="number" className="form-input" value={form.anzahl} onChange={e => setForm({...form, anzahl: e.target.value})} min={1} />
             </div>
             <div>
-              <label className={lbl}>Seriennummer</label>
-              <input className={inp} value={form.seriennummer} onChange={e => setForm({...form, seriennummer: e.target.value})} placeholder="Optional" />
+              <label className="form-label">Seriennummer</label>
+              <input className="form-input" value={form.seriennummer} onChange={e => setForm({...form, seriennummer: e.target.value})} placeholder="Optional" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Herstellungsland</label>
-              <input className={inp} value={form.herstellungsland} onChange={e => setForm({...form, herstellungsland: e.target.value})} placeholder="z.B. DE, US" />
+              <label className="form-label">Herstellungsland</label>
+              <input className="form-input" value={form.herstellungsland} onChange={e => setForm({...form, herstellungsland: e.target.value})} placeholder="z.B. DE, US" />
             </div>
             <div>
-              <label className={lbl}>Gewicht (kg, pro Stück)</label>
-              <input type="number" className={inp} value={form.gewicht_kg} onChange={e => setForm({...form, gewicht_kg: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">Gewicht (kg, pro Stück)</label>
+              <input type="number" className="form-input" value={form.gewicht_kg} onChange={e => setForm({...form, gewicht_kg: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-1">
-              <label className={lbl}>Währung</label>
-              <select className={sel} value={form.waehrung} onChange={e => setForm({...form, waehrung: e.target.value})}>
+            <div>
+              <label className="form-label">Währung</label>
+              <select className="form-select" value={form.waehrung} onChange={e => setForm({...form, waehrung: e.target.value})}>
                 <option value="EUR">EUR</option>
                 <option value="USD">USD</option>
                 <option value="GBP">GBP</option>
@@ -324,27 +312,27 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
               </select>
             </div>
             <div>
-              <label className={lbl}>Zeitwert</label>
-              <input type="number" className={inp} value={form.wert_zeitwert} onChange={e => setForm({...form, wert_zeitwert: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">Zeitwert</label>
+              <input type="number" className="form-input" value={form.wert_zeitwert} onChange={e => setForm({...form, wert_zeitwert: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
             <div>
-              <label className={lbl}>Wiederbeschaffung</label>
-              <input type="number" className={inp} value={form.wert_wiederbeschaffung} onChange={e => setForm({...form, wert_wiederbeschaffung: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">Wiederbeschaffung</label>
+              <input type="number" className="form-input" value={form.wert_wiederbeschaffung} onChange={e => setForm({...form, wert_wiederbeschaffung: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
           <div>
-            <label className={lbl}>Anschaffungsdatum</label>
-            <input type="date" className={inp} value={form.anschaffungsdatum} onChange={e => setForm({...form, anschaffungsdatum: e.target.value})} />
+            <label className="form-label">Anschaffungsdatum</label>
+            <input type="date" className="form-input" value={form.anschaffungsdatum} onChange={e => setForm({...form, anschaffungsdatum: e.target.value})} />
           </div>
           <div>
-            <label className={lbl}>Notiz</label>
-            <textarea className={inp} rows={2} value={form.notiz} onChange={e => setForm({...form, notiz: e.target.value})} />
+            <label className="form-label">Notiz</label>
+            <textarea className="form-textarea" rows={2} value={form.notiz} onChange={e => setForm({...form, notiz: e.target.value})} />
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
-        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Abbrechen</button>
-          <button onClick={handle} disabled={saving} className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
             {saving ? 'Speichern…' : 'Speichern'}
           </button>
         </div>
@@ -364,7 +352,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [search, setSearch] = useState('')
   const [kuerzel, setKuerzel] = useState('')
 
-  // Modal-States
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
@@ -375,8 +362,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const load = async () => {
     setLoading(true)
     try {
-      // Kürzel: beim ersten Öffnen automatisch generieren lassen (POST /api/equipment/init)
-      // init gibt vorhandenes zurück oder erstellt eines — idempotent
       const [k, cats, itms, mats] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
@@ -394,34 +379,33 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   useEffect(() => { load() }, [])
   useEffect(() => { setSearch('') }, [activeTab])
 
-  // ── Gegenstände-Tab ──────────────────────────────────────────────────────
+  // ── Gegenstände ──────────────────────────────────────────────────────────────
   const filteredItems = items.filter(i =>
     !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.case_id.toLowerCase().includes(search.toLowerCase())
   )
 
   const renderItems = () => (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 relative">
-          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Suchen…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
         {canEdit && (
-          <button onClick={() => setItemModal({ open: true, item: null })}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button onClick={() => setItemModal({ open: true, item: null })} className="btn btn-primary">
             <PlusIcon className="w-4 h-4" />
-            Gegenstand
+            Neuer Gegenstand
           </button>
         )}
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Gegenstände durchsuchen…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400 text-sm">Lädt…</div>
+        <div className="data-table-wrapper">
+          <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Lädt…</div>
+        </div>
       ) : filteredItems.length === 0 ? (
         <div className="text-center py-12">
           <ArchiveBoxIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -434,8 +418,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="data-table w-full">
+        <div className="data-table-wrapper">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Case ID</th>
@@ -443,11 +427,11 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 <th>Typ</th>
                 <th>Kategorie</th>
                 <th>Position</th>
-                <th className="text-right">Maße (H×B×T cm)</th>
+                <th className="text-right">Maße H×B×T cm</th>
                 <th className="text-right">Leer kg</th>
                 <th className="text-right">Material</th>
-                <th className="text-right">Gesamtgewicht</th>
-                {canEdit && <th></th>}
+                <th className="text-right">Gesamt kg</th>
+                {canEdit && <th style={{ width: 60 }} />}
               </tr>
             </thead>
             <tbody>
@@ -458,16 +442,16 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                     <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>
                     <td className="font-medium">{item.name}</td>
                     <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>
-                    <td>{item.category_name ? <span className="text-xs text-gray-600">{item.category_name}</span> : <span className="text-gray-300">—</span>}</td>
-                    <td>{item.position ? <span className="text-xs text-gray-600">{POSITION_LABELS[item.position] ?? item.position}</span> : <span className="text-gray-300">—</span>}</td>
+                    <td>{item.category_name ?? '—'}</td>
+                    <td>{item.position ? POSITION_LABELS[item.position] ?? item.position : '—'}</td>
                     <td className="text-right text-xs text-gray-600">
                       {item.height_cm || item.width_cm || item.depth_cm
                         ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`
                         : '—'}
                     </td>
-                    <td className="text-right text-xs">{fmt(item.weight_empty_kg, ' kg')}</td>
-                    <td className="text-right text-xs">{item.material_count ? `${item.material_count} Items` : '—'}</td>
-                    <td className="text-right text-xs font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>
+                    <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>
+                    <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>
+                    <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>
                     {canEdit && (
                       <td>
                         <div className="flex gap-1 justify-end">
@@ -494,7 +478,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
-  // ── Material-Tab ─────────────────────────────────────────────────────────
+  // ── Material ─────────────────────────────────────────────────────────────────
   const filteredMaterials = materials.filter(m =>
     !search || m.produkt.toLowerCase().includes(search.toLowerCase()) ||
     (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase()) ||
@@ -502,28 +486,27 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   )
 
   const renderMaterials = () => (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 relative">
-          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-            placeholder="Suchen…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
         {canEdit && (
-          <button onClick={() => setMatModal({ open: true, mat: null })}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
             <PlusIcon className="w-4 h-4" />
-            Material
+            Neues Material
           </button>
         )}
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Material durchsuchen…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400 text-sm">Lädt…</div>
+        <div className="data-table-wrapper">
+          <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Lädt…</div>
+        </div>
       ) : filteredMaterials.length === 0 ? (
         <div className="text-center py-12">
           <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -536,8 +519,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="data-table w-full">
+        <div className="data-table-wrapper">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Hersteller</th>
@@ -546,26 +529,26 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 <th>In Case</th>
                 <th className="text-right">Anzahl</th>
                 <th>Seriennummer</th>
-                <th>Herstellungsland</th>
+                <th>Land</th>
                 <th className="text-right">Zeitwert</th>
                 <th className="text-right">Gewicht</th>
-                {canEdit && <th></th>}
+                {canEdit && <th style={{ width: 60 }} />}
               </tr>
             </thead>
             <tbody>
               {filteredMaterials.map(mat => (
                 <tr key={mat.id}>
-                  <td className="text-xs text-gray-500">{mat.hersteller || '—'}</td>
+                  <td className="text-gray-500">{mat.hersteller || '—'}</td>
                   <td className="font-medium">{mat.produkt}</td>
-                  <td>{mat.category_name ? <span className="text-xs text-gray-600">{mat.category_name}</span> : <span className="text-gray-300">—</span>}</td>
-                  <td>{mat.case_id ? <span className="font-mono text-xs text-blue-700 bg-blue-50 px-1 py-0.5 rounded">{mat.case_id}</span> : <span className="text-gray-300">—</span>}</td>
-                  <td className="text-right text-sm font-medium">{mat.anzahl}</td>
-                  <td className="text-xs font-mono text-gray-600">{mat.seriennummer || '—'}</td>
-                  <td className="text-xs text-gray-600">{mat.herstellungsland || '—'}</td>
-                  <td className="text-right text-xs">
+                  <td>{mat.category_name ?? '—'}</td>
+                  <td>{mat.case_id ? <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{mat.case_id}</span> : '—'}</td>
+                  <td className="text-right font-medium">{mat.anzahl}</td>
+                  <td className="font-mono text-xs">{mat.seriennummer || '—'}</td>
+                  <td>{mat.herstellungsland || '—'}</td>
+                  <td className="text-right">
                     {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE')} ${mat.waehrung}` : '—'}
                   </td>
-                  <td className="text-right text-xs">
+                  <td className="text-right">
                     {mat.gewicht_kg != null ? `${(mat.gewicht_kg * mat.anzahl).toLocaleString('de-DE')} kg` : '—'}
                   </td>
                   {canEdit && (
@@ -593,14 +576,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
-  // ── Kategorien-Tab ───────────────────────────────────────────────────────
+  // ── Kategorien ────────────────────────────────────────────────────────────────
   const renderCategories = () => (
-    <div className="max-w-md">
+    <div className="space-y-4 max-w-md">
       {canEdit && (
-        <button onClick={() => setCatModal({ open: true, cat: null })}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 mb-4">
+        <button onClick={() => setCatModal({ open: true, cat: null })} className="btn btn-primary">
           <PlusIcon className="w-4 h-4" />
-          Kategorie
+          Neue Kategorie
         </button>
       )}
       {categories.length === 0 ? (
@@ -609,41 +591,54 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <p className="text-sm text-gray-500">Noch keine Kategorien angelegt</p>
         </div>
       ) : (
-        <div className="space-y-1">
-          {categories.map(cat => (
-            <div key={cat.id} className="flex items-center gap-3 px-3 py-2.5 bg-white border border-gray-200 rounded-lg">
-              <span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded w-14 text-center">{cat.kuerzel}</span>
-              <span className="flex-1 text-sm font-medium text-gray-800">{cat.name}</span>
-              {canEdit && (
-                <div className="flex gap-1">
-                  <button onClick={() => setCatModal({ open: true, cat })} className="p-1 text-gray-400 hover:text-blue-600">
-                    <PencilIcon className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={async () => {
-                    if (!confirm(`Kategorie "${cat.name}" löschen?`)) return
-                    await deleteEquipmentCategory(cat.id)
-                    load()
-                  }} className="p-1 text-gray-400 hover:text-red-600">
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Kürzel</th>
+                <th>Name</th>
+                {canEdit && <th style={{ width: 60 }} />}
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map(cat => (
+                <tr key={cat.id}>
+                  <td><span className="font-mono text-xs font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{cat.kuerzel}</span></td>
+                  <td className="font-medium">{cat.name}</td>
+                  {canEdit && (
+                    <td>
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => setCatModal({ open: true, cat })} className="p-1 text-gray-400 hover:text-blue-600">
+                          <PencilIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={async () => {
+                          if (!confirm(`Kategorie "${cat.name}" löschen?`)) return
+                          await deleteEquipmentCategory(cat.id)
+                          load()
+                        }} className="p-1 text-gray-400 hover:text-red-600">
+                          <TrashIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   )
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-4 p-2">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <WrenchScrewdriverIcon className="w-5 h-5 text-orange-500" />
             Equipment
-            <span className="text-xs font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded ml-1">ADDON</span>
+            <span className="text-xs font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">ADDON</span>
           </h1>
           {kuerzel && (
             <p className="text-xs text-gray-400 mt-0.5">
@@ -654,12 +649,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         </div>
       </div>
 
-      {/* Tab-Inhalt */}
       {activeTab === 'items'      && renderItems()}
       {activeTab === 'materials'  && renderMaterials()}
       {activeTab === 'categories' && renderCategories()}
 
-      {/* Modals */}
       {catModal.open && (
         <CategoryModal
           cat={catModal.cat}
