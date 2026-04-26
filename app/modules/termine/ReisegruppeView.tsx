@@ -79,6 +79,8 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<number | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<TravelPartyMember | null>(null)
+  const [editRoles, setEditRoles] = useState<{ role1: string; role2: string; role3: string }>({ role1: '', role2: '', role3: '' })
   const [sortKey, setSortKey] = useState<SortKey>('lastName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible, toggle, columns } = useColumnVisibility('reisegruppe', REISEGRUPPE_COLUMNS)
@@ -110,6 +112,23 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
   }, [members, sortKey, sortDir])
 
   const isMobile = useIsMobile()
+
+  const openEditModal = (m: TravelPartyMember) => {
+    setEditingMember(m)
+    setEditRoles({ role1: m.role1 || '', role2: m.role2 || '', role3: m.role3 || '' })
+  }
+
+  const handleSaveRoles = async () => {
+    if (!editingMember) return
+    setSavingId(editingMember.id)
+    try {
+      const updated = await updateTravelPartyMember(editingMember.terminId, editingMember.id, editRoles)
+      handleUpdated(updated)
+      setEditingMember(null)
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   const handleAdded = (m: TravelPartyMember) => setMembers(prev => [...prev, m])
   const handleUpdated = (m: TravelPartyMember) => setMembers(prev => prev.map(x => x.id === m.id ? m : x))
@@ -165,11 +184,16 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
         </div>
       ) : isMobile ? (
         /* ── Mobile Card List ── */
+        <>
         <div className="flex flex-col gap-2 mt-2">
           {sortedMembers.map(m => {
             const functions = [m.role1, m.role2, m.role3].filter(Boolean).join(' · ')
             return (
-              <div key={m.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-start gap-3">
+              <div
+                key={m.id}
+                className={`bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-start gap-3 ${isAdmin ? 'cursor-pointer active:bg-gray-50' : ''}`}
+                onClick={() => isAdmin && openEditModal(m)}
+              >
                 {/* Availability */}
                 <div className="flex-shrink-0 pt-1">
                   <AvailCell status={m.availabilityStatus} />
@@ -184,9 +208,11 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                       <span className="pt-guest-badge">Gast</span>
                     )}
                   </div>
-                  {functions && (
+                  {functions ? (
                     <div className="text-xs text-gray-500 mt-0.5">{functions}</div>
-                  )}
+                  ) : isAdmin ? (
+                    <div className="text-xs text-gray-300 mt-0.5 italic">Funktion tippen zum Bearbeiten</div>
+                  ) : null}
                   <div className="flex flex-wrap gap-3 mt-1.5">
                     {m.email && (
                       <a href={`mailto:${m.email}`} className="flex items-center gap-1 text-xs text-blue-600"
@@ -205,7 +231,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 {/* Actions */}
                 {isAdmin && (
                   <button
-                    onClick={() => handleRemove(m)}
+                    onClick={e => { e.stopPropagation(); handleRemove(m) }}
                     className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
                   >
                     <Trash2 size={15} />
@@ -215,6 +241,47 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             )
           })}
         </div>
+
+        {/* ── Bottom Sheet: Funktionen bearbeiten ── */}
+        {editingMember && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setEditingMember(null)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div
+              className="relative bg-white rounded-t-2xl px-5 pt-4 pb-8 shadow-xl"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+              <p className="text-sm font-semibold text-gray-900 mb-4">
+                {editingMember.firstName} {editingMember.lastName}
+              </p>
+              {(['role1', 'role2', 'role3'] as const).map((field, i) => {
+                const opts = [editingMember.function1, editingMember.function2, editingMember.function3].filter(Boolean) as string[]
+                return (
+                  <div key={field} className="mb-3">
+                    <label className="block text-xs text-gray-400 mb-1">Funktion {i + 1}</label>
+                    <select
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"
+                      value={editRoles[field]}
+                      onChange={e => setEditRoles(prev => ({ ...prev, [field]: e.target.value }))}
+                    >
+                      <option value="">–</option>
+                      {opts.map(fn => <option key={fn} value={fn}>{fn}</option>)}
+                    </select>
+                  </div>
+                )
+              })}
+              <button
+                onClick={handleSaveRoles}
+                disabled={savingId === editingMember.id}
+                className="w-full mt-2 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl disabled:opacity-50"
+              >
+                {savingId === editingMember.id ? 'Wird gespeichert…' : 'Speichern'}
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       ) : (
         /* ── Desktop Table ── */
         <div className="data-table-wrapper">
