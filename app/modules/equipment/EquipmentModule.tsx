@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { useRouter } from 'next/navigation'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
@@ -199,13 +200,11 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
   onClose: () => void
 }) {
   const [form, setForm] = useState({
-    item_id:               mat?.item_id != null ? String(mat.item_id) : '',
     hersteller:            mat?.hersteller ?? '',
     produkt:               mat?.produkt ?? '',
     info:                  mat?.info ?? '',
     category_id:           mat?.category_id != null ? String(mat.category_id) : '',
-    anzahl:                mat?.anzahl != null ? String(mat.anzahl) : '1',
-    seriennummer:          mat?.seriennummer ?? '',
+    typ:                   mat?.typ ?? 'bulk',
     herstellungsland:      mat?.herstellungsland ?? '',
     wert_zeitwert:         mat?.wert_zeitwert != null ? String(mat.wert_zeitwert) : '',
     wert_wiederbeschaffung: mat?.wert_wiederbeschaffung != null ? String(mat.wert_wiederbeschaffung) : '',
@@ -224,13 +223,11 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
     setSaving(true)
     try {
       await onSave({
-        item_id:               form.item_id ? Number(form.item_id) : null,
         hersteller:            form.hersteller || null,
         produkt:               form.produkt.trim(),
         info:                  form.info || null,
         category_id:           form.category_id ? Number(form.category_id) : null,
-        anzahl:                parseInt(form.anzahl, 10) || 1,
-        seriennummer:          form.seriennummer || null,
+        typ:                   form.typ as 'serial' | 'bulk',
         herstellungsland:      form.herstellungsland || null,
         wert_zeitwert:         n(form.wert_zeitwert),
         wert_wiederbeschaffung: n(form.wert_wiederbeschaffung),
@@ -274,21 +271,21 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
               </select>
             </div>
             <div>
-              <label className="form-label">In Gegenstand</label>
-              <select className="form-select" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}>
-                <option value="">— kein Case —</option>
-                {items.map(i => <option key={i.id} value={i.id}>{i.case_id} — {i.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="form-label">Anzahl</label>
-              <input type="number" className="form-input" value={form.anzahl} onChange={e => setForm({...form, anzahl: e.target.value})} min={1} />
-            </div>
-            <div>
-              <label className="form-label">Seriennummer</label>
-              <input className="form-input" value={form.seriennummer} onChange={e => setForm({...form, seriennummer: e.target.value})} placeholder="Optional" />
+              <label className="form-label">Typ</label>
+              <div className="flex gap-2 mt-1">
+                {(['bulk', 'serial'] as const).map(t => (
+                  <button key={t} type="button"
+                    onClick={() => setForm({...form, typ: t})}
+                    className={`flex-1 py-1.5 text-sm rounded border font-medium transition-colors ${
+                      form.typ === t ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}>
+                    {t === 'bulk' ? 'Massenartikel' : 'Serienartikel'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {form.typ === 'bulk' ? 'Anzahl pro Case festlegbar (z.B. XLR Kabel)' : 'Seriennummern werden separat gepflegt'}
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -344,6 +341,7 @@ function MaterialModal({ mat, items, categories, onSave, onClose }: {
 // ── Haupt-Modul ───────────────────────────────────────────────────────────────
 
 export default function EquipmentModule({ activeSubTab }: { activeSubTab?: string }) {
+  const router = useRouter()
   const activeTab = activeSubTab || 'items'
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
   const [items, setItems] = useState<EquipmentItem[]>([])
@@ -431,14 +429,14 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 <th className="text-right">Leer kg</th>
                 <th className="text-right">Material</th>
                 <th className="text-right">Gesamt kg</th>
-                {canEdit && <th style={{ width: 60 }} />}
+                <th style={{ width: 72 }} />
               </tr>
             </thead>
             <tbody>
               {filteredItems.map(item => {
                 const totalWeight = (item.weight_empty_kg ?? 0) + (item.material_gewicht ?? 0)
                 return (
-                  <tr key={item.id}>
+                  <tr key={item.id} className="clickable" onClick={() => router.push(`/equipment/${item.id}`)}>
                     <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>
                     <td className="font-medium">{item.name}</td>
                     <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>
@@ -452,12 +450,14 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                     <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>
                     <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>
                     <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>
-                    {canEdit && (
-                      <td>
-                        <div className="flex gap-1 justify-end">
+                    <td onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-1 justify-end">
+                        {canEdit && (
                           <button onClick={() => setItemModal({ open: true, item })} className="p-1 text-gray-400 hover:text-blue-600">
                             <PencilIcon className="w-3.5 h-3.5" />
                           </button>
+                        )}
+                        {canEdit && (
                           <button onClick={async () => {
                             if (!confirm(`${item.case_id} — ${item.name} wirklich löschen?`)) return
                             await deleteEquipmentItem(item.id)
@@ -465,9 +465,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                           }} className="p-1 text-gray-400 hover:text-red-600">
                             <TrashIcon className="w-3.5 h-3.5" />
                           </button>
-                        </div>
-                      </td>
-                    )}
+                        )}
+                        <ChevronRightIcon className="w-3.5 h-3.5 text-gray-300" />
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
@@ -481,8 +482,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   // ── Material ─────────────────────────────────────────────────────────────────
   const filteredMaterials = materials.filter(m =>
     !search || m.produkt.toLowerCase().includes(search.toLowerCase()) ||
-    (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.case_id ?? '').toLowerCase().includes(search.toLowerCase())
+    (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   const renderMaterials = () => (
@@ -526,12 +526,11 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 <th>Hersteller</th>
                 <th>Produkt</th>
                 <th>Kategorie</th>
-                <th>In Case</th>
-                <th className="text-right">Anzahl</th>
-                <th>Seriennummer</th>
+                <th>Typ</th>
+                <th className="text-right">Einheiten</th>
                 <th>Land</th>
-                <th className="text-right">Zeitwert</th>
-                <th className="text-right">Gewicht</th>
+                <th className="text-right">Wert/Stk</th>
+                <th className="text-right">Gewicht/Stk</th>
                 {canEdit && <th style={{ width: 60 }} />}
               </tr>
             </thead>
@@ -541,15 +540,22 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                   <td className="text-gray-500">{mat.hersteller || '—'}</td>
                   <td className="font-medium">{mat.produkt}</td>
                   <td>{mat.category_name ?? '—'}</td>
-                  <td>{mat.case_id ? <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{mat.case_id}</span> : '—'}</td>
-                  <td className="text-right font-medium">{mat.anzahl}</td>
-                  <td className="font-mono text-xs">{mat.seriennummer || '—'}</td>
+                  <td>
+                    <span className={`badge ${mat.typ === 'serial' ? 'badge-blue' : ''}`}>
+                      {mat.typ === 'serial' ? 'Serienartikel' : 'Massenartikel'}
+                    </span>
+                  </td>
+                  <td className="text-right font-medium">
+                    {mat.typ === 'serial'
+                      ? `${mat.unit_count ?? 0}×`
+                      : '∞'}
+                  </td>
                   <td>{mat.herstellungsland || '—'}</td>
                   <td className="text-right">
                     {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE')} ${mat.waehrung}` : '—'}
                   </td>
                   <td className="text-right">
-                    {mat.gewicht_kg != null ? `${(mat.gewicht_kg * mat.anzahl).toLocaleString('de-DE')} kg` : '—'}
+                    {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
                   </td>
                   {canEdit && (
                     <td>

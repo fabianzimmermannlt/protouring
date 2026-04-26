@@ -1057,6 +1057,36 @@ async function initDatabase() {
     )
   `)
 
+  // Migrations: equipment_materials typ-Spalte
+  try { await db.run(`ALTER TABLE equipment_materials ADD COLUMN typ TEXT DEFAULT 'bulk'`) } catch {}
+
+  // Einheiten für Serienartikel (eine Zeile pro physisches Gerät)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS equipment_material_units (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      material_id INTEGER NOT NULL REFERENCES equipment_materials(id) ON DELETE CASCADE,
+      seriennummer TEXT NOT NULL,
+      notiz TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  // Case-Inhalte (Verknüpfung: was ist in welchem Gegenstand)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS equipment_case_contents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id INTEGER NOT NULL REFERENCES equipment_items(id) ON DELETE CASCADE,
+      -- Bulk: material_id + anzahl
+      material_id INTEGER REFERENCES equipment_materials(id) ON DELETE CASCADE,
+      anzahl INTEGER NOT NULL DEFAULT 1,
+      -- Serial: material_unit_id (statt anzahl)
+      material_unit_id INTEGER REFERENCES equipment_material_units(id) ON DELETE CASCADE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // ── Ende Equipment-Modul ─────────────────────────────────────────────────────
 
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
@@ -5366,15 +5396,14 @@ app.delete('/api/equipment/items/:id', authenticateToken, requireTenant, async (
 // GET /api/equipment/materials
 app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const itemId = req.query.item_id
     const rows = await db.all(
-      `SELECT em.*, ec.name AS category_name, ei.case_id, ei.name AS item_name
+      `SELECT em.*, ec.name AS category_name,
+        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count
        FROM equipment_materials em
        LEFT JOIN equipment_categories ec ON ec.id = em.category_id
-       LEFT JOIN equipment_items ei ON ei.id = em.item_id
-       WHERE em.tenant_id = ? ${itemId ? 'AND em.item_id = ?' : ''}
+       WHERE em.tenant_id = ?
        ORDER BY em.hersteller, em.produkt`,
-      itemId ? [req.tenant.id, itemId] : [req.tenant.id]
+      [req.tenant.id]
     )
     res.json({ materials: rows })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -5387,14 +5416,16 @@ app.post('/api/equipment/materials', authenticateToken, requireTenant, async (re
     const { item_id, hersteller, produkt, info, category_id, anzahl, seriennummer, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
     if (!produkt) return res.status(400).json({ error: 'Produkt ist Pflicht' })
     const result = await db.run(
-      `INSERT INTO equipment_materials (tenant_id, item_id, hersteller, produkt, info, category_id, anzahl, seriennummer, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
+      `INSERT INTO equipment_materials (tenant_id, item_id, hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [req.tenant.id, item_id||null, hersteller||null, produkt, info||null, category_id||null,
-       anzahl||1, seriennummer||null, herstellungsland||null, wert_zeitwert||null, wert_wiederbeschaffung||null,
+      [req.tenant.id, null, hersteller||null, produkt, info||null, category_id||null,
+       req.body.typ||'bulk', anzahl||1, herstellungsland||null, wert_zeitwert||null, wert_wiederbeschaffung||null,
        waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.user.id]
     )
     const row = await db.get(
-      `SELECT em.*, ec.name AS category_name, ei.case_id FROM equipment_materials em LEFT JOIN equipment_categories ec ON ec.id=em.category_id LEFT JOIN equipment_items ei ON ei.id=em.item_id WHERE em.id=?`,
+      `SELECT em.*, ec.name AS category_name,
+        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count
+       FROM equipment_materials em LEFT JOIN equipment_categories ec ON ec.id=em.category_id WHERE em.id=?`,
       [result.lastID]
     )
     res.json({ material: row })
@@ -5405,14 +5436,16 @@ app.post('/api/equipment/materials', authenticateToken, requireTenant, async (re
 app.put('/api/equipment/materials/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { item_id, hersteller, produkt, info, category_id, anzahl, seriennummer, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
+    const { hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
     await db.run(
-      `UPDATE equipment_materials SET item_id=?, hersteller=?, produkt=?, info=?, category_id=?, anzahl=?, seriennummer=?, herstellungsland=?, wert_zeitwert=?, wert_wiederbeschaffung=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
+      `UPDATE equipment_materials SET hersteller=?, produkt=?, info=?, category_id=?, typ=COALESCE(?,typ), herstellungsland=?, wert_zeitwert=?, wert_wiederbeschaffung=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
        WHERE id=? AND tenant_id=?`,
-      [item_id||null, hersteller||null, produkt, info||null, category_id||null, anzahl||1, seriennummer||null, herstellungsland||null, wert_zeitwert||null, wert_wiederbeschaffung||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
+      [hersteller||null, produkt, info||null, category_id||null, typ||null, herstellungsland||null, wert_zeitwert||null, wert_wiederbeschaffung||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
     )
     const row = await db.get(
-      `SELECT em.*, ec.name AS category_name, ei.case_id FROM equipment_materials em LEFT JOIN equipment_categories ec ON ec.id=em.category_id LEFT JOIN equipment_items ei ON ei.id=em.item_id WHERE em.id=? AND em.tenant_id=?`,
+      `SELECT em.*, ec.name AS category_name,
+        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count
+       FROM equipment_materials em LEFT JOIN equipment_categories ec ON ec.id=em.category_id WHERE em.id=? AND em.tenant_id=?`,
       [req.params.id, req.tenant.id]
     )
     res.json({ material: row })
@@ -5424,6 +5457,219 @@ app.delete('/api/equipment/materials/:id', authenticateToken, requireTenant, asy
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     await db.run('DELETE FROM equipment_materials WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Equipment: Material-Typ Update ───────────────────────────────────────────
+// PUT /api/equipment/materials/:id/typ — nur typ ändern (serial/bulk)
+// (Der PUT /api/equipment/materials/:id bleibt für die restlichen Felder)
+
+// ── Equipment: Material-Einheiten (Serienartikel) ────────────────────────────
+
+// GET /api/equipment/materials/:id/units
+app.get('/api/equipment/materials/:id/units', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const units = await db.all(
+      `SELECT u.*, ecc.item_id,
+              ei.case_id AS in_case_id, ei.name AS in_case_name
+       FROM equipment_material_units u
+       LEFT JOIN equipment_case_contents ecc ON ecc.material_unit_id = u.id
+       LEFT JOIN equipment_items ei ON ei.id = ecc.item_id
+       WHERE u.material_id = ? AND u.tenant_id = ?
+       ORDER BY u.seriennummer`,
+      [req.params.id, req.tenant.id]
+    )
+    res.json({ units })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/equipment/materials/:id/units
+app.post('/api/equipment/materials/:id/units', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { seriennummer, notiz } = req.body
+    if (!seriennummer) return res.status(400).json({ error: 'Seriennummer ist Pflicht' })
+    const result = await db.run(
+      `INSERT INTO equipment_material_units (tenant_id, material_id, seriennummer, notiz) VALUES (?,?,?,?)`,
+      [req.tenant.id, req.params.id, seriennummer.trim(), notiz||null]
+    )
+    const unit = await db.get(
+      `SELECT u.*, ecc.item_id, ei.case_id AS in_case_id, ei.name AS in_case_name
+       FROM equipment_material_units u
+       LEFT JOIN equipment_case_contents ecc ON ecc.material_unit_id = u.id
+       LEFT JOIN equipment_items ei ON ei.id = ecc.item_id
+       WHERE u.id = ?`,
+      [result.lastID]
+    )
+    res.json({ unit })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/equipment/materials/units/:unitId
+app.put('/api/equipment/materials/units/:unitId', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { seriennummer, notiz } = req.body
+    await db.run(
+      `UPDATE equipment_material_units SET seriennummer=COALESCE(?,seriennummer), notiz=? WHERE id=? AND tenant_id=?`,
+      [seriennummer||null, notiz||null, req.params.unitId, req.tenant.id]
+    )
+    const unit = await db.get(
+      `SELECT u.*, ecc.item_id, ei.case_id AS in_case_id, ei.name AS in_case_name
+       FROM equipment_material_units u
+       LEFT JOIN equipment_case_contents ecc ON ecc.material_unit_id = u.id
+       LEFT JOIN equipment_items ei ON ei.id = ecc.item_id
+       WHERE u.id = ? AND u.tenant_id = ?`,
+      [req.params.unitId, req.tenant.id]
+    )
+    res.json({ unit })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/equipment/materials/units/:unitId
+app.delete('/api/equipment/materials/units/:unitId', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM equipment_material_units WHERE id=? AND tenant_id=?', [req.params.unitId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Equipment: Gegenstand-Detail ─────────────────────────────────────────────
+
+// GET /api/equipment/items/:id — Einzelner Gegenstand mit berechneten Werten
+app.get('/api/equipment/items/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const item = await db.get(
+      `SELECT ei.*, ec.name AS category_name,
+        (SELECT COUNT(*) FROM equipment_case_contents WHERE item_id = ei.id AND tenant_id = ei.tenant_id) AS content_count,
+        (SELECT COALESCE(SUM(
+          CASE WHEN ecc.material_unit_id IS NOT NULL
+            THEN COALESCE(em2.gewicht_kg, 0)
+            ELSE COALESCE(em.gewicht_kg, 0) * ecc.anzahl
+          END
+        ), 0)
+        FROM equipment_case_contents ecc
+        LEFT JOIN equipment_materials em ON em.id = ecc.material_id
+        LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
+        LEFT JOIN equipment_materials em2 ON em2.id = emu.material_id
+        WHERE ecc.item_id = ei.id) AS content_gewicht,
+        (SELECT COALESCE(SUM(
+          CASE WHEN ecc.material_unit_id IS NOT NULL
+            THEN COALESCE(em2.wert_zeitwert, 0)
+            ELSE COALESCE(em.wert_zeitwert, 0) * ecc.anzahl
+          END
+        ), 0)
+        FROM equipment_case_contents ecc
+        LEFT JOIN equipment_materials em ON em.id = ecc.material_id
+        LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
+        LEFT JOIN equipment_materials em2 ON em2.id = emu.material_id
+        WHERE ecc.item_id = ei.id) AS content_wert
+       FROM equipment_items ei
+       LEFT JOIN equipment_categories ec ON ec.id = ei.category_id
+       WHERE ei.id = ? AND ei.tenant_id = ?`,
+      [req.params.id, req.tenant.id]
+    )
+    if (!item) return res.status(404).json({ error: 'Nicht gefunden' })
+    res.json({ item })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Equipment: Case-Inhalte ───────────────────────────────────────────────────
+
+// GET /api/equipment/items/:id/contents
+app.get('/api/equipment/items/:id/contents', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const contents = await db.all(
+      `SELECT ecc.id, ecc.item_id, ecc.material_id, ecc.anzahl, ecc.material_unit_id,
+              em.hersteller, em.produkt, em.info, em.typ, em.herstellungsland,
+              em.wert_zeitwert, em.wert_wiederbeschaffung, em.waehrung, em.gewicht_kg,
+              ec.name AS category_name,
+              emu.seriennummer
+       FROM equipment_case_contents ecc
+       LEFT JOIN equipment_materials em ON em.id = COALESCE(ecc.material_id,
+         (SELECT material_id FROM equipment_material_units WHERE id = ecc.material_unit_id))
+       LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
+       LEFT JOIN equipment_categories ec ON ec.id = em.category_id
+       WHERE ecc.item_id = ? AND ecc.tenant_id = ?
+       ORDER BY em.hersteller, em.produkt, emu.seriennummer`,
+      [req.params.id, req.tenant.id]
+    )
+    res.json({ contents })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/equipment/items/:id/contents — Material zu Case hinzufügen
+app.post('/api/equipment/items/:id/contents', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { material_id, material_unit_ids, anzahl } = req.body
+    const inserted = []
+
+    if (material_unit_ids && Array.isArray(material_unit_ids) && material_unit_ids.length > 0) {
+      // Serienartikel: eine Zeile pro Einheit
+      for (const unitId of material_unit_ids) {
+        // Prüfen ob Einheit schon in einem anderen Case
+        const existing = await db.get(
+          `SELECT ecc.id, ei.case_id FROM equipment_case_contents ecc
+           JOIN equipment_items ei ON ei.id = ecc.item_id
+           WHERE ecc.material_unit_id = ? AND ecc.item_id != ?`,
+          [unitId, req.params.id]
+        )
+        if (existing) return res.status(409).json({ error: `Einheit bereits in Case ${existing.case_id} vorhanden` })
+
+        const r = await db.run(
+          `INSERT INTO equipment_case_contents (tenant_id, item_id, material_unit_id, anzahl) VALUES (?,?,?,1)`,
+          [req.tenant.id, req.params.id, unitId]
+        )
+        inserted.push(r.lastID)
+      }
+    } else if (material_id) {
+      // Bulk: prüfen ob schon vorhanden (dann nur anzahl erhöhen)
+      const existing = await db.get(
+        `SELECT id, anzahl FROM equipment_case_contents WHERE item_id=? AND material_id=? AND material_unit_id IS NULL AND tenant_id=?`,
+        [req.params.id, material_id, req.tenant.id]
+      )
+      if (existing) {
+        await db.run(
+          `UPDATE equipment_case_contents SET anzahl=? WHERE id=?`,
+          [existing.anzahl + (anzahl || 1), existing.id]
+        )
+        inserted.push(existing.id)
+      } else {
+        const r = await db.run(
+          `INSERT INTO equipment_case_contents (tenant_id, item_id, material_id, anzahl) VALUES (?,?,?,?)`,
+          [req.tenant.id, req.params.id, material_id, anzahl || 1]
+        )
+        inserted.push(r.lastID)
+      }
+    } else {
+      return res.status(400).json({ error: 'material_id oder material_unit_ids erforderlich' })
+    }
+
+    res.json({ ok: true, inserted })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/equipment/items/contents/:contentId — Anzahl ändern (Bulk)
+app.put('/api/equipment/items/contents/:contentId', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { anzahl } = req.body
+    await db.run(
+      `UPDATE equipment_case_contents SET anzahl=? WHERE id=? AND tenant_id=?`,
+      [anzahl, req.params.contentId, req.tenant.id]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/equipment/items/contents/:contentId
+app.delete('/api/equipment/items/contents/:contentId', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM equipment_case_contents WHERE id=? AND tenant_id=?', [req.params.contentId, req.tenant.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

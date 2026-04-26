@@ -519,16 +519,13 @@ export async function deleteEquipmentItem(id: number): Promise<void> {
 export interface EquipmentMaterial {
   id: number;
   tenant_id: number;
-  item_id: number | null;
-  item_name?: string;
-  case_id?: string;
   hersteller: string | null;
   produkt: string;
   info: string | null;
   category_id: number | null;
   category_name?: string;
-  anzahl: number;
-  seriennummer: string | null;
+  typ: 'serial' | 'bulk';
+  unit_count?: number;        // Anzahl angelegter Seriennummern-Einheiten
   herstellungsland: string | null;
   wert_zeitwert: number | null;
   wert_wiederbeschaffung: number | null;
@@ -540,9 +537,40 @@ export interface EquipmentMaterial {
   updated_at: string;
 }
 
-export async function getEquipmentMaterials(itemId?: number): Promise<EquipmentMaterial[]> {
-  const q = itemId ? `?item_id=${itemId}` : '';
-  const res = await request<{ materials: EquipmentMaterial[] }>(`/api/equipment/materials${q}`);
+export interface EquipmentMaterialUnit {
+  id: number;
+  tenant_id: number;
+  material_id: number;
+  seriennummer: string;
+  notiz: string | null;
+  item_id: number | null;     // gesetzt wenn in einem Case
+  in_case_id: string | null;  // z.B. "BTD10000"
+  in_case_name: string | null;
+  created_at: string;
+}
+
+export interface EquipmentCaseContent {
+  id: number;
+  item_id: number;
+  material_id: number | null;
+  material_unit_id: number | null;
+  anzahl: number;
+  // joined fields
+  hersteller: string | null;
+  produkt: string;
+  info: string | null;
+  typ: 'serial' | 'bulk';
+  category_name: string | null;
+  herstellungsland: string | null;
+  wert_zeitwert: number | null;
+  wert_wiederbeschaffung: number | null;
+  waehrung: string;
+  gewicht_kg: number | null;
+  seriennummer: string | null; // nur bei serial
+}
+
+export async function getEquipmentMaterials(): Promise<EquipmentMaterial[]> {
+  const res = await request<{ materials: EquipmentMaterial[] }>('/api/equipment/materials');
   return res.materials;
 }
 
@@ -558,6 +586,50 @@ export async function updateEquipmentMaterial(id: number, data: Partial<Equipmen
 
 export async function deleteEquipmentMaterial(id: number): Promise<void> {
   await request(`/api/equipment/materials/${id}`, { method: 'DELETE' });
+}
+
+// Material-Einheiten (Serienartikel)
+export async function getMaterialUnits(materialId: number): Promise<EquipmentMaterialUnit[]> {
+  const res = await request<{ units: EquipmentMaterialUnit[] }>(`/api/equipment/materials/${materialId}/units`);
+  return res.units;
+}
+
+export async function createMaterialUnit(materialId: number, data: { seriennummer: string; notiz?: string }): Promise<EquipmentMaterialUnit> {
+  const res = await request<{ unit: EquipmentMaterialUnit }>(`/api/equipment/materials/${materialId}/units`, { method: 'POST', body: data });
+  return res.unit;
+}
+
+export async function updateMaterialUnit(unitId: number, data: { seriennummer?: string; notiz?: string }): Promise<EquipmentMaterialUnit> {
+  const res = await request<{ unit: EquipmentMaterialUnit }>(`/api/equipment/materials/units/${unitId}`, { method: 'PUT', body: data });
+  return res.unit;
+}
+
+export async function deleteMaterialUnit(unitId: number): Promise<void> {
+  await request(`/api/equipment/materials/units/${unitId}`, { method: 'DELETE' });
+}
+
+// Gegenstand-Detail
+export async function getEquipmentItemDetail(id: number): Promise<EquipmentItem & { content_count: number; content_gewicht: number; content_wert: number }> {
+  const res = await request<{ item: EquipmentItem & { content_count: number; content_gewicht: number; content_wert: number } }>(`/api/equipment/items/${id}`);
+  return res.item;
+}
+
+// Case-Inhalte
+export async function getCaseContents(itemId: number): Promise<EquipmentCaseContent[]> {
+  const res = await request<{ contents: EquipmentCaseContent[] }>(`/api/equipment/items/${itemId}/contents`);
+  return res.contents;
+}
+
+export async function addToCaseContents(itemId: number, data: { material_id?: number; material_unit_ids?: number[]; anzahl?: number }): Promise<void> {
+  await request(`/api/equipment/items/${itemId}/contents`, { method: 'POST', body: data });
+}
+
+export async function updateCaseContent(contentId: number, anzahl: number): Promise<void> {
+  await request(`/api/equipment/items/contents/${contentId}`, { method: 'PUT', body: { anzahl } });
+}
+
+export async function removeCaseContent(contentId: number): Promise<void> {
+  await request(`/api/equipment/items/contents/${contentId}`, { method: 'DELETE' });
 }
 
 // ============================================
