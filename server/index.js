@@ -4534,7 +4534,7 @@ const requireAdmin = async (req, res, next) => {
 // POST /api/settings/invite  — Invite-Link erstellen (Admin only)
 app.post('/api/settings/invite', authenticateToken, requireTenant, requireAdmin, async (req, res) => {
   try {
-    const { email, role = 'crew', contact_id } = req.body
+    const { email, role = 'crew', contact_id, first_name, last_name } = req.body
     if (!email) return res.status(400).json({ error: 'E-Mail fehlt' })
     if (!VALID_ROLES.includes(role)) return res.status(400).json({ error: 'Ungültige Rolle' })
 
@@ -4546,10 +4546,15 @@ app.post('/api/settings/invite', authenticateToken, requireTenant, requireAdmin,
     )
     if (existing) return res.status(409).json({ error: 'User ist bereits Mitglied' })
 
+    // Falls User bereits im System existiert: seine eigenen Namen nehmen
+    const existingUser = await db.get('SELECT first_name, last_name FROM users WHERE email=?', [email])
+    const resolvedFirstName = (existingUser?.first_name || first_name || '').trim()
+    const resolvedLastName  = (existingUser?.last_name  || last_name  || '').trim()
+
     // Alten Pending-Token für diese E-Mail + Tenant löschen
     await db.run('DELETE FROM invite_tokens WHERE email=? AND tenant_id=? AND used_at IS NULL', [email, req.tenant.id])
 
-    // Kontakt anlegen falls noch keiner vorhanden (damit er in der Liste erscheint)
+    // Kontakt anlegen/aktualisieren (damit er sofort in der Liste erscheint)
     let resolvedContactId = contact_id ?? null
     if (!resolvedContactId) {
       const existingContact = await db.get(
@@ -4557,17 +4562,30 @@ app.post('/api/settings/invite', authenticateToken, requireTenant, requireAdmin,
       )
       if (existingContact) {
         resolvedContactId = existingContact.id
-        await db.run('UPDATE contacts SET invite_pending=1 WHERE id=?', [resolvedContactId])
+        // Namen aktualisieren wenn vorhanden
+        if (resolvedFirstName || resolvedLastName) {
+          await db.run(
+            'UPDATE contacts SET first_name=?, last_name=?, invite_pending=1 WHERE id=?',
+            [resolvedFirstName, resolvedLastName, resolvedContactId]
+          )
+        } else {
+          await db.run('UPDATE contacts SET invite_pending=1 WHERE id=?', [resolvedContactId])
+        }
       } else {
-        const parts = email.split('@')[0].split('.')
-        const firstName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : ''
-        const lastName  = parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1) : ''
         const newContact = await db.run(
           `INSERT INTO contacts (tenant_id, email, first_name, last_name, contact_type, invite_pending, crew_tool_active)
            VALUES (?, ?, ?, ?, 'crew', 1, 0)`,
-          [req.tenant.id, email, firstName, lastName]
+          [req.tenant.id, email, resolvedFirstName, resolvedLastName]
         )
         resolvedContactId = newContact.lastID
+      }
+    } else {
+      // contact_id explizit angegeben (vom Kontakt-Modal): Namen ebenfalls updaten
+      if (resolvedFirstName || resolvedLastName) {
+        await db.run(
+          'UPDATE contacts SET first_name=?, last_name=?, invite_pending=1 WHERE id=? AND tenant_id=?',
+          [resolvedFirstName, resolvedLastName, resolvedContactId, req.tenant.id]
+        )
       }
     }
 

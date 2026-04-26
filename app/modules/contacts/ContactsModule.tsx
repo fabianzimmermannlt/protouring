@@ -92,6 +92,8 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   // Neuer-Kontakt-Modal (nur Einladen)
   const [addInviteEmail, setAddInviteEmail] = useState('')
+  const [addInviteFirstName, setAddInviteFirstName] = useState('')
+  const [addInviteLastName, setAddInviteLastName] = useState('')
   const [addInviteRole, setAddInviteRole] = useState<TenantRole>('crew')
   const [addInviteLink, setAddInviteLink] = useState('')
   const [addInviteCopied, setAddInviteCopied] = useState(false)
@@ -102,6 +104,8 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   // Invite-Modal (von bestehendem Kontakt aus)
   const [inviteContact, setInviteContact] = useState<Contact | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteFirstName, setInviteFirstName] = useState('')
+  const [inviteLastName, setInviteLastName] = useState('')
   const [inviteRole, setInviteRole] = useState<TenantRole>('crew')
   const [inviteSaving, setInviteSaving] = useState(false)
   const [inviteError, setInviteError] = useState('')
@@ -131,16 +135,19 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   }
 
   const openAddModal = () => {
-    setAddInviteEmail(''); setAddInviteRole('crew'); setAddInviteLink('')
+    setAddInviteEmail(''); setAddInviteFirstName(''); setAddInviteLastName('')
+    setAddInviteRole('crew'); setAddInviteLink('')
     setAddInviteCopied(false); setAddInviteError(''); setAddInviteSaving(false)
     setShowAddModal(true)
   }
 
   const handleAddInvite = async () => {
     if (!addInviteEmail.trim()) { setAddInviteError('E-Mail fehlt'); return }
+    if (!addInviteFirstName.trim()) { setAddInviteError('Vorname fehlt'); return }
+    if (!addInviteLastName.trim()) { setAddInviteError('Nachname fehlt'); return }
     setAddInviteSaving(true); setAddInviteError('')
     try {
-      const result = await createInvite(addInviteEmail.trim(), addInviteRole)
+      const result = await createInvite(addInviteEmail.trim(), addInviteRole, undefined, addInviteFirstName.trim(), addInviteLastName.trim())
       setAddInviteLink(`${window.location.origin}${result.invite_url}`)
     } catch (e: any) {
       setAddInviteError(e?.message ?? 'Fehler beim Erstellen')
@@ -155,6 +162,8 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     setInviteLink('')
     setInviteCopied(false)
     setInviteEmail(contact.email || '')
+    setInviteFirstName(contact.firstName || '')
+    setInviteLastName(contact.lastName || '')
     setInviteRole('crew')
     setInviteContact(contact)
   }
@@ -162,10 +171,13 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const handleCreateInvite = async () => {
     if (!inviteContact) return
     if (!inviteEmail) { setInviteError('E-Mail fehlt'); return }
+    if (!inviteFirstName.trim()) { setInviteError('Vorname fehlt'); return }
+    if (!inviteLastName.trim()) { setInviteError('Nachname fehlt'); return }
     setInviteSaving(true)
     setInviteError('')
     try {
-      const result = await createInvite(inviteEmail, inviteRole, typeof inviteContact.id === 'number' ? inviteContact.id : parseInt(inviteContact.id as string))
+      const contactId = typeof inviteContact.id === 'number' ? inviteContact.id : parseInt(inviteContact.id as string)
+      const result = await createInvite(inviteEmail, inviteRole, contactId, inviteFirstName.trim(), inviteLastName.trim())
       const baseUrl = window.location.origin
       setInviteLink(`${baseUrl}${result.invite_url}`)
     } catch (e: any) {
@@ -515,6 +527,29 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               )}
               {!addInviteLink ? (
                 <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Vorname *</label>
+                      <input
+                        type="text"
+                        value={addInviteFirstName}
+                        onChange={e => setAddInviteFirstName(e.target.value)}
+                        placeholder="Max"
+                        autoFocus
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Nachname *</label>
+                      <input
+                        type="text"
+                        value={addInviteLastName}
+                        onChange={e => setAddInviteLastName(e.target.value)}
+                        placeholder="Mustermann"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">E-Mail *</label>
                     <input
@@ -523,7 +558,6 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       onChange={e => setAddInviteEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleAddInvite()}
                       placeholder="email@beispiel.de"
-                      autoFocus
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -647,7 +681,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
             <div className="modal-body space-y-4">
               <p className="text-sm text-gray-500">
-                {inviteContact.firstName} {inviteContact.lastName} erhält einen Einladungs-Link (7 Tage gültig).
+                Einladungs-Link (7 Tage gültig). Name und Rolle sind sofort in den Berechtigungen sichtbar.
               </p>
 
               {inviteError && (
@@ -656,8 +690,30 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
               {!inviteLink ? (
                 <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="form-label">Vorname *</label>
+                      <input
+                        type="text"
+                        value={inviteFirstName}
+                        onChange={e => setInviteFirstName(e.target.value)}
+                        className="form-input"
+                        placeholder="Max"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Nachname *</label>
+                      <input
+                        type="text"
+                        value={inviteLastName}
+                        onChange={e => setInviteLastName(e.target.value)}
+                        className="form-input"
+                        placeholder="Mustermann"
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="form-label">E-Mail-Adresse</label>
+                    <label className="form-label">E-Mail-Adresse *</label>
                     <input
                       type="email"
                       value={inviteEmail}

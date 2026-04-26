@@ -1998,10 +1998,22 @@ function pendingInviteFromRow(r: Record<string, unknown>): PendingInvite {
 }
 
 /** Admin: Invite-Link erstellen */
-export async function createInvite(email: string, role: TenantRole, contactId?: number): Promise<{ invite_url: string; token: string }> {
+export async function createInvite(
+  email: string,
+  role: TenantRole,
+  contactId?: number,
+  firstName?: string,
+  lastName?: string,
+): Promise<{ invite_url: string; token: string }> {
   return request('/api/settings/invite', {
     method: 'POST',
-    body: { email, role, contact_id: contactId ?? null },
+    body: {
+      email,
+      role,
+      contact_id: contactId ?? null,
+      first_name: firstName ?? '',
+      last_name: lastName ?? '',
+    },
   })
 }
 
