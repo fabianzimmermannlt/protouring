@@ -959,6 +959,18 @@ async function initDatabase() {
     )
   `)
 
+  // Migration: sort_order in advancing_areas + advancing_entries (falls Spalte fehlt)
+  const areasInfo = await db.all("PRAGMA table_info(advancing_areas)").catch(() => [])
+  if (areasInfo.length && !areasInfo.find(c => c.name === 'sort_order')) {
+    await db.run('ALTER TABLE advancing_areas ADD COLUMN sort_order INTEGER DEFAULT 0')
+    console.log('✅ Migration: advancing_areas.sort_order hinzugefügt')
+  }
+  const entriesInfo = await db.all("PRAGMA table_info(advancing_entries)").catch(() => [])
+  if (entriesInfo.length && !entriesInfo.find(c => c.name === 'sort_order')) {
+    await db.run('ALTER TABLE advancing_entries ADD COLUMN sort_order INTEGER DEFAULT 0')
+    console.log('✅ Migration: advancing_entries.sort_order hinzugefügt')
+  }
+
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
   const utSchema = await db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_tenants'")
   if (utSchema && utSchema.sql && utSchema.sql.includes("'owner'")) {
@@ -4144,25 +4156,35 @@ app.get('/api/termine/:terminId/advance-sheet/pdf', async (req, res) => {
 
     // Advancing
     if (sections.includes('advancing')) {
-      const areas = await db.all(
-        'SELECT * FROM advancing_areas WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC',
-        [terminId, tenant.id]
-      );
-      data.advancing = await Promise.all(areas.map(async area => {
-        const entries = await db.all(
-          'SELECT * FROM advancing_entries WHERE area_id = ? ORDER BY sort_order ASC, id ASC',
-          [area.id]
+      try {
+        const areas = await db.all(
+          'SELECT * FROM advancing_areas WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC',
+          [terminId, tenant.id]
         );
-        return { ...area, entries };
-      }));
+        data.advancing = await Promise.all(areas.map(async area => {
+          const entries = await db.all(
+            'SELECT * FROM advancing_entries WHERE area_id = ? ORDER BY sort_order ASC, id ASC',
+            [area.id]
+          );
+          return { ...area, entries };
+        }));
+      } catch (e) {
+        console.error('[advance-sheet] advancing section error:', e.message);
+        data.advancing = [];
+      }
     }
 
     // Sonstiges (boards)
     if (sections.includes('sonstiges')) {
-      data.sonstiges = await db.all(
-        `SELECT * FROM boards WHERE entity_type = 'termin_sonstiges' AND entity_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC`,
-        [String(terminId), tenant.id]
-      );
+      try {
+        data.sonstiges = await db.all(
+          `SELECT * FROM boards WHERE entity_type = 'termin_sonstiges' AND entity_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC`,
+          [String(terminId), tenant.id]
+        );
+      } catch (e) {
+        console.error('[advance-sheet] sonstiges section error:', e.message);
+        data.sonstiges = [];
+      }
     }
 
     const { generateAdvanceSheetPdf } = require('./generate_advance_sheet');
