@@ -24,7 +24,7 @@ import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
   adminSetUserEmail, adminSetUserPassword, adminToggleUserStatus,
   changePassword, getMyContact, updateMyContact, getOrCreateUserContact, updateContact,
-  getTenantArtistSettings, updateTenantArtistSettings,
+  getTenantArtistSettings, updateTenantArtistSettings, checkEquipmentKuerzel,
   getTenantBilling, updateTenantBilling,
   getUserFormat, updateUserFormat,
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
@@ -52,17 +52,21 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
   useEffect(() => {
     // Artist-Einstellungen aus DB laden
     getTenantArtistSettings()
-      .then(s => setArtistData({
-        displayName: s.displayName,
-        shortCode:   s.shortCode,
-        homebase:    s.homebase,
-        genre:       s.genre,
-        foundedYear: '',
-        website:     s.website,
-        email:       s.email,
-        phone:       s.phone,
-        socialMedia: { facebook: '', instagram: '', twitter: '', spotify: '', youtube: '' },
-      }))
+      .then(s => {
+        setArtistData({
+          displayName:      s.displayName,
+          shortCode:        s.shortCode,
+          homebase:         s.homebase,
+          genre:            s.genre,
+          foundedYear:      '',
+          website:          s.website,
+          email:            s.email,
+          phone:            s.phone,
+          equipmentKuerzel: s.equipmentKuerzel ?? '',
+          socialMedia: { facebook: '', instagram: '', twitter: '', spotify: '', youtube: '' },
+        })
+        if (s.equipmentKuerzel) setKuerzelStatus('ok')
+      })
       .catch(() => {})
     // Billing aus DB laden
     getTenantBilling()
@@ -128,6 +132,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
     website: '',
     email: '',
     phone: '',
+    equipmentKuerzel: '',
     socialMedia: {
       facebook: '',
       instagram: '',
@@ -136,6 +141,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
       youtube: ''
     }
   })
+  const [kuerzelStatus, setKuerzelStatus] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle')
 
   // Save functions for each data type
   const saveBillingData = (data: typeof billingData) => {
@@ -154,13 +160,14 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
     setArtistData(data)
     try {
       await updateTenantArtistSettings({
-        displayName: data.displayName,
-        shortCode:   data.shortCode,
-        homebase:    data.homebase,
-        genre:       data.genre,
-        email:       data.email,
-        phone:       data.phone,
-        website:     data.website,
+        displayName:      data.displayName,
+        shortCode:        data.shortCode,
+        homebase:         data.homebase,
+        genre:            data.genre,
+        email:            data.email,
+        phone:            data.phone,
+        website:          data.website,
+        equipmentKuerzel: data.equipmentKuerzel || '',
       })
       window.dispatchEvent(new CustomEvent('artistUpdated'))
     } catch {}
@@ -389,6 +396,44 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                         placeholder="Rock, Pop"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Equipment-Kürzel
+                        <span className="ml-1 text-gray-400 font-normal">(3 Zeichen, global einmalig — für Case IDs)</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={artistData.equipmentKuerzel}
+                          onChange={(e) => {
+                            const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3)
+                            setArtistData({...artistData, equipmentKuerzel: v})
+                            setKuerzelStatus('idle')
+                          }}
+                          onBlur={async () => {
+                            const v = artistData.equipmentKuerzel
+                            if (!v) { setKuerzelStatus('idle'); return }
+                            if (!/^[A-Z][A-Z0-9]{2}$/.test(v)) { setKuerzelStatus('invalid'); return }
+                            setKuerzelStatus('checking')
+                            try {
+                              const r = await checkEquipmentKuerzel(v)
+                              setKuerzelStatus(r.available ? 'ok' : 'taken')
+                            } catch { setKuerzelStatus('idle') }
+                          }}
+                          className={`w-24 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 font-mono uppercase tracking-widest ${
+                            kuerzelStatus === 'ok' ? 'border-green-400 focus:ring-green-400' :
+                            kuerzelStatus === 'taken' || kuerzelStatus === 'invalid' ? 'border-red-400 focus:ring-red-400' :
+                            'border-gray-300 focus:ring-blue-500'
+                          }`}
+                          placeholder="BTD"
+                          maxLength={3}
+                        />
+                        {kuerzelStatus === 'checking' && <span className="text-xs text-gray-400">Prüfe…</span>}
+                        {kuerzelStatus === 'ok' && <span className="text-xs text-green-600">✓ Verfügbar</span>}
+                        {kuerzelStatus === 'taken' && <span className="text-xs text-red-600">✗ Bereits vergeben</span>}
+                        {kuerzelStatus === 'invalid' && <span className="text-xs text-red-600">Muss mit Buchstabe beginnen</span>}
+                      </div>
                     </div>
                   </div>
                 </div>

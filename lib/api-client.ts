@@ -390,20 +390,22 @@ export interface TenantArtistSettings {
   email: string;
   phone: string;
   website: string;
+  equipmentKuerzel: string;
 }
 
 export async function getTenantArtistSettings(): Promise<TenantArtistSettings> {
   const res = await request<{ settings: Record<string, string> }>('/api/tenant/settings');
   const s = res.settings;
   return {
-    name:        s.name        ?? '',
-    displayName: s.display_name ?? '',
-    shortCode:   s.short_code  ?? '',
-    homebase:    s.homebase    ?? '',
-    genre:       s.genre       ?? '',
-    email:       s.email       ?? '',
-    phone:       s.phone       ?? '',
-    website:     s.website     ?? '',
+    name:              s.name              ?? '',
+    displayName:       s.display_name      ?? '',
+    shortCode:         s.short_code        ?? '',
+    homebase:          s.homebase          ?? '',
+    genre:             s.genre             ?? '',
+    email:             s.email             ?? '',
+    phone:             s.phone             ?? '',
+    website:           s.website           ?? '',
+    equipmentKuerzel:  s.equipment_kuerzel ?? '',
   };
 }
 
@@ -411,15 +413,151 @@ export async function updateTenantArtistSettings(data: Omit<TenantArtistSettings
   const res = await request<{ settings: Record<string, string> }>('/api/tenant/settings', { method: 'PUT', body: data });
   const s = res.settings;
   return {
-    name:        s.name        ?? '',
-    displayName: s.display_name ?? '',
-    shortCode:   s.short_code  ?? '',
-    homebase:    s.homebase    ?? '',
-    genre:       s.genre       ?? '',
-    email:       s.email       ?? '',
-    phone:       s.phone       ?? '',
-    website:     s.website     ?? '',
+    name:              s.name              ?? '',
+    displayName:       s.display_name      ?? '',
+    shortCode:         s.short_code        ?? '',
+    homebase:          s.homebase          ?? '',
+    genre:             s.genre             ?? '',
+    email:             s.email             ?? '',
+    phone:             s.phone             ?? '',
+    website:           s.website           ?? '',
+    equipmentKuerzel:  s.equipment_kuerzel ?? '',
   };
+}
+
+export async function checkEquipmentKuerzel(kuerzel: string): Promise<{ available: boolean; reason?: string }> {
+  const res = await request<{ available: boolean; reason?: string }>(`/api/equipment/kuerzel/check?kuerzel=${encodeURIComponent(kuerzel)}`);
+  return res;
+}
+
+// ============================================
+// Equipment: Kategorien
+// ============================================
+
+export interface EquipmentCategory {
+  id: number;
+  tenant_id: number;
+  name: string;
+  kuerzel: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export async function getEquipmentCategories(): Promise<EquipmentCategory[]> {
+  const res = await request<{ categories: EquipmentCategory[] }>('/api/equipment/categories');
+  return res.categories;
+}
+
+export async function createEquipmentCategory(data: { name: string; kuerzel: string; sort_order?: number }): Promise<EquipmentCategory> {
+  const res = await request<{ category: EquipmentCategory }>('/api/equipment/categories', { method: 'POST', body: data });
+  return res.category;
+}
+
+export async function updateEquipmentCategory(id: number, data: Partial<EquipmentCategory>): Promise<EquipmentCategory> {
+  const res = await request<{ category: EquipmentCategory }>(`/api/equipment/categories/${id}`, { method: 'PUT', body: data });
+  return res.category;
+}
+
+export async function deleteEquipmentCategory(id: number): Promise<void> {
+  await request(`/api/equipment/categories/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
+// Equipment: Gegenstände (Items)
+// ============================================
+
+export type EquipmentItemTyp = 'case' | 'dolly' | 'kulisse' | 'flightcase' | 'sonstiges';
+export type EquipmentPosition = 'sl' | 'sr' | 'foh' | 'drums' | 'backline' | 'truck' | 'sonstiges';
+
+export interface EquipmentItem {
+  id: number;
+  tenant_id: number;
+  case_id: string;
+  seq_number: number;
+  name: string;
+  category_id: number | null;
+  category_name?: string;
+  category_kuerzel?: string;
+  typ: EquipmentItemTyp;
+  position: EquipmentPosition | null;
+  load_order: number | null;
+  height_cm: number | null;
+  width_cm: number | null;
+  depth_cm: number | null;
+  weight_empty_kg: number | null;
+  notiz: string | null;
+  material_count?: number;
+  material_wert?: number;
+  material_gewicht?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getEquipmentItems(): Promise<EquipmentItem[]> {
+  const res = await request<{ items: EquipmentItem[] }>('/api/equipment/items');
+  return res.items;
+}
+
+export async function createEquipmentItem(data: Partial<EquipmentItem>): Promise<EquipmentItem> {
+  const res = await request<{ item: EquipmentItem }>('/api/equipment/items', { method: 'POST', body: data });
+  return res.item;
+}
+
+export async function updateEquipmentItem(id: number, data: Partial<EquipmentItem>): Promise<EquipmentItem> {
+  const res = await request<{ item: EquipmentItem }>(`/api/equipment/items/${id}`, { method: 'PUT', body: data });
+  return res.item;
+}
+
+export async function deleteEquipmentItem(id: number): Promise<void> {
+  await request(`/api/equipment/items/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
+// Equipment: Material
+// ============================================
+
+export interface EquipmentMaterial {
+  id: number;
+  tenant_id: number;
+  item_id: number | null;
+  item_name?: string;
+  case_id?: string;
+  hersteller: string | null;
+  produkt: string;
+  info: string | null;
+  category_id: number | null;
+  category_name?: string;
+  anzahl: number;
+  seriennummer: string | null;
+  herstellungsland: string | null;
+  wert_zeitwert: number | null;
+  wert_wiederbeschaffung: number | null;
+  waehrung: string;
+  gewicht_kg: number | null;
+  anschaffungsdatum: string | null;
+  notiz: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getEquipmentMaterials(itemId?: number): Promise<EquipmentMaterial[]> {
+  const q = itemId ? `?item_id=${itemId}` : '';
+  const res = await request<{ materials: EquipmentMaterial[] }>(`/api/equipment/materials${q}`);
+  return res.materials;
+}
+
+export async function createEquipmentMaterial(data: Partial<EquipmentMaterial>): Promise<EquipmentMaterial> {
+  const res = await request<{ material: EquipmentMaterial }>('/api/equipment/materials', { method: 'POST', body: data });
+  return res.material;
+}
+
+export async function updateEquipmentMaterial(id: number, data: Partial<EquipmentMaterial>): Promise<EquipmentMaterial> {
+  const res = await request<{ material: EquipmentMaterial }>(`/api/equipment/materials/${id}`, { method: 'PUT', body: data });
+  return res.material;
+}
+
+export async function deleteEquipmentMaterial(id: number): Promise<void> {
+  await request(`/api/equipment/materials/${id}`, { method: 'DELETE' });
 }
 
 // ============================================

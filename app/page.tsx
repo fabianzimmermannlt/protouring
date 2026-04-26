@@ -14,6 +14,7 @@ import TerminePage from './modules/termine/TermineModule'
 import { isAuthenticated, getCurrentUser, getCurrentTenant } from '@/lib/api-client'
 import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 import FeedbackPage from './modules/feedback/FeedbackPage'
+import EquipmentModule from './modules/equipment/EquipmentModule'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 
 export default function ProTouringApp() {
@@ -123,20 +124,7 @@ export default function ProTouringApp() {
           <div className="text-sm text-gray-400 mt-2">Bald verfügbar...</div>
         </div>
       )}
-      {activeTab === 'equipment' && (
-        <div className="flex flex-col items-center justify-center py-20 text-center px-8">
-          <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.654-4.654m5.885-9.088a9.998 9.998 0 00-1.1.21M5.065 2.93A10 10 0 001 12a10 10 0 008.285 9.82M14.25 4.28l-2.45 2.45" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-1">Equipment-Modul</h2>
-          <p className="text-sm text-gray-500 max-w-xs">
-            Gegenstände, Material und Carnet ATA.<br />
-            Wird in Kürze gebaut.
-          </p>
-        </div>
-      )}
+      {activeTab === 'equipment' && <EquipmentModule />}
       {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
       {activeTab === 'feedback' && <FeedbackPage />}
     </>
