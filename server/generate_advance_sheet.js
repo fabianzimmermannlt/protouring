@@ -411,39 +411,41 @@ function generateAdvanceSheetPdf({ termin, sections, data }) {
       const COL = [MARGIN_H, MARGIN_H + 140, MARGIN_H + 260, MARGIN_H + 370];
       const COL_W = [130, 115, 105, CONTENT_W - 370];
 
-      const ROW_H = 22;
-      const PAD_T = 8; // Abstand Oberkante → Text: visuell zentriert (pdfkit-Textbox hat intern Freiraum oben)
-
       // Header-Zeile
-      ensureSpace(14 + ROW_H);
+      ensureSpace(26);
       ['Name', 'Funktion 1', 'Funktion 2', 'Funktion 3'].forEach((h, i) => {
         doc.font(FONT_BOLD).fontSize(7).fillColor(C_MUTED)
           .text(h, COL[i], y, { width: COL_W[i], lineBreak: false });
       });
       y += 12;
-
-      // Oberkante der ersten Datenzeile = Separator nach dem Header
       doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
         .lineWidth(0.5).strokeColor(C_RULE_L).stroke();
+      y += 4;
 
-      // Jede Zeile: Oberkante ist y, Text bei y+PAD_T, Unterkante bei y+ROW_H
       for (const m of data.travelParty) {
-        ensureSpace(ROW_H);
-        const rowY = y; // explizit festhalten damit pdfkit-Cursor nichts verschiebt
         const name = [m.first_name, m.last_name].filter(Boolean).join(' ');
-        doc.font(FONT_REG).fontSize(8.5).fillColor(C_DARK)
-          .text(name || '–',   COL[0], rowY + PAD_T, { width: COL_W[0], lineBreak: false });
+        const cols = [name || '–', m.role1 || '', m.role2 || '', m.role3 || ''];
+        // Tatsächliche Zeilenhöhe berechnen
+        const rowH = Math.max(
+          ...cols.map((t, i) => t ? doc.font(i === 0 ? FONT_BOLD : FONT_REG).fontSize(8.5).heightOfString(t, { width: COL_W[i] }) : 0),
+          13
+        );
+        ensureSpace(rowH + 10);
+        const rowY = y;
+        doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
+          .text(cols[0], COL[0], rowY, { width: COL_W[0] });
         doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID)
-          .text(m.role1 || '', COL[1], rowY + PAD_T, { width: COL_W[1], lineBreak: false });
+          .text(cols[1], COL[1], rowY, { width: COL_W[1] });
         doc.font(FONT_REG).fontSize(8.5).fillColor(C_MID)
-          .text(m.role2 || '', COL[2], rowY + PAD_T, { width: COL_W[2], lineBreak: false });
+          .text(cols[2], COL[2], rowY, { width: COL_W[2] });
         doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED)
-          .text(m.role3 || '', COL[3], rowY + PAD_T, { width: COL_W[3], lineBreak: false });
-        y = rowY + ROW_H; // immer exakt ROW_H weitergehen, unabhängig vom pdfkit-Cursor
+          .text(cols[3], COL[3], rowY, { width: COL_W[3] });
+        y = rowY + rowH + 5;
         doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
-          .lineWidth(0.3).strokeColor('#f3f4f6').stroke();
+          .lineWidth(0.3).strokeColor(C_RULE_L).stroke();
+        y += 5;
       }
-      spacer(10);
+      spacer(6);
     }
 
     // ── CATERING ──────────────────────────────────────────────────────────────

@@ -171,30 +171,42 @@ function generateCallSheetPdf({ termin, sections, data }) {
       if (!data.travelParty?.length) return;
       sectionHeader('REISEGRUPPE');
 
-      const nameW = 160;
-      const fnW   = 160;
+      const nameW = 150;
+      const fnW   = 150;
       const ctW   = CONTENT_W - nameW - fnW;
 
       for (let i = 0; i < data.travelParty.length; i++) {
-        const p    = data.travelParty[i];
-        ensureSpace(18);
-        const name = `${p.first_name || ''} ${p.last_name || ''}`.trim();
-        const fn   = [p.function1, p.function2, p.function3].filter(Boolean).join(', ');
+        const p       = data.travelParty[i];
+        const name    = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+        const fn      = [p.function1, p.function2, p.function3].filter(Boolean).join(', ');
         const contact = [p.phone, p.email].filter(Boolean).join('  ·  ');
 
+        // Tatsächliche Höhe jeder Spalte berechnen
+        const nameH    = doc.font(FONT_BOLD).fontSize(8.5).heightOfString(name,    { width: nameW });
+        const fnH      = fn      ? doc.font(FONT_REG).fontSize(8.5).heightOfString(fn,      { width: fnW  }) : 0;
+        const contactH = contact ? doc.font(FONT_REG).fontSize(8).heightOfString(contact, { width: ctW  }) : 0;
+        const rowH     = Math.max(nameH, fnH, contactH, 13);
+
+        ensureSpace(rowH + 8);
         const rowY = y;
+
         doc.font(FONT_BOLD).fontSize(8.5).fillColor(C_DARK)
-          .text(name, MARGIN_H, rowY, { width: nameW, lineBreak: false });
+          .text(name, MARGIN_H, rowY, { width: nameW });
         if (fn) {
           doc.font(FONT_REG).fontSize(8.5).fillColor(C_MUTED)
-            .text(fn, MARGIN_H + nameW, rowY, { width: fnW, lineBreak: false });
+            .text(fn, MARGIN_H + nameW, rowY, { width: fnW });
         }
         if (contact) {
           doc.font(FONT_REG).fontSize(8).fillColor(C_LIGHT)
-            .text(contact, MARGIN_H + nameW + fnW, rowY, { width: ctW, lineBreak: false });
+            .text(contact, MARGIN_H + nameW + fnW, rowY, { width: ctW });
         }
-        y = rowY + 14;
-        if (i + 1 < data.travelParty.length) { rule(C_RULE, 0.3); y += 3; }
+
+        y = rowY + rowH + 5;
+        if (i + 1 < data.travelParty.length) {
+          doc.moveTo(MARGIN_H, y).lineTo(MARGIN_H + CONTENT_W, y)
+            .lineWidth(0.3).strokeColor(C_RULE).stroke();
+          y += 5;
+        }
       }
       y += 6;
     }
