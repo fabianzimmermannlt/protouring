@@ -1890,7 +1890,7 @@ export const CAN_SEE_TODOS_ALL: TenantRole[] = ['admin', 'tourmanagement', 'agen
 export const CAN_SEE_KALENDER: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus']
 
 /** Sieht Gebucht-Spalte in Terminliste */
-export const CAN_SEE_GEBUCHT: TenantRole[] = ['admin', 'tourmanagement', 'agency']
+export const CAN_SEE_GEBUCHT: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew']
 
 /** Sieht Dateien auf Termin-Detailseite */
 export const CAN_SEE_FILES_TERMIN: TenantRole[] = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus']

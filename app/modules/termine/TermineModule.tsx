@@ -846,7 +846,7 @@ export default function TerminePage() {
   const isAdmin  = isAdminRole(effectiveRole)                        // admin + tourmanagement
   const isEditor = isEditorRole(effectiveRole)                       // admin + agency + tourmanagement (CAN_EDIT)
   const canCreate    = canDo(effectiveRole, CAN_CREATE_TERMIN)       // admin + agency + tourmanagement
-  const canSeeGebucht = canDo(effectiveRole, CAN_SEE_GEBUCHT)        // admin + tourmanagement + agency
+  const canSeeGebucht = canDo(effectiveRole, CAN_SEE_GEBUCHT)        // alle außer Gast
   const canSeeFiles   = canDo(effectiveRole, CAN_SEE_FILES_TERMIN)   // admin + tourmanagement + agency + artist + crew_plus
 
   // ---- Load data ----
