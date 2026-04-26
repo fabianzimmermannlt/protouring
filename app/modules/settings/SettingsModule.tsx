@@ -1757,9 +1757,9 @@ function ErsteSchritte() {
     {
       title: 'Termine',
       roles: 'Alle Rollen',
-      edit: 'Admin, Agentur (anlegen & bearbeiten)',
+      edit: 'Admin, Agentur, Tourmanagement (anlegen & bearbeiten)',
       icon: '📅',
-      content: 'Alle Konzerte, Festivals und sonstigen Termine der Tour. In der Listenansicht könnt ihr eure Verfügbarkeit eintragen (✓ verfügbar / ? vielleicht / ✗ nicht verfügbar). Ein Klick auf einen Termin öffnet die Detailansicht mit Spielstätte, Reisegruppe, Zeitplänen, Catering, Anreise, Hotel, To-dos, Dateien und Chat. Die Reisegruppe zeigt wer beim jeweiligen Termin dabei ist. Admins können Termine anlegen und alle Felder bearbeiten.',
+      content: 'Alle Konzerte, Festivals und sonstigen Termine der Tour. In der Listenansicht könnt ihr eure Verfügbarkeit eintragen (✓ verfügbar / ? vielleicht / ✗ nicht verfügbar). Ein Klick auf einen Termin öffnet die Detailansicht mit Spielstätte, Reisegruppe, Zeitplänen, Catering, Anreise, Hotel, Advancing, To-dos, Dateien und Chat. Der Advancing-Bereich dient zur Dokumentation abgesprochener Details mit der Venue (z.B. Technik, Catering-Abweichungen). Unter Sonstiges können freie Notizen hinterlegt werden. Aus allen Daten lassen sich Advance Sheet (für Venues) und Call Sheet (für die Crew) als PDF exportieren.',
     },
     {
       title: 'Kontakte',
@@ -1798,10 +1798,10 @@ function ErsteSchritte() {
     },
     {
       title: 'Einstellungen',
-      roles: 'Admin, Agentur, Tourmanagement (eingeschränkt)',
+      roles: 'Alle Rollen',
       edit: 'Admin (alle), Agentur, Tourmanagement (eigenes Profil)',
       icon: '⚙️',
-      content: 'Hier verwaltest du dein persönliches Profil, Passwort und Kalender-Abo. Admins sehen zusätzlich: Berechtigungen (User einladen, Rollen vergeben, Einladungen verwalten), Artist-Einstellungen (Name, Genre, Homebase) und Funktionen-Katalog (welche Crew-Funktionen im System verfügbar sind).',
+      content: 'Alle User sehen ihre persönlichen Einstellungen: Profil, Passwort und Kalender-Abo. Admins verwalten zusätzlich Berechtigungen (User einladen, Rollen vergeben, Einladungen widerrufen), Artist-Einstellungen (Name, Genre, Homebase) und den Funktionen-Katalog (welche Crew-Funktionen im System verfügbar sind). Beim Einladen von Crew-Mitgliedern werden Vor- und Nachname direkt vergeben — sie erscheinen sofort korrekt in der Berechtigungsliste, auch bevor die Einladung angenommen wurde.',
     },
   ]
 
