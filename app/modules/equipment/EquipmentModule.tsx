@@ -741,8 +741,9 @@ function AddContentModal({ itemId, onDone, onClose }: {
 
   const filtered = materials.filter(m =>
     !search ||
-    m.bezeichnung.toLowerCase().includes(search.toLowerCase()) ||
-    (m.marke ?? '').toLowerCase().includes(search.toLowerCase())
+    (m.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -764,7 +765,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
                     className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-sm text-gray-900">{mat.bezeichnung}</span>
+                        <span className="font-medium text-sm text-gray-900">{mat.bezeichnung || '—'}</span>
                         {mat.marke && <span className="text-xs text-gray-400 ml-2">{mat.marke}</span>}
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
