@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
+import { parseCSV, col } from '@/lib/csvParser'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import {
@@ -936,15 +937,86 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
+  const CSV_HEADERS = ['Hersteller', 'Produkt', 'Info', 'Typ', 'Kategorie', 'Herstellungsland', 'Gewicht_kg', 'Zeitwert', 'Wiederbeschaffung', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
+
+  const exportMaterialsCSV = () => {
+    const q = (v: string | number | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const rows = [
+      CSV_HEADERS.join(';'),
+      ...filteredMaterials.map(m => [
+        q(m.hersteller), q(m.produkt), q(m.info), q(m.typ),
+        q(m.category_name), q(m.herstellungsland),
+        q(m.gewicht_kg), q(m.wert_zeitwert), q(m.wert_wiederbeschaffung),
+        q(m.waehrung), q(m.anschaffungsdatum), q(m.notiz),
+      ].join(';')),
+    ].join('\n')
+    const blob = new Blob(['﻿' + rows], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `material_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
+  const importMaterialsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCSV(text).slice(1) // Header überspringen
+      let count = 0
+      for (const row of rows) {
+        if (!col(row, 1)) continue // Produkt Pflicht
+        try {
+          // Kategorie per Name suchen
+          const catName = col(row, 4)
+          const cat = catName ? categories.find(c => c.name.toLowerCase() === catName.toLowerCase()) : undefined
+          const n = (v: string) => v === '' ? null : parseFloat(v)
+          await createEquipmentMaterial({
+            hersteller:             col(row, 0) || null,
+            produkt:                col(row, 1),
+            info:                   col(row, 2) || null,
+            typ:                    (col(row, 3) === 'serial' ? 'serial' : 'bulk') as 'serial' | 'bulk',
+            category_id:            cat?.id ?? null,
+            herstellungsland:       col(row, 5) || null,
+            gewicht_kg:             n(col(row, 6)),
+            wert_zeitwert:          n(col(row, 7)),
+            wert_wiederbeschaffung: n(col(row, 8)),
+            waehrung:               col(row, 9) || 'EUR',
+            anschaffungsdatum:      col(row, 10) || null,
+            notiz:                  col(row, 11) || null,
+          })
+          count++
+        } catch {}
+      }
+      if (count > 0) { alert(`${count} Material-Einträge importiert.`); load() }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
   const renderMaterials = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        {canEdit && (
-          <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
-            <PlusIcon className="w-4 h-4" />
-            Neues Material
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
+              <PlusIcon className="w-4 h-4" />
+              Neues Material
+            </button>
+          )}
+          {canEdit && (
+            <>
+              <button onClick={exportMaterialsCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                <ArrowDownTrayIcon className="w-4 h-4" />
+              </button>
+              <label title="CSV Import" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer">
+                <ArrowUpTrayIcon className="w-4 h-4" />
+                <input type="file" accept=".csv" onChange={importMaterialsCSV} className="hidden" />
+              </label>
+            </>
+          )}
+        </div>
         <input
           type="text"
           className="search-input"
