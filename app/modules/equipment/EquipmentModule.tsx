@@ -799,8 +799,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const role = getEffectiveRole()
   const canEdit = canDo(role, ['admin', 'agency', 'tourmanagement'])
 
-  const load = async () => {
-    setLoading(true)
+  const load = async (silent = false) => {
+    const scrollY = silent ? window.scrollY : 0
+    if (!silent) setLoading(true)
     try {
       const [k, cats, itms, mats] = await Promise.all([
         initEquipmentKuerzel(),
@@ -813,7 +814,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       setItems(itms)
       setMaterials(mats)
     } catch {}
-    setLoading(false)
+    if (!silent) setLoading(false)
+    if (silent) requestAnimationFrame(() => window.scrollTo(0, scrollY))
   }
 
   useEffect(() => { load() }, [])
@@ -921,7 +923,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                             <button onClick={async () => {
                               if (!confirm(`${item.case_id} — ${item.name} wirklich löschen?`)) return
                               await deleteEquipmentItem(item.id)
-                              load()
+                              load(true)
                             }} className="p-1 text-gray-400 hover:text-red-600">
                               <TrashIcon className="w-3.5 h-3.5" />
                             </button>
@@ -1022,7 +1024,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           count++
         } catch {}
       }
-      if (count > 0) { alert(`${count} Material-Einträge importiert.`); load() }
+      if (count > 0) { alert(`${count} Material-Einträge importiert.`); load(true) }
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -1120,7 +1122,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                         <button onClick={async () => {
                           if (!confirm(`${mat.hersteller ? mat.hersteller + ' ' : ''}${mat.produkt} wirklich löschen?`)) return
                           await deleteEquipmentMaterial(mat.id)
-                          load()
+                          load(true)
                         }} className="p-1 text-gray-400 hover:text-red-600">
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
@@ -1174,7 +1176,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                         <button onClick={async () => {
                           if (!confirm(`Kategorie "${cat.name}" löschen?`)) return
                           await deleteEquipmentCategory(cat.id)
-                          load()
+                          load(true)
                         }} className="p-1 text-gray-400 hover:text-red-600">
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
@@ -1219,7 +1221,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           onSave={async data => {
             if (catModal.cat) await updateEquipmentCategory(catModal.cat.id, data)
             else await createEquipmentCategory(data)
-            load()
+            load(true)
           }}
           onClose={() => setCatModal({ open: false, cat: null })}
         />
@@ -1231,7 +1233,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           onSave={async data => {
             if (itemModal.item) await updateEquipmentItem(itemModal.item.id, data)
             else await createEquipmentItem(data)
-            load()
+            load(true)
           }}
           onClose={() => setItemModal({ open: false, item: null })}
         />
@@ -1249,7 +1251,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               const m = await createEquipmentMaterial(data)
               id = m.id
             }
-            load()
+            load(true)
             return id
           }}
           onClose={() => setMatModal({ open: false, mat: null })}
