@@ -743,11 +743,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
     // Serienartikel ohne freie Einheiten ausblenden
     if (m.typ === 'serial' && (m.free_unit_count ?? 0) === 0) return false
     if (!search) return true
-    return (
-      (m.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
-    )
+    const haystack = [m.bezeichnung, m.marke, m.modell].filter(Boolean).join(' ').toLowerCase()
+    return search.trim().toLowerCase().split(/\s+/).every(term => haystack.includes(term))
   })
 
   return (
@@ -769,8 +766,9 @@ function AddContentModal({ itemId, onDone, onClose }: {
                     className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-sm text-gray-900">{mat.bezeichnung || '—'}</span>
-                        {mat.marke && <span className="text-xs text-gray-400 ml-2">{mat.marke}</span>}
+                        <span className="font-medium text-sm text-gray-900">
+                          {[mat.bezeichnung, mat.marke, mat.modell].filter(Boolean).join(' · ')}
+                        </span>
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
                         {mat.typ === 'serial' ? `${mat.free_unit_count ?? 0} / ${mat.unit_count ?? 0} frei` : 'Masse'}
