@@ -1058,6 +1058,16 @@ function CarnetModal({ carnet, onSave, onClose }: {
               {lbl('Name / Firma', true)}
               <input className={inp('inhaber_name', true)} value={form.inhaber_name} onChange={e => s('inhaber_name')(e.target.value)} placeholder="Firmenname oder vollständiger Name" autoFocus />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Kontaktperson Vorname')}
+                <input className="form-input" value={form.inhaber_kontaktperson_vorname} onChange={e => s('inhaber_kontaktperson_vorname')(e.target.value)} />
+              </div>
+              <div>
+                {lbl('Kontaktperson Name')}
+                <input className="form-input" value={form.inhaber_kontaktperson} onChange={e => s('inhaber_kontaktperson')(e.target.value)} />
+              </div>
+            </div>
             <div>
               {lbl('Adresse', true)}
               <input className={inp('inhaber_adresse', true)} value={form.inhaber_adresse} onChange={e => s('inhaber_adresse')(e.target.value)} placeholder="Straße und Hausnummer" />
@@ -1080,16 +1090,6 @@ function CarnetModal({ carnet, onSave, onClose }: {
               <div>
                 {lbl('USt-ID')}
                 <input className="form-input" value={form.inhaber_ust_id} onChange={e => s('inhaber_ust_id')(e.target.value)} placeholder="z.B. DE123456789" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                {lbl('Kontaktperson Vorname')}
-                <input className="form-input" value={form.inhaber_kontaktperson_vorname} onChange={e => s('inhaber_kontaktperson_vorname')(e.target.value)} />
-              </div>
-              <div>
-                {lbl('Kontaktperson Name')}
-                <input className="form-input" value={form.inhaber_kontaktperson} onChange={e => s('inhaber_kontaktperson')(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
