@@ -50,14 +50,22 @@ function AddContentModal({ itemId, onDone, onClose }: {
   useEffect(() => { getEquipmentMaterials().then(setMaterials).catch(() => {}) }, [])
 
   const selectMaterial = async (mat: EquipmentMaterial) => {
+    setErr('')
+    if (mat.typ === 'bulk') {
+      // Massenartikel: sofort mit Anzahl 0 hinzufügen, Menge inline editierbar
+      setSaving(true)
+      try {
+        await addToCaseContents(itemId, { material_id: mat.id, anzahl: 0 })
+        onDone()
+        onClose()
+      } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+      return
+    }
+    // Serienartikel: Unit-Auswahl anzeigen
     setSelected(mat)
     setSelectedUnitIds([])
-    setBulkAnzahl(1)
-    setErr('')
-    if (mat.typ === 'serial') {
-      const u = await getMaterialUnits(mat.id)
-      setUnits(u.filter(u => !u.in_case_id))
-    }
+    const u = await getMaterialUnits(mat.id)
+    setUnits(u.filter(u => !u.in_case_id))
   }
 
   const toggleUnit = (unitId: number) => {
@@ -257,7 +265,7 @@ export default function EquipmentItemDetailPage() {
   }
 
   const handleAnzahlChange = async (contentId: number, newAnzahl: number) => {
-    if (newAnzahl < 1) return
+    if (newAnzahl < 0 || isNaN(newAnzahl)) return
     await updateCaseContent(contentId, newAnzahl)
     load()
   }
@@ -379,8 +387,8 @@ export default function EquipmentItemDetailPage() {
                                   type="number"
                                   className="form-input text-right w-16 ml-auto"
                                   value={c.anzahl}
-                                  min={1}
-                                  onChange={e => handleAnzahlChange(c.id, parseInt(e.target.value) || 1)}
+                                  min={0}
+                                  onChange={e => handleAnzahlChange(c.id, parseInt(e.target.value))}
                                 />
                               ) : c.anzahl
                             ) : (
