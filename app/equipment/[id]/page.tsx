@@ -6,6 +6,7 @@ import {
   ArrowLeftIcon, PlusIcon, TrashIcon, XMarkIcon,
   ArchiveBoxIcon, WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
+// ArrowLeftIcon still used in AddContentModal
 import { Navigation } from '@/app/components/shared/Navigation'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
@@ -222,6 +223,10 @@ export default function EquipmentItemDetailPage() {
     window.location.href = defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`
   }, [])
 
+  const handleSubTabChange = useCallback((subTabId: string) => {
+    window.location.href = `/?tab=equipment&sub=${subTabId}`
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -261,25 +266,15 @@ export default function EquipmentItemDetailPage() {
 
   const content = (
     <div className="space-y-4 p-2">
-      {/* Breadcrumb / Titel */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => window.location.href = '/?tab=equipment&sub=items'}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
-          Gegenstände
-        </button>
-        {item && (
-          <>
-            <span className="text-gray-300">/</span>
-            <span className="font-mono text-sm font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span>
-            <span className="font-semibold text-gray-900">{item.name}</span>
-            {item.typ && <span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span>}
-            {item.position && <span className="text-xs text-gray-400">{POSITION_LABELS[item.position] ?? item.position}</span>}
-          </>
-        )}
-      </div>
+      {/* Titel-Zeile */}
+      {item && (
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-sm font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span>
+          <span className="font-semibold text-gray-900">{item.name}</span>
+          {item.typ && <span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span>}
+          {item.position && <span className="text-xs text-gray-400">{POSITION_LABELS[item.position] ?? item.position}</span>}
+        </div>
+      )}
 
       {loading || !item ? (
         <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Lädt…</div>
@@ -434,6 +429,7 @@ export default function EquipmentItemDetailPage() {
         <Navigation
           activeTab="equipment"
           onTabChange={handleTabChange}
+          onSubTabChange={handleSubTabChange}
           showMobileNavigation={true}
         />
         <div className="flex-1 overflow-y-auto">
@@ -454,6 +450,7 @@ export default function EquipmentItemDetailPage() {
         <Navigation
           activeTab="equipment"
           onTabChange={handleTabChange}
+          onSubTabChange={handleSubTabChange}
           showMobileNavigation={false}
         />
         <FeedbackButton />
