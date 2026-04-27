@@ -96,8 +96,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
   )
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-lg">
         <div className="modal-header">
           <h3 className="modal-title">Material hinzufügen</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>

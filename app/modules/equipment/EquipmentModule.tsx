@@ -85,8 +85,8 @@ function CategoryModal({ cat, onSave, onClose }: {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-sm">
         <div className="modal-header">
           <h3 className="modal-title">{cat ? 'Kategorie bearbeiten' : 'Neue Kategorie'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
@@ -161,8 +161,8 @@ function ItemModal({ item, categories, onSave, onClose }: {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-lg">
         <div className="modal-header">
           <h3 className="modal-title">{item ? `${item.case_id} bearbeiten` : 'Neuer Gegenstand'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
@@ -353,8 +353,8 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
     setNewSerials(p => p.length > 1 ? p.filter((_, i) => i !== idx) : [''])
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-lg">
         <div className="modal-header">
           <h3 className="modal-title">{mat ? 'Material bearbeiten' : 'Neues Material'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
@@ -561,8 +561,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
   )
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-lg">
         <div className="modal-header">
           <h3 className="modal-title">Material hinzufügen</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
@@ -824,8 +824,8 @@ function EquipmentSettingsModal({ carnetEnabled, onSave, onClose }: {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-sm">
         <div className="modal-header">
           <h3 className="modal-title">Equipment Einstellungen</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
@@ -978,8 +978,8 @@ function CarnetModal({ carnet, onSave, onClose }: {
   ] as const
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container max-w-2xl" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-container max-w-2xl">
         <div className="modal-header">
           <h3 className="modal-title">
             {carnet ? `Carnet ${carnet.carnet_id}` : 'Neues Carnet'}
@@ -1335,7 +1335,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {isVisible('leer_kg')   && <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>}
                       {isVisible('material')  && <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>}
                       {isVisible('gesamt_kg') && <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>}
-                      <td onClick={e => e.stopPropagation()}>
+                      <td>
                         <div className="flex gap-1 justify-end items-center">
                           {canEdit && (
                             <button onClick={() => setItemModal({ open: true, item })} className="p-1 text-gray-400 hover:text-blue-600">
@@ -1679,7 +1679,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                   <td className="text-gray-500">{c.ziellaender || '—'}</td>
                   <td className="text-right text-gray-500">{c.material_count ?? 0}</td>
                   {canEdit && (
-                    <td onClick={e => e.stopPropagation()}>
+                    <td>
                       <button onClick={async () => {
                         if (!confirm(`Carnet ${c.carnet_id} wirklich löschen?`)) return
                         await deleteCarnet(c.id)
