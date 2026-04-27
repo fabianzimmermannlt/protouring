@@ -1176,6 +1176,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <table className="data-table">
             <thead>
               <tr>
+                {carnetEnabled && <th style={{ width: 24 }} title="Carnet ATA Status" />}
                 {isMatVisible('hersteller') && <th className="sortable" onClick={() => toggleMatSort('hersteller')}>Hersteller <SortIndicator active={matSortKey === 'hersteller'} dir={matSortDir} /></th>}
                 {isMatVisible('produkt')    && <th className="sortable" onClick={() => toggleMatSort('produkt')}>Produkt <SortIndicator active={matSortKey === 'produkt'} dir={matSortDir} /></th>}
                 {isMatVisible('category')   && <th className="sortable" onClick={() => toggleMatSort('category_name')}>Kategorie <SortIndicator active={matSortKey === 'category_name'} dir={matSortDir} /></th>}
@@ -1196,12 +1197,20 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 const warnField = (field: string) => hasWarning && missing.includes(field)
                 return (
                   <tr key={mat.id} className={`hoverable${hasWarning ? ' bg-red-50' : ''}`}>
+                    {carnetEnabled && (
+                      <td className="text-center" style={{ width: 24 }}>
+                        {hasWarning && (
+                          <ExclamationTriangleIcon
+                            className="w-3.5 h-3.5 text-red-400 inline"
+                            title={`Carnet: ${missing.length} Feld${missing.length !== 1 ? 'er' : ''} fehlt`}
+                          />
+                        )}
+                      </td>
+                    )}
                     {isMatVisible('hersteller') && <td className={warnField('hersteller') ? 'text-red-500 font-medium' : 'text-gray-500'}>
-                      {warnField('hersteller') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
                       {mat.hersteller || '—'}
                     </td>}
                     {isMatVisible('produkt')    && <td className={`font-medium${warnField('produkt') ? ' text-red-500' : ''}`}>
-                      {warnField('produkt') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
                       {mat.produkt}
                     </td>}
                     {isMatVisible('category')   && <td>{mat.category_name ?? '—'}</td>}
@@ -1214,15 +1223,12 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {mat.typ === 'serial' ? `${mat.unit_count ?? 0}×` : '∞'}
                     </td>}
                     {isMatVisible('land')       && <td className={warnField('herstellungsland') ? 'text-red-500 font-medium' : ''}>
-                      {warnField('herstellungsland') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
                       {mat.herstellungsland || '—'}
                     </td>}
                     {isMatVisible('wert')       && <td className={`text-right${warnField('wert_zollwert') || warnField('waehrung') ? ' text-red-500 font-medium' : ''}`}>
-                      {(warnField('wert_zollwert') || warnField('waehrung')) && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
                       {mat.wert_zollwert != null ? `${mat.wert_zollwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
                     </td>}
                     {isMatVisible('gewicht')    && <td className={`text-right${warnField('gewicht_kg') ? ' text-red-500 font-medium' : ''}`}>
-                      {warnField('gewicht_kg') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
                       {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
                     </td>}
                     <td>
