@@ -1507,6 +1507,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [owners, setOwners] = useState<EquipmentOwner[]>([])
   const [matSortKey, setMatSortKey] = useState<MatSortKey>('bezeichnung')
   const [matSortDir, setMatSortDir] = useState<'asc' | 'desc'>('asc')
+  const [selectedMatIds, setSelectedMatIds] = useState<Set<number>>(new Set())
   const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials-v2', MATERIAL_COLUMNS)
   const { isVisible: isCarnetVisible, toggle: toggleCarnetCol, columns: carnetColumns } = useColumnVisibility('equipment-carnets', CARNET_COLUMNS)
   const { isVisible: isOwnerVisible, toggle: toggleOwnerCol, columns: ownerColumns } = useColumnVisibility('equipment-owners-cols', OWNER_COLUMNS)
@@ -1861,14 +1862,49 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     e.target.value = ''
   }
 
-  const renderMaterials = () => (
+  const renderMaterials = () => {
+    const allVisibleIds = sortedMaterials.map(m => m.id)
+    const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedMatIds.has(id))
+    const someSelected = selectedMatIds.size > 0
+
+    const toggleSelectAll = () => {
+      if (allSelected) setSelectedMatIds(new Set())
+      else setSelectedMatIds(new Set(allVisibleIds))
+    }
+
+    const toggleSelectOne = (id: number) => {
+      setSelectedMatIds(prev => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
+
+    const bulkDelete = async () => {
+      if (!confirm(`${selectedMatIds.size} Material-Einträge wirklich löschen?`)) return
+      for (const id of Array.from(selectedMatIds)) {
+        await deleteEquipmentMaterial(id)
+      }
+      setSelectedMatIds(new Set())
+      load(true)
+    }
+
+    return (
     <div className="space-y-4">
       {canEdit && (
         <div className="flex justify-between items-center">
-          <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
-            <PlusIcon className="w-4 h-4" />
-            Neues Material
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
+              <PlusIcon className="w-4 h-4" />
+              Neues Material
+            </button>
+            {someSelected && (
+              <button onClick={bulkDelete} className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50">
+                <TrashIcon className="w-4 h-4" />
+                {selectedMatIds.size} löschen
+              </button>
+            )}
+          </div>
           <div className="flex gap-3">
             <button onClick={exportMaterialsCSV} className="btn btn-ghost">
               <ArrowDownTrayIcon className="w-4 h-4" />
@@ -1910,6 +1946,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <table className="data-table">
             <thead>
               <tr>
+                {canEdit && <th style={{ width: 32 }}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="accent-blue-600" />
+                </th>}
                 {carnetEnabled && <th style={{ width: 24 }} title="Carnet ATA Status" />}
                 {isMatVisible('mat_id')      && <th className="sortable font-mono" onClick={() => toggleMatSort('bezeichnung')}>Mat-ID</th>}
                 {isMatVisible('bezeichnung') && <th className="sortable" onClick={() => toggleMatSort('bezeichnung')}>Bezeichnung <SortIndicator active={matSortKey === 'bezeichnung'} dir={matSortDir} /></th>}
@@ -1933,7 +1972,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 const hasWarning = missing.length > 0
                 const warnField = (field: string) => hasWarning && missing.includes(field)
                 return (
-                  <tr key={mat.id} className={`hoverable${hasWarning ? ' bg-red-50' : ''}`}>
+                  <tr key={mat.id} className={`hoverable${hasWarning ? ' bg-red-50' : ''}${selectedMatIds.has(mat.id) ? ' bg-blue-50' : ''}`}>
+                    {canEdit && (
+                      <td onClick={e => e.stopPropagation()} style={{ width: 32 }}>
+                        <input type="checkbox" checked={selectedMatIds.has(mat.id)}
+                          onChange={() => toggleSelectOne(mat.id)} className="accent-blue-600" />
+                      </td>
+                    )}
                     {carnetEnabled && (
                       <td className="text-center" style={{ width: 24 }}>
                         {hasWarning && (
@@ -1991,7 +2036,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         </div>
       )}
     </div>
-  )
+    )
+  }
 
 
   // ── Eigentümer ────────────────────────────────────────────────────────────────
