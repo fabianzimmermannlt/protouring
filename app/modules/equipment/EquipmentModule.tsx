@@ -1946,7 +1946,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <table className="data-table">
             <thead>
               <tr>
-                {canEdit && <th style={{ width: 32 }}>
+                {canEdit && <th style={{ width: 28, padding: '0 6px' }}>
                   <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="accent-blue-600" />
                 </th>}
                 {carnetEnabled && <th style={{ width: 24 }} title="Carnet ATA Status" />}
@@ -1974,7 +1974,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 return (
                   <tr key={mat.id} className={`hoverable${hasWarning ? ' bg-red-50' : ''}${selectedMatIds.has(mat.id) ? ' bg-blue-50' : ''}`}>
                     {canEdit && (
-                      <td onClick={e => e.stopPropagation()} style={{ width: 32 }}>
+                      <td onClick={e => e.stopPropagation()} style={{ width: 28, padding: '0 6px' }}>
                         <input type="checkbox" checked={selectedMatIds.has(mat.id)}
                           onChange={() => toggleSelectOne(mat.id)} className="accent-blue-600" />
                       </td>
