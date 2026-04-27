@@ -69,6 +69,16 @@ const CARNET_COLUMNS = [
 
 type CarnetSortKey = 'carnet_id' | 'status' | 'verwendungszweck' | 'startdatum' | 'ziellaender' | 'material_count'
 
+const OWNER_COLUMNS = [
+  { id: 'name',           label: 'Name / Firma',    defaultVisible: true, alwaysVisible: true },
+  { id: 'typ',            label: 'Typ',             defaultVisible: true  },
+  { id: 'kontaktperson',  label: 'Kontaktperson',   defaultVisible: true  },
+  { id: 'stadt',          label: 'Stadt',           defaultVisible: true  },
+  { id: 'land',           label: 'Land',            defaultVisible: true  },
+  { id: 'telefon',        label: 'Telefon',         defaultVisible: false },
+  { id: 'email',          label: 'E-Mail',          defaultVisible: false },
+]
+
 function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   if (!active) return <span className="ml-1 text-gray-300">↕</span>
   return <span className="ml-1 text-blue-500">{dir === 'asc' ? '↑' : '↓'}</span>
@@ -1358,6 +1368,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [matSortDir, setMatSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials', MATERIAL_COLUMNS)
   const { isVisible: isCarnetVisible, toggle: toggleCarnetCol, columns: carnetColumns } = useColumnVisibility('equipment-carnets', CARNET_COLUMNS)
+  const { isVisible: isOwnerVisible, toggle: toggleOwnerCol, columns: ownerColumns } = useColumnVisibility('equipment-owners-cols', OWNER_COLUMNS)
   const [carnetSortKey, setCarnetSortKey] = useState<CarnetSortKey>('startdatum')
   const [carnetSortDir, setCarnetSortDir] = useState<'asc' | 'desc'>('desc')
   const toggleCarnetSort = (key: CarnetSortKey) => {
@@ -1783,30 +1794,32 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name / Firma</th>
-                <th>Typ</th>
-                <th>Kontaktperson</th>
-                <th>Stadt</th>
-                <th>Land</th>
-                <th>Telefon</th>
-                <th>E-Mail</th>
-                {canEdit && <th style={{ width: 60 }} />}
+                {isOwnerVisible('name')          && <th>Name / Firma</th>}
+                {isOwnerVisible('typ')           && <th>Typ</th>}
+                {isOwnerVisible('kontaktperson') && <th>Kontaktperson</th>}
+                {isOwnerVisible('stadt')         && <th>Stadt</th>}
+                {isOwnerVisible('land')          && <th>Land</th>}
+                {isOwnerVisible('telefon')       && <th>Telefon</th>}
+                {isOwnerVisible('email')         && <th>E-Mail</th>}
+                <th style={{ width: 60 }}>
+                  <ColumnToggle columns={ownerColumns} isVisible={isOwnerVisible} toggle={toggleOwnerCol} />
+                </th>
               </tr>
             </thead>
             <tbody>
               {owners.map(o => (
                 <tr key={o.id} className="hoverable">
-                  <td className="font-medium">{o.name}</td>
-                  <td><span className="badge">{OWNER_TYP_LABELS[o.typ] ?? o.typ}</span></td>
-                  <td className="text-gray-500">
+                  {isOwnerVisible('name')          && <td className="font-medium">{o.name}</td>}
+                  {isOwnerVisible('typ')           && <td><span className="badge">{OWNER_TYP_LABELS[o.typ] ?? o.typ}</span></td>}
+                  {isOwnerVisible('kontaktperson') && <td className="text-gray-500">
                     {o.kontaktperson_vorname || o.kontaktperson_name
                       ? [o.kontaktperson_vorname, o.kontaktperson_name].filter(Boolean).join(' ')
                       : '—'}
-                  </td>
-                  <td className="text-gray-500">{o.stadt ?? '—'}</td>
-                  <td className="text-gray-500">{o.land ?? '—'}</td>
-                  <td className="text-gray-500">{o.telefon ?? '—'}</td>
-                  <td className="text-gray-500">{o.email ?? '—'}</td>
+                  </td>}
+                  {isOwnerVisible('stadt')         && <td className="text-gray-500">{o.stadt ?? '—'}</td>}
+                  {isOwnerVisible('land')          && <td className="text-gray-500">{o.land ?? '—'}</td>}
+                  {isOwnerVisible('telefon')       && <td className="text-gray-500">{o.telefon ?? '—'}</td>}
+                  {isOwnerVisible('email')         && <td className="text-gray-500">{o.email ?? '—'}</td>}
                   {canEdit && (
                     <td>
                       <div className="flex gap-1 justify-end">
