@@ -55,7 +55,7 @@ const ITEMS_COLUMNS = [
 type ItemSortKey = 'case_id' | 'name' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
 
 const CARNET_COLUMNS = [
-  { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true, alwaysVisible: true },
+  { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
   { id: 'status',           label: 'Status',           defaultVisible: true  },
   { id: 'verwendungszweck', label: 'Verwendungszweck', defaultVisible: true  },
   { id: 'zeitraum',         label: 'Zeitraum',         defaultVisible: true  },
