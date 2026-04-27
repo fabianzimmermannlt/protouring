@@ -706,6 +706,53 @@ async function initDatabase() {
     `ALTER TABLE equipment_materials ADD COLUMN owner_id INTEGER REFERENCES equipment_owners(id) ON DELETE SET NULL`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
+  // equipment_materials.modell: NOT NULL Constraint entfernen (war produkt TEXT NOT NULL)
+  // SQLite unterstützt kein ALTER COLUMN → Table Recreation
+  const matTableInfo = await db.all(`PRAGMA table_info(equipment_materials)`)
+  const modellCol = matTableInfo.find(c => c.name === 'modell')
+  if (modellCol && modellCol.notnull === 1) {
+    await db.run('BEGIN')
+    try {
+      await db.run(`CREATE TABLE equipment_materials_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES equipment_items(id) ON DELETE SET NULL,
+        marke TEXT,
+        modell TEXT,
+        bezeichnung TEXT,
+        mat_id TEXT,
+        category_id INTEGER REFERENCES equipment_categories(id) ON DELETE SET NULL,
+        owner_id INTEGER REFERENCES equipment_owners(id) ON DELETE SET NULL,
+        typ TEXT NOT NULL DEFAULT 'bulk',
+        unit_count INTEGER,
+        ursprungsland TEXT,
+        wert_zollwert REAL,
+        wert_wiederbeschaffungswert REAL,
+        waehrung TEXT DEFAULT 'EUR',
+        gewicht_kg REAL,
+        anschaffungsdatum TEXT,
+        notiz TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`)
+      await db.run(`INSERT INTO equipment_materials_new
+        SELECT id, tenant_id, item_id,
+          COALESCE(marke,'') AS marke, COALESCE(modell,'') AS modell, bezeichnung,
+          mat_id, category_id, owner_id, COALESCE(typ,'bulk') AS typ, unit_count,
+          ursprungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung,
+          gewicht_kg, anschaffungsdatum, notiz, created_by, created_at, updated_at
+        FROM equipment_materials`)
+      await db.run(`DROP TABLE equipment_materials`)
+      await db.run(`ALTER TABLE equipment_materials_new RENAME TO equipment_materials`)
+      await db.run('COMMIT')
+      console.log('✅ equipment_materials.modell NOT NULL Constraint entfernt')
+    } catch (e) {
+      await db.run('ROLLBACK')
+      console.error('Migration equipment_materials fehlgeschlagen:', e.message)
+    }
+  }
+
   // equipment_kuerzel: Partial UNIQUE INDEX (nur wenn gesetzt)
   await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_equipment_kuerzel ON tenants(equipment_kuerzel) WHERE equipment_kuerzel IS NOT NULL`)
 
@@ -5539,7 +5586,7 @@ app.post('/api/equipment/materials', authenticateToken, requireTenant, async (re
     const result = await db.run(
       `INSERT INTO equipment_materials (tenant_id, mat_id, bezeichnung, marke, modell, category_id, owner_id, typ, ursprungsland, wert_zollwert, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [req.tenant.id, mat_id, bezeichnung, marke||null, modell||null, category_id||null, owner_id||null,
+      [req.tenant.id, mat_id, bezeichnung, marke||null, modell||'', category_id||null, owner_id||null,
        req.body.typ||'bulk', ursprungsland||null, wert_zollwert||null,
        waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.user.id]
     )
@@ -5563,7 +5610,7 @@ app.put('/api/equipment/materials/:id', authenticateToken, requireTenant, async 
     await db.run(
       `UPDATE equipment_materials SET bezeichnung=?, marke=?, modell=?, category_id=?, owner_id=?, typ=COALESCE(?,typ), ursprungsland=?, wert_zollwert=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
        WHERE id=? AND tenant_id=?`,
-      [bezeichnung, marke||null, modell||null, category_id||null, owner_id||null, typ||null, ursprungsland||null, wert_zollwert||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
+      [bezeichnung, marke||null, modell||'', category_id||null, owner_id||null, typ||null, ursprungsland||null, wert_zollwert||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
     )
     const row = await db.get(
       `SELECT em.*, ec.name AS category_name,
