@@ -25,6 +25,19 @@ const POSITION_LABELS: Record<string, string> = {
   sl: 'Stage Left', sr: 'Stage Right', foh: 'FOH', drums: 'Drums', backline: 'Backline', truck: 'Truck', sonstiges: 'Sonstiges'
 }
 
+const MATERIAL_COLUMNS = [
+  { id: 'hersteller',  label: 'Hersteller',     defaultVisible: true  },
+  { id: 'produkt',     label: 'Produkt',         defaultVisible: true,  alwaysVisible: true },
+  { id: 'category',    label: 'Kategorie',       defaultVisible: true  },
+  { id: 'typ',         label: 'Typ',             defaultVisible: true  },
+  { id: 'einheiten',   label: 'Einheiten',       defaultVisible: true  },
+  { id: 'land',        label: 'Land',            defaultVisible: true  },
+  { id: 'wert',        label: 'Wert/Stk',        defaultVisible: true  },
+  { id: 'gewicht',     label: 'Gewicht/Stk',     defaultVisible: true  },
+]
+
+type MatSortKey = 'hersteller' | 'produkt' | 'category_name' | 'typ' | 'unit_count' | 'herstellungsland' | 'wert_zeitwert' | 'gewicht_kg'
+
 const ITEMS_COLUMNS = [
   { id: 'case_id',      label: 'Case ID',       defaultVisible: true  },
   { id: 'name',         label: 'Name',          defaultVisible: true,  alwaysVisible: true },
@@ -765,6 +778,14 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [itemSortKey, setItemSortKey] = useState<ItemSortKey>('case_id')
   const [itemSortDir, setItemSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible, toggle, columns: itemColumns } = useColumnVisibility('equipment-items', ITEMS_COLUMNS)
+  const [matSortKey, setMatSortKey] = useState<MatSortKey>('produkt')
+  const [matSortDir, setMatSortDir] = useState<'asc' | 'desc'>('asc')
+  const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials', MATERIAL_COLUMNS)
+
+  const toggleMatSort = (key: MatSortKey) => {
+    if (key === matSortKey) setMatSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setMatSortKey(key); setMatSortDir('asc') }
+  }
 
   const toggleItemSort = (key: ItemSortKey) => {
     if (key === itemSortKey) setItemSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -932,10 +953,22 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   )
 
   // ── Material ─────────────────────────────────────────────────────────────────
-  const filteredMaterials = materials.filter(m =>
-    !search || m.produkt.toLowerCase().includes(search.toLowerCase()) ||
-    (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const sortedMaterials = useMemo(() => {
+    const filtered = materials.filter(m =>
+      !search || m.produkt.toLowerCase().includes(search.toLowerCase()) ||
+      (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
+    )
+    return [...filtered].sort((a, b) => {
+      let av: string | number = ''
+      let bv: string | number = ''
+      if (matSortKey === 'unit_count') { av = a.unit_count ?? 0; bv = b.unit_count ?? 0 }
+      else if (matSortKey === 'wert_zeitwert') { av = a.wert_zeitwert ?? 0; bv = b.wert_zeitwert ?? 0 }
+      else if (matSortKey === 'gewicht_kg') { av = a.gewicht_kg ?? 0; bv = b.gewicht_kg ?? 0 }
+      else { av = (a[matSortKey] ?? '').toString().toLowerCase(); bv = (b[matSortKey] ?? '').toString().toLowerCase() }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0
+      return matSortDir === 'asc' ? cmp : -cmp
+    })
+  }, [materials, search, matSortKey, matSortDir])
 
   const CSV_HEADERS = ['Hersteller', 'Produkt', 'Info', 'Typ', 'Kategorie', 'Herstellungsland', 'Gewicht_kg', 'Zeitwert', 'Wiederbeschaffung', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
 
@@ -943,7 +976,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const q = (v: string | number | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const rows = [
       CSV_HEADERS.join(';'),
-      ...filteredMaterials.map(m => [
+      ...sortedMaterials.map(m => [
         q(m.hersteller), q(m.produkt), q(m.info), q(m.typ),
         q(m.category_name), q(m.herstellungsland),
         q(m.gewicht_kg), q(m.wert_zeitwert), q(m.wert_wiederbeschaffung),
@@ -1028,7 +1061,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         <div className="data-table-wrapper">
           <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Lädt…</div>
         </div>
-      ) : filteredMaterials.length === 0 ? (
+      ) : sortedMaterials.length === 0 ? (
         <div className="text-center py-12">
           <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-sm text-gray-500">Noch kein Material angelegt</p>
@@ -1044,42 +1077,42 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <table className="data-table">
             <thead>
               <tr>
-                <th>Hersteller</th>
-                <th>Produkt</th>
-                <th>Kategorie</th>
-                <th>Typ</th>
-                <th className="text-right">Einheiten</th>
-                <th>Land</th>
-                <th className="text-right">Wert/Stk</th>
-                <th className="text-right">Gewicht/Stk</th>
-                {canEdit && <th style={{ width: 60 }} />}
+                {isMatVisible('hersteller') && <th className="sortable" onClick={() => toggleMatSort('hersteller')}>Hersteller <SortIndicator active={matSortKey === 'hersteller'} dir={matSortDir} /></th>}
+                {isMatVisible('produkt')    && <th className="sortable" onClick={() => toggleMatSort('produkt')}>Produkt <SortIndicator active={matSortKey === 'produkt'} dir={matSortDir} /></th>}
+                {isMatVisible('category')   && <th className="sortable" onClick={() => toggleMatSort('category_name')}>Kategorie <SortIndicator active={matSortKey === 'category_name'} dir={matSortDir} /></th>}
+                {isMatVisible('typ')        && <th className="sortable" onClick={() => toggleMatSort('typ')}>Typ <SortIndicator active={matSortKey === 'typ'} dir={matSortDir} /></th>}
+                {isMatVisible('einheiten')  && <th className="sortable text-right" onClick={() => toggleMatSort('unit_count')}>Einheiten <SortIndicator active={matSortKey === 'unit_count'} dir={matSortDir} /></th>}
+                {isMatVisible('land')       && <th className="sortable" onClick={() => toggleMatSort('herstellungsland')}>Land <SortIndicator active={matSortKey === 'herstellungsland'} dir={matSortDir} /></th>}
+                {isMatVisible('wert')       && <th className="sortable text-right" onClick={() => toggleMatSort('wert_zeitwert')}>Wert/Stk <SortIndicator active={matSortKey === 'wert_zeitwert'} dir={matSortDir} /></th>}
+                {isMatVisible('gewicht')    && <th className="sortable text-right" onClick={() => toggleMatSort('gewicht_kg')}>Gewicht/Stk <SortIndicator active={matSortKey === 'gewicht_kg'} dir={matSortDir} /></th>}
+                <th style={{ width: 60 }}>
+                  <ColumnToggle columns={matColumns} isVisible={isMatVisible} toggle={toggleMatCol} />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredMaterials.map(mat => (
+              {sortedMaterials.map(mat => (
                 <tr key={mat.id}>
-                  <td className="text-gray-500">{mat.hersteller || '—'}</td>
-                  <td className="font-medium">{mat.produkt}</td>
-                  <td>{mat.category_name ?? '—'}</td>
-                  <td>
+                  {isMatVisible('hersteller') && <td className="text-gray-500">{mat.hersteller || '—'}</td>}
+                  {isMatVisible('produkt')    && <td className="font-medium">{mat.produkt}</td>}
+                  {isMatVisible('category')   && <td>{mat.category_name ?? '—'}</td>}
+                  {isMatVisible('typ')        && <td>
                     <span className={`badge ${mat.typ === 'serial' ? 'badge-blue' : ''}`}>
                       {mat.typ === 'serial' ? 'Serienartikel' : 'Massenartikel'}
                     </span>
-                  </td>
-                  <td className="text-right font-medium">
-                    {mat.typ === 'serial'
-                      ? `${mat.unit_count ?? 0}×`
-                      : '∞'}
-                  </td>
-                  <td>{mat.herstellungsland || '—'}</td>
-                  <td className="text-right">
+                  </td>}
+                  {isMatVisible('einheiten')  && <td className="text-right font-medium">
+                    {mat.typ === 'serial' ? `${mat.unit_count ?? 0}×` : '∞'}
+                  </td>}
+                  {isMatVisible('land')       && <td>{mat.herstellungsland || '—'}</td>}
+                  {isMatVisible('wert')       && <td className="text-right">
                     {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE')} ${mat.waehrung}` : '—'}
-                  </td>
-                  <td className="text-right">
+                  </td>}
+                  {isMatVisible('gewicht')    && <td className="text-right">
                     {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
-                  </td>
-                  {canEdit && (
-                    <td>
+                  </td>}
+                  <td>
+                    {canEdit && (
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => setMatModal({ open: true, mat })} className="p-1 text-gray-400 hover:text-blue-600">
                           <PencilIcon className="w-3.5 h-3.5" />
@@ -1092,8 +1125,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                           <TrashIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
