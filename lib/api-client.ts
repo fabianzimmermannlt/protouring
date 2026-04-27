@@ -430,6 +430,14 @@ export async function initEquipmentKuerzel(): Promise<string> {
   return res.kuerzel;
 }
 
+export async function getEquipmentSettings(): Promise<{ carnet_ata_enabled: boolean }> {
+  return request<{ carnet_ata_enabled: boolean }>('/api/equipment/settings');
+}
+
+export async function updateEquipmentSettings(data: { carnet_ata_enabled: boolean }): Promise<{ carnet_ata_enabled: boolean }> {
+  return request<{ carnet_ata_enabled: boolean }>('/api/equipment/settings', { method: 'PUT', body: data });
+}
+
 // ============================================
 // Equipment: Kategorien
 // ============================================

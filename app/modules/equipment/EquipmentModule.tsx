@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
 import { parseCSV, col } from '@/lib/csvParser'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -12,7 +12,7 @@ import {
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
   getEquipmentItemDetail, getCaseContents, addToCaseContents, updateCaseContent, removeCaseContent,
-  initEquipmentKuerzel,
+  initEquipmentKuerzel, getEquipmentSettings, updateEquipmentSettings,
   canDo, getEffectiveRole,
   type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
   type EquipmentCaseContent,
@@ -229,11 +229,12 @@ function ItemModal({ item, categories, onSave, onClose }: {
 
 // ── Material-Modal ────────────────────────────────────────────────────────────
 
-function MaterialModal({ mat, categories, onSave, onClose }: {
+function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false }: {
   mat: EquipmentMaterial | null
   categories: EquipmentCategory[]
   onSave: (data: Partial<EquipmentMaterial>) => Promise<number> // returns material id
   onClose: () => void
+  carnetEnabled?: boolean
 }) {
   const [form, setForm] = useState({
     hersteller:             mat?.hersteller ?? '',
@@ -272,6 +273,29 @@ function MaterialModal({ mat, categories, onSave, onClose }: {
   }
 
   const n = (v: string) => v === '' ? null : parseFloat(v)
+
+  // Carnet ATA: fehlende Pflichtfelder im Formular
+  const carnetWarn = (field: string): boolean => {
+    if (!carnetEnabled) return false
+    const checks: Record<string, boolean> = {
+      hersteller:       !form.hersteller.trim(),
+      produkt:          !form.produkt.trim(),
+      info:             !form.info.trim(),
+      herstellungsland: !form.herstellungsland.trim(),
+      gewicht_kg:       !form.gewicht_kg.trim(),
+      wert_zeitwert:    !form.wert_zeitwert.trim(),
+      waehrung:         !form.waehrung.trim(),
+    }
+    return checks[field] ?? false
+  }
+  const carnetMissingCount = carnetEnabled
+    ? ['hersteller','produkt','info','herstellungsland','gewicht_kg','wert_zeitwert','waehrung']
+        .filter(f => carnetWarn(f)).length
+    : 0
+  const inp = (field: string) => carnetWarn(field) ? 'form-input border-red-400 bg-red-50' : 'form-input'
+  const lbl = (field: string, label: string) => carnetWarn(field)
+    ? <><span>{label}</span><span className="ml-1 text-red-500 text-xs font-semibold">Carnet!</span></>
+    : label
 
   const handle = async () => {
     if (!form.produkt.trim()) { setErr('Produkt ist Pflicht'); return }
@@ -338,17 +362,17 @@ function MaterialModal({ mat, categories, onSave, onClose }: {
           {/* Basisfelder */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Hersteller</label>
-              <input className="form-input" value={form.hersteller} onChange={e => setForm({...form, hersteller: e.target.value})} placeholder="z.B. Shure" autoFocus />
+              <label className="form-label">{lbl('hersteller', 'Hersteller')}</label>
+              <input className={inp('hersteller')} value={form.hersteller} onChange={e => setForm({...form, hersteller: e.target.value})} placeholder="z.B. Shure" autoFocus />
             </div>
             <div>
               <label className="form-label">Produkt *</label>
-              <input className="form-input" value={form.produkt} onChange={e => setForm({...form, produkt: e.target.value})} placeholder="z.B. SM58" />
+              <input className={inp('produkt')} value={form.produkt} onChange={e => setForm({...form, produkt: e.target.value})} placeholder="z.B. SM58" />
             </div>
           </div>
           <div>
-            <label className="form-label">Beschreibung / Info</label>
-            <input className="form-input" value={form.info} onChange={e => setForm({...form, info: e.target.value})} placeholder="Kurzbeschreibung für Carnet" />
+            <label className="form-label">{lbl('info', 'Beschreibung / Info')}</label>
+            <input className={inp('info')} value={form.info} onChange={e => setForm({...form, info: e.target.value})} placeholder="Kurzbeschreibung für Carnet" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -438,12 +462,12 @@ function MaterialModal({ mat, categories, onSave, onClose }: {
           {/* Technische Felder */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Herstellungsland</label>
-              <input className="form-input" value={form.herstellungsland} onChange={e => setForm({...form, herstellungsland: e.target.value})} placeholder="z.B. DE, US" />
+              <label className="form-label">{lbl('herstellungsland', 'Herstellungsland')}</label>
+              <input className={inp('herstellungsland')} value={form.herstellungsland} onChange={e => setForm({...form, herstellungsland: e.target.value})} placeholder="z.B. DE, US" />
             </div>
             <div>
-              <label className="form-label">Gewicht kg/Stk</label>
-              <input type="number" className="form-input" value={form.gewicht_kg} onChange={e => setForm({...form, gewicht_kg: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">{lbl('gewicht_kg', 'Gewicht kg/Stk')}</label>
+              <input type="number" className={inp('gewicht_kg')} value={form.gewicht_kg} onChange={e => setForm({...form, gewicht_kg: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -457,8 +481,8 @@ function MaterialModal({ mat, categories, onSave, onClose }: {
               </select>
             </div>
             <div>
-              <label className="form-label">Zeitwert/Stk</label>
-              <input type="number" className="form-input" value={form.wert_zeitwert} onChange={e => setForm({...form, wert_zeitwert: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">{lbl('wert_zeitwert', 'Zeitwert/Stk')}</label>
+              <input type="number" className={inp('wert_zeitwert')} value={form.wert_zeitwert} onChange={e => setForm({...form, wert_zeitwert: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
             <div>
               <label className="form-label">Wiederbeschaffung</label>
@@ -764,6 +788,75 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
   )
 }
 
+// ── Carnet ATA Pflichtfeld-Check ─────────────────────────────────────────────
+
+export const CARNET_REQUIRED_FIELDS: (keyof EquipmentMaterial)[] = [
+  'hersteller', 'produkt', 'info', 'herstellungsland', 'gewicht_kg', 'wert_zeitwert', 'waehrung'
+]
+
+export function carnetMissingFields(mat: Partial<EquipmentMaterial>): string[] {
+  const labels: Record<string, string> = {
+    hersteller: 'Hersteller', produkt: 'Produkt', info: 'Beschreibung',
+    herstellungsland: 'Herstellungsland', gewicht_kg: 'Gewicht/Stk',
+    wert_zeitwert: 'Zeitwert/Stk', waehrung: 'Währung',
+  }
+  return CARNET_REQUIRED_FIELDS
+    .filter(f => mat[f] == null || mat[f] === '' || mat[f] === 0)
+    .map(f => labels[f] ?? f)
+}
+
+// ── Equipment-Settings Modal ──────────────────────────────────────────────────
+
+function EquipmentSettingsModal({ carnetEnabled, onSave, onClose }: {
+  carnetEnabled: boolean
+  onSave: (enabled: boolean) => Promise<void>
+  onClose: () => void
+}) {
+  const [enabled, setEnabled] = useState(carnetEnabled)
+  const [saving, setSaving] = useState(false)
+
+  const handle = async () => {
+    setSaving(true)
+    await onSave(enabled)
+    onClose()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">Equipment Einstellungen</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="modal-body space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={e => setEnabled(e.target.checked)}
+              className="mt-0.5 accent-blue-600 w-4 h-4"
+            />
+            <div>
+              <p className="font-medium text-gray-900 text-sm">Carnet ATA</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Pflichtfelder für Carnet ATA werden beim Material markiert:
+                Hersteller, Beschreibung, Herstellungsland, Gewicht, Zeitwert.
+                Fehlende Angaben werden farblich hervorgehoben.
+              </p>
+            </div>
+          </label>
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
+            {saving ? 'Speichern…' : 'Speichern'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Haupt-Modul ───────────────────────────────────────────────────────────────
 
 export default function EquipmentModule({ activeSubTab }: { activeSubTab?: string }) {
@@ -795,6 +888,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [carnetEnabled, setCarnetEnabled] = useState(false)
 
   const role = getEffectiveRole()
   const canEdit = canDo(role, ['admin', 'agency', 'tourmanagement'])
@@ -803,16 +898,18 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const scrollY = silent ? window.scrollY : 0
     if (!silent) setLoading(true)
     try {
-      const [k, cats, itms, mats] = await Promise.all([
+      const [k, cats, itms, mats, settings] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
         getEquipmentItems(),
         getEquipmentMaterials(),
+        getEquipmentSettings(),
       ])
       setKuerzel(k)
       setCategories(cats)
       setItems(itms)
       setMaterials(mats)
+      setCarnetEnabled(settings.carnet_ata_enabled)
     } catch {}
     if (!silent) setLoading(false)
     if (silent) requestAnimationFrame(() => window.scrollTo(0, scrollY))
@@ -1093,44 +1190,60 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               </tr>
             </thead>
             <tbody>
-              {sortedMaterials.map(mat => (
-                <tr key={mat.id} className="hoverable">
-                  {isMatVisible('hersteller') && <td className="text-gray-500">{mat.hersteller || '—'}</td>}
-                  {isMatVisible('produkt')    && <td className="font-medium">{mat.produkt}</td>}
-                  {isMatVisible('category')   && <td>{mat.category_name ?? '—'}</td>}
-                  {isMatVisible('typ')        && <td>
-                    <span className={`badge ${mat.typ === 'serial' ? 'badge-blue' : ''}`}>
-                      {mat.typ === 'serial' ? 'Serienartikel' : 'Massenartikel'}
-                    </span>
-                  </td>}
-                  {isMatVisible('einheiten')  && <td className="text-right font-medium">
-                    {mat.typ === 'serial' ? `${mat.unit_count ?? 0}×` : '∞'}
-                  </td>}
-                  {isMatVisible('land')       && <td>{mat.herstellungsland || '—'}</td>}
-                  {isMatVisible('wert')       && <td className="text-right">
-                    {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
-                  </td>}
-                  {isMatVisible('gewicht')    && <td className="text-right">
-                    {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
-                  </td>}
-                  <td>
-                    {canEdit && (
-                      <div className="flex gap-1 justify-end">
-                        <button onClick={() => setMatModal({ open: true, mat })} className="p-1 text-gray-400 hover:text-blue-600">
-                          <PencilIcon className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={async () => {
-                          if (!confirm(`${mat.hersteller ? mat.hersteller + ' ' : ''}${mat.produkt} wirklich löschen?`)) return
-                          await deleteEquipmentMaterial(mat.id)
-                          load(true)
-                        }} className="p-1 text-gray-400 hover:text-red-600">
-                          <TrashIcon className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {sortedMaterials.map(mat => {
+                const missing = carnetEnabled ? carnetMissingFields(mat) : []
+                const hasWarning = missing.length > 0
+                const warnField = (field: string) => hasWarning && missing.includes(field)
+                return (
+                  <tr key={mat.id} className={`hoverable${hasWarning ? ' bg-red-50' : ''}`}>
+                    {isMatVisible('hersteller') && <td className={warnField('hersteller') ? 'text-red-500 font-medium' : 'text-gray-500'}>
+                      {warnField('hersteller') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
+                      {mat.hersteller || '—'}
+                    </td>}
+                    {isMatVisible('produkt')    && <td className={`font-medium${warnField('produkt') ? ' text-red-500' : ''}`}>
+                      {warnField('produkt') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
+                      {mat.produkt}
+                    </td>}
+                    {isMatVisible('category')   && <td>{mat.category_name ?? '—'}</td>}
+                    {isMatVisible('typ')        && <td>
+                      <span className={`badge ${mat.typ === 'serial' ? 'badge-blue' : ''}`}>
+                        {mat.typ === 'serial' ? 'Serienartikel' : 'Massenartikel'}
+                      </span>
+                    </td>}
+                    {isMatVisible('einheiten')  && <td className="text-right font-medium">
+                      {mat.typ === 'serial' ? `${mat.unit_count ?? 0}×` : '∞'}
+                    </td>}
+                    {isMatVisible('land')       && <td className={warnField('herstellungsland') ? 'text-red-500 font-medium' : ''}>
+                      {warnField('herstellungsland') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
+                      {mat.herstellungsland || '—'}
+                    </td>}
+                    {isMatVisible('wert')       && <td className={`text-right${warnField('wert_zeitwert') || warnField('waehrung') ? ' text-red-500 font-medium' : ''}`}>
+                      {(warnField('wert_zeitwert') || warnField('waehrung')) && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
+                      {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
+                    </td>}
+                    {isMatVisible('gewicht')    && <td className={`text-right${warnField('gewicht_kg') ? ' text-red-500 font-medium' : ''}`}>
+                      {warnField('gewicht_kg') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
+                      {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
+                    </td>}
+                    <td>
+                      {canEdit && (
+                        <div className="flex gap-1 justify-end">
+                          <button onClick={() => setMatModal({ open: true, mat })} className="p-1 text-gray-400 hover:text-blue-600">
+                            <PencilIcon className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={async () => {
+                            if (!confirm(`${mat.hersteller ? mat.hersteller + ' ' : ''}${mat.produkt} wirklich löschen?`)) return
+                            await deleteEquipmentMaterial(mat.id)
+                            load(true)
+                          }} className="p-1 text-gray-400 hover:text-red-600">
+                            <TrashIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -1201,6 +1314,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <WrenchScrewdriverIcon className="w-5 h-5 text-orange-500" />
             Equipment
             <span className="text-xs font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">ADDON</span>
+            {carnetEnabled && (
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">Carnet ATA</span>
+            )}
           </h1>
           {kuerzel && (
             <p className="text-xs text-gray-400 mt-0.5">
@@ -1209,11 +1325,29 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             </p>
           )}
         </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Equipment Einstellungen"
+        >
+          <Cog6ToothIcon className="w-5 h-5" />
+        </button>
       </div>
 
       {activeTab === 'items'      && renderItems()}
       {activeTab === 'materials'  && renderMaterials()}
       {activeTab === 'categories' && renderCategories()}
+
+      {settingsOpen && (
+        <EquipmentSettingsModal
+          carnetEnabled={carnetEnabled}
+          onSave={async (enabled) => {
+            await updateEquipmentSettings({ carnet_ata_enabled: enabled })
+            setCarnetEnabled(enabled)
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {catModal.open && (
         <CategoryModal
@@ -1242,6 +1376,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         <MaterialModal
           mat={matModal.mat}
           categories={categories}
+          carnetEnabled={carnetEnabled}
           onSave={async data => {
             let id: number
             if (matModal.mat) {

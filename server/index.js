@@ -682,6 +682,7 @@ async function initDatabase() {
     `ALTER TABLE feedback_items ADD COLUMN bemerkung TEXT`,
     // Equipment-Modul: Kürzel pro Tenant (global unique für Case IDs)
     `ALTER TABLE tenants ADD COLUMN equipment_kuerzel TEXT DEFAULT NULL`,
+    `ALTER TABLE tenants ADD COLUMN carnet_ata_enabled INTEGER DEFAULT 0`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_kuerzel: Partial UNIQUE INDEX (nur wenn gesetzt)
@@ -5233,6 +5234,26 @@ app.post('/api/equipment/init', authenticateToken, requireTenant, async (req, re
 
     await db.run(`UPDATE tenants SET equipment_kuerzel=?, updated_at=datetime('now') WHERE id=?`, [kuerzel, req.tenant.id])
     res.json({ kuerzel })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Equipment: Settings ──────────────────────────────────────────────────────
+
+// GET /api/equipment/settings
+app.get('/api/equipment/settings', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT carnet_ata_enabled FROM tenants WHERE id = ?', [req.tenant.id])
+    res.json({ carnet_ata_enabled: !!row?.carnet_ata_enabled })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/equipment/settings
+app.put('/api/equipment/settings', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const { carnet_ata_enabled } = req.body
+    await db.run(`UPDATE tenants SET carnet_ata_enabled=?, updated_at=datetime('now') WHERE id=?`,
+      [carnet_ata_enabled ? 1 : 0, req.tenant.id])
+    res.json({ carnet_ata_enabled: !!carnet_ata_enabled })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
