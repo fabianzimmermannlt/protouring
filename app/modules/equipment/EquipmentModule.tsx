@@ -25,7 +25,7 @@ const POSITION_LABELS: Record<string, string> = {
 }
 
 const ITEMS_COLUMNS = [
-  { id: 'case_id',      label: 'Case ID',       defaultVisible: true,  alwaysVisible: true },
+  { id: 'case_id',      label: 'Case ID',       defaultVisible: true  },
   { id: 'name',         label: 'Name',          defaultVisible: true,  alwaysVisible: true },
   { id: 'typ',          label: 'Typ',           defaultVisible: true  },
   { id: 'category',     label: 'Kategorie',     defaultVisible: true  },
