@@ -501,6 +501,8 @@ export interface EquipmentItem {
   width_cm: number | null;
   depth_cm: number | null;
   weight_empty_kg: number | null;
+  label_color: string | null;
+  standort_status: string | null;
   notiz: string | null;
   material_count?: number;
   material_wert?: number;

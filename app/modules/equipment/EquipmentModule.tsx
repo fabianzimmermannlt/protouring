@@ -25,6 +25,16 @@ const TYP_LABELS: Record<string, string> = {
   case: 'Case', dolly: 'Dolly', gitterbox: 'Gitterbox', kulisse: 'Kulisse', sonstiges: 'Sonstiges',
 }
 
+const STANDORT_STATUS_LABELS: Record<string, string> = {
+  lager: 'Im Lager',
+  transport: 'Im Transport',
+  'bühne': 'Auf der Bühne',
+  probe: 'Probe',
+  verleih: 'Beim Verleih',
+  reparatur: 'In Reparatur',
+  vermisst: 'Vermisst',
+}
+
 const POSITION_LABELS: Record<string, string> = {
   sl: 'SL – Stage Left', sr: 'SR – Stage Right', cs: 'CS – Center Stage',
   us: 'US – Upstage', ds: 'DS – Downstage',
@@ -78,15 +88,16 @@ const MATERIAL_COLUMNS = [
 type MatSortKey = 'bezeichnung' | 'marke' | 'modell' | 'category_name' | 'typ' | 'unit_count' | 'anzahl_gepackt' | 'ursprungsland' | 'wert_zollwert' | 'gewicht_kg'
 
 const ITEMS_COLUMNS = [
-  { id: 'case_id',      label: 'Case ID',       defaultVisible: true  },
-  { id: 'name',         label: 'Bezeichnung',   defaultVisible: true,  alwaysVisible: true },
-  { id: 'typ',          label: 'Typ',           defaultVisible: true  },
-  { id: 'category',     label: 'Kategorie',     defaultVisible: true  },
-  { id: 'position',     label: 'Position',      defaultVisible: true  },
-  { id: 'masse',        label: 'Maße H×B×T',    defaultVisible: true  },
-  { id: 'leer_kg',      label: 'Leer kg',       defaultVisible: true  },
-  { id: 'material',     label: 'Material',      defaultVisible: true  },
-  { id: 'gesamt_kg',    label: 'Gesamt kg',     defaultVisible: true  },
+  { id: 'case_id',      label: 'Case ID',         defaultVisible: true  },
+  { id: 'name',         label: 'Bezeichnung',     defaultVisible: true,  alwaysVisible: true },
+  { id: 'typ',          label: 'Typ',             defaultVisible: true  },
+  { id: 'position',     label: 'Position',        defaultVisible: true  },
+  { id: 'status',       label: 'Status',          defaultVisible: true  },
+  { id: 'masse',        label: 'Maße H×B×T',      defaultVisible: true  },
+  { id: 'leer_kg',      label: 'Leer kg',         defaultVisible: true  },
+  { id: 'farbe',        label: 'Labelfarbe',      defaultVisible: true  },
+  { id: 'material',     label: 'Material',        defaultVisible: true  },
+  { id: 'gesamt_kg',    label: 'Gesamt kg',       defaultVisible: true  },
 ]
 
 type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
@@ -176,15 +187,13 @@ function CategoryModal({ cat, onSave, onClose }: {
 
 // ── Gegenstand-Modal ─────────────────────────────────────────────────────────
 
-function ItemModal({ item, categories, onSave, onClose }: {
+function ItemModal({ item, onSave, onClose }: {
   item: EquipmentItem | null
-  categories: EquipmentCategory[]
   onSave: (data: Partial<EquipmentItem>) => Promise<void>
   onClose: () => void
 }) {
   const [form, setForm] = useState({
     bezeichnung:   item?.bezeichnung ?? '',
-    category_id:   item?.category_id != null ? String(item.category_id) : '',
     typ:           item?.typ ?? 'case',
     typ_custom:    item?.typ_custom ?? '',
     position:      item?.position ?? '',
@@ -194,6 +203,8 @@ function ItemModal({ item, categories, onSave, onClose }: {
     width_cm:      item?.width_cm != null ? String(item.width_cm) : '',
     depth_cm:      item?.depth_cm != null ? String(item.depth_cm) : '',
     weight_empty_kg: item?.weight_empty_kg != null ? String(item.weight_empty_kg) : '',
+    label_color:   item?.label_color ?? '',
+    standort_status: item?.standort_status ?? '',
     notiz:         item?.notiz ?? '',
   })
   const [saving, setSaving] = useState(false)
@@ -210,7 +221,6 @@ function ItemModal({ item, categories, onSave, onClose }: {
     try {
       await onSave({
         bezeichnung:     form.bezeichnung.trim(),
-        category_id:     form.category_id ? Number(form.category_id) : null,
         typ:             form.typ as any,
         typ_custom:      form.typ === 'sonstiges' ? form.typ_custom.trim() : null,
         position:        (form.position || null) as any,
@@ -220,6 +230,8 @@ function ItemModal({ item, categories, onSave, onClose }: {
         width_cm:        n(form.width_cm),
         depth_cm:        n(form.depth_cm),
         weight_empty_kg: n(form.weight_empty_kg),
+        label_color:     form.label_color || null,
+        standort_status: form.standort_status || null,
         notiz:           form.notiz || null,
       })
       onClose()
@@ -251,28 +263,18 @@ function ItemModal({ item, categories, onSave, onClose }: {
               placeholder="z.B. FOH-Rack" autoFocus />
           </div>
 
-          {/* Typ + Kategorie */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="form-label">Typ</label>
-              <select className="form-select" value={form.typ}
-                onChange={e => setForm({...form, typ: e.target.value as any, typ_custom: ''})}>
-                {Object.entries(TYP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              {form.typ === 'sonstiges' && (
-                <input className="form-input mt-2" value={form.typ_custom}
-                  onChange={e => setForm({...form, typ_custom: e.target.value})}
-                  placeholder="Typ angeben…" />
-              )}
-            </div>
-            <div>
-              <label className="form-label">Kategorie</label>
-              <select className="form-select" value={form.category_id}
-                onChange={e => setForm({...form, category_id: e.target.value})}>
-                <option value="">— keine —</option>
-                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-              </select>
-            </div>
+          {/* Typ */}
+          <div>
+            <label className="form-label">Typ</label>
+            <select className="form-select" value={form.typ}
+              onChange={e => setForm({...form, typ: e.target.value as any, typ_custom: ''})}>
+              {Object.entries(TYP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            {form.typ === 'sonstiges' && (
+              <input className="form-input mt-2" value={form.typ_custom}
+                onChange={e => setForm({...form, typ_custom: e.target.value})}
+                placeholder="Typ angeben…" />
+            )}
           </div>
 
           {/* Position + Ladereihenfolge */}
@@ -303,25 +305,70 @@ function ItemModal({ item, categories, onSave, onClose }: {
             </div>
           </div>
 
-          {/* Maße */}
+          {/* Maße + Leergewicht */}
           <div>
-            <label className="form-label">Maße (cm) — Höhe / Breite / Tiefe</label>
-            <div className="grid grid-cols-3 gap-2">
+            <label className="form-label">Maße (cm) H / B / T — Leergewicht (kg)</label>
+            <div className="grid grid-cols-4 gap-2">
               <input type="number" className="form-input" value={form.height_cm}
                 onChange={e => setForm({...form, height_cm: e.target.value})} placeholder="H" />
               <input type="number" className="form-input" value={form.width_cm}
                 onChange={e => setForm({...form, width_cm: e.target.value})} placeholder="B" />
               <input type="number" className="form-input" value={form.depth_cm}
                 onChange={e => setForm({...form, depth_cm: e.target.value})} placeholder="T" />
+              <input type="number" className="form-input" value={form.weight_empty_kg}
+                onChange={e => setForm({...form, weight_empty_kg: e.target.value})}
+                placeholder="kg" step="0.1" />
             </div>
           </div>
 
-          {/* Leergewicht */}
-          <div>
-            <label className="form-label">Leergewicht (kg)</label>
-            <input type="number" className="form-input" value={form.weight_empty_kg}
-              onChange={e => setForm({...form, weight_empty_kg: e.target.value})}
-              placeholder="0.0" step="0.1" />
+          {/* Labelfarbe + Status */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Labelfarbe</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {[
+                  { color: '', label: 'keine' },
+                  { color: '#ef4444', label: 'Rot' },
+                  { color: '#f97316', label: 'Orange' },
+                  { color: '#eab308', label: 'Gelb' },
+                  { color: '#22c55e', label: 'Grün' },
+                  { color: '#3b82f6', label: 'Blau' },
+                  { color: '#8b5cf6', label: 'Lila' },
+                  { color: '#ec4899', label: 'Pink' },
+                  { color: '#ffffff', label: 'Weiß' },
+                  { color: '#000000', label: 'Schwarz' },
+                ].map(({ color, label }) => (
+                  <button
+                    key={color}
+                    type="button"
+                    title={label}
+                    onClick={() => setForm({...form, label_color: color})}
+                    className="w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform"
+                    style={{
+                      backgroundColor: color || 'transparent',
+                      borderColor: form.label_color === color ? '#3b82f6' : (color === '' ? '#d1d5db' : color),
+                      transform: form.label_color === color ? 'scale(1.25)' : 'scale(1)',
+                      backgroundImage: color === '' ? 'repeating-linear-gradient(45deg, #d1d5db 0, #d1d5db 2px, transparent 0, transparent 50%)' : undefined,
+                      backgroundSize: color === '' ? '6px 6px' : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Status / Standort</label>
+              <select className="form-select" value={form.standort_status}
+                onChange={e => setForm({...form, standort_status: e.target.value})}>
+                <option value="">— unbekannt —</option>
+                <option value="lager">Im Lager</option>
+                <option value="transport">Im Transport</option>
+                <option value="bühne">Auf der Bühne / im Einsatz</option>
+                <option value="probe">Probe / Rehearsal</option>
+                <option value="verleih">Beim Verleih</option>
+                <option value="reparatur">In Reparatur</option>
+                <option value="vermisst">Vermisst</option>
+              </select>
+            </div>
           </div>
 
           {/* Notiz */}
@@ -1651,10 +1698,11 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 {isVisible('case_id')   && <th className="sortable" onClick={() => toggleItemSort('case_id')}>Case ID <SortIndicator active={itemSortKey === 'case_id'} dir={itemSortDir} /></th>}
                 {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('bezeichnung')}>Bezeichnung <SortIndicator active={itemSortKey === 'bezeichnung'} dir={itemSortDir} /></th>}
                 {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
-                {isVisible('category')  && <th className="sortable" onClick={() => toggleItemSort('category_name')}>Kategorie <SortIndicator active={itemSortKey === 'category_name'} dir={itemSortDir} /></th>}
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
+                {isVisible('status')    && <th>Status</th>}
                 {isVisible('masse')     && <th className="text-right">Maße H×B×T cm</th>}
                 {isVisible('leer_kg')   && <th className="sortable text-right" onClick={() => toggleItemSort('weight_empty_kg')}>Leer kg <SortIndicator active={itemSortKey === 'weight_empty_kg'} dir={itemSortDir} /></th>}
+                {isVisible('farbe')     && <th>Farbe</th>}
                 {isVisible('material')  && <th className="sortable text-right" onClick={() => toggleItemSort('material_count')}>Material <SortIndicator active={itemSortKey === 'material_count'} dir={itemSortDir} /></th>}
                 {isVisible('gesamt_kg') && <th className="text-right">Gesamt kg</th>}
                 <th style={{ width: 72 }}>
@@ -1672,14 +1720,21 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {isVisible('case_id')   && <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>}
                       {isVisible('name')      && <td className="font-medium">{item.bezeichnung}</td>}
                       {isVisible('typ')       && <td><span className="badge">{item.typ === 'sonstiges' ? (item.typ_custom || 'Sonstiges') : (TYP_LABELS[item.typ] ?? item.typ)}</span></td>}
-                      {isVisible('category')  && <td>{item.category_name ?? '—'}</td>}
-                      {isVisible('position')  && <td>{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
+                      {isVisible('position')  && <td className="text-xs text-gray-600">{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
+                      {isVisible('status')    && <td>{item.standort_status
+                        ? <span className="badge">{STANDORT_STATUS_LABELS[item.standort_status] ?? item.standort_status}</span>
+                        : '—'}</td>}
                       {isVisible('masse')     && <td className="text-right text-xs text-gray-600">
                         {item.height_cm || item.width_cm || item.depth_cm
                           ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`
                           : '—'}
                       </td>}
                       {isVisible('leer_kg')   && <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>}
+                      {isVisible('farbe')     && <td>
+                        {item.label_color
+                          ? <span className="inline-block w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: item.label_color }} title={item.label_color} />
+                          : '—'}
+                      </td>}
                       {isVisible('material')  && <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>}
                       {isVisible('gesamt_kg') && <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>}
                       <td>
@@ -2210,7 +2265,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       {itemModal.open && (
         <ItemModal
           item={itemModal.item}
-          categories={categories}
           onSave={async data => {
             if (itemModal.item) await updateEquipmentItem(itemModal.item.id, data)
             else await createEquipmentItem(data)
