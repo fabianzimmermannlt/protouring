@@ -570,7 +570,7 @@ body {
 }
 .data-table thead th.col-checkbox + th,
 .data-table tbody td.col-checkbox + td {
-  padding-left: 8px !important;
+  padding-left: 2px !important;
 }
 
 /* Kompaktes Padding für die Reisegruppe-Tabelle */
