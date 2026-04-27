@@ -1760,7 +1760,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
   // ── Eigentümer ────────────────────────────────────────────────────────────────
   const renderEigentuemer = () => (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4">
       {canEdit && (
         <button onClick={() => setOwnerModal({ open: true, owner: null })} className="btn btn-primary">
           <PlusIcon className="w-4 h-4" />
