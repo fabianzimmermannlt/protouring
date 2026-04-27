@@ -1106,7 +1106,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                   </td>}
                   {isMatVisible('land')       && <td>{mat.herstellungsland || '—'}</td>}
                   {isMatVisible('wert')       && <td className="text-right">
-                    {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE')} ${mat.waehrung}` : '—'}
+                    {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
                   </td>}
                   {isMatVisible('gewicht')    && <td className="text-right">
                     {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
