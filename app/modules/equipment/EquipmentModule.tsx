@@ -22,11 +22,44 @@ import {
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
-  case: 'Case', dolly: 'Dolly', kulisse: 'Kulisse', flightcase: 'Flightcase', sonstiges: 'Sonstiges'
+  case: 'Case', dolly: 'Dolly', gitterbox: 'Gitterbox', kulisse: 'Kulisse', sonstiges: 'Sonstiges',
 }
+
 const POSITION_LABELS: Record<string, string> = {
-  sl: 'Stage Left', sr: 'Stage Right', foh: 'FOH', drums: 'Drums', backline: 'Backline', truck: 'Truck', sonstiges: 'Sonstiges'
+  sl: 'SL – Stage Left', sr: 'SR – Stage Right', cs: 'CS – Center Stage',
+  us: 'US – Upstage', ds: 'DS – Downstage',
+  usl: 'USL – Upstage Left', usr: 'USR – Upstage Right', usc: 'USC – Upstage Center',
+  cl: 'CL – Center Left', cr: 'CR – Center Right',
+  dsl: 'DSL – Downstage Left', dsr: 'DSR – Downstage Right', dsc: 'DSC – Downstage Center',
+  swl: 'SWL – Sidewing Left', swr: 'SWR – Sidewing Right',
+  osl: 'OSL – Offstage Left', osr: 'OSR – Offstage Right', osc: 'OSC – Offstage Center',
+  foh: 'FOH – Front of House', mon: 'MON – Monitor Position', backstage: 'Backstage',
+  distro: 'Distro', delay: 'Delay', merchandise: 'Merchandise', balcony: 'Balcony',
+  sonstiges: 'Sonstiges',
 }
+
+// Für den Select: Gruppen mit optgroup-Trennung
+const POSITION_GROUPS = [
+  { label: 'Bühne', options: [
+    ['sl','SL – Stage Left'],['sr','SR – Stage Right'],['cs','CS – Center Stage'],
+    ['us','US – Upstage'],['ds','DS – Downstage'],
+  ]},
+  { label: 'Bühne (Detail)', options: [
+    ['usl','USL – Upstage Left'],['usr','USR – Upstage Right'],['usc','USC – Upstage Center'],
+    ['cl','CL – Center Left'],['cr','CR – Center Right'],
+    ['dsl','DSL – Downstage Left'],['dsr','DSR – Downstage Right'],['dsc','DSC – Downstage Center'],
+    ['swl','SWL – Sidewing Left'],['swr','SWR – Sidewing Right'],
+  ]},
+  { label: 'Offstage', options: [
+    ['osl','OSL – Offstage Left'],['osr','OSR – Offstage Right'],['osc','OSC – Offstage Center'],
+  ]},
+  { label: 'FOH / Monitor', options: [
+    ['foh','FOH – Front of House'],['mon','MON – Monitor Position'],['backstage','Backstage'],
+  ]},
+  { label: 'Sonstiges Venue', options: [
+    ['distro','Distro'],['delay','Delay'],['merchandise','Merchandise'],['balcony','Balcony'],
+  ]},
+]
 
 const MATERIAL_COLUMNS = [
   { id: 'mat_id',      label: 'Mat-ID',          defaultVisible: false },
@@ -46,7 +79,7 @@ type MatSortKey = 'bezeichnung' | 'marke' | 'modell' | 'category_name' | 'typ' |
 
 const ITEMS_COLUMNS = [
   { id: 'case_id',      label: 'Case ID',       defaultVisible: true  },
-  { id: 'name',         label: 'Name',          defaultVisible: true,  alwaysVisible: true },
+  { id: 'name',         label: 'Bezeichnung',   defaultVisible: true,  alwaysVisible: true },
   { id: 'typ',          label: 'Typ',           defaultVisible: true  },
   { id: 'category',     label: 'Kategorie',     defaultVisible: true  },
   { id: 'position',     label: 'Position',      defaultVisible: true  },
@@ -56,7 +89,7 @@ const ITEMS_COLUMNS = [
   { id: 'gesamt_kg',    label: 'Gesamt kg',     defaultVisible: true  },
 ]
 
-type ItemSortKey = 'case_id' | 'name' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
+type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
 
 const CARNET_COLUMNS = [
   { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
@@ -150,16 +183,18 @@ function ItemModal({ item, categories, onSave, onClose }: {
   onClose: () => void
 }) {
   const [form, setForm] = useState({
-    name: item?.name ?? '',
-    category_id: item?.category_id ?? '',
-    typ: item?.typ ?? 'case',
-    position: item?.position ?? '',
-    load_order: item?.load_order != null ? String(item.load_order) : '',
-    height_cm: item?.height_cm != null ? String(item.height_cm) : '',
-    width_cm: item?.width_cm != null ? String(item.width_cm) : '',
-    depth_cm: item?.depth_cm != null ? String(item.depth_cm) : '',
+    bezeichnung:   item?.bezeichnung ?? '',
+    category_id:   item?.category_id != null ? String(item.category_id) : '',
+    typ:           item?.typ ?? 'case',
+    typ_custom:    item?.typ_custom ?? '',
+    position:      item?.position ?? '',
+    position_custom: item?.position_custom ?? '',
+    load_order:    item?.load_order != null ? String(item.load_order) : '',
+    height_cm:     item?.height_cm != null ? String(item.height_cm) : '',
+    width_cm:      item?.width_cm != null ? String(item.width_cm) : '',
+    depth_cm:      item?.depth_cm != null ? String(item.depth_cm) : '',
     weight_empty_kg: item?.weight_empty_kg != null ? String(item.weight_empty_kg) : '',
-    notiz: item?.notiz ?? '',
+    notiz:         item?.notiz ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -168,20 +203,24 @@ function ItemModal({ item, categories, onSave, onClose }: {
   const ni = (v: string) => v === '' ? null : parseInt(v, 10)
 
   const handle = async () => {
-    if (!form.name.trim()) { setErr('Name ist Pflicht'); return }
+    if (!form.bezeichnung.trim()) { setErr('Bezeichnung ist Pflicht'); return }
+    if (form.typ === 'sonstiges' && !form.typ_custom.trim()) { setErr('Bitte Typ angeben'); return }
+    if (form.position === 'sonstiges' && !form.position_custom.trim()) { setErr('Bitte Position angeben'); return }
     setSaving(true)
     try {
       await onSave({
-        name: form.name.trim(),
-        category_id: form.category_id ? Number(form.category_id) : null,
-        typ: form.typ as any,
-        position: (form.position || null) as any,
-        load_order: ni(form.load_order),
-        height_cm: n(form.height_cm),
-        width_cm: n(form.width_cm),
-        depth_cm: n(form.depth_cm),
+        bezeichnung:     form.bezeichnung.trim(),
+        category_id:     form.category_id ? Number(form.category_id) : null,
+        typ:             form.typ as any,
+        typ_custom:      form.typ === 'sonstiges' ? form.typ_custom.trim() : null,
+        position:        (form.position || null) as any,
+        position_custom: form.position === 'sonstiges' ? form.position_custom.trim() : null,
+        load_order:      ni(form.load_order),
+        height_cm:       n(form.height_cm),
+        width_cm:        n(form.width_cm),
+        depth_cm:        n(form.depth_cm),
         weight_empty_kg: n(form.weight_empty_kg),
-        notiz: form.notiz || null,
+        notiz:           form.notiz || null,
       })
       onClose()
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
@@ -195,54 +234,104 @@ function ItemModal({ item, categories, onSave, onClose }: {
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
         <div className="modal-body space-y-4">
+
+          {/* Case-ID (nur beim Bearbeiten) */}
+          {item && (
+            <div>
+              <label className="form-label">Case-ID</label>
+              <input className="form-input bg-gray-50 text-gray-500 font-mono text-sm" value={item.case_id} readOnly />
+            </div>
+          )}
+
+          {/* Bezeichnung */}
           <div>
-            <label className="form-label">Name *</label>
-            <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="z.B. FOH-Rack" autoFocus />
+            <label className="form-label">Bezeichnung *</label>
+            <input className="form-input" value={form.bezeichnung}
+              onChange={e => setForm({...form, bezeichnung: e.target.value})}
+              placeholder="z.B. FOH-Rack" autoFocus />
           </div>
+
+          {/* Typ + Kategorie */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Typ</label>
-              <select className="form-select" value={form.typ} onChange={e => setForm({...form, typ: e.target.value as any})}>
+              <select className="form-select" value={form.typ}
+                onChange={e => setForm({...form, typ: e.target.value as any, typ_custom: ''})}>
                 {Object.entries(TYP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
+              {form.typ === 'sonstiges' && (
+                <input className="form-input mt-2" value={form.typ_custom}
+                  onChange={e => setForm({...form, typ_custom: e.target.value})}
+                  placeholder="Typ angeben…" />
+              )}
             </div>
             <div>
               <label className="form-label">Kategorie</label>
-              <select className="form-select" value={form.category_id} onChange={e => setForm({...form, category_id: e.target.value})}>
+              <select className="form-select" value={form.category_id}
+                onChange={e => setForm({...form, category_id: e.target.value})}>
                 <option value="">— keine —</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
             </div>
           </div>
+
+          {/* Position + Ladereihenfolge */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">Position (Bühne)</label>
-              <select className="form-select" value={form.position} onChange={e => setForm({...form, position: e.target.value})}>
+              <label className="form-label">Position (im Venue)</label>
+              <select className="form-select" value={form.position}
+                onChange={e => setForm({...form, position: e.target.value as any, position_custom: ''})}>
                 <option value="">— keine —</option>
-                {Object.entries(POSITION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {POSITION_GROUPS.map(g => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </optgroup>
+                ))}
+                <option value="sonstiges">Sonstiges</option>
               </select>
+              {form.position === 'sonstiges' && (
+                <input className="form-input mt-2" value={form.position_custom}
+                  onChange={e => setForm({...form, position_custom: e.target.value})}
+                  placeholder="Position angeben…" />
+              )}
             </div>
             <div>
               <label className="form-label">Ladereihenfolge</label>
-              <input type="number" className="form-input" value={form.load_order} onChange={e => setForm({...form, load_order: e.target.value})} placeholder="1" min={1} />
+              <input type="number" className="form-input" value={form.load_order}
+                onChange={e => setForm({...form, load_order: e.target.value})}
+                placeholder="1" min={1} />
             </div>
           </div>
+
+          {/* Maße */}
           <div>
             <label className="form-label">Maße (cm) — Höhe / Breite / Tiefe</label>
             <div className="grid grid-cols-3 gap-2">
-              <input type="number" className="form-input" value={form.height_cm} onChange={e => setForm({...form, height_cm: e.target.value})} placeholder="H" />
-              <input type="number" className="form-input" value={form.width_cm} onChange={e => setForm({...form, width_cm: e.target.value})} placeholder="B" />
-              <input type="number" className="form-input" value={form.depth_cm} onChange={e => setForm({...form, depth_cm: e.target.value})} placeholder="T" />
+              <input type="number" className="form-input" value={form.height_cm}
+                onChange={e => setForm({...form, height_cm: e.target.value})} placeholder="H" />
+              <input type="number" className="form-input" value={form.width_cm}
+                onChange={e => setForm({...form, width_cm: e.target.value})} placeholder="B" />
+              <input type="number" className="form-input" value={form.depth_cm}
+                onChange={e => setForm({...form, depth_cm: e.target.value})} placeholder="T" />
             </div>
           </div>
+
+          {/* Leergewicht */}
           <div>
             <label className="form-label">Leergewicht (kg)</label>
-            <input type="number" className="form-input" value={form.weight_empty_kg} onChange={e => setForm({...form, weight_empty_kg: e.target.value})} placeholder="0.0" step="0.1" />
+            <input type="number" className="form-input" value={form.weight_empty_kg}
+              onChange={e => setForm({...form, weight_empty_kg: e.target.value})}
+              placeholder="0.0" step="0.1" />
           </div>
+
+          {/* Notiz */}
           <div>
             <label className="form-label">Notiz</label>
-            <textarea className="form-textarea" rows={2} value={form.notiz} onChange={e => setForm({...form, notiz: e.target.value})} placeholder="Interne Notizen…" />
+            <textarea className="form-textarea" rows={2} value={form.notiz}
+              onChange={e => setForm({...form, notiz: e.target.value})}
+              placeholder="Interne Notizen…" />
           </div>
+
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
         <div className="modal-footer">
@@ -1360,7 +1449,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [search, setSearch] = useState('')
   const [kuerzel, setKuerzel] = useState('')
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null)
-  const [itemSortKey, setItemSortKey] = useState<ItemSortKey>('case_id')
+  const [itemSortKey, setItemSortKey] = useState<ItemSortKey>('bezeichnung')
   const [itemSortDir, setItemSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible, toggle, columns: itemColumns } = useColumnVisibility('equipment-items', ITEMS_COLUMNS)
   const [owners, setOwners] = useState<EquipmentOwner[]>([])
@@ -1429,7 +1518,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   // ── Gegenstände ──────────────────────────────────────────────────────────────
   const sortedItems = useMemo(() => {
     const filtered = items.filter(i =>
-      !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.case_id.toLowerCase().includes(search.toLowerCase())
+      !search || (i.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) || i.case_id.toLowerCase().includes(search.toLowerCase())
     )
     return [...filtered].sort((a, b) => {
       let av: string | number = ''
@@ -1437,7 +1526,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       if (itemSortKey === 'weight_empty_kg') { av = a.weight_empty_kg ?? 0; bv = b.weight_empty_kg ?? 0 }
       else if (itemSortKey === 'material_count') { av = a.material_count ?? 0; bv = b.material_count ?? 0 }
       else if (itemSortKey === 'load_order') { av = a.load_order ?? 9999; bv = b.load_order ?? 9999 }
-      else { av = (a[itemSortKey] ?? '').toString().toLowerCase(); bv = (b[itemSortKey] ?? '').toString().toLowerCase() }
+      else { av = ((a as any)[itemSortKey] ?? '').toString().toLowerCase(); bv = ((b as any)[itemSortKey] ?? '').toString().toLowerCase() }
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
       return itemSortDir === 'asc' ? cmp : -cmp
     })
@@ -1484,7 +1573,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <thead>
               <tr>
                 {isVisible('case_id')   && <th className="sortable" onClick={() => toggleItemSort('case_id')}>Case ID <SortIndicator active={itemSortKey === 'case_id'} dir={itemSortDir} /></th>}
-                {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('name')}>Name <SortIndicator active={itemSortKey === 'name'} dir={itemSortDir} /></th>}
+                {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('bezeichnung')}>Bezeichnung <SortIndicator active={itemSortKey === 'bezeichnung'} dir={itemSortDir} /></th>}
                 {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
                 {isVisible('category')  && <th className="sortable" onClick={() => toggleItemSort('category_name')}>Kategorie <SortIndicator active={itemSortKey === 'category_name'} dir={itemSortDir} /></th>}
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
@@ -1505,10 +1594,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                   <>
                     <tr key={item.id} className="clickable" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
                       {isVisible('case_id')   && <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>}
-                      {isVisible('name')      && <td className="font-medium">{item.name}</td>}
-                      {isVisible('typ')       && <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>}
+                      {isVisible('name')      && <td className="font-medium">{item.bezeichnung}</td>}
+                      {isVisible('typ')       && <td><span className="badge">{item.typ === 'sonstiges' ? (item.typ_custom || 'Sonstiges') : (TYP_LABELS[item.typ] ?? item.typ)}</span></td>}
                       {isVisible('category')  && <td>{item.category_name ?? '—'}</td>}
-                      {isVisible('position')  && <td>{item.position ? POSITION_LABELS[item.position] ?? item.position : '—'}</td>}
+                      {isVisible('position')  && <td>{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
                       {isVisible('masse')     && <td className="text-right text-xs text-gray-600">
                         {item.height_cm || item.width_cm || item.depth_cm
                           ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`
@@ -1526,7 +1615,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                           )}
                           {canEdit && (
                             <button onClick={async () => {
-                              if (!confirm(`${item.case_id} — ${item.name} wirklich löschen?`)) return
+                              if (!confirm(`${item.case_id} — ${item.bezeichnung} wirklich löschen?`)) return
                               await deleteEquipmentItem(item.id)
                               load(true)
                             }} className="p-1 text-gray-400 hover:text-red-600">

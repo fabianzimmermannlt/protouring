@@ -474,20 +474,28 @@ export async function deleteEquipmentCategory(id: number): Promise<void> {
 // Equipment: Gegenstände (Items)
 // ============================================
 
-export type EquipmentItemTyp = 'case' | 'dolly' | 'kulisse' | 'flightcase' | 'sonstiges';
-export type EquipmentPosition = 'sl' | 'sr' | 'foh' | 'drums' | 'backline' | 'truck' | 'sonstiges';
+export type EquipmentItemTyp = 'case' | 'dolly' | 'gitterbox' | 'kulisse' | 'sonstiges';
+export type EquipmentPosition =
+  'sl' | 'sr' | 'cs' | 'us' | 'ds' |
+  'usl' | 'usr' | 'usc' | 'cl' | 'cr' | 'dsl' | 'dsr' | 'dsc' | 'swl' | 'swr' |
+  'osl' | 'osr' | 'osc' |
+  'foh' | 'mon' | 'backstage' |
+  'distro' | 'delay' | 'merchandise' | 'balcony' |
+  'sonstiges';
 
 export interface EquipmentItem {
   id: number;
   tenant_id: number;
   case_id: string;
   seq_number: number;
-  name: string;
+  bezeichnung: string;
   category_id: number | null;
   category_name?: string;
   category_kuerzel?: string;
   typ: EquipmentItemTyp;
+  typ_custom: string | null;
   position: EquipmentPosition | null;
+  position_custom: string | null;
   load_order: number | null;
   height_cm: number | null;
   width_cm: number | null;

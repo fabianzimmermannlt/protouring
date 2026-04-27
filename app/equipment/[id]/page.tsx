@@ -277,7 +277,7 @@ export default function EquipmentItemDetailPage() {
       {item && (
         <div className="flex items-center gap-3">
           <span className="font-mono text-sm font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span>
-          <span className="font-semibold text-gray-900">{item.name}</span>
+          <span className="font-semibold text-gray-900">{item.bezeichnung}</span>
           {item.typ && <span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span>}
           {item.position && <span className="text-xs text-gray-400">{POSITION_LABELS[item.position] ?? item.position}</span>}
         </div>
