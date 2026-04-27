@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
@@ -20,6 +22,25 @@ const TYP_LABELS: Record<string, string> = {
 }
 const POSITION_LABELS: Record<string, string> = {
   sl: 'Stage Left', sr: 'Stage Right', foh: 'FOH', drums: 'Drums', backline: 'Backline', truck: 'Truck', sonstiges: 'Sonstiges'
+}
+
+const ITEMS_COLUMNS = [
+  { id: 'case_id',      label: 'Case ID',       defaultVisible: true,  alwaysVisible: true },
+  { id: 'name',         label: 'Name',          defaultVisible: true,  alwaysVisible: true },
+  { id: 'typ',          label: 'Typ',           defaultVisible: true  },
+  { id: 'category',     label: 'Kategorie',     defaultVisible: true  },
+  { id: 'position',     label: 'Position',      defaultVisible: true  },
+  { id: 'masse',        label: 'Maße H×B×T',    defaultVisible: true  },
+  { id: 'leer_kg',      label: 'Leer kg',       defaultVisible: true  },
+  { id: 'material',     label: 'Material',      defaultVisible: true  },
+  { id: 'gesamt_kg',    label: 'Gesamt kg',     defaultVisible: true  },
+]
+
+type ItemSortKey = 'case_id' | 'name' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
+
+function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  if (!active) return <span className="ml-1 text-gray-300">↕</span>
+  return <span className="ml-1 text-blue-500">{dir === 'asc' ? '↑' : '↓'}</span>
 }
 
 function fmt(v: number | null | undefined, unit = '') {
@@ -740,6 +761,14 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [search, setSearch] = useState('')
   const [kuerzel, setKuerzel] = useState('')
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null)
+  const [itemSortKey, setItemSortKey] = useState<ItemSortKey>('case_id')
+  const [itemSortDir, setItemSortDir] = useState<'asc' | 'desc'>('asc')
+  const { isVisible, toggle, columns: itemColumns } = useColumnVisibility('equipment-items', ITEMS_COLUMNS)
+
+  const toggleItemSort = (key: ItemSortKey) => {
+    if (key === itemSortKey) setItemSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setItemSortKey(key); setItemSortDir('asc') }
+  }
 
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
@@ -769,9 +798,21 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   useEffect(() => { setSearch('') }, [activeTab])
 
   // ── Gegenstände ──────────────────────────────────────────────────────────────
-  const filteredItems = items.filter(i =>
-    !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.case_id.toLowerCase().includes(search.toLowerCase())
-  )
+  const sortedItems = useMemo(() => {
+    const filtered = items.filter(i =>
+      !search || i.name.toLowerCase().includes(search.toLowerCase()) || i.case_id.toLowerCase().includes(search.toLowerCase())
+    )
+    return [...filtered].sort((a, b) => {
+      let av: string | number = ''
+      let bv: string | number = ''
+      if (itemSortKey === 'weight_empty_kg') { av = a.weight_empty_kg ?? 0; bv = b.weight_empty_kg ?? 0 }
+      else if (itemSortKey === 'material_count') { av = a.material_count ?? 0; bv = b.material_count ?? 0 }
+      else if (itemSortKey === 'load_order') { av = a.load_order ?? 9999; bv = b.load_order ?? 9999 }
+      else { av = (a[itemSortKey] ?? '').toString().toLowerCase(); bv = (b[itemSortKey] ?? '').toString().toLowerCase() }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0
+      return itemSortDir === 'asc' ? cmp : -cmp
+    })
+  }, [items, search, itemSortKey, itemSortDir])
 
   const renderItems = () => (
     <div className="space-y-4">
@@ -795,7 +836,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         <div className="data-table-wrapper">
           <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Lädt…</div>
         </div>
-      ) : filteredItems.length === 0 ? (
+      ) : sortedItems.length === 0 ? (
         <div className="text-center py-12">
           <ArchiveBoxIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-sm text-gray-500">Noch keine Gegenstände angelegt</p>
@@ -806,43 +847,47 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             </button>
           )}
         </div>
-      ) : (
+      ) : (() => {
+        const visibleColCount = ITEMS_COLUMNS.filter(c => isVisible(c.id)).length + 1 // +1 für Actions
+        return (
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Case ID</th>
-                <th>Name</th>
-                <th>Typ</th>
-                <th>Kategorie</th>
-                <th>Position</th>
-                <th className="text-right">Maße H×B×T cm</th>
-                <th className="text-right">Leer kg</th>
-                <th className="text-right">Material</th>
-                <th className="text-right">Gesamt kg</th>
-                <th style={{ width: 72 }} />
+                {isVisible('case_id')   && <th className="sortable" onClick={() => toggleItemSort('case_id')}>Case ID <SortIndicator active={itemSortKey === 'case_id'} dir={itemSortDir} /></th>}
+                {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('name')}>Name <SortIndicator active={itemSortKey === 'name'} dir={itemSortDir} /></th>}
+                {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
+                {isVisible('category')  && <th className="sortable" onClick={() => toggleItemSort('category_name')}>Kategorie <SortIndicator active={itemSortKey === 'category_name'} dir={itemSortDir} /></th>}
+                {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
+                {isVisible('masse')     && <th className="text-right">Maße H×B×T cm</th>}
+                {isVisible('leer_kg')   && <th className="sortable text-right" onClick={() => toggleItemSort('weight_empty_kg')}>Leer kg <SortIndicator active={itemSortKey === 'weight_empty_kg'} dir={itemSortDir} /></th>}
+                {isVisible('material')  && <th className="sortable text-right" onClick={() => toggleItemSort('material_count')}>Material <SortIndicator active={itemSortKey === 'material_count'} dir={itemSortDir} /></th>}
+                {isVisible('gesamt_kg') && <th className="text-right">Gesamt kg</th>}
+                <th style={{ width: 72 }}>
+                  <ColumnToggle columns={itemColumns} isVisible={isVisible} toggle={toggle} />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map(item => {
+              {sortedItems.map(item => {
                 const totalWeight = (item.weight_empty_kg ?? 0) + (item.material_gewicht ?? 0)
                 const isExpanded = expandedItemId === item.id
                 return (
                   <>
                     <tr key={item.id} className="clickable" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
-                      <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>
-                      <td className="font-medium">{item.name}</td>
-                      <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>
-                      <td>{item.category_name ?? '—'}</td>
-                      <td>{item.position ? POSITION_LABELS[item.position] ?? item.position : '—'}</td>
-                      <td className="text-right text-xs text-gray-600">
+                      {isVisible('case_id')   && <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>}
+                      {isVisible('name')      && <td className="font-medium">{item.name}</td>}
+                      {isVisible('typ')       && <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>}
+                      {isVisible('category')  && <td>{item.category_name ?? '—'}</td>}
+                      {isVisible('position')  && <td>{item.position ? POSITION_LABELS[item.position] ?? item.position : '—'}</td>}
+                      {isVisible('masse')     && <td className="text-right text-xs text-gray-600">
                         {item.height_cm || item.width_cm || item.depth_cm
                           ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`
                           : '—'}
-                      </td>
-                      <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>
-                      <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>
-                      <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>
+                      </td>}
+                      {isVisible('leer_kg')   && <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>}
+                      {isVisible('material')  && <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>}
+                      {isVisible('gesamt_kg') && <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>}
                       <td onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1 justify-end items-center">
                           {canEdit && (
@@ -869,7 +914,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       <ItemAccordion
                         key={`acc-${item.id}`}
                         item={item}
-                        colSpan={10}
+                        colSpan={visibleColCount}
                         canEdit={canEdit}
                         onReload={load}
                       />
@@ -880,7 +925,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             </tbody>
           </table>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 
