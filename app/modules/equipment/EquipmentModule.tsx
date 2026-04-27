@@ -1092,7 +1092,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             </thead>
             <tbody>
               {sortedMaterials.map(mat => (
-                <tr key={mat.id}>
+                <tr key={mat.id} className="hoverable">
                   {isMatVisible('hersteller') && <td className="text-gray-500">{mat.hersteller || '—'}</td>}
                   {isMatVisible('produkt')    && <td className="font-medium">{mat.produkt}</td>}
                   {isMatVisible('category')   && <td>{mat.category_name ?? '—'}</td>}

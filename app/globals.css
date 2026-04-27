@@ -167,7 +167,8 @@ body {
   cursor: pointer;
 }
 
-.data-table tbody tr.clickable:hover {
+.data-table tbody tr.clickable:hover,
+.data-table tbody tr.hoverable:hover {
   background-color: #eff6ff;
 }
 
