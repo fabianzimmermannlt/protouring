@@ -1825,22 +1825,23 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     link.click()
   }
 
-  const importMaterialsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const [csvImportModal, setCsvImportModal] = useState(false)
+  const [csvAutoId, setCsvAutoId] = useState(true)
+
+  const runMaterialImport = (file: File, autoId: boolean) => {
     const reader = new FileReader()
     reader.onload = async (ev) => {
       const text = ev.target?.result as string
-      const rows = parseCSV(text).slice(1) // Header überspringen
+      const rows = parseCSV(text).slice(1)
       let count = 0
       for (const row of rows) {
-        if (!col(row, 1)) continue // Bezeichnung Pflicht
+        if (!col(row, 1)) continue
         try {
-          // Kategorie per Name suchen
           const catName = col(row, 5)
           const cat = catName ? categories.find(c => c.name.toLowerCase() === catName.toLowerCase()) : undefined
           const n = (v: string) => v === '' ? null : parseFloat(v)
           await createEquipmentMaterial({
+            ...((!autoId && col(row, 0)) ? { mat_id: col(row, 0) } : {}),
             bezeichnung:      col(row, 1),
             marke:            col(row, 2) || null,
             modell:           col(row, 3) || null,
@@ -1859,7 +1860,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       if (count > 0) { alert(`${count} Material-Einträge importiert.`); load(true) }
     }
     reader.readAsText(file)
-    e.target.value = ''
   }
 
   const renderMaterials = () => {
@@ -1910,11 +1910,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               <ArrowDownTrayIcon className="w-4 h-4" />
               CSV
             </button>
-            <label className="btn btn-ghost cursor-pointer">
+            <button onClick={() => setCsvImportModal(true)} className="btn btn-ghost">
               <ArrowUpTrayIcon className="w-4 h-4" />
               CSV
-              <input type="file" accept=".csv" onChange={importMaterialsCSV} className="hidden" />
-            </label>
+            </button>
           </div>
         </div>
       )}
@@ -2345,6 +2344,45 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           }}
           onClose={() => setOwnerModal({ open: false, owner: null })}
         />
+      )}
+      {csvImportModal && (
+        <div className="modal-overlay">
+          <div className="modal-container max-w-sm">
+            <div className="modal-header">
+              <h3 className="modal-title">Material CSV importieren</h3>
+              <button onClick={() => setCsvImportModal(false)} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
+            </div>
+            <div className="modal-body space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" checked={csvAutoId} onChange={e => setCsvAutoId(e.target.checked)}
+                  className="accent-blue-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Mat-IDs automatisch vergeben</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Neue IDs werden generiert, Spalte „Mat-ID" in der CSV wird ignoriert.</p>
+                </div>
+              </label>
+              {!csvAutoId && (
+                <p className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-2">
+                  IDs aus Spalte 1 der CSV werden übernommen. Nur sinnvoll wenn du einen früheren Export re-importierst.
+                </p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setCsvImportModal(false)} className="btn btn-ghost">Abbrechen</button>
+              <label className="btn btn-primary cursor-pointer">
+                <ArrowUpTrayIcon className="w-4 h-4" />
+                Datei wählen
+                <input type="file" accept=".csv" className="hidden" onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setCsvImportModal(false)
+                  runMaterialImport(file, csvAutoId)
+                  e.target.value = ''
+                }} />
+              </label>
+            </div>
+          </div>
+        </div>
       )}
       {matModal.open && (
         <MaterialModal

@@ -5605,7 +5605,7 @@ app.post('/api/equipment/materials', authenticateToken, requireTenant, async (re
   try {
     const { bezeichnung, marke, modell, category_id, owner_id, ursprungsland, wert_zollwert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
     if (!bezeichnung) return res.status(400).json({ error: 'Bezeichnung ist Pflicht' })
-    const mat_id = generateId('M')
+    const mat_id = req.body.mat_id?.trim() || generateId('M')
     const result = await db.run(
       `INSERT INTO equipment_materials (tenant_id, mat_id, bezeichnung, marke, modell, category_id, owner_id, typ, ursprungsland, wert_zollwert, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,

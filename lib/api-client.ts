@@ -537,7 +537,7 @@ export async function deleteEquipmentItem(id: number): Promise<void> {
 export interface EquipmentMaterial {
   id: number;
   tenant_id: number;
-  mat_id: string;               // Auto-generiert: M-XXXXX
+  mat_id?: string;              // Auto-generiert: M-XXXXX (optional bei Import mit eigener ID)
   bezeichnung: string;
   marke: string | null;
   modell: string | null;
