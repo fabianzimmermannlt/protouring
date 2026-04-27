@@ -1709,7 +1709,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                   {isCarnetVisible('verwendungszweck') && <td className="font-medium">{c.verwendungszweck || '—'}</td>}
                   {isCarnetVisible('zeitraum')         && <td className="text-gray-500 text-sm">
                     {c.startdatum && c.enddatum
-                      ? `${new Date(c.startdatum).toLocaleDateString('de-DE')} – ${new Date(c.enddatum).toLocaleDateString('de-DE')}`
+                      ? `${new Date(c.startdatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${new Date(c.enddatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
                       : '—'}
                   </td>}
                   {isCarnetVisible('ziellaender')      && <td className="text-gray-500">{c.ziellaender || '—'}</td>}
