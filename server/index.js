@@ -5643,7 +5643,7 @@ app.get('/api/equipment/materials/:id/units', authenticateToken, requireTenant, 
   try {
     const units = await db.all(
       `SELECT u.*, ecc.item_id,
-              ei.case_id AS in_case_id, ei.name AS in_case_name
+              ei.case_id AS in_case_id, ei.bezeichnung AS in_case_name
        FROM equipment_material_units u
        LEFT JOIN equipment_case_contents ecc ON ecc.material_unit_id = u.id
        LEFT JOIN equipment_items ei ON ei.id = ecc.item_id
@@ -5666,7 +5666,7 @@ app.post('/api/equipment/materials/:id/units', authenticateToken, requireTenant,
       [req.tenant.id, req.params.id, seriennummer.trim(), notiz||null]
     )
     const unit = await db.get(
-      `SELECT u.*, ecc.item_id, ei.case_id AS in_case_id, ei.name AS in_case_name
+      `SELECT u.*, ecc.item_id, ei.case_id AS in_case_id, ei.bezeichnung AS in_case_name
        FROM equipment_material_units u
        LEFT JOIN equipment_case_contents ecc ON ecc.material_unit_id = u.id
        LEFT JOIN equipment_items ei ON ei.id = ecc.item_id
@@ -5687,7 +5687,7 @@ app.put('/api/equipment/materials/units/:unitId', authenticateToken, requireTena
       [seriennummer||null, notiz||null, req.params.unitId, req.tenant.id]
     )
     const unit = await db.get(
-      `SELECT u.*, ecc.item_id, ei.case_id AS in_case_id, ei.name AS in_case_name
+      `SELECT u.*, ecc.item_id, ei.case_id AS in_case_id, ei.bezeichnung AS in_case_name
        FROM equipment_material_units u
        LEFT JOIN equipment_case_contents ecc ON ecc.material_unit_id = u.id
        LEFT JOIN equipment_items ei ON ei.id = ecc.item_id
