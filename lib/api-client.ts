@@ -545,8 +545,9 @@ export interface EquipmentMaterial {
   category_name?: string;
   owner_id: number | null;
   typ: 'serial' | 'bulk';
-  unit_count?: number;          // Anzahl angelegter Seriennummern-Einheiten
-  anzahl_gepackt?: number;      // Computed: Summe aus equipment_case_contents
+  unit_count?: number;          // Anzahl angelegter Seriennummern-Einheiten (gesamt)
+  free_unit_count?: number;     // Anzahl noch freier (nicht eingepackter) Einheiten
+  anzahl_gepackt?: number;      // Computed: Summe aus equipment_case_contents (bulk)
   ursprungsland: string | null;
   wert_zollwert: number | null;
   waehrung: string;

@@ -739,12 +739,16 @@ function AddContentModal({ itemId, onDone, onClose }: {
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
   }
 
-  const filtered = materials.filter(m =>
-    !search ||
-    (m.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = materials.filter(m => {
+    // Serienartikel ohne freie Einheiten ausblenden
+    if (m.typ === 'serial' && (m.free_unit_count ?? 0) === 0) return false
+    if (!search) return true
+    return (
+      (m.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
+    )
+  })
 
   return (
     <div className="modal-overlay">
@@ -769,7 +773,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
                         {mat.marke && <span className="text-xs text-gray-400 ml-2">{mat.marke}</span>}
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {mat.typ === 'serial' ? `${mat.unit_count ?? 0} Einh. frei` : 'Masse'}
+                        {mat.typ === 'serial' ? `${mat.free_unit_count ?? 0} / ${mat.unit_count ?? 0} frei` : 'Masse'}
                       </span>
                     </div>
                     {mat.category_name && <p className="text-xs text-gray-400 mt-0.5">{mat.category_name}</p>}

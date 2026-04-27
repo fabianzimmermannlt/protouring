@@ -5585,6 +5585,9 @@ app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req
       `SELECT em.*,
         ec.name AS category_name,
         (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count,
+        (SELECT COUNT(*) FROM equipment_material_units emu
+         WHERE emu.material_id = em.id
+         AND NOT EXISTS (SELECT 1 FROM equipment_case_contents ecc WHERE ecc.material_unit_id = emu.id)) AS free_unit_count,
         (SELECT COALESCE(SUM(anzahl),0) FROM equipment_case_contents WHERE material_id = em.id AND material_unit_id IS NULL) AS anzahl_gepackt
        FROM equipment_materials em
        LEFT JOIN equipment_categories ec ON ec.id = em.category_id
