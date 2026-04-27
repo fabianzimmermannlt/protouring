@@ -369,7 +369,7 @@ export default function EquipmentItemDetailPage() {
                   <tbody>
                     {contents.map(c => {
                       const gewicht = c.gewicht_kg != null ? c.gewicht_kg * (c.typ === 'bulk' ? c.anzahl : 1) : null
-                      const wert = c.wert_zeitwert != null ? c.wert_zeitwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
+                      const wert = c.wert_zollwert != null ? c.wert_zollwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
                       return (
                         <tr key={c.id}>
                           <td className="text-gray-500">{c.hersteller || '—'}</td>

@@ -535,8 +535,8 @@ export interface EquipmentMaterial {
   typ: 'serial' | 'bulk';
   unit_count?: number;        // Anzahl angelegter Seriennummern-Einheiten
   herstellungsland: string | null;
-  wert_zeitwert: number | null;
-  wert_wiederbeschaffung: number | null;
+  wert_zollwert: number | null;
+  wert_wiederbeschaffungswert: number | null;
   waehrung: string;
   gewicht_kg: number | null;
   anschaffungsdatum: string | null;
@@ -570,8 +570,8 @@ export interface EquipmentCaseContent {
   typ: 'serial' | 'bulk';
   category_name: string | null;
   herstellungsland: string | null;
-  wert_zeitwert: number | null;
-  wert_wiederbeschaffung: number | null;
+  wert_zollwert: number | null;
+  wert_wiederbeschaffungswert: number | null;
   waehrung: string;
   gewicht_kg: number | null;
   seriennummer: string | null; // nur bei serial

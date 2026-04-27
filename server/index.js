@@ -683,6 +683,9 @@ async function initDatabase() {
     // Equipment-Modul: Kürzel pro Tenant (global unique für Case IDs)
     `ALTER TABLE tenants ADD COLUMN equipment_kuerzel TEXT DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN carnet_ata_enabled INTEGER DEFAULT 0`,
+    // Rename wert_zeitwert → wert_zollwert, wert_wiederbeschaffung → wert_wiederbeschaffungswert
+    `ALTER TABLE equipment_materials RENAME COLUMN wert_zeitwert TO wert_zollwert`,
+    `ALTER TABLE equipment_materials RENAME COLUMN wert_wiederbeschaffung TO wert_wiederbeschaffungswert`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_kuerzel: Partial UNIQUE INDEX (nur wenn gesetzt)
@@ -1046,8 +1049,8 @@ async function initDatabase() {
       anzahl INTEGER NOT NULL DEFAULT 1,
       seriennummer TEXT,
       herstellungsland TEXT,
-      wert_zeitwert REAL,
-      wert_wiederbeschaffung REAL,
+      wert_zollwert REAL,
+      wert_wiederbeschaffungswert REAL,
       waehrung TEXT DEFAULT 'EUR',
       gewicht_kg REAL,
       anschaffungsdatum TEXT,
@@ -5346,7 +5349,7 @@ app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, re
     const rows = await db.all(
       `SELECT ei.*, ec.name AS category_name, ec.kuerzel AS category_kuerzel,
         (SELECT COUNT(*) FROM equipment_materials WHERE item_id = ei.id) AS material_count,
-        (SELECT COALESCE(SUM(wert_zeitwert * anzahl),0) FROM equipment_materials WHERE item_id = ei.id) AS material_wert,
+        (SELECT COALESCE(SUM(wert_zollwert * anzahl),0) FROM equipment_materials WHERE item_id = ei.id) AS material_wert,
         (SELECT COALESCE(SUM(gewicht_kg * anzahl),0) FROM equipment_materials WHERE item_id = ei.id) AS material_gewicht
        FROM equipment_items ei
        LEFT JOIN equipment_categories ec ON ec.id = ei.category_id
@@ -5434,13 +5437,13 @@ app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req
 app.post('/api/equipment/materials', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { item_id, hersteller, produkt, info, category_id, anzahl, seriennummer, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
+    const { item_id, hersteller, produkt, info, category_id, anzahl, seriennummer, herstellungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
     if (!produkt) return res.status(400).json({ error: 'Produkt ist Pflicht' })
     const result = await db.run(
-      `INSERT INTO equipment_materials (tenant_id, item_id, hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
+      `INSERT INTO equipment_materials (tenant_id, item_id, hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [req.tenant.id, null, hersteller||null, produkt, info||null, category_id||null,
-       req.body.typ||'bulk', anzahl||1, herstellungsland||null, wert_zeitwert||null, wert_wiederbeschaffung||null,
+       req.body.typ||'bulk', anzahl||1, herstellungsland||null, wert_zollwert||null, wert_wiederbeschaffungswert||null,
        waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.user.id]
     )
     const row = await db.get(
@@ -5457,11 +5460,11 @@ app.post('/api/equipment/materials', authenticateToken, requireTenant, async (re
 app.put('/api/equipment/materials/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zeitwert, wert_wiederbeschaffung, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
+    const { hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
     await db.run(
-      `UPDATE equipment_materials SET hersteller=?, produkt=?, info=?, category_id=?, typ=COALESCE(?,typ), herstellungsland=?, wert_zeitwert=?, wert_wiederbeschaffung=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
+      `UPDATE equipment_materials SET hersteller=?, produkt=?, info=?, category_id=?, typ=COALESCE(?,typ), herstellungsland=?, wert_zollwert=?, wert_wiederbeschaffungswert=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
        WHERE id=? AND tenant_id=?`,
-      [hersteller||null, produkt, info||null, category_id||null, typ||null, herstellungsland||null, wert_zeitwert||null, wert_wiederbeschaffung||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
+      [hersteller||null, produkt, info||null, category_id||null, typ||null, herstellungsland||null, wert_zollwert||null, wert_wiederbeschaffungswert||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
     )
     const row = await db.get(
       `SELECT em.*, ec.name AS category_name,
@@ -5578,8 +5581,8 @@ app.get('/api/equipment/items/:id', authenticateToken, requireTenant, async (req
         WHERE ecc.item_id = ei.id) AS content_gewicht,
         (SELECT COALESCE(SUM(
           CASE WHEN ecc.material_unit_id IS NOT NULL
-            THEN COALESCE(em2.wert_zeitwert, 0)
-            ELSE COALESCE(em.wert_zeitwert, 0) * ecc.anzahl
+            THEN COALESCE(em2.wert_zollwert, 0)
+            ELSE COALESCE(em.wert_zollwert, 0) * ecc.anzahl
           END
         ), 0)
         FROM equipment_case_contents ecc
@@ -5605,7 +5608,7 @@ app.get('/api/equipment/items/:id/contents', authenticateToken, requireTenant, a
     const contents = await db.all(
       `SELECT ecc.id, ecc.item_id, ecc.material_id, ecc.anzahl, ecc.material_unit_id,
               em.hersteller, em.produkt, em.info, em.typ, em.herstellungsland,
-              em.wert_zeitwert, em.wert_wiederbeschaffung, em.waehrung, em.gewicht_kg,
+              em.wert_zollwert, em.wert_wiederbeschaffungswert, em.waehrung, em.gewicht_kg,
               ec.name AS category_name,
               emu.seriennummer
        FROM equipment_case_contents ecc

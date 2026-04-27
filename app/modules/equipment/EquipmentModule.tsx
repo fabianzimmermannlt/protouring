@@ -36,7 +36,7 @@ const MATERIAL_COLUMNS = [
   { id: 'gewicht',     label: 'Gewicht/Stk',     defaultVisible: true  },
 ]
 
-type MatSortKey = 'hersteller' | 'produkt' | 'category_name' | 'typ' | 'unit_count' | 'herstellungsland' | 'wert_zeitwert' | 'gewicht_kg'
+type MatSortKey = 'hersteller' | 'produkt' | 'category_name' | 'typ' | 'unit_count' | 'herstellungsland' | 'wert_zollwert' | 'gewicht_kg'
 
 const ITEMS_COLUMNS = [
   { id: 'case_id',      label: 'Case ID',       defaultVisible: true  },
@@ -243,8 +243,8 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
     category_id:            mat?.category_id != null ? String(mat.category_id) : '',
     typ:                    mat?.typ ?? 'bulk',
     herstellungsland:       mat?.herstellungsland ?? '',
-    wert_zeitwert:          mat?.wert_zeitwert != null ? String(mat.wert_zeitwert) : '',
-    wert_wiederbeschaffung: mat?.wert_wiederbeschaffung != null ? String(mat.wert_wiederbeschaffung) : '',
+    wert_zollwert:          mat?.wert_zollwert != null ? String(mat.wert_zollwert) : '',
+    wert_wiederbeschaffungswert: mat?.wert_wiederbeschaffungswert != null ? String(mat.wert_wiederbeschaffungswert) : '',
     waehrung:               mat?.waehrung ?? 'EUR',
     gewicht_kg:             mat?.gewicht_kg != null ? String(mat.gewicht_kg) : '',
     anschaffungsdatum:      mat?.anschaffungsdatum ?? '',
@@ -283,13 +283,13 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
       info:             !form.info.trim(),
       herstellungsland: !form.herstellungsland.trim(),
       gewicht_kg:       !form.gewicht_kg.trim(),
-      wert_zeitwert:    !form.wert_zeitwert.trim(),
+      wert_zollwert:    !form.wert_zollwert.trim(),
       waehrung:         !form.waehrung.trim(),
     }
     return checks[field] ?? false
   }
   const carnetMissingCount = carnetEnabled
-    ? ['hersteller','produkt','info','herstellungsland','gewicht_kg','wert_zeitwert','waehrung']
+    ? ['hersteller','produkt','info','herstellungsland','gewicht_kg','wert_zollwert','waehrung']
         .filter(f => carnetWarn(f)).length
     : 0
   const inp = (field: string) => carnetWarn(field) ? 'form-input border-red-400 bg-red-50' : 'form-input'
@@ -316,8 +316,8 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
         category_id:            form.category_id ? Number(form.category_id) : null,
         typ:                    form.typ as 'serial' | 'bulk',
         herstellungsland:       form.herstellungsland || null,
-        wert_zeitwert:          n(form.wert_zeitwert),
-        wert_wiederbeschaffung: n(form.wert_wiederbeschaffung),
+        wert_zollwert:          n(form.wert_zollwert),
+        wert_wiederbeschaffungswert: n(form.wert_wiederbeschaffungswert),
         waehrung:               form.waehrung,
         gewicht_kg:             n(form.gewicht_kg),
         anschaffungsdatum:      form.anschaffungsdatum || null,
@@ -481,12 +481,12 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
               </select>
             </div>
             <div>
-              <label className="form-label">{lbl('wert_zeitwert', 'Zeitwert/Stk')}</label>
-              <input type="number" className={inp('wert_zeitwert')} value={form.wert_zeitwert} onChange={e => setForm({...form, wert_zeitwert: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">{lbl('wert_zollwert', 'Zollwert/Stk')}</label>
+              <input type="number" className={inp('wert_zollwert')} value={form.wert_zollwert} onChange={e => setForm({...form, wert_zollwert: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
             <div>
-              <label className="form-label">Wiederbeschaffung</label>
-              <input type="number" className="form-input" value={form.wert_wiederbeschaffung} onChange={e => setForm({...form, wert_wiederbeschaffung: e.target.value})} step="0.01" placeholder="0.00" />
+              <label className="form-label">Wiederbeschaffungswert</label>
+              <input type="number" className="form-input" value={form.wert_wiederbeschaffungswert} onChange={e => setForm({...form, wert_wiederbeschaffungswert: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
           <div>
@@ -737,7 +737,7 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
                       <tbody>
                         {contents.map(c => {
                           const gewicht = c.gewicht_kg != null ? c.gewicht_kg * (c.typ === 'bulk' ? c.anzahl : 1) : null
-                          const wert = c.wert_zeitwert != null ? c.wert_zeitwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
+                          const wert = c.wert_zollwert != null ? c.wert_zollwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
                           return (
                             <tr key={c.id}>
                               <td className="text-gray-500 text-xs">{c.hersteller || '—'}</td>
@@ -791,14 +791,14 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
 // ── Carnet ATA Pflichtfeld-Check ─────────────────────────────────────────────
 
 export const CARNET_REQUIRED_FIELDS: (keyof EquipmentMaterial)[] = [
-  'hersteller', 'produkt', 'info', 'herstellungsland', 'gewicht_kg', 'wert_zeitwert', 'waehrung'
+  'hersteller', 'produkt', 'info', 'herstellungsland', 'gewicht_kg', 'wert_zollwert', 'waehrung'
 ]
 
 export function carnetMissingFields(mat: Partial<EquipmentMaterial>): string[] {
   const labels: Record<string, string> = {
     hersteller: 'Hersteller', produkt: 'Produkt', info: 'Beschreibung',
     herstellungsland: 'Herstellungsland', gewicht_kg: 'Gewicht/Stk',
-    wert_zeitwert: 'Zeitwert/Stk', waehrung: 'Währung',
+    wert_zollwert: 'Zollwert/Stk', waehrung: 'Währung',
   }
   return CARNET_REQUIRED_FIELDS
     .filter(f => mat[f] == null || mat[f] === '' || mat[f] === 0)
@@ -840,7 +840,7 @@ function EquipmentSettingsModal({ carnetEnabled, onSave, onClose }: {
               <p className="font-medium text-gray-900 text-sm">Carnet ATA</p>
               <p className="text-xs text-gray-500 mt-0.5">
                 Pflichtfelder für Carnet ATA werden beim Material markiert:
-                Hersteller, Beschreibung, Herstellungsland, Gewicht, Zeitwert.
+                Hersteller, Beschreibung, Herstellungsland, Gewicht, Zollwert.
                 Fehlende Angaben werden farblich hervorgehoben.
               </p>
             </div>
@@ -1061,7 +1061,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       let av: string | number = ''
       let bv: string | number = ''
       if (matSortKey === 'unit_count') { av = a.unit_count ?? 0; bv = b.unit_count ?? 0 }
-      else if (matSortKey === 'wert_zeitwert') { av = a.wert_zeitwert ?? 0; bv = b.wert_zeitwert ?? 0 }
+      else if (matSortKey === 'wert_zollwert') { av = a.wert_zollwert ?? 0; bv = b.wert_zollwert ?? 0 }
       else if (matSortKey === 'gewicht_kg') { av = a.gewicht_kg ?? 0; bv = b.gewicht_kg ?? 0 }
       else { av = (a[matSortKey] ?? '').toString().toLowerCase(); bv = (b[matSortKey] ?? '').toString().toLowerCase() }
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
@@ -1069,7 +1069,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     })
   }, [materials, search, matSortKey, matSortDir])
 
-  const CSV_HEADERS = ['Hersteller', 'Produkt', 'Info', 'Typ', 'Kategorie', 'Herstellungsland', 'Gewicht_kg', 'Zeitwert', 'Wiederbeschaffung', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
+  const CSV_HEADERS = ['Hersteller', 'Produkt', 'Info', 'Typ', 'Kategorie', 'Herstellungsland', 'Gewicht_kg', 'Zollwert', 'Wiederbeschaffungswert', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
 
   const exportMaterialsCSV = () => {
     const q = (v: string | number | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
@@ -1078,7 +1078,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       ...sortedMaterials.map(m => [
         q(m.hersteller), q(m.produkt), q(m.info), q(m.typ),
         q(m.category_name), q(m.herstellungsland),
-        q(m.gewicht_kg), q(m.wert_zeitwert), q(m.wert_wiederbeschaffung),
+        q(m.gewicht_kg), q(m.wert_zollwert), q(m.wert_wiederbeschaffungswert),
         q(m.waehrung), q(m.anschaffungsdatum), q(m.notiz),
       ].join(';')),
     ].join('\n')
@@ -1112,8 +1112,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             category_id:            cat?.id ?? null,
             herstellungsland:       col(row, 5) || null,
             gewicht_kg:             n(col(row, 6)),
-            wert_zeitwert:          n(col(row, 7)),
-            wert_wiederbeschaffung: n(col(row, 8)),
+            wert_zollwert:          n(col(row, 7)),
+            wert_wiederbeschaffungswert: n(col(row, 8)),
             waehrung:               col(row, 9) || 'EUR',
             anschaffungsdatum:      col(row, 10) || null,
             notiz:                  col(row, 11) || null,
@@ -1182,7 +1182,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 {isMatVisible('typ')        && <th className="sortable" onClick={() => toggleMatSort('typ')}>Typ <SortIndicator active={matSortKey === 'typ'} dir={matSortDir} /></th>}
                 {isMatVisible('einheiten')  && <th className="sortable text-right" onClick={() => toggleMatSort('unit_count')}>Einheiten <SortIndicator active={matSortKey === 'unit_count'} dir={matSortDir} /></th>}
                 {isMatVisible('land')       && <th className="sortable" onClick={() => toggleMatSort('herstellungsland')}>Land <SortIndicator active={matSortKey === 'herstellungsland'} dir={matSortDir} /></th>}
-                {isMatVisible('wert')       && <th className="sortable text-right" onClick={() => toggleMatSort('wert_zeitwert')}>Wert/Stk <SortIndicator active={matSortKey === 'wert_zeitwert'} dir={matSortDir} /></th>}
+                {isMatVisible('wert')       && <th className="sortable text-right" onClick={() => toggleMatSort('wert_zollwert')}>Wert/Stk <SortIndicator active={matSortKey === 'wert_zollwert'} dir={matSortDir} /></th>}
                 {isMatVisible('gewicht')    && <th className="sortable text-right" onClick={() => toggleMatSort('gewicht_kg')}>Gewicht/Stk <SortIndicator active={matSortKey === 'gewicht_kg'} dir={matSortDir} /></th>}
                 <th style={{ width: 60 }}>
                   <ColumnToggle columns={matColumns} isVisible={isMatVisible} toggle={toggleMatCol} />
@@ -1217,9 +1217,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {warnField('herstellungsland') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
                       {mat.herstellungsland || '—'}
                     </td>}
-                    {isMatVisible('wert')       && <td className={`text-right${warnField('wert_zeitwert') || warnField('waehrung') ? ' text-red-500 font-medium' : ''}`}>
-                      {(warnField('wert_zeitwert') || warnField('waehrung')) && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
-                      {mat.wert_zeitwert != null ? `${mat.wert_zeitwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
+                    {isMatVisible('wert')       && <td className={`text-right${warnField('wert_zollwert') || warnField('waehrung') ? ' text-red-500 font-medium' : ''}`}>
+                      {(warnField('wert_zollwert') || warnField('waehrung')) && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
+                      {mat.wert_zollwert != null ? `${mat.wert_zollwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
                     </td>}
                     {isMatVisible('gewicht')    && <td className={`text-right${warnField('gewicht_kg') ? ' text-red-500 font-medium' : ''}`}>
                       {warnField('gewicht_kg') && <ExclamationTriangleIcon className="w-3.5 h-3.5 inline mr-1 text-red-400" />}
