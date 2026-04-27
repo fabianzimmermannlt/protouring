@@ -912,8 +912,8 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
                     <table className="data-table">
                       <thead>
                         <tr>
-                          <th>Hersteller</th>
-                          <th>Produkt</th>
+                          <th>Bezeichnung</th>
+                          <th>Marke / Modell</th>
                           <th>Seriennummer</th>
                           <th className="text-right">Anzahl</th>
                           <th className="text-right">Wert</th>
@@ -927,8 +927,8 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
                           const wert = c.wert_zollwert != null ? c.wert_zollwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
                           return (
                             <tr key={c.id}>
-                              <td className="text-gray-500 text-xs">{c.hersteller || '—'}</td>
-                              <td className="font-medium text-sm">{c.produkt}</td>
+                              <td className="font-medium text-sm">{c.bezeichnung}</td>
+                              <td className="text-gray-500 text-xs">{[c.marke, c.modell].filter(Boolean).join(' ') || '—'}</td>
                               <td>
                                 {c.seriennummer
                                   ? <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.seriennummer}</span>

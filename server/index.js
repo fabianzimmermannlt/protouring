@@ -5754,8 +5754,8 @@ app.get('/api/equipment/items/:id/contents', authenticateToken, requireTenant, a
   try {
     const contents = await db.all(
       `SELECT ecc.id, ecc.item_id, ecc.material_id, ecc.anzahl, ecc.material_unit_id,
-              em.hersteller, em.produkt, em.info, em.typ, em.herstellungsland,
-              em.wert_zollwert, em.wert_wiederbeschaffungswert, em.waehrung, em.gewicht_kg,
+              em.bezeichnung, em.marke, em.modell, em.typ, em.ursprungsland,
+              em.wert_zollwert, em.waehrung, em.gewicht_kg,
               ec.name AS category_name,
               emu.seriennummer
        FROM equipment_case_contents ecc
@@ -5764,7 +5764,7 @@ app.get('/api/equipment/items/:id/contents', authenticateToken, requireTenant, a
        LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
        LEFT JOIN equipment_categories ec ON ec.id = em.category_id
        WHERE ecc.item_id = ? AND ecc.tenant_id = ?
-       ORDER BY em.hersteller, em.produkt, emu.seriennummer`,
+       ORDER BY em.bezeichnung, em.marke, emu.seriennummer`,
       [req.params.id, req.tenant.id]
     )
     res.json({ contents })

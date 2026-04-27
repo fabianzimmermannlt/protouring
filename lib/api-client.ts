@@ -594,14 +594,13 @@ export interface EquipmentCaseContent {
   material_unit_id: number | null;
   anzahl: number;
   // joined fields
-  hersteller: string | null;
-  produkt: string;
-  info: string | null;
+  bezeichnung: string;
+  marke: string | null;
+  modell: string | null;
   typ: 'serial' | 'bulk';
   category_name: string | null;
-  herstellungsland: string | null;
+  ursprungsland: string | null;
   wert_zollwert: number | null;
-  wert_wiederbeschaffungswert: number | null;
   waehrung: string;
   gewicht_kg: number | null;
   seriennummer: string | null; // nur bei serial

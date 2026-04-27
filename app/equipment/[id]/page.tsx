@@ -354,12 +354,11 @@ export default function EquipmentItemDetailPage() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Hersteller</th>
-                      <th>Produkt</th>
-                      <th>Info</th>
+                      <th>Bezeichnung</th>
+                      <th>Marke / Modell</th>
                       <th>Seriennummer</th>
                       <th className="text-right">Anzahl</th>
-                      <th>Land</th>
+                      <th>Ursprungsland</th>
                       <th className="text-right">Wert</th>
                       <th className="text-right">Gewicht</th>
                       {canEdit && <th style={{ width: 40 }} />}
@@ -371,9 +370,8 @@ export default function EquipmentItemDetailPage() {
                       const wert = c.wert_zollwert != null ? c.wert_zollwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
                       return (
                         <tr key={c.id}>
-                          <td className="text-gray-500">{c.hersteller || '—'}</td>
-                          <td className="font-medium">{c.produkt}</td>
-                          <td className="text-gray-500 text-xs">{c.info || '—'}</td>
+                          <td className="font-medium">{c.bezeichnung}</td>
+                          <td className="text-gray-500 text-xs">{[c.marke, c.modell].filter(Boolean).join(' ') || '—'}</td>
                           <td>
                             {c.seriennummer
                               ? <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.seriennummer}</span>
@@ -394,7 +392,7 @@ export default function EquipmentItemDetailPage() {
                               <span className="text-gray-400">1</span>
                             )}
                           </td>
-                          <td className="text-xs">{c.herstellungsland || '—'}</td>
+                          <td className="text-xs">{c.ursprungsland || '—'}</td>
                           <td className="text-right text-xs">
                             {wert != null ? `${wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${c.waehrung}` : '—'}
                           </td>
