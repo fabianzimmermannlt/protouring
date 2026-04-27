@@ -5486,9 +5486,29 @@ app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, re
   try {
     const rows = await db.all(
       `SELECT ei.*, ec.name AS category_name, ec.kuerzel AS category_kuerzel,
-        (SELECT COUNT(*) FROM equipment_materials WHERE item_id = ei.id) AS material_count,
-        (SELECT COALESCE(SUM(wert_zollwert * anzahl),0) FROM equipment_materials WHERE item_id = ei.id) AS material_wert,
-        (SELECT COALESCE(SUM(gewicht_kg * anzahl),0) FROM equipment_materials WHERE item_id = ei.id) AS material_gewicht
+        (SELECT COUNT(*) FROM equipment_case_contents WHERE item_id = ei.id) AS material_count,
+        (SELECT COALESCE(SUM(
+          CASE WHEN ecc.material_unit_id IS NOT NULL
+            THEN COALESCE(em2.wert_zollwert, 0)
+            ELSE COALESCE(em.wert_zollwert, 0) * ecc.anzahl
+          END
+        ), 0)
+        FROM equipment_case_contents ecc
+        LEFT JOIN equipment_materials em ON em.id = ecc.material_id
+        LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
+        LEFT JOIN equipment_materials em2 ON em2.id = emu.material_id
+        WHERE ecc.item_id = ei.id) AS material_wert,
+        (SELECT COALESCE(SUM(
+          CASE WHEN ecc.material_unit_id IS NOT NULL
+            THEN COALESCE(em2.gewicht_kg, 0)
+            ELSE COALESCE(em.gewicht_kg, 0) * ecc.anzahl
+          END
+        ), 0)
+        FROM equipment_case_contents ecc
+        LEFT JOIN equipment_materials em ON em.id = ecc.material_id
+        LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
+        LEFT JOIN equipment_materials em2 ON em2.id = emu.material_id
+        WHERE ecc.item_id = ei.id) AS material_gewicht
        FROM equipment_items ei
        LEFT JOIN equipment_categories ec ON ec.id = ei.category_id
        WHERE ei.tenant_id = ?
