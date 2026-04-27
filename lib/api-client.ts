@@ -2599,7 +2599,8 @@ export interface Carnet {
   inhaber_stadt: string | null
   inhaber_land: string | null
   inhaber_ust_id: string | null
-  inhaber_kontaktperson: string | null
+  inhaber_kontaktperson_vorname: string | null
+  inhaber_kontaktperson: string | null   // Nachname
   inhaber_telefon: string | null
   inhaber_email: string | null
   // Vertreter
@@ -2612,6 +2613,8 @@ export interface Carnet {
   vertreter_telefon: string | null
   vertreter_email: string | null
   vertreter_rolle: string | null
+  vertreter_kontaktperson_vorname: string | null
+  vertreter_kontaktperson_name: string | null
   // Meta
   material_count?: number
   created_at: string

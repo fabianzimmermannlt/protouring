@@ -686,6 +686,10 @@ async function initDatabase() {
     // Rename wert_zeitwert → wert_zollwert, wert_wiederbeschaffung → wert_wiederbeschaffungswert
     `ALTER TABLE equipment_materials RENAME COLUMN wert_zeitwert TO wert_zollwert`,
     `ALTER TABLE equipment_materials RENAME COLUMN wert_wiederbeschaffung TO wert_wiederbeschaffungswert`,
+    // Carnet: Kontaktperson aufgeteilt + Vertreter-Kontaktperson
+    `ALTER TABLE carnets ADD COLUMN inhaber_kontaktperson_vorname TEXT`,
+    `ALTER TABLE carnets ADD COLUMN vertreter_kontaktperson_vorname TEXT`,
+    `ALTER TABLE carnets ADD COLUMN vertreter_kontaktperson_name TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_kuerzel: Partial UNIQUE INDEX (nur wenn gesetzt)
@@ -6725,30 +6729,33 @@ app.post('/api/carnets', authenticateToken, requireTenant, async (req, res) => {
       status = 'draft',
       verwendungszweck, startdatum, enddatum, ziellaender, zusaetzliche_laender, kommentar,
       inhaber_name, inhaber_adresse, inhaber_plz, inhaber_stadt, inhaber_land,
-      inhaber_ust_id, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
+      inhaber_ust_id, inhaber_kontaktperson_vorname, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
       vertreter_name, vertreter_firma, vertreter_adresse, vertreter_plz, vertreter_stadt,
-      vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle
+      vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle,
+      vertreter_kontaktperson_vorname, vertreter_kontaktperson_name
     } = req.body
     const result = await db.run(
       `INSERT INTO carnets (
         tenant_id, carnet_id, inhaber_id, vertreter_id, status,
         verwendungszweck, startdatum, enddatum, ziellaender, zusaetzliche_laender, kommentar,
         inhaber_name, inhaber_adresse, inhaber_plz, inhaber_stadt, inhaber_land,
-        inhaber_ust_id, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
+        inhaber_ust_id, inhaber_kontaktperson_vorname, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
         vertreter_name, vertreter_firma, vertreter_adresse, vertreter_plz, vertreter_stadt,
         vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle,
+        vertreter_kontaktperson_vorname, vertreter_kontaktperson_name,
         created_by
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         req.tenant.id, carnet_id, inhaber_id, vertreter_id, status,
         verwendungszweck||null, startdatum||null, enddatum||null, ziellaender||null,
         zusaetzliche_laender||null, kommentar||null,
         inhaber_name||null, inhaber_adresse||null, inhaber_plz||null, inhaber_stadt||null,
-        inhaber_land||null, inhaber_ust_id||null, inhaber_kontaktperson||null,
-        inhaber_telefon||null, inhaber_email||null,
+        inhaber_land||null, inhaber_ust_id||null, inhaber_kontaktperson_vorname||null,
+        inhaber_kontaktperson||null, inhaber_telefon||null, inhaber_email||null,
         vertreter_name||null, vertreter_firma||null, vertreter_adresse||null,
         vertreter_plz||null, vertreter_stadt||null, vertreter_land||null,
         vertreter_telefon||null, vertreter_email||null, vertreter_rolle||null,
+        vertreter_kontaktperson_vorname||null, vertreter_kontaktperson_name||null,
         req.user.id
       ]
     )
@@ -6786,9 +6793,10 @@ app.put('/api/carnets/:id', authenticateToken, requireTenant, async (req, res) =
     const {
       status, verwendungszweck, startdatum, enddatum, ziellaender, zusaetzliche_laender, kommentar,
       inhaber_name, inhaber_adresse, inhaber_plz, inhaber_stadt, inhaber_land,
-      inhaber_ust_id, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
+      inhaber_ust_id, inhaber_kontaktperson_vorname, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
       vertreter_name, vertreter_firma, vertreter_adresse, vertreter_plz, vertreter_stadt,
-      vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle
+      vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle,
+      vertreter_kontaktperson_vorname, vertreter_kontaktperson_name
     } = req.body
     await db.run(
       `UPDATE carnets SET
@@ -6796,21 +6804,24 @@ app.put('/api/carnets/:id', authenticateToken, requireTenant, async (req, res) =
         verwendungszweck=?, startdatum=?, enddatum=?, ziellaender=?,
         zusaetzliche_laender=?, kommentar=?,
         inhaber_name=?, inhaber_adresse=?, inhaber_plz=?, inhaber_stadt=?, inhaber_land=?,
-        inhaber_ust_id=?, inhaber_kontaktperson=?, inhaber_telefon=?, inhaber_email=?,
+        inhaber_ust_id=?, inhaber_kontaktperson_vorname=?, inhaber_kontaktperson=?,
+        inhaber_telefon=?, inhaber_email=?,
         vertreter_name=?, vertreter_firma=?, vertreter_adresse=?, vertreter_plz=?,
         vertreter_stadt=?, vertreter_land=?, vertreter_telefon=?, vertreter_email=?,
-        vertreter_rolle=?, updated_at=datetime('now')
+        vertreter_rolle=?, vertreter_kontaktperson_vorname=?, vertreter_kontaktperson_name=?,
+        updated_at=datetime('now')
        WHERE id = ? AND tenant_id = ?`,
       [
         status||null,
         verwendungszweck||null, startdatum||null, enddatum||null, ziellaender||null,
         zusaetzliche_laender||null, kommentar||null,
         inhaber_name||null, inhaber_adresse||null, inhaber_plz||null, inhaber_stadt||null,
-        inhaber_land||null, inhaber_ust_id||null, inhaber_kontaktperson||null,
-        inhaber_telefon||null, inhaber_email||null,
+        inhaber_land||null, inhaber_ust_id||null, inhaber_kontaktperson_vorname||null,
+        inhaber_kontaktperson||null, inhaber_telefon||null, inhaber_email||null,
         vertreter_name||null, vertreter_firma||null, vertreter_adresse||null,
         vertreter_plz||null, vertreter_stadt||null, vertreter_land||null,
         vertreter_telefon||null, vertreter_email||null, vertreter_rolle||null,
+        vertreter_kontaktperson_vorname||null, vertreter_kontaktperson_name||null,
         req.params.id, req.tenant.id
       ]
     )

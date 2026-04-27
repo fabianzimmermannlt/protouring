@@ -881,11 +881,12 @@ function CarnetModal({ carnet, onSave, onClose }: {
     verwendungszweck: '', startdatum: '', enddatum: '',
     ziellaender: '', zusaetzliche_laender: '', kommentar: '',
     inhaber_name: '', inhaber_adresse: '', inhaber_plz: '', inhaber_stadt: '',
-    inhaber_land: '', inhaber_ust_id: '', inhaber_kontaktperson: '',
-    inhaber_telefon: '', inhaber_email: '',
+    inhaber_land: '', inhaber_ust_id: '', inhaber_kontaktperson_vorname: '',
+    inhaber_kontaktperson: '', inhaber_telefon: '', inhaber_email: '',
     vertreter_name: '', vertreter_firma: '', vertreter_adresse: '',
     vertreter_plz: '', vertreter_stadt: '', vertreter_land: '',
     vertreter_telefon: '', vertreter_email: '', vertreter_rolle: '',
+    vertreter_kontaktperson_vorname: '', vertreter_kontaktperson_name: '',
   }
   const [form, setForm] = useState(carnet ? {
     status: carnet.status,
@@ -901,6 +902,7 @@ function CarnetModal({ carnet, onSave, onClose }: {
     inhaber_stadt: carnet.inhaber_stadt ?? '',
     inhaber_land: carnet.inhaber_land ?? '',
     inhaber_ust_id: carnet.inhaber_ust_id ?? '',
+    inhaber_kontaktperson_vorname: carnet.inhaber_kontaktperson_vorname ?? '',
     inhaber_kontaktperson: carnet.inhaber_kontaktperson ?? '',
     inhaber_telefon: carnet.inhaber_telefon ?? '',
     inhaber_email: carnet.inhaber_email ?? '',
@@ -913,6 +915,8 @@ function CarnetModal({ carnet, onSave, onClose }: {
     vertreter_telefon: carnet.vertreter_telefon ?? '',
     vertreter_email: carnet.vertreter_email ?? '',
     vertreter_rolle: carnet.vertreter_rolle ?? '',
+    vertreter_kontaktperson_vorname: carnet.vertreter_kontaktperson_vorname ?? '',
+    vertreter_kontaktperson_name: carnet.vertreter_kontaktperson_name ?? '',
   } : blank)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -937,6 +941,7 @@ function CarnetModal({ carnet, onSave, onClose }: {
         inhaber_stadt: form.inhaber_stadt || null,
         inhaber_land: form.inhaber_land || null,
         inhaber_ust_id: form.inhaber_ust_id || null,
+        inhaber_kontaktperson_vorname: form.inhaber_kontaktperson_vorname || null,
         inhaber_kontaktperson: form.inhaber_kontaktperson || null,
         inhaber_telefon: form.inhaber_telefon || null,
         inhaber_email: form.inhaber_email || null,
@@ -949,6 +954,8 @@ function CarnetModal({ carnet, onSave, onClose }: {
         vertreter_telefon: form.vertreter_telefon || null,
         vertreter_email: form.vertreter_email || null,
         vertreter_rolle: form.vertreter_rolle || null,
+        vertreter_kontaktperson_vorname: form.vertreter_kontaktperson_vorname || null,
+        vertreter_kontaktperson_name: form.vertreter_kontaktperson_name || null,
       })
       onClose()
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
@@ -1077,17 +1084,23 @@ function CarnetModal({ carnet, onSave, onClose }: {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                {lbl('Kontaktperson')}
+                {lbl('Kontaktperson Vorname')}
+                <input className="form-input" value={form.inhaber_kontaktperson_vorname} onChange={e => s('inhaber_kontaktperson_vorname')(e.target.value)} />
+              </div>
+              <div>
+                {lbl('Kontaktperson Name')}
                 <input className="form-input" value={form.inhaber_kontaktperson} onChange={e => s('inhaber_kontaktperson')(e.target.value)} />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 {lbl('Telefon')}
                 <input className="form-input" value={form.inhaber_telefon} onChange={e => s('inhaber_telefon')(e.target.value)} />
               </div>
-            </div>
-            <div>
-              {lbl('E-Mail', true)}
-              <input type="email" className={inp('inhaber_email', true)} value={form.inhaber_email} onChange={e => s('inhaber_email')(e.target.value)} />
+              <div>
+                {lbl('E-Mail', true)}
+                <input type="email" className={inp('inhaber_email', true)} value={form.inhaber_email} onChange={e => s('inhaber_email')(e.target.value)} />
+              </div>
             </div>
           </>)}
 
@@ -1137,25 +1150,29 @@ function CarnetModal({ carnet, onSave, onClose }: {
                 <input type="email" className={inp('vertreter_email', true)} value={form.vertreter_email} onChange={e => s('vertreter_email')(e.target.value)} />
               </div>
             </div>
+            <div className="border-t border-gray-100 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Kontaktperson</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  {lbl('Vorname')}
+                  <input className="form-input" value={form.vertreter_kontaktperson_vorname} onChange={e => s('vertreter_kontaktperson_vorname')(e.target.value)} />
+                </div>
+                <div>
+                  {lbl('Name')}
+                  <input className="form-input" value={form.vertreter_kontaktperson_name} onChange={e => s('vertreter_kontaktperson_name')(e.target.value)} />
+                </div>
+              </div>
+            </div>
           </>)}
 
           {err && <p className="text-xs text-red-400">{err}</p>}
         </div>
 
         <div className="modal-footer">
-          <div className="flex gap-2">
-            {tabs.filter(t => t.id !== section).map(t => (
-              <button key={t.id} onClick={() => setSection(t.id)} className="btn btn-ghost text-xs">
-                → {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
-            <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
-              {saving ? 'Speichern…' : 'Speichern'}
-            </button>
-          </div>
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
+            {saving ? 'Speichern…' : 'Speichern'}
+          </button>
         </div>
       </div>
     </div>
