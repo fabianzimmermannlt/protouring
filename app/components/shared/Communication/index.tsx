@@ -223,13 +223,15 @@ export function Communication({
       {showHeader && (
         <div className="pt-card-header">
           <span className="pt-card-title">{title}</span>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            title="Chat löschen"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-gray-400 hover:text-red-500 transition-colors"
+              title="Chat löschen"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
