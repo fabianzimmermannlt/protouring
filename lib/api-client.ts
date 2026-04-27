@@ -550,15 +550,17 @@ export interface EquipmentMaterial {
 export interface EquipmentOwner {
   id: number;
   tenant_id: number;
-  name: string;
-  firma: string | null;
+  owner_id: string;
+  name: string;                   // "Name / Firma" als ein Feld
+  typ: string;                    // privatperson | band | firma | verleih | sonstiges
+  kontaktperson_vorname: string | null;
+  kontaktperson_name: string | null;
   adresse: string | null;
   plz: string | null;
   stadt: string | null;
   land: string | null;
   telefon: string | null;
   email: string | null;
-  notiz: string | null;
   created_at: string;
   updated_at: string;
 }

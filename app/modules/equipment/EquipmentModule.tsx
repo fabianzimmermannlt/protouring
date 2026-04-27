@@ -422,7 +422,7 @@ function MaterialModal({ mat, categories, owners, onSave, onClose, carnetEnabled
               <label className="form-label">Eigentümer</label>
               <select className="form-select" value={form.owner_id} onChange={e => setForm({...form, owner_id: e.target.value})}>
                 <option value="">— kein —</option>
-                {owners.map(o => <option key={o.id} value={o.id}>{o.name}{o.firma ? ` (${o.firma})` : ''}</option>)}
+                {owners.map(o => <option key={o.id} value={o.id}>{o.name}{o.typ && o.typ !== 'privatperson' ? ` (${OWNER_TYP_LABELS[o.typ] ?? o.typ})` : ''}</option>)}
               </select>
             </div>
           </div>
@@ -848,41 +848,51 @@ export function carnetMissingFields(mat: Partial<EquipmentMaterial>): string[] {
 
 // ── Eigentümer Modal ──────────────────────────────────────────────────────────
 
+const OWNER_TYP_LABELS: Record<string, string> = {
+  privatperson: 'Privatperson',
+  band:         'Band / Künstler',
+  firma:        'Firma',
+  verleih:      'Verleih',
+  sonstiges:    'Sonstiges',
+}
+
 function EigentuemerModal({ owner, onSave, onClose }: {
   owner: EquipmentOwner | null
   onSave: (data: Partial<EquipmentOwner>) => Promise<void>
   onClose: () => void
 }) {
   const [form, setForm] = useState({
-    name:    owner?.name ?? '',
-    firma:   owner?.firma ?? '',
-    adresse: owner?.adresse ?? '',
-    plz:     owner?.plz ?? '',
-    stadt:   owner?.stadt ?? '',
-    land:    owner?.land ?? '',
-    telefon: owner?.telefon ?? '',
-    email:   owner?.email ?? '',
-    notiz:   owner?.notiz ?? '',
+    name:                   owner?.name ?? '',
+    typ:                    owner?.typ ?? 'privatperson',
+    kontaktperson_vorname:  owner?.kontaktperson_vorname ?? '',
+    kontaktperson_name:     owner?.kontaktperson_name ?? '',
+    adresse:                owner?.adresse ?? '',
+    plz:                    owner?.plz ?? '',
+    stadt:                  owner?.stadt ?? '',
+    land:                   owner?.land ?? '',
+    telefon:                owner?.telefon ?? '',
+    email:                  owner?.email ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
-  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const inp = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }))
 
   const handle = async () => {
-    if (!form.name.trim()) { setErr('Name ist Pflicht'); return }
+    if (!form.name.trim()) { setErr('Name / Firma ist Pflicht'); return }
     setSaving(true)
     try {
       await onSave({
-        name:    form.name.trim(),
-        firma:   form.firma || null,
-        adresse: form.adresse || null,
-        plz:     form.plz || null,
-        stadt:   form.stadt || null,
-        land:    form.land || null,
-        telefon: form.telefon || null,
-        email:   form.email || null,
-        notiz:   form.notiz || null,
+        name:                   form.name.trim(),
+        typ:                    form.typ,
+        kontaktperson_vorname:  form.kontaktperson_vorname || null,
+        kontaktperson_name:     form.kontaktperson_name || null,
+        adresse:                form.adresse || null,
+        plz:                    form.plz || null,
+        stadt:                  form.stadt || null,
+        land:                   form.land || null,
+        telefon:                form.telefon || null,
+        email:                  form.email || null,
       })
       onClose()
     } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
@@ -896,48 +906,63 @@ function EigentuemerModal({ owner, onSave, onClose }: {
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
         <div className="modal-body space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="form-label">Name *</label>
-              <input className="form-input" value={form.name} onChange={f('name')} autoFocus placeholder="Nachname / Kurzname" />
-            </div>
-            <div>
-              <label className="form-label">Firma</label>
-              <input className="form-input" value={form.firma} onChange={f('firma')} placeholder="Firmenname (optional)" />
-            </div>
+
+          {/* Name / Firma + Typ */}
+          <div>
+            <label className="form-label">Name / Firma *</label>
+            <input className="form-input" value={form.name} onChange={inp('name')} autoFocus placeholder="z.B. Max Mustermann oder Musterfirma GmbH" />
           </div>
           <div>
+            <label className="form-label">Typ</label>
+            <select className="form-select" value={form.typ} onChange={e => setForm(p => ({ ...p, typ: e.target.value }))}>
+              {Object.entries(OWNER_TYP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+
+          {/* Kontaktperson */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Kontaktperson Vorname</label>
+              <input className="form-input" value={form.kontaktperson_vorname} onChange={inp('kontaktperson_vorname')} placeholder="Vorname" />
+            </div>
+            <div>
+              <label className="form-label">Kontaktperson Name</label>
+              <input className="form-input" value={form.kontaktperson_name} onChange={inp('kontaktperson_name')} placeholder="Nachname" />
+            </div>
+          </div>
+
+          {/* Adresse */}
+          <div>
             <label className="form-label">Adresse</label>
-            <input className="form-input" value={form.adresse} onChange={f('adresse')} placeholder="Straße und Hausnummer" />
+            <input className="form-input" value={form.adresse} onChange={inp('adresse')} placeholder="Straße und Hausnummer" />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="form-label">PLZ</label>
-              <input className="form-input" value={form.plz} onChange={f('plz')} placeholder="PLZ" />
+              <input className="form-input" value={form.plz} onChange={inp('plz')} placeholder="PLZ" />
             </div>
             <div className="col-span-2">
               <label className="form-label">Stadt</label>
-              <input className="form-input" value={form.stadt} onChange={f('stadt')} placeholder="Stadt" />
+              <input className="form-input" value={form.stadt} onChange={inp('stadt')} placeholder="Stadt" />
             </div>
           </div>
           <div>
             <label className="form-label">Land</label>
-            <input className="form-input" value={form.land} onChange={f('land')} placeholder="z.B. DE, AT, CH" />
+            <input className="form-input" value={form.land} onChange={inp('land')} placeholder="z.B. DE, AT, CH" />
           </div>
+
+          {/* Kontakt */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Telefon</label>
-              <input className="form-input" value={form.telefon} onChange={f('telefon')} placeholder="+49 …" />
+              <input className="form-input" value={form.telefon} onChange={inp('telefon')} placeholder="+49 …" />
             </div>
             <div>
               <label className="form-label">E-Mail</label>
-              <input type="email" className="form-input" value={form.email} onChange={f('email')} placeholder="name@domain.de" />
+              <input type="email" className="form-input" value={form.email} onChange={inp('email')} placeholder="name@domain.de" />
             </div>
           </div>
-          <div>
-            <label className="form-label">Notiz</label>
-            <textarea className="form-textarea" rows={2} value={form.notiz} onChange={f('notiz')} />
-          </div>
+
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
         <div className="modal-footer">
@@ -1758,8 +1783,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Firma</th>
+                <th>Name / Firma</th>
+                <th>Typ</th>
+                <th>Kontaktperson</th>
                 <th>Stadt</th>
                 <th>Land</th>
                 <th>Telefon</th>
@@ -1771,7 +1797,12 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               {owners.map(o => (
                 <tr key={o.id} className="hoverable">
                   <td className="font-medium">{o.name}</td>
-                  <td className="text-gray-500">{o.firma ?? '—'}</td>
+                  <td><span className="badge">{OWNER_TYP_LABELS[o.typ] ?? o.typ}</span></td>
+                  <td className="text-gray-500">
+                    {o.kontaktperson_vorname || o.kontaktperson_name
+                      ? [o.kontaktperson_vorname, o.kontaktperson_name].filter(Boolean).join(' ')
+                      : '—'}
+                  </td>
                   <td className="text-gray-500">{o.stadt ?? '—'}</td>
                   <td className="text-gray-500">{o.land ?? '—'}</td>
                   <td className="text-gray-500">{o.telefon ?? '—'}</td>
