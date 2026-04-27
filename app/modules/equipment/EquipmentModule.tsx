@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect, useCallback } from 'react'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
+  getEquipmentItemDetail, getCaseContents, addToCaseContents, updateCaseContent, removeCaseContent,
   initEquipmentKuerzel,
   canDo, getEffectiveRole,
   type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
+  type EquipmentCaseContent,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -450,10 +451,287 @@ function MaterialModal({ mat, categories, onSave, onClose }: {
   )
 }
 
+// ── Add-Content Modal ─────────────────────────────────────────────────────────
+
+function AddContentModal({ itemId, onDone, onClose }: {
+  itemId: number
+  onDone: () => void
+  onClose: () => void
+}) {
+  const [materials, setMaterials] = useState<EquipmentMaterial[]>([])
+  const [selected, setSelected] = useState<EquipmentMaterial | null>(null)
+  const [units, setUnits] = useState<EquipmentMaterialUnit[]>([])
+  const [selectedUnitIds, setSelectedUnitIds] = useState<number[]>([])
+  const [search, setSearch] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  useEffect(() => { getEquipmentMaterials().then(setMaterials).catch(() => {}) }, [])
+
+  const selectMaterial = async (mat: EquipmentMaterial) => {
+    setErr('')
+    if (mat.typ === 'bulk') {
+      setSaving(true)
+      try {
+        await addToCaseContents(itemId, { material_id: mat.id, anzahl: 0 })
+        onDone(); onClose()
+      } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+      return
+    }
+    setSelected(mat)
+    setSelectedUnitIds([])
+    const u = await getMaterialUnits(mat.id)
+    setUnits(u.filter(u => !u.in_case_id))
+  }
+
+  const save = async () => {
+    if (!selected || selectedUnitIds.length === 0) { setErr('Mindestens eine Einheit auswählen'); return }
+    setSaving(true)
+    try {
+      await addToCaseContents(itemId, { material_unit_ids: selectedUnitIds })
+      onDone(); onClose()
+    } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+  }
+
+  const filtered = materials.filter(m =>
+    !search ||
+    m.produkt.toLowerCase().includes(search.toLowerCase()) ||
+    (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">Material hinzufügen</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="modal-body">
+          {!selected ? (
+            <>
+              <input className="search-input mb-3" placeholder="Produkt oder Hersteller suchen…"
+                value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+              <div className="space-y-1 max-h-80 overflow-y-auto">
+                {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-6">Kein Material gefunden</p>}
+                {filtered.map(mat => (
+                  <button key={mat.id} onClick={() => selectMaterial(mat)} disabled={saving}
+                    className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-sm text-gray-900">{mat.produkt}</span>
+                        {mat.hersteller && <span className="text-xs text-gray-400 ml-2">{mat.hersteller}</span>}
+                      </div>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {mat.typ === 'serial' ? `${mat.unit_count ?? 0} Einh. frei` : 'Masse'}
+                      </span>
+                    </div>
+                    {mat.category_name && <p className="text-xs text-gray-400 mt-0.5">{mat.category_name}</p>}
+                  </button>
+                ))}
+              </div>
+              {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
+            </>
+          ) : (
+            <div>
+              <button onClick={() => setSelected(null)} className="text-xs text-blue-600 hover:underline mb-3">← Zurück</button>
+              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
+                <p className="font-medium text-gray-900">{selected.produkt}</p>
+                {selected.hersteller && <p className="text-xs text-gray-500">{selected.hersteller}</p>}
+              </div>
+              <p className="form-label mb-2">Freie Einheiten auswählen</p>
+              {units.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">Keine freien Einheiten vorhanden</p>
+              ) : (
+                <div className="space-y-1 max-h-60 overflow-y-auto">
+                  {units.map(u => (
+                    <label key={u.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" checked={selectedUnitIds.includes(u.id)}
+                        onChange={() => setSelectedUnitIds(p => p.includes(u.id) ? p.filter(id => id !== u.id) : [...p, u.id])}
+                        className="accent-blue-600" />
+                      <span className="font-mono text-sm font-medium">{u.seriennummer}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          {selected && (
+            <button onClick={save} disabled={saving} className="btn btn-primary disabled:opacity-50">
+              {saving ? 'Hinzufügen…' : 'Hinzufügen'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Item-Accordion ────────────────────────────────────────────────────────────
+
+function ItemAccordion({ item, colSpan, canEdit, onReload }: {
+  item: EquipmentItem
+  colSpan: number
+  canEdit: boolean
+  onReload: () => void
+}) {
+  const [detail, setDetail] = useState<(EquipmentItem & { content_count: number; content_gewicht: number; content_wert: number }) | null>(null)
+  const [contents, setContents] = useState<EquipmentCaseContent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [d, c] = await Promise.all([getEquipmentItemDetail(item.id), getCaseContents(item.id)])
+      setDetail(d); setContents(c)
+    } catch {}
+    setLoading(false)
+  }, [item.id])
+
+  useEffect(() => { load() }, [load])
+
+  const handleAnzahlChange = async (contentId: number, newAnzahl: number) => {
+    if (newAnzahl < 0 || isNaN(newAnzahl)) return
+    await updateCaseContent(contentId, newAnzahl)
+    load(); onReload()
+  }
+
+  const handleRemove = async (contentId: number) => {
+    if (!confirm('Eintrag aus diesem Case entfernen?')) return
+    await removeCaseContent(contentId)
+    load(); onReload()
+  }
+
+  const totalWeight = detail ? (detail.weight_empty_kg ?? 0) + (detail.content_gewicht ?? 0) : 0
+
+  return (
+    <tr>
+      <td colSpan={colSpan} className="p-0 bg-blue-50/40 border-b border-blue-100">
+        <div className="px-4 py-4 space-y-4">
+          {loading ? (
+            <p className="text-sm text-gray-400 py-4 text-center">Lädt…</p>
+          ) : detail && (
+            <>
+              {/* Info-Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm bg-white rounded-lg border border-gray-200 p-4">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Maße H×B×T</p>
+                  <p className="font-medium text-gray-900 text-xs">
+                    {detail.height_cm || detail.width_cm || detail.depth_cm
+                      ? `${detail.height_cm ?? '?'}×${detail.width_cm ?? '?'}×${detail.depth_cm ?? '?'} cm`
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Eigengewicht</p>
+                  <p className="font-medium text-gray-900 text-xs">{detail.weight_empty_kg != null ? `${detail.weight_empty_kg} kg` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Gesamtgewicht</p>
+                  <p className="font-semibold text-gray-900 text-xs">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Einträge</p>
+                  <p className="font-medium text-gray-900 text-xs">{detail.content_count}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Gesamtwert</p>
+                  <p className="font-semibold text-gray-900 text-xs">
+                    {detail.content_wert > 0 ? `€ ${detail.content_wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })}` : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Inhalt */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <ArchiveBoxIcon className="w-3.5 h-3.5" /> Inhalt
+                  </p>
+                  {canEdit && (
+                    <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                      <PlusIcon className="w-3.5 h-3.5" /> Hinzufügen
+                    </button>
+                  )}
+                </div>
+
+                {contents.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">Noch kein Material eingepackt</p>
+                ) : (
+                  <div className="data-table-wrapper">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Hersteller</th>
+                          <th>Produkt</th>
+                          <th>Seriennummer</th>
+                          <th className="text-right">Anzahl</th>
+                          <th className="text-right">Wert</th>
+                          <th className="text-right">Gewicht</th>
+                          {canEdit && <th style={{ width: 36 }} />}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contents.map(c => {
+                          const gewicht = c.gewicht_kg != null ? c.gewicht_kg * (c.typ === 'bulk' ? c.anzahl : 1) : null
+                          const wert = c.wert_zeitwert != null ? c.wert_zeitwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
+                          return (
+                            <tr key={c.id}>
+                              <td className="text-gray-500 text-xs">{c.hersteller || '—'}</td>
+                              <td className="font-medium text-sm">{c.produkt}</td>
+                              <td>
+                                {c.seriennummer
+                                  ? <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.seriennummer}</span>
+                                  : <span className="text-gray-300">—</span>}
+                              </td>
+                              <td className="text-right">
+                                {c.typ === 'bulk' ? (
+                                  canEdit ? (
+                                    <input type="number" className="form-input text-right w-16 ml-auto"
+                                      value={c.anzahl} min={0}
+                                      onChange={e => handleAnzahlChange(c.id, parseInt(e.target.value))} />
+                                  ) : c.anzahl
+                                ) : <span className="text-gray-400 text-xs">1</span>}
+                              </td>
+                              <td className="text-right text-xs">
+                                {wert != null ? `${wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${c.waehrung}` : '—'}
+                              </td>
+                              <td className="text-right text-xs">
+                                {gewicht != null ? `${gewicht.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}
+                              </td>
+                              {canEdit && (
+                                <td>
+                                  <button onClick={() => handleRemove(c.id)} className="p-1 text-gray-300 hover:text-red-500">
+                                    <TrashIcon className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {showAddModal && (
+          <AddContentModal itemId={item.id} onDone={() => { load(); onReload() }} onClose={() => setShowAddModal(false)} />
+        )}
+      </td>
+    </tr>
+  )
+}
+
 // ── Haupt-Modul ───────────────────────────────────────────────────────────────
 
 export default function EquipmentModule({ activeSubTab }: { activeSubTab?: string }) {
-  const router = useRouter()
   const activeTab = activeSubTab || 'items'
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
   const [items, setItems] = useState<EquipmentItem[]>([])
@@ -461,6 +739,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [kuerzel, setKuerzel] = useState('')
+  const [expandedItemId, setExpandedItemId] = useState<number | null>(null)
 
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
@@ -547,41 +826,55 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <tbody>
               {filteredItems.map(item => {
                 const totalWeight = (item.weight_empty_kg ?? 0) + (item.material_gewicht ?? 0)
+                const isExpanded = expandedItemId === item.id
                 return (
-                  <tr key={item.id} className="clickable" onClick={() => router.push(`/equipment/${item.id}`)}>
-                    <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>
-                    <td className="font-medium">{item.name}</td>
-                    <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>
-                    <td>{item.category_name ?? '—'}</td>
-                    <td>{item.position ? POSITION_LABELS[item.position] ?? item.position : '—'}</td>
-                    <td className="text-right text-xs text-gray-600">
-                      {item.height_cm || item.width_cm || item.depth_cm
-                        ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`
-                        : '—'}
-                    </td>
-                    <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>
-                    <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>
-                    <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-1 justify-end">
-                        {canEdit && (
-                          <button onClick={() => setItemModal({ open: true, item })} className="p-1 text-gray-400 hover:text-blue-600">
-                            <PencilIcon className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {canEdit && (
-                          <button onClick={async () => {
-                            if (!confirm(`${item.case_id} — ${item.name} wirklich löschen?`)) return
-                            await deleteEquipmentItem(item.id)
-                            load()
-                          }} className="p-1 text-gray-400 hover:text-red-600">
-                            <TrashIcon className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <ChevronRightIcon className="w-3.5 h-3.5 text-gray-300" />
-                      </div>
-                    </td>
-                  </tr>
+                  <>
+                    <tr key={item.id} className="clickable" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
+                      <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>
+                      <td className="font-medium">{item.name}</td>
+                      <td><span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span></td>
+                      <td>{item.category_name ?? '—'}</td>
+                      <td>{item.position ? POSITION_LABELS[item.position] ?? item.position : '—'}</td>
+                      <td className="text-right text-xs text-gray-600">
+                        {item.height_cm || item.width_cm || item.depth_cm
+                          ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`
+                          : '—'}
+                      </td>
+                      <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>
+                      <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>
+                      <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-1 justify-end items-center">
+                          {canEdit && (
+                            <button onClick={() => setItemModal({ open: true, item })} className="p-1 text-gray-400 hover:text-blue-600">
+                              <PencilIcon className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canEdit && (
+                            <button onClick={async () => {
+                              if (!confirm(`${item.case_id} — ${item.name} wirklich löschen?`)) return
+                              await deleteEquipmentItem(item.id)
+                              load()
+                            }} className="p-1 text-gray-400 hover:text-red-600">
+                              <TrashIcon className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {isExpanded
+                            ? <ChevronDownIcon className="w-3.5 h-3.5 text-blue-400" />
+                            : <ChevronRightIcon className="w-3.5 h-3.5 text-gray-300" />}
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <ItemAccordion
+                        key={`acc-${item.id}`}
+                        item={item}
+                        colSpan={10}
+                        canEdit={canEdit}
+                        onReload={load}
+                      />
+                    )}
+                  </>
                 )
               })}
             </tbody>
