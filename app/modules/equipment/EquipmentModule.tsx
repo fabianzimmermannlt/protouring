@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon } from '@heroicons/react/24/outline'
+import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { parseCSV, col } from '@/lib/csvParser'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
@@ -13,9 +13,11 @@ import {
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
   getEquipmentItemDetail, getCaseContents, addToCaseContents, updateCaseContent, removeCaseContent,
   initEquipmentKuerzel, getEquipmentSettings, updateEquipmentSettings,
+  getCarnets, createCarnet, updateCarnet, deleteCarnet, getCarnet,
+  addCarnetMaterial, removeCarnetMaterial,
   canDo, getEffectiveRole,
   type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
-  type EquipmentCaseContent,
+  type EquipmentCaseContent, type Carnet, type CarnetMaterial,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -857,6 +859,309 @@ function EquipmentSettingsModal({ carnetEnabled, onSave, onClose }: {
   )
 }
 
+
+// ── Carnet Modal ─────────────────────────────────────────────────────────────
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Entwurf', active: 'Aktiv', closed: 'Abgeschlossen'
+}
+const STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  active: 'bg-green-100 text-green-700',
+  closed: 'bg-blue-100 text-blue-600',
+}
+
+function CarnetModal({ carnet, onSave, onClose }: {
+  carnet: Carnet | null
+  onSave: (data: Partial<Carnet>) => Promise<void>
+  onClose: () => void
+}) {
+  const blank = {
+    status: 'draft' as const,
+    verwendungszweck: '', startdatum: '', enddatum: '',
+    ziellaender: '', zusaetzliche_laender: '', kommentar: '',
+    inhaber_name: '', inhaber_adresse: '', inhaber_plz: '', inhaber_stadt: '',
+    inhaber_land: '', inhaber_ust_id: '', inhaber_kontaktperson: '',
+    inhaber_telefon: '', inhaber_email: '',
+    vertreter_name: '', vertreter_firma: '', vertreter_adresse: '',
+    vertreter_plz: '', vertreter_stadt: '', vertreter_land: '',
+    vertreter_telefon: '', vertreter_email: '', vertreter_rolle: '',
+  }
+  const [form, setForm] = useState(carnet ? {
+    status: carnet.status,
+    verwendungszweck: carnet.verwendungszweck ?? '',
+    startdatum: carnet.startdatum ?? '',
+    enddatum: carnet.enddatum ?? '',
+    ziellaender: carnet.ziellaender ?? '',
+    zusaetzliche_laender: carnet.zusaetzliche_laender ?? '',
+    kommentar: carnet.kommentar ?? '',
+    inhaber_name: carnet.inhaber_name ?? '',
+    inhaber_adresse: carnet.inhaber_adresse ?? '',
+    inhaber_plz: carnet.inhaber_plz ?? '',
+    inhaber_stadt: carnet.inhaber_stadt ?? '',
+    inhaber_land: carnet.inhaber_land ?? '',
+    inhaber_ust_id: carnet.inhaber_ust_id ?? '',
+    inhaber_kontaktperson: carnet.inhaber_kontaktperson ?? '',
+    inhaber_telefon: carnet.inhaber_telefon ?? '',
+    inhaber_email: carnet.inhaber_email ?? '',
+    vertreter_name: carnet.vertreter_name ?? '',
+    vertreter_firma: carnet.vertreter_firma ?? '',
+    vertreter_adresse: carnet.vertreter_adresse ?? '',
+    vertreter_plz: carnet.vertreter_plz ?? '',
+    vertreter_stadt: carnet.vertreter_stadt ?? '',
+    vertreter_land: carnet.vertreter_land ?? '',
+    vertreter_telefon: carnet.vertreter_telefon ?? '',
+    vertreter_email: carnet.vertreter_email ?? '',
+    vertreter_rolle: carnet.vertreter_rolle ?? '',
+  } : blank)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const [section, setSection] = useState<'stammdaten' | 'inhaber' | 'vertreter'>('stammdaten')
+
+  const s = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const handle = async () => {
+    setSaving(true); setErr('')
+    try {
+      await onSave({
+        ...form,
+        verwendungszweck: form.verwendungszweck || null,
+        startdatum: form.startdatum || null,
+        enddatum: form.enddatum || null,
+        ziellaender: form.ziellaender || null,
+        zusaetzliche_laender: form.zusaetzliche_laender || null,
+        kommentar: form.kommentar || null,
+        inhaber_name: form.inhaber_name || null,
+        inhaber_adresse: form.inhaber_adresse || null,
+        inhaber_plz: form.inhaber_plz || null,
+        inhaber_stadt: form.inhaber_stadt || null,
+        inhaber_land: form.inhaber_land || null,
+        inhaber_ust_id: form.inhaber_ust_id || null,
+        inhaber_kontaktperson: form.inhaber_kontaktperson || null,
+        inhaber_telefon: form.inhaber_telefon || null,
+        inhaber_email: form.inhaber_email || null,
+        vertreter_name: form.vertreter_name || null,
+        vertreter_firma: form.vertreter_firma || null,
+        vertreter_adresse: form.vertreter_adresse || null,
+        vertreter_plz: form.vertreter_plz || null,
+        vertreter_stadt: form.vertreter_stadt || null,
+        vertreter_land: form.vertreter_land || null,
+        vertreter_telefon: form.vertreter_telefon || null,
+        vertreter_email: form.vertreter_email || null,
+        vertreter_rolle: form.vertreter_rolle || null,
+      })
+      onClose()
+    } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+  }
+
+  const inp = (k: keyof typeof form, required = false) => {
+    const isEmpty = required && !form[k]?.toString().trim()
+    return isEmpty ? 'form-input border-red-400 bg-red-50' : 'form-input'
+  }
+  const lbl = (label: string, required = false) => (
+    <label className="form-label">
+      {label}{required && <span className="ml-1 text-red-400">*</span>}
+    </label>
+  )
+
+  const tabs = [
+    { id: 'stammdaten', label: 'Stammdaten' },
+    { id: 'inhaber',    label: 'Inhaber' },
+    { id: 'vertreter',  label: 'Vertreter' },
+  ] as const
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container max-w-2xl" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">
+            {carnet ? `Carnet ${carnet.carnet_id}` : 'Neues Carnet'}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+
+        {/* Section tabs */}
+        <div className="flex border-b border-gray-700 px-6">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setSection(t.id)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                section === t.id
+                  ? 'border-orange-400 text-orange-300'
+                  : 'border-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="modal-body space-y-4">
+          {/* ── Stammdaten ── */}
+          {section === 'stammdaten' && (<>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Status')}
+                <select className="form-select" value={form.status} onChange={e => s('status')(e.target.value)}>
+                  <option value="draft">Entwurf</option>
+                  <option value="active">Aktiv</option>
+                  <option value="closed">Abgeschlossen</option>
+                </select>
+              </div>
+              <div>
+                {lbl('Verwendungszweck', true)}
+                <input className={inp('verwendungszweck', true)} value={form.verwendungszweck} onChange={e => s('verwendungszweck')(e.target.value)} placeholder="z.B. Konzertequipment" autoFocus />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Startdatum', true)}
+                <input type="date" className={inp('startdatum', true)} value={form.startdatum} onChange={e => s('startdatum')(e.target.value)} />
+              </div>
+              <div>
+                {lbl('Enddatum', true)}
+                <input type="date" className={inp('enddatum', true)} value={form.enddatum} onChange={e => s('enddatum')(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              {lbl('Zielländer', true)}
+              <input className={inp('ziellaender', true)} value={form.ziellaender} onChange={e => s('ziellaender')(e.target.value)} placeholder="z.B. FR, CH, GB" />
+            </div>
+            <div>
+              {lbl('Zusätzliche Länder')}
+              <input className="form-input" value={form.zusaetzliche_laender} onChange={e => s('zusaetzliche_laender')(e.target.value)} placeholder="Optional" />
+            </div>
+            <div>
+              {lbl('Kommentar')}
+              <textarea className="form-textarea" rows={2} value={form.kommentar} onChange={e => s('kommentar')(e.target.value)} />
+            </div>
+            {carnet && (
+              <div className="grid grid-cols-3 gap-2 text-xs text-gray-400 bg-gray-50 rounded-lg p-3">
+                <div><span className="font-medium text-gray-500">Carnet-ID</span><br /><span className="font-mono">{carnet.carnet_id}</span></div>
+                <div><span className="font-medium text-gray-500">Inhaber-ID</span><br /><span className="font-mono">{carnet.inhaber_id}</span></div>
+                <div><span className="font-medium text-gray-500">Vertreter-ID</span><br /><span className="font-mono">{carnet.vertreter_id}</span></div>
+              </div>
+            )}
+          </>)}
+
+          {/* ── Inhaber ── */}
+          {section === 'inhaber' && (<>
+            <div>
+              {lbl('Name / Firma', true)}
+              <input className={inp('inhaber_name', true)} value={form.inhaber_name} onChange={e => s('inhaber_name')(e.target.value)} placeholder="Firmenname oder vollständiger Name" autoFocus />
+            </div>
+            <div>
+              {lbl('Adresse', true)}
+              <input className={inp('inhaber_adresse', true)} value={form.inhaber_adresse} onChange={e => s('inhaber_adresse')(e.target.value)} placeholder="Straße und Hausnummer" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                {lbl('PLZ', true)}
+                <input className={inp('inhaber_plz', true)} value={form.inhaber_plz} onChange={e => s('inhaber_plz')(e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                {lbl('Stadt', true)}
+                <input className={inp('inhaber_stadt', true)} value={form.inhaber_stadt} onChange={e => s('inhaber_stadt')(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Land', true)}
+                <input className={inp('inhaber_land', true)} value={form.inhaber_land} onChange={e => s('inhaber_land')(e.target.value)} placeholder="z.B. DE" />
+              </div>
+              <div>
+                {lbl('USt-ID')}
+                <input className="form-input" value={form.inhaber_ust_id} onChange={e => s('inhaber_ust_id')(e.target.value)} placeholder="z.B. DE123456789" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Kontaktperson')}
+                <input className="form-input" value={form.inhaber_kontaktperson} onChange={e => s('inhaber_kontaktperson')(e.target.value)} />
+              </div>
+              <div>
+                {lbl('Telefon')}
+                <input className="form-input" value={form.inhaber_telefon} onChange={e => s('inhaber_telefon')(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              {lbl('E-Mail', true)}
+              <input type="email" className={inp('inhaber_email', true)} value={form.inhaber_email} onChange={e => s('inhaber_email')(e.target.value)} />
+            </div>
+          </>)}
+
+          {/* ── Vertreter ── */}
+          {section === 'vertreter' && (<>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Name', true)}
+                <input className={inp('vertreter_name', true)} value={form.vertreter_name} onChange={e => s('vertreter_name')(e.target.value)} autoFocus />
+              </div>
+              <div>
+                {lbl('Firma')}
+                <input className="form-input" value={form.vertreter_firma} onChange={e => s('vertreter_firma')(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              {lbl('Adresse', true)}
+              <input className={inp('vertreter_adresse', true)} value={form.vertreter_adresse} onChange={e => s('vertreter_adresse')(e.target.value)} placeholder="Straße und Hausnummer" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                {lbl('PLZ', true)}
+                <input className={inp('vertreter_plz', true)} value={form.vertreter_plz} onChange={e => s('vertreter_plz')(e.target.value)} />
+              </div>
+              <div className="col-span-2">
+                {lbl('Stadt', true)}
+                <input className={inp('vertreter_stadt', true)} value={form.vertreter_stadt} onChange={e => s('vertreter_stadt')(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Land', true)}
+                <input className={inp('vertreter_land', true)} value={form.vertreter_land} onChange={e => s('vertreter_land')(e.target.value)} placeholder="z.B. DE" />
+              </div>
+              <div>
+                {lbl('Rolle', true)}
+                <input className={inp('vertreter_rolle', true)} value={form.vertreter_rolle} onChange={e => s('vertreter_rolle')(e.target.value)} placeholder="z.B. Tour Manager" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Telefon')}
+                <input className="form-input" value={form.vertreter_telefon} onChange={e => s('vertreter_telefon')(e.target.value)} />
+              </div>
+              <div>
+                {lbl('E-Mail', true)}
+                <input type="email" className={inp('vertreter_email', true)} value={form.vertreter_email} onChange={e => s('vertreter_email')(e.target.value)} />
+              </div>
+            </div>
+          </>)}
+
+          {err && <p className="text-xs text-red-400">{err}</p>}
+        </div>
+
+        <div className="modal-footer">
+          <div className="flex gap-2">
+            {tabs.filter(t => t.id !== section).map(t => (
+              <button key={t.id} onClick={() => setSection(t.id)} className="btn btn-ghost text-xs">
+                → {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
+              {saving ? 'Speichern…' : 'Speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Haupt-Modul ───────────────────────────────────────────────────────────────
 
 export default function EquipmentModule({ activeSubTab }: { activeSubTab?: string }) {
@@ -888,8 +1193,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
+  const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [carnetEnabled, setCarnetEnabled] = useState(false)
+  const [carnets, setCarnets] = useState<Carnet[]>([])
 
   const role = getEffectiveRole()
   const canEdit = canDo(role, ['admin', 'agency', 'tourmanagement'])
@@ -898,18 +1205,20 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const scrollY = silent ? window.scrollY : 0
     if (!silent) setLoading(true)
     try {
-      const [k, cats, itms, mats, settings] = await Promise.all([
+      const [k, cats, itms, mats, settings, carnetsData] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
         getEquipmentItems(),
         getEquipmentMaterials(),
         getEquipmentSettings(),
+        getCarnets(),
       ])
       setKuerzel(k)
       setCategories(cats)
       setItems(itms)
       setMaterials(mats)
       setCarnetEnabled(settings.carnet_ata_enabled)
+      setCarnets(carnetsData)
     } catch {}
     if (!silent) setLoading(false)
     if (silent) requestAnimationFrame(() => window.scrollTo(0, scrollY))
@@ -1311,6 +1620,67 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
+  // ── Carnets ──────────────────────────────────────────────────────────────────
+  const renderCarnets = () => (
+    <div className="space-y-4">
+      {canEdit && (
+        <button onClick={() => setCarnetModal({ open: true, carnet: null })} className="btn btn-primary">
+          <PlusIcon className="w-4 h-4" />
+          Neues Carnet
+        </button>
+      )}
+      {carnets.length === 0 ? (
+        <div className="text-center py-12">
+          <DocumentTextIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Noch keine Carnets angelegt</p>
+        </div>
+      ) : (
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Carnet-ID</th>
+                <th>Status</th>
+                <th>Verwendungszweck</th>
+                <th>Zeitraum</th>
+                <th>Zielländer</th>
+                <th className="text-right">Material</th>
+                {canEdit && <th style={{ width: 60 }} />}
+              </tr>
+            </thead>
+            <tbody>
+              {carnets.map(c => (
+                <tr key={c.id} className="clickable" onClick={() => setCarnetModal({ open: true, carnet: c })}>
+                  <td><span className="font-mono text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{c.carnet_id}</span></td>
+                  <td><span className={`badge text-xs ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span></td>
+                  <td className="font-medium">{c.verwendungszweck || '—'}</td>
+                  <td className="text-gray-500 text-sm">
+                    {c.startdatum && c.enddatum
+                      ? `${new Date(c.startdatum).toLocaleDateString('de-DE')} – ${new Date(c.enddatum).toLocaleDateString('de-DE')}`
+                      : '—'}
+                  </td>
+                  <td className="text-gray-500">{c.ziellaender || '—'}</td>
+                  <td className="text-right text-gray-500">{c.material_count ?? 0}</td>
+                  {canEdit && (
+                    <td onClick={e => e.stopPropagation()}>
+                      <button onClick={async () => {
+                        if (!confirm(`Carnet ${c.carnet_id} wirklich löschen?`)) return
+                        await deleteCarnet(c.id)
+                        load(true)
+                      }} className="p-1 text-gray-400 hover:text-red-600">
+                        <TrashIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div className="space-y-4 p-2">
       {/* Header */}
@@ -1343,6 +1713,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       {activeTab === 'items'      && renderItems()}
       {activeTab === 'materials'  && renderMaterials()}
       {activeTab === 'categories' && renderCategories()}
+      {activeTab === 'carnets'    && renderCarnets()}
 
       {settingsOpen && (
         <EquipmentSettingsModal
@@ -1376,6 +1747,17 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             load(true)
           }}
           onClose={() => setItemModal({ open: false, item: null })}
+        />
+      )}
+      {carnetModal.open && (
+        <CarnetModal
+          carnet={carnetModal.carnet}
+          onSave={async data => {
+            if (carnetModal.carnet) await updateCarnet(carnetModal.carnet.id, data)
+            else await createCarnet(data)
+            load(true)
+          }}
+          onClose={() => setCarnetModal({ open: false, carnet: null })}
         />
       )}
       {matModal.open && (

@@ -2576,3 +2576,93 @@ export async function superadminExtendTrial(tenantId: number, days: number): Pro
   })
   return res.trialEndsAt
 }
+
+// ── Carnets ──────────────────────────────────────────────────────────────────
+
+export interface Carnet {
+  id: number
+  carnet_id: string        // C-ABC123
+  inhaber_id: string       // I-ABC123
+  vertreter_id: string     // V-ABC123
+  tenant_id: number
+  status: 'draft' | 'active' | 'closed'
+  verwendungszweck: string | null
+  startdatum: string | null
+  enddatum: string | null
+  ziellaender: string | null
+  zusaetzliche_laender: string | null
+  kommentar: string | null
+  // Inhaber
+  inhaber_name: string | null
+  inhaber_adresse: string | null
+  inhaber_plz: string | null
+  inhaber_stadt: string | null
+  inhaber_land: string | null
+  inhaber_ust_id: string | null
+  inhaber_kontaktperson: string | null
+  inhaber_telefon: string | null
+  inhaber_email: string | null
+  // Vertreter
+  vertreter_name: string | null
+  vertreter_firma: string | null
+  vertreter_adresse: string | null
+  vertreter_plz: string | null
+  vertreter_stadt: string | null
+  vertreter_land: string | null
+  vertreter_telefon: string | null
+  vertreter_email: string | null
+  vertreter_rolle: string | null
+  // Meta
+  material_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CarnetMaterial {
+  id: number
+  carnet_id: number
+  material_id: number
+  anzahl: number
+  // joined
+  hersteller: string | null
+  produkt: string
+  info: string | null
+  typ: 'bulk' | 'serial'
+  herstellungsland: string | null
+  wert_zollwert: number | null
+  waehrung: string
+  gewicht_kg: number | null
+  category_id: number | null
+  category_name: string | null
+}
+
+export async function getCarnets(): Promise<Carnet[]> {
+  const res = await request<{ carnets: Carnet[] }>('/api/carnets')
+  return res.carnets
+}
+
+export async function createCarnet(data: Partial<Carnet>): Promise<Carnet> {
+  const res = await request<{ carnet: Carnet }>('/api/carnets', { method: 'POST', body: data })
+  return res.carnet
+}
+
+export async function getCarnet(id: number): Promise<{ carnet: Carnet; materials: CarnetMaterial[] }> {
+  return request<{ carnet: Carnet; materials: CarnetMaterial[] }>(`/api/carnets/${id}`)
+}
+
+export async function updateCarnet(id: number, data: Partial<Carnet>): Promise<Carnet> {
+  const res = await request<{ carnet: Carnet }>(`/api/carnets/${id}`, { method: 'PUT', body: data })
+  return res.carnet
+}
+
+export async function deleteCarnet(id: number): Promise<void> {
+  await request(`/api/carnets/${id}`, { method: 'DELETE' })
+}
+
+export async function addCarnetMaterial(carnetId: number, materialId: number, anzahl = 1): Promise<void> {
+  await request(`/api/carnets/${carnetId}/materials`, { method: 'POST', body: { material_id: materialId, anzahl } })
+}
+
+export async function removeCarnetMaterial(carnetId: number, materialId: number): Promise<void> {
+  await request(`/api/carnets/${carnetId}/materials/${materialId}`, { method: 'DELETE' })
+}

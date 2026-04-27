@@ -1091,6 +1091,58 @@ async function initDatabase() {
     )
   `)
 
+  // Carnets
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS carnets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      carnet_id TEXT NOT NULL,          -- C-ABC123
+      status TEXT NOT NULL DEFAULT 'draft', -- draft / active / closed
+      verwendungszweck TEXT,
+      startdatum TEXT,
+      enddatum TEXT,
+      ziellaender TEXT,
+      zusaetzliche_laender TEXT,
+      kommentar TEXT,
+      -- Inhaber
+      inhaber_id TEXT NOT NULL,         -- I-ABC123
+      inhaber_name TEXT,
+      inhaber_adresse TEXT,
+      inhaber_plz TEXT,
+      inhaber_stadt TEXT,
+      inhaber_land TEXT,
+      inhaber_ust_id TEXT,
+      inhaber_kontaktperson TEXT,
+      inhaber_telefon TEXT,
+      inhaber_email TEXT,
+      -- Vertreter
+      vertreter_id TEXT NOT NULL,       -- V-ABC123
+      vertreter_name TEXT,
+      vertreter_firma TEXT,
+      vertreter_adresse TEXT,
+      vertreter_plz TEXT,
+      vertreter_stadt TEXT,
+      vertreter_land TEXT,
+      vertreter_telefon TEXT,
+      vertreter_email TEXT,
+      vertreter_rolle TEXT,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS carnet_materials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      carnet_id INTEGER NOT NULL REFERENCES carnets(id) ON DELETE CASCADE,
+      material_id INTEGER NOT NULL REFERENCES equipment_materials(id) ON DELETE CASCADE,
+      anzahl INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(carnet_id, material_id)
+    )
+  `)
+
   // ── Ende Equipment-Modul ─────────────────────────────────────────────────────
 
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
@@ -6636,6 +6688,169 @@ app.put('/api/superadmin/tenants/:id/trial', authenticateToken, requireSuperadmi
     const updated = await db.get('SELECT trial_ends_at FROM tenants WHERE id=?', [req.params.id])
     res.json({ trialEndsAt: updated.trial_ends_at })
   } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+
+// ── Equipment: Carnets ───────────────────────────────────────────────────────
+
+function generateId(prefix) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let result = ''
+  for (let i = 0; i < 6; i++) result += chars[Math.floor(Math.random() * chars.length)]
+  return `${prefix}-${result}`
+}
+
+// GET /api/carnets
+app.get('/api/carnets', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT c.*,
+        (SELECT COUNT(*) FROM carnet_materials cm WHERE cm.carnet_id = c.id) AS material_count
+       FROM carnets c
+       WHERE c.tenant_id = ?
+       ORDER BY c.created_at DESC`,
+      [req.tenant.id]
+    )
+    res.json({ carnets: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/carnets
+app.post('/api/carnets', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const carnet_id = generateId('C')
+    const inhaber_id = generateId('I')
+    const vertreter_id = generateId('V')
+    const {
+      status = 'draft',
+      verwendungszweck, startdatum, enddatum, ziellaender, zusaetzliche_laender, kommentar,
+      inhaber_name, inhaber_adresse, inhaber_plz, inhaber_stadt, inhaber_land,
+      inhaber_ust_id, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
+      vertreter_name, vertreter_firma, vertreter_adresse, vertreter_plz, vertreter_stadt,
+      vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle
+    } = req.body
+    const result = await db.run(
+      `INSERT INTO carnets (
+        tenant_id, carnet_id, inhaber_id, vertreter_id, status,
+        verwendungszweck, startdatum, enddatum, ziellaender, zusaetzliche_laender, kommentar,
+        inhaber_name, inhaber_adresse, inhaber_plz, inhaber_stadt, inhaber_land,
+        inhaber_ust_id, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
+        vertreter_name, vertreter_firma, vertreter_adresse, vertreter_plz, vertreter_stadt,
+        vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle,
+        created_by
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        req.tenant.id, carnet_id, inhaber_id, vertreter_id, status,
+        verwendungszweck||null, startdatum||null, enddatum||null, ziellaender||null,
+        zusaetzliche_laender||null, kommentar||null,
+        inhaber_name||null, inhaber_adresse||null, inhaber_plz||null, inhaber_stadt||null,
+        inhaber_land||null, inhaber_ust_id||null, inhaber_kontaktperson||null,
+        inhaber_telefon||null, inhaber_email||null,
+        vertreter_name||null, vertreter_firma||null, vertreter_adresse||null,
+        vertreter_plz||null, vertreter_stadt||null, vertreter_land||null,
+        vertreter_telefon||null, vertreter_email||null, vertreter_rolle||null,
+        req.user.id
+      ]
+    )
+    const row = await db.get('SELECT * FROM carnets WHERE id = ?', [result.lastID])
+    res.json({ carnet: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/carnets/:id
+app.get('/api/carnets/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const carnet = await db.get(
+      'SELECT * FROM carnets WHERE id = ? AND tenant_id = ?',
+      [req.params.id, req.tenant.id]
+    )
+    if (!carnet) return res.status(404).json({ error: 'Nicht gefunden' })
+    const materials = await db.all(
+      `SELECT cm.*, em.hersteller, em.produkt, em.info, em.typ, em.herstellungsland,
+              em.wert_zollwert, em.waehrung, em.gewicht_kg, em.category_id,
+              ec.name AS category_name
+       FROM carnet_materials cm
+       JOIN equipment_materials em ON em.id = cm.material_id
+       LEFT JOIN equipment_categories ec ON ec.id = em.category_id
+       WHERE cm.carnet_id = ?
+       ORDER BY em.produkt`,
+      [carnet.id]
+    )
+    res.json({ carnet, materials })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/carnets/:id
+app.put('/api/carnets/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const {
+      status, verwendungszweck, startdatum, enddatum, ziellaender, zusaetzliche_laender, kommentar,
+      inhaber_name, inhaber_adresse, inhaber_plz, inhaber_stadt, inhaber_land,
+      inhaber_ust_id, inhaber_kontaktperson, inhaber_telefon, inhaber_email,
+      vertreter_name, vertreter_firma, vertreter_adresse, vertreter_plz, vertreter_stadt,
+      vertreter_land, vertreter_telefon, vertreter_email, vertreter_rolle
+    } = req.body
+    await db.run(
+      `UPDATE carnets SET
+        status=COALESCE(?,status),
+        verwendungszweck=?, startdatum=?, enddatum=?, ziellaender=?,
+        zusaetzliche_laender=?, kommentar=?,
+        inhaber_name=?, inhaber_adresse=?, inhaber_plz=?, inhaber_stadt=?, inhaber_land=?,
+        inhaber_ust_id=?, inhaber_kontaktperson=?, inhaber_telefon=?, inhaber_email=?,
+        vertreter_name=?, vertreter_firma=?, vertreter_adresse=?, vertreter_plz=?,
+        vertreter_stadt=?, vertreter_land=?, vertreter_telefon=?, vertreter_email=?,
+        vertreter_rolle=?, updated_at=datetime('now')
+       WHERE id = ? AND tenant_id = ?`,
+      [
+        status||null,
+        verwendungszweck||null, startdatum||null, enddatum||null, ziellaender||null,
+        zusaetzliche_laender||null, kommentar||null,
+        inhaber_name||null, inhaber_adresse||null, inhaber_plz||null, inhaber_stadt||null,
+        inhaber_land||null, inhaber_ust_id||null, inhaber_kontaktperson||null,
+        inhaber_telefon||null, inhaber_email||null,
+        vertreter_name||null, vertreter_firma||null, vertreter_adresse||null,
+        vertreter_plz||null, vertreter_stadt||null, vertreter_land||null,
+        vertreter_telefon||null, vertreter_email||null, vertreter_rolle||null,
+        req.params.id, req.tenant.id
+      ]
+    )
+    const row = await db.get('SELECT * FROM carnets WHERE id = ?', [req.params.id])
+    res.json({ carnet: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/carnets/:id
+app.delete('/api/carnets/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('DELETE FROM carnets WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/carnets/:id/materials
+app.post('/api/carnets/:id/materials', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const carnet = await db.get('SELECT id FROM carnets WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    if (!carnet) return res.status(404).json({ error: 'Nicht gefunden' })
+    const { material_id, anzahl = 1 } = req.body
+    await db.run(
+      `INSERT INTO carnet_materials (carnet_id, material_id, anzahl) VALUES (?,?,?)
+       ON CONFLICT(carnet_id, material_id) DO UPDATE SET anzahl=excluded.anzahl`,
+      [carnet.id, material_id, anzahl]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/carnets/:id/materials/:materialId
+app.delete('/api/carnets/:id/materials/:materialId', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run(
+      'DELETE FROM carnet_materials WHERE carnet_id = ? AND material_id = ?',
+      [req.params.id, req.params.materialId]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // ============================================
