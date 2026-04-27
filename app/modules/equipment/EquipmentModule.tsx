@@ -1106,15 +1106,9 @@ function CarnetModal({ carnet, onSave, onClose }: {
 
           {/* ── Vertreter ── */}
           {section === 'vertreter' && (<>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                {lbl('Name', true)}
-                <input className={inp('vertreter_name', true)} value={form.vertreter_name} onChange={e => s('vertreter_name')(e.target.value)} autoFocus />
-              </div>
-              <div>
-                {lbl('Firma')}
-                <input className="form-input" value={form.vertreter_firma} onChange={e => s('vertreter_firma')(e.target.value)} />
-              </div>
+            <div>
+              {lbl('Name / Firma', true)}
+              <input className={inp('vertreter_name', true)} value={form.vertreter_name} onChange={e => s('vertreter_name')(e.target.value)} autoFocus />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
