@@ -1366,7 +1366,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [owners, setOwners] = useState<EquipmentOwner[]>([])
   const [matSortKey, setMatSortKey] = useState<MatSortKey>('bezeichnung')
   const [matSortDir, setMatSortDir] = useState<'asc' | 'desc'>('asc')
-  const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials', MATERIAL_COLUMNS)
+  const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials-v2', MATERIAL_COLUMNS)
   const { isVisible: isCarnetVisible, toggle: toggleCarnetCol, columns: carnetColumns } = useColumnVisibility('equipment-carnets', CARNET_COLUMNS)
   const { isVisible: isOwnerVisible, toggle: toggleOwnerCol, columns: ownerColumns } = useColumnVisibility('equipment-owners-cols', OWNER_COLUMNS)
   const [carnetSortKey, setCarnetSortKey] = useState<CarnetSortKey>('startdatum')
@@ -1562,7 +1562,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   // ── Material ─────────────────────────────────────────────────────────────────
   const sortedMaterials = useMemo(() => {
     const filtered = materials.filter(m =>
-      !search || m.bezeichnung.toLowerCase().includes(search.toLowerCase()) ||
+      !search || (m.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
     )
