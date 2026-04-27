@@ -91,8 +91,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
 
   const filtered = materials.filter(m =>
     !search ||
-    m.produkt.toLowerCase().includes(search.toLowerCase()) ||
-    (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
+    m.bezeichnung.toLowerCase().includes(search.toLowerCase()) ||
+    (m.marke ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -107,7 +107,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
             <>
               <input
                 className="search-input mb-3"
-                placeholder="Produkt oder Hersteller suchen…"
+                placeholder="Bezeichnung oder Marke suchen…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 autoFocus
@@ -124,8 +124,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-sm text-gray-900">{mat.produkt}</span>
-                        {mat.hersteller && <span className="text-xs text-gray-400 ml-2">{mat.hersteller}</span>}
+                        <span className="font-medium text-sm text-gray-900">{mat.bezeichnung}</span>
+                        {mat.marke && <span className="text-xs text-gray-400 ml-2">{mat.marke}</span>}
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                         mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'
@@ -144,9 +144,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
                 <ArrowLeftIcon className="w-3 h-3" /> Zurück zur Auswahl
               </button>
               <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                <p className="font-medium text-gray-900">{selected.produkt}</p>
-                {selected.hersteller && <p className="text-xs text-gray-500">{selected.hersteller}</p>}
-                {selected.info && <p className="text-xs text-gray-400">{selected.info}</p>}
+                <p className="font-medium text-gray-900">{selected.bezeichnung}</p>
+                {selected.marke && <p className="text-xs text-gray-500">{selected.marke} {selected.modell ?? ''}</p>}
               </div>
 
               {selected.typ === 'bulk' ? (

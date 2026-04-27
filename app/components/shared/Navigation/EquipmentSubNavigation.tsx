@@ -8,17 +8,19 @@ export interface SubNavigationProps {
 }
 
 const equipmentSubItems = [
-  { id: 'items',      name: 'GEGENSTÄNDE', description: 'Cases & Equipment-Gegenstände' },
-  { id: 'materials',  name: 'MATERIAL',    description: 'Material & Carnet-Einträge' },
-  { id: 'categories', name: 'KATEGORIEN',  description: 'Kategorien verwalten' },
-  { id: 'carnets',    name: 'CARNETS',     description: 'Carnet ATA Dokumente' },
+  { id: 'items',        name: 'GEGENSTÄNDE',  description: 'Cases & Equipment-Gegenstände' },
+  { id: 'materials',    name: 'MATERIAL',     description: 'Material & Carnet-Einträge' },
+  { id: 'categories',   name: 'KATEGORIEN',   description: 'Kategorien verwalten' },
+  { id: 'eigentuemer',  name: 'EIGENTÜMER',   description: 'Equipment-Eigentümer' },
+  { id: 'carnets',      name: 'CARNETS',      description: 'Carnet ATA Dokumente' },
 ]
 
 const SHORT_LABEL: Record<string, string> = {
-  items:      'Gegenstände',
-  materials:  'Material',
-  categories: 'Kategorien',
-  carnets:    'Carnets',
+  items:       'Gegenstände',
+  materials:   'Material',
+  categories:  'Kategorien',
+  eigentuemer: 'Eigentümer',
+  carnets:     'Carnets',
 }
 
 export function EquipmentSubNavigation({

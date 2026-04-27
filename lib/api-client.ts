@@ -527,19 +527,37 @@ export async function deleteEquipmentItem(id: number): Promise<void> {
 export interface EquipmentMaterial {
   id: number;
   tenant_id: number;
-  hersteller: string | null;
-  produkt: string;
-  info: string | null;
+  mat_id: string;               // Auto-generiert: M-XXXXX
+  bezeichnung: string;
+  marke: string | null;
+  modell: string | null;
   category_id: number | null;
   category_name?: string;
+  owner_id: number | null;
   typ: 'serial' | 'bulk';
-  unit_count?: number;        // Anzahl angelegter Seriennummern-Einheiten
-  herstellungsland: string | null;
+  unit_count?: number;          // Anzahl angelegter Seriennummern-Einheiten
+  anzahl_gepackt?: number;      // Computed: Summe aus equipment_case_contents
+  ursprungsland: string | null;
   wert_zollwert: number | null;
-  wert_wiederbeschaffungswert: number | null;
   waehrung: string;
   gewicht_kg: number | null;
   anschaffungsdatum: string | null;
+  notiz: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EquipmentOwner {
+  id: number;
+  tenant_id: number;
+  name: string;
+  firma: string | null;
+  adresse: string | null;
+  plz: string | null;
+  stadt: string | null;
+  land: string | null;
+  telefon: string | null;
+  email: string | null;
   notiz: string | null;
   created_at: string;
   updated_at: string;
@@ -594,6 +612,26 @@ export async function updateEquipmentMaterial(id: number, data: Partial<Equipmen
 
 export async function deleteEquipmentMaterial(id: number): Promise<void> {
   await request(`/api/equipment/materials/${id}`, { method: 'DELETE' });
+}
+
+// Equipment Owners
+export async function getEquipmentOwners(): Promise<EquipmentOwner[]> {
+  const res = await request<{ owners: EquipmentOwner[] }>('/api/equipment/owners');
+  return res.owners;
+}
+
+export async function createEquipmentOwner(data: Partial<EquipmentOwner>): Promise<EquipmentOwner> {
+  const res = await request<{ owner: EquipmentOwner }>('/api/equipment/owners', { method: 'POST', body: data });
+  return res.owner;
+}
+
+export async function updateEquipmentOwner(id: number, data: Partial<EquipmentOwner>): Promise<EquipmentOwner> {
+  const res = await request<{ owner: EquipmentOwner }>(`/api/equipment/owners/${id}`, { method: 'PUT', body: data });
+  return res.owner;
+}
+
+export async function deleteEquipmentOwner(id: number): Promise<void> {
+  await request(`/api/equipment/owners/${id}`, { method: 'DELETE' });
 }
 
 // Material-Einheiten (Serienartikel)

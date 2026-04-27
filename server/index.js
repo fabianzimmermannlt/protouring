@@ -690,6 +690,14 @@ async function initDatabase() {
     `ALTER TABLE carnets ADD COLUMN inhaber_kontaktperson_vorname TEXT`,
     `ALTER TABLE carnets ADD COLUMN vertreter_kontaktperson_vorname TEXT`,
     `ALTER TABLE carnets ADD COLUMN vertreter_kontaktperson_name TEXT`,
+    // Material: Spalten umbenennen
+    `ALTER TABLE equipment_materials RENAME COLUMN hersteller TO marke`,
+    `ALTER TABLE equipment_materials RENAME COLUMN produkt TO modell`,
+    `ALTER TABLE equipment_materials RENAME COLUMN info TO bezeichnung`,
+    `ALTER TABLE equipment_materials RENAME COLUMN herstellungsland TO ursprungsland`,
+    // Material: neue Spalten
+    `ALTER TABLE equipment_materials ADD COLUMN mat_id TEXT`,
+    `ALTER TABLE equipment_materials ADD COLUMN owner_id INTEGER REFERENCES equipment_owners(id) ON DELETE SET NULL`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_kuerzel: Partial UNIQUE INDEX (nur wenn gesetzt)
@@ -1092,6 +1100,27 @@ async function initDatabase() {
       -- Serial: material_unit_id (statt anzahl)
       material_unit_id INTEGER REFERENCES equipment_material_units(id) ON DELETE CASCADE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  // Eigentümer
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS equipment_owners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      owner_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      typ TEXT NOT NULL DEFAULT 'sonstiges',
+      adresse TEXT,
+      plz TEXT,
+      stadt TEXT,
+      land TEXT,
+      kontaktperson_vorname TEXT,
+      kontaktperson_name TEXT,
+      telefon TEXT,
+      email TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
 
@@ -5477,12 +5506,14 @@ app.delete('/api/equipment/items/:id', authenticateToken, requireTenant, async (
 app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(
-      `SELECT em.*, ec.name AS category_name,
-        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count
+      `SELECT em.*,
+        ec.name AS category_name,
+        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count,
+        (SELECT COALESCE(SUM(anzahl),0) FROM equipment_case_contents WHERE material_id = em.id AND material_unit_id IS NULL) AS anzahl_gepackt
        FROM equipment_materials em
        LEFT JOIN equipment_categories ec ON ec.id = em.category_id
        WHERE em.tenant_id = ?
-       ORDER BY em.hersteller, em.produkt`,
+       ORDER BY em.bezeichnung`,
       [req.tenant.id]
     )
     res.json({ materials: rows })
@@ -5493,18 +5524,20 @@ app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req
 app.post('/api/equipment/materials', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { item_id, hersteller, produkt, info, category_id, anzahl, seriennummer, herstellungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
-    if (!produkt) return res.status(400).json({ error: 'Produkt ist Pflicht' })
+    const { bezeichnung, marke, modell, category_id, owner_id, ursprungsland, wert_zollwert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
+    if (!bezeichnung) return res.status(400).json({ error: 'Bezeichnung ist Pflicht' })
+    const mat_id = generateId('M')
     const result = await db.run(
-      `INSERT INTO equipment_materials (tenant_id, item_id, hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [req.tenant.id, null, hersteller||null, produkt, info||null, category_id||null,
-       req.body.typ||'bulk', anzahl||1, herstellungsland||null, wert_zollwert||null, wert_wiederbeschaffungswert||null,
+      `INSERT INTO equipment_materials (tenant_id, mat_id, bezeichnung, marke, modell, category_id, owner_id, typ, ursprungsland, wert_zollwert, waehrung, gewicht_kg, anschaffungsdatum, notiz, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [req.tenant.id, mat_id, bezeichnung, marke||null, modell||null, category_id||null, owner_id||null,
+       req.body.typ||'bulk', ursprungsland||null, wert_zollwert||null,
        waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.user.id]
     )
     const row = await db.get(
       `SELECT em.*, ec.name AS category_name,
-        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count
+        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count,
+        (SELECT COALESCE(SUM(anzahl),0) FROM equipment_case_contents WHERE material_id = em.id AND material_unit_id IS NULL) AS anzahl_gepackt
        FROM equipment_materials em LEFT JOIN equipment_categories ec ON ec.id=em.category_id WHERE em.id=?`,
       [result.lastID]
     )
@@ -5516,15 +5549,17 @@ app.post('/api/equipment/materials', authenticateToken, requireTenant, async (re
 app.put('/api/equipment/materials/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { hersteller, produkt, info, category_id, typ, anzahl, herstellungsland, wert_zollwert, wert_wiederbeschaffungswert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
+    const { bezeichnung, marke, modell, category_id, owner_id, typ, ursprungsland, wert_zollwert, waehrung, gewicht_kg, anschaffungsdatum, notiz } = req.body
+    if (!bezeichnung) return res.status(400).json({ error: 'Bezeichnung ist Pflicht' })
     await db.run(
-      `UPDATE equipment_materials SET hersteller=?, produkt=?, info=?, category_id=?, typ=COALESCE(?,typ), herstellungsland=?, wert_zollwert=?, wert_wiederbeschaffungswert=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
+      `UPDATE equipment_materials SET bezeichnung=?, marke=?, modell=?, category_id=?, owner_id=?, typ=COALESCE(?,typ), ursprungsland=?, wert_zollwert=?, waehrung=?, gewicht_kg=?, anschaffungsdatum=?, notiz=?, updated_at=datetime('now')
        WHERE id=? AND tenant_id=?`,
-      [hersteller||null, produkt, info||null, category_id||null, typ||null, herstellungsland||null, wert_zollwert||null, wert_wiederbeschaffungswert||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
+      [bezeichnung, marke||null, modell||null, category_id||null, owner_id||null, typ||null, ursprungsland||null, wert_zollwert||null, waehrung||'EUR', gewicht_kg||null, anschaffungsdatum||null, notiz||null, req.params.id, req.tenant.id]
     )
     const row = await db.get(
       `SELECT em.*, ec.name AS category_name,
-        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count
+        (SELECT COUNT(*) FROM equipment_material_units WHERE material_id = em.id) AS unit_count,
+        (SELECT COALESCE(SUM(anzahl),0) FROM equipment_case_contents WHERE material_id = em.id AND material_unit_id IS NULL) AS anzahl_gepackt
        FROM equipment_materials em LEFT JOIN equipment_categories ec ON ec.id=em.category_id WHERE em.id=? AND em.tenant_id=?`,
       [req.params.id, req.tenant.id]
     )
@@ -6695,6 +6730,70 @@ app.put('/api/superadmin/tenants/:id/trial', authenticateToken, requireSuperadmi
 })
 
 
+// ── Equipment: Eigentümer ────────────────────────────────────────────────────
+
+// GET /api/equipment/owners
+app.get('/api/equipment/owners', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      'SELECT * FROM equipment_owners WHERE tenant_id = ? ORDER BY name',
+      [req.tenant.id]
+    )
+    res.json({ owners: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/equipment/owners
+app.post('/api/equipment/owners', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const owner_id = generateId('E')
+    const { name, typ = 'sonstiges', adresse, plz, stadt, land,
+            kontaktperson_vorname, kontaktperson_name, telefon, email } = req.body
+    const result = await db.run(
+      `INSERT INTO equipment_owners
+        (tenant_id, owner_id, name, typ, adresse, plz, stadt, land,
+         kontaktperson_vorname, kontaktperson_name, telefon, email)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [req.tenant.id, owner_id, name, typ,
+       adresse||null, plz||null, stadt||null, land||null,
+       kontaktperson_vorname||null, kontaktperson_name||null,
+       telefon||null, email||null]
+    )
+    const row = await db.get('SELECT * FROM equipment_owners WHERE id = ?', [result.lastID])
+    res.json({ owner: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/equipment/owners/:id
+app.put('/api/equipment/owners/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const { name, typ, adresse, plz, stadt, land,
+            kontaktperson_vorname, kontaktperson_name, telefon, email } = req.body
+    await db.run(
+      `UPDATE equipment_owners SET
+        name=?, typ=COALESCE(?,typ), adresse=?, plz=?, stadt=?, land=?,
+        kontaktperson_vorname=?, kontaktperson_name=?, telefon=?, email=?,
+        updated_at=datetime('now')
+       WHERE id = ? AND tenant_id = ?`,
+      [name, typ||null, adresse||null, plz||null, stadt||null, land||null,
+       kontaktperson_vorname||null, kontaktperson_name||null,
+       telefon||null, email||null,
+       req.params.id, req.tenant.id]
+    )
+    const row = await db.get('SELECT * FROM equipment_owners WHERE id = ?', [req.params.id])
+    res.json({ owner: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/equipment/owners/:id
+app.delete('/api/equipment/owners/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('DELETE FROM equipment_owners WHERE id = ? AND tenant_id = ?',
+      [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // ── Equipment: Carnets ───────────────────────────────────────────────────────
 
 function generateId(prefix) {
@@ -6773,14 +6872,14 @@ app.get('/api/carnets/:id', authenticateToken, requireTenant, async (req, res) =
     )
     if (!carnet) return res.status(404).json({ error: 'Nicht gefunden' })
     const materials = await db.all(
-      `SELECT cm.*, em.hersteller, em.produkt, em.info, em.typ, em.herstellungsland,
+      `SELECT cm.*, em.mat_id, em.bezeichnung, em.marke, em.modell, em.typ, em.ursprungsland,
               em.wert_zollwert, em.waehrung, em.gewicht_kg, em.category_id,
               ec.name AS category_name
        FROM carnet_materials cm
        JOIN equipment_materials em ON em.id = cm.material_id
        LEFT JOIN equipment_categories ec ON ec.id = em.category_id
        WHERE cm.carnet_id = ?
-       ORDER BY em.produkt`,
+       ORDER BY em.bezeichnung`,
       [carnet.id]
     )
     res.json({ carnet, materials })

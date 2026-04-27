@@ -15,9 +15,10 @@ import {
   initEquipmentKuerzel, getEquipmentSettings, updateEquipmentSettings,
   getCarnets, createCarnet, updateCarnet, deleteCarnet, getCarnet,
   addCarnetMaterial, removeCarnetMaterial,
+  getEquipmentOwners, createEquipmentOwner, updateEquipmentOwner, deleteEquipmentOwner,
   canDo, getEffectiveRole,
   type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
-  type EquipmentCaseContent, type Carnet, type CarnetMaterial,
+  type EquipmentCaseContent, type Carnet, type CarnetMaterial, type EquipmentOwner,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -28,17 +29,20 @@ const POSITION_LABELS: Record<string, string> = {
 }
 
 const MATERIAL_COLUMNS = [
-  { id: 'hersteller',  label: 'Hersteller',     defaultVisible: true  },
-  { id: 'produkt',     label: 'Produkt',         defaultVisible: true,  alwaysVisible: true },
-  { id: 'category',    label: 'Kategorie',       defaultVisible: true  },
-  { id: 'typ',         label: 'Typ',             defaultVisible: true  },
-  { id: 'einheiten',   label: 'Einheiten',       defaultVisible: true  },
-  { id: 'land',        label: 'Land',            defaultVisible: true  },
-  { id: 'wert',        label: 'Wert/Stk',        defaultVisible: true  },
-  { id: 'gewicht',     label: 'Gewicht/Stk',     defaultVisible: true  },
+  { id: 'mat_id',      label: 'Mat-ID',          defaultVisible: false },
+  { id: 'bezeichnung', label: 'Bezeichnung',      defaultVisible: true, alwaysVisible: true },
+  { id: 'marke',       label: 'Marke',            defaultVisible: true  },
+  { id: 'modell',      label: 'Modell',           defaultVisible: true  },
+  { id: 'category',    label: 'Kategorie',        defaultVisible: true  },
+  { id: 'owner',       label: 'Eigentümer',       defaultVisible: false },
+  { id: 'typ',         label: 'Typ',              defaultVisible: true  },
+  { id: 'anzahl',      label: 'Anzahl',           defaultVisible: true  },
+  { id: 'land',        label: 'Ursprungsland',    defaultVisible: true  },
+  { id: 'wert',        label: 'Zollwert/Stk',     defaultVisible: true  },
+  { id: 'gewicht',     label: 'Gewicht/Stk',      defaultVisible: true  },
 ]
 
-type MatSortKey = 'hersteller' | 'produkt' | 'category_name' | 'typ' | 'unit_count' | 'herstellungsland' | 'wert_zollwert' | 'gewicht_kg'
+type MatSortKey = 'bezeichnung' | 'marke' | 'modell' | 'category_name' | 'typ' | 'unit_count' | 'anzahl_gepackt' | 'ursprungsland' | 'wert_zollwert' | 'gewicht_kg'
 
 const ITEMS_COLUMNS = [
   { id: 'case_id',      label: 'Case ID',       defaultVisible: true  },
@@ -244,26 +248,27 @@ function ItemModal({ item, categories, onSave, onClose }: {
 
 // ── Material-Modal ────────────────────────────────────────────────────────────
 
-function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false }: {
+function MaterialModal({ mat, categories, owners, onSave, onClose, carnetEnabled = false }: {
   mat: EquipmentMaterial | null
   categories: EquipmentCategory[]
+  owners: EquipmentOwner[]
   onSave: (data: Partial<EquipmentMaterial>) => Promise<number> // returns material id
   onClose: () => void
   carnetEnabled?: boolean
 }) {
   const [form, setForm] = useState({
-    hersteller:             mat?.hersteller ?? '',
-    produkt:                mat?.produkt ?? '',
-    info:                   mat?.info ?? '',
-    category_id:            mat?.category_id != null ? String(mat.category_id) : '',
-    typ:                    mat?.typ ?? 'bulk',
-    herstellungsland:       mat?.herstellungsland ?? '',
-    wert_zollwert:          mat?.wert_zollwert != null ? String(mat.wert_zollwert) : '',
-    wert_wiederbeschaffungswert: mat?.wert_wiederbeschaffungswert != null ? String(mat.wert_wiederbeschaffungswert) : '',
-    waehrung:               mat?.waehrung ?? 'EUR',
-    gewicht_kg:             mat?.gewicht_kg != null ? String(mat.gewicht_kg) : '',
-    anschaffungsdatum:      mat?.anschaffungsdatum ?? '',
-    notiz:                  mat?.notiz ?? '',
+    bezeichnung:      mat?.bezeichnung ?? '',
+    marke:            mat?.marke ?? '',
+    modell:           mat?.modell ?? '',
+    category_id:      mat?.category_id != null ? String(mat.category_id) : '',
+    owner_id:         mat?.owner_id != null ? String(mat.owner_id) : '',
+    typ:              mat?.typ ?? 'bulk',
+    ursprungsland:    mat?.ursprungsland ?? '',
+    wert_zollwert:    mat?.wert_zollwert != null ? String(mat.wert_zollwert) : '',
+    waehrung:         mat?.waehrung ?? 'EUR',
+    gewicht_kg:       mat?.gewicht_kg != null ? String(mat.gewicht_kg) : '',
+    anschaffungsdatum: mat?.anschaffungsdatum ?? '',
+    notiz:            mat?.notiz ?? '',
   })
 
   // Seriennummern-Verwaltung
@@ -293,18 +298,16 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
   const carnetWarn = (field: string): boolean => {
     if (!carnetEnabled) return false
     const checks: Record<string, boolean> = {
-      hersteller:       !form.hersteller.trim(),
-      produkt:          !form.produkt.trim(),
-      info:             !form.info.trim(),
-      herstellungsland: !form.herstellungsland.trim(),
-      gewicht_kg:       !form.gewicht_kg.trim(),
-      wert_zollwert:    !form.wert_zollwert.trim(),
-      waehrung:         !form.waehrung.trim(),
+      bezeichnung:   !form.bezeichnung.trim(),
+      ursprungsland: !form.ursprungsland.trim(),
+      gewicht_kg:    !form.gewicht_kg.trim(),
+      wert_zollwert: !form.wert_zollwert.trim(),
+      waehrung:      !form.waehrung.trim(),
     }
     return checks[field] ?? false
   }
   const carnetMissingCount = carnetEnabled
-    ? ['hersteller','produkt','info','herstellungsland','gewicht_kg','wert_zollwert','waehrung']
+    ? ['bezeichnung','ursprungsland','gewicht_kg','wert_zollwert','waehrung']
         .filter(f => carnetWarn(f)).length
     : 0
   const inp = (field: string) => carnetWarn(field) ? 'form-input border-red-400 bg-red-50' : 'form-input'
@@ -313,7 +316,7 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
     : label
 
   const handle = async () => {
-    if (!form.produkt.trim()) { setErr('Produkt ist Pflicht'); return }
+    if (!form.bezeichnung.trim()) { setErr('Bezeichnung ist Pflicht'); return }
 
     // Neue Serials validieren (darf keine Duplikate haben)
     const filled = newSerials.map(s => s.trim()).filter(Boolean)
@@ -325,18 +328,18 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
     setSaving(true)
     try {
       const matId = await onSave({
-        hersteller:             form.hersteller || null,
-        produkt:                form.produkt.trim(),
-        info:                   form.info || null,
-        category_id:            form.category_id ? Number(form.category_id) : null,
-        typ:                    form.typ as 'serial' | 'bulk',
-        herstellungsland:       form.herstellungsland || null,
-        wert_zollwert:          n(form.wert_zollwert),
-        wert_wiederbeschaffungswert: n(form.wert_wiederbeschaffungswert),
-        waehrung:               form.waehrung,
-        gewicht_kg:             n(form.gewicht_kg),
-        anschaffungsdatum:      form.anschaffungsdatum || null,
-        notiz:                  form.notiz || null,
+        bezeichnung:      form.bezeichnung.trim(),
+        marke:            form.marke || null,
+        modell:           form.modell || null,
+        category_id:      form.category_id ? Number(form.category_id) : null,
+        owner_id:         form.owner_id ? Number(form.owner_id) : null,
+        typ:              form.typ as 'serial' | 'bulk',
+        ursprungsland:    form.ursprungsland || null,
+        wert_zollwert:    n(form.wert_zollwert),
+        waehrung:         form.waehrung,
+        gewicht_kg:       n(form.gewicht_kg),
+        anschaffungsdatum: form.anschaffungsdatum || null,
+        notiz:            form.notiz || null,
       })
 
       // Units löschen
@@ -374,21 +377,39 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
         </div>
         <div className="modal-body space-y-4">
 
-          {/* Basisfelder */}
+          {/* Mat-ID + Anzahl (readonly) */}
+          {mat && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="form-label">Mat-ID</label>
+                <input className="form-input bg-gray-50 text-gray-500 font-mono text-xs" value={mat.mat_id ?? '—'} readOnly />
+              </div>
+              <div>
+                <label className="form-label">Anzahl (gepackt)</label>
+                <input className="form-input bg-gray-50 text-gray-500 text-right" value={mat.anzahl_gepackt ?? 0} readOnly />
+              </div>
+            </div>
+          )}
+
+          {/* Bezeichnung */}
+          <div>
+            <label className="form-label">{lbl('bezeichnung', 'Bezeichnung')} *</label>
+            <input className={inp('bezeichnung')} value={form.bezeichnung} onChange={e => setForm({...form, bezeichnung: e.target.value})} placeholder="Kurzbeschreibung (auch für Carnet)" autoFocus />
+          </div>
+
+          {/* Marke / Modell */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">{lbl('hersteller', 'Hersteller')}</label>
-              <input className={inp('hersteller')} value={form.hersteller} onChange={e => setForm({...form, hersteller: e.target.value})} placeholder="z.B. Shure" autoFocus />
+              <label className="form-label">Marke</label>
+              <input className="form-input" value={form.marke} onChange={e => setForm({...form, marke: e.target.value})} placeholder="z.B. Shure" />
             </div>
             <div>
-              <label className="form-label">Produkt *</label>
-              <input className={inp('produkt')} value={form.produkt} onChange={e => setForm({...form, produkt: e.target.value})} placeholder="z.B. SM58" />
+              <label className="form-label">Modell</label>
+              <input className="form-input" value={form.modell} onChange={e => setForm({...form, modell: e.target.value})} placeholder="z.B. SM58" />
             </div>
           </div>
-          <div>
-            <label className="form-label">{lbl('info', 'Beschreibung / Info')}</label>
-            <input className={inp('info')} value={form.info} onChange={e => setForm({...form, info: e.target.value})} placeholder="Kurzbeschreibung für Carnet" />
-          </div>
+
+          {/* Kategorie / Eigentümer */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Kategorie</label>
@@ -398,18 +419,27 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
               </select>
             </div>
             <div>
-              <label className="form-label">Typ</label>
-              <div className="flex gap-2 mt-1">
-                {(['bulk', 'serial'] as const).map(t => (
-                  <button key={t} type="button"
-                    onClick={() => handleTypChange(t)}
-                    className={`flex-1 py-1.5 text-sm rounded border font-medium transition-colors ${
-                      form.typ === t ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300 hover:bg-gray-50'
-                    }`}>
-                    {t === 'bulk' ? 'Massenartikel' : 'Serienartikel'}
-                  </button>
-                ))}
-              </div>
+              <label className="form-label">Eigentümer</label>
+              <select className="form-select" value={form.owner_id} onChange={e => setForm({...form, owner_id: e.target.value})}>
+                <option value="">— kein —</option>
+                {owners.map(o => <option key={o.id} value={o.id}>{o.name}{o.firma ? ` (${o.firma})` : ''}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Typ */}
+          <div>
+            <label className="form-label">Typ</label>
+            <div className="flex gap-2 mt-1">
+              {(['bulk', 'serial'] as const).map(t => (
+                <button key={t} type="button"
+                  onClick={() => handleTypChange(t)}
+                  className={`flex-1 py-1.5 text-sm rounded border font-medium transition-colors ${
+                    form.typ === t ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}>
+                  {t === 'bulk' ? 'Massenartikel' : 'Serienartikel'}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -477,15 +507,15 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
           {/* Technische Felder */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="form-label">{lbl('herstellungsland', 'Herstellungsland')}</label>
-              <input className={inp('herstellungsland')} value={form.herstellungsland} onChange={e => setForm({...form, herstellungsland: e.target.value})} placeholder="z.B. DE, US" />
+              <label className="form-label">{lbl('ursprungsland', 'Ursprungsland')}</label>
+              <input className={inp('ursprungsland')} value={form.ursprungsland} onChange={e => setForm({...form, ursprungsland: e.target.value})} placeholder="z.B. DE, US" />
             </div>
             <div>
               <label className="form-label">{lbl('gewicht_kg', 'Gewicht kg/Stk')}</label>
               <input type="number" className={inp('gewicht_kg')} value={form.gewicht_kg} onChange={e => setForm({...form, gewicht_kg: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="form-label">Währung</label>
               <select className="form-select" value={form.waehrung} onChange={e => setForm({...form, waehrung: e.target.value})}>
@@ -498,10 +528,6 @@ function MaterialModal({ mat, categories, onSave, onClose, carnetEnabled = false
             <div>
               <label className="form-label">{lbl('wert_zollwert', 'Zollwert/Stk')}</label>
               <input type="number" className={inp('wert_zollwert')} value={form.wert_zollwert} onChange={e => setForm({...form, wert_zollwert: e.target.value})} step="0.01" placeholder="0.00" />
-            </div>
-            <div>
-              <label className="form-label">Wiederbeschaffungswert</label>
-              <input type="number" className="form-input" value={form.wert_wiederbeschaffungswert} onChange={e => setForm({...form, wert_wiederbeschaffungswert: e.target.value})} step="0.01" placeholder="0.00" />
             </div>
           </div>
           <div>
@@ -569,8 +595,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
 
   const filtered = materials.filter(m =>
     !search ||
-    m.produkt.toLowerCase().includes(search.toLowerCase()) ||
-    (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
+    m.bezeichnung.toLowerCase().includes(search.toLowerCase()) ||
+    (m.marke ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -583,7 +609,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
         <div className="modal-body">
           {!selected ? (
             <>
-              <input className="search-input mb-3" placeholder="Produkt oder Hersteller suchen…"
+              <input className="search-input mb-3" placeholder="Bezeichnung oder Marke suchen…"
                 value={search} onChange={e => setSearch(e.target.value)} autoFocus />
               <div className="space-y-1 max-h-80 overflow-y-auto">
                 {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-6">Kein Material gefunden</p>}
@@ -592,8 +618,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
                     className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-sm text-gray-900">{mat.produkt}</span>
-                        {mat.hersteller && <span className="text-xs text-gray-400 ml-2">{mat.hersteller}</span>}
+                        <span className="font-medium text-sm text-gray-900">{mat.bezeichnung}</span>
+                        {mat.marke && <span className="text-xs text-gray-400 ml-2">{mat.marke}</span>}
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
                         {mat.typ === 'serial' ? `${mat.unit_count ?? 0} Einh. frei` : 'Masse'}
@@ -609,8 +635,8 @@ function AddContentModal({ itemId, onDone, onClose }: {
             <div>
               <button onClick={() => setSelected(null)} className="text-xs text-blue-600 hover:underline mb-3">← Zurück</button>
               <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                <p className="font-medium text-gray-900">{selected.produkt}</p>
-                {selected.hersteller && <p className="text-xs text-gray-500">{selected.hersteller}</p>}
+                <p className="font-medium text-gray-900">{selected.bezeichnung}</p>
+                {selected.marke && <p className="text-xs text-gray-500">{selected.marke}{selected.modell ? ` ${selected.modell}` : ''}</p>}
               </div>
               <p className="form-label mb-2">Freie Einheiten auswählen</p>
               {units.length === 0 ? (
@@ -806,18 +832,123 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
 // ── Carnet ATA Pflichtfeld-Check ─────────────────────────────────────────────
 
 export const CARNET_REQUIRED_FIELDS: (keyof EquipmentMaterial)[] = [
-  'hersteller', 'produkt', 'info', 'herstellungsland', 'gewicht_kg', 'wert_zollwert', 'waehrung'
+  'bezeichnung', 'ursprungsland', 'gewicht_kg', 'wert_zollwert', 'waehrung'
 ]
 
 export function carnetMissingFields(mat: Partial<EquipmentMaterial>): string[] {
   const labels: Record<string, string> = {
-    hersteller: 'Hersteller', produkt: 'Produkt', info: 'Beschreibung',
-    herstellungsland: 'Herstellungsland', gewicht_kg: 'Gewicht/Stk',
-    wert_zollwert: 'Zollwert/Stk', waehrung: 'Währung',
+    bezeichnung: 'Bezeichnung', ursprungsland: 'Ursprungsland',
+    gewicht_kg: 'Gewicht/Stk', wert_zollwert: 'Zollwert/Stk', waehrung: 'Währung',
   }
   return CARNET_REQUIRED_FIELDS
     .filter(f => mat[f] == null || mat[f] === '' || mat[f] === 0)
     .map(f => labels[f] ?? f)
+}
+
+
+// ── Eigentümer Modal ──────────────────────────────────────────────────────────
+
+function EigentuemerModal({ owner, onSave, onClose }: {
+  owner: EquipmentOwner | null
+  onSave: (data: Partial<EquipmentOwner>) => Promise<void>
+  onClose: () => void
+}) {
+  const [form, setForm] = useState({
+    name:    owner?.name ?? '',
+    firma:   owner?.firma ?? '',
+    adresse: owner?.adresse ?? '',
+    plz:     owner?.plz ?? '',
+    stadt:   owner?.stadt ?? '',
+    land:    owner?.land ?? '',
+    telefon: owner?.telefon ?? '',
+    email:   owner?.email ?? '',
+    notiz:   owner?.notiz ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const f = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [k]: e.target.value }))
+
+  const handle = async () => {
+    if (!form.name.trim()) { setErr('Name ist Pflicht'); return }
+    setSaving(true)
+    try {
+      await onSave({
+        name:    form.name.trim(),
+        firma:   form.firma || null,
+        adresse: form.adresse || null,
+        plz:     form.plz || null,
+        stadt:   form.stadt || null,
+        land:    form.land || null,
+        telefon: form.telefon || null,
+        email:   form.email || null,
+        notiz:   form.notiz || null,
+      })
+      onClose()
+    } catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container max-w-md">
+        <div className="modal-header">
+          <h3 className="modal-title">{owner ? 'Eigentümer bearbeiten' : 'Neuer Eigentümer'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="modal-body space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Name *</label>
+              <input className="form-input" value={form.name} onChange={f('name')} autoFocus placeholder="Nachname / Kurzname" />
+            </div>
+            <div>
+              <label className="form-label">Firma</label>
+              <input className="form-input" value={form.firma} onChange={f('firma')} placeholder="Firmenname (optional)" />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Adresse</label>
+            <input className="form-input" value={form.adresse} onChange={f('adresse')} placeholder="Straße und Hausnummer" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="form-label">PLZ</label>
+              <input className="form-input" value={form.plz} onChange={f('plz')} placeholder="PLZ" />
+            </div>
+            <div className="col-span-2">
+              <label className="form-label">Stadt</label>
+              <input className="form-input" value={form.stadt} onChange={f('stadt')} placeholder="Stadt" />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Land</label>
+            <input className="form-input" value={form.land} onChange={f('land')} placeholder="z.B. DE, AT, CH" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Telefon</label>
+              <input className="form-input" value={form.telefon} onChange={f('telefon')} placeholder="+49 …" />
+            </div>
+            <div>
+              <label className="form-label">E-Mail</label>
+              <input type="email" className="form-input" value={form.email} onChange={f('email')} placeholder="name@domain.de" />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Notiz</label>
+            <textarea className="form-textarea" rows={2} value={form.notiz} onChange={f('notiz')} />
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
+            {saving ? 'Speichern…' : 'Speichern'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Equipment-Settings Modal ──────────────────────────────────────────────────
@@ -1197,7 +1328,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [itemSortKey, setItemSortKey] = useState<ItemSortKey>('case_id')
   const [itemSortDir, setItemSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible, toggle, columns: itemColumns } = useColumnVisibility('equipment-items', ITEMS_COLUMNS)
-  const [matSortKey, setMatSortKey] = useState<MatSortKey>('produkt')
+  const [owners, setOwners] = useState<EquipmentOwner[]>([])
+  const [matSortKey, setMatSortKey] = useState<MatSortKey>('bezeichnung')
   const [matSortDir, setMatSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials', MATERIAL_COLUMNS)
   const { isVisible: isCarnetVisible, toggle: toggleCarnetCol, columns: carnetColumns } = useColumnVisibility('equipment-carnets', CARNET_COLUMNS)
@@ -1222,6 +1354,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
   const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
+  const [ownerModal, setOwnerModal] = useState<{ open: boolean; owner: EquipmentOwner | null }>({ open: false, owner: null })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [carnetEnabled, setCarnetEnabled] = useState(false)
   const [carnets, setCarnets] = useState<Carnet[]>([])
@@ -1233,13 +1366,14 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const scrollY = silent ? window.scrollY : 0
     if (!silent) setLoading(true)
     try {
-      const [k, cats, itms, mats, settings, carnetsData] = await Promise.all([
+      const [k, cats, itms, mats, settings, carnetsData, ownersData] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
         getEquipmentItems(),
         getEquipmentMaterials(),
         getEquipmentSettings(),
         getCarnets(),
+        getEquipmentOwners(),
       ])
       setKuerzel(k)
       setCategories(cats)
@@ -1247,6 +1381,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       setMaterials(mats)
       setCarnetEnabled(settings.carnet_ata_enabled)
       setCarnets(carnetsData)
+      setOwners(ownersData)
     } catch {}
     if (!silent) setLoading(false)
     if (silent) requestAnimationFrame(() => window.scrollTo(0, scrollY))
@@ -1391,31 +1526,33 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   // ── Material ─────────────────────────────────────────────────────────────────
   const sortedMaterials = useMemo(() => {
     const filtered = materials.filter(m =>
-      !search || m.produkt.toLowerCase().includes(search.toLowerCase()) ||
-      (m.hersteller ?? '').toLowerCase().includes(search.toLowerCase())
+      !search || m.bezeichnung.toLowerCase().includes(search.toLowerCase()) ||
+      (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
     )
     return [...filtered].sort((a, b) => {
       let av: string | number = ''
       let bv: string | number = ''
       if (matSortKey === 'unit_count') { av = a.unit_count ?? 0; bv = b.unit_count ?? 0 }
+      else if (matSortKey === 'anzahl_gepackt') { av = a.anzahl_gepackt ?? 0; bv = b.anzahl_gepackt ?? 0 }
       else if (matSortKey === 'wert_zollwert') { av = a.wert_zollwert ?? 0; bv = b.wert_zollwert ?? 0 }
       else if (matSortKey === 'gewicht_kg') { av = a.gewicht_kg ?? 0; bv = b.gewicht_kg ?? 0 }
-      else { av = (a[matSortKey] ?? '').toString().toLowerCase(); bv = (b[matSortKey] ?? '').toString().toLowerCase() }
+      else { av = ((a as any)[matSortKey] ?? '').toString().toLowerCase(); bv = ((b as any)[matSortKey] ?? '').toString().toLowerCase() }
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
       return matSortDir === 'asc' ? cmp : -cmp
     })
   }, [materials, search, matSortKey, matSortDir])
 
-  const CSV_HEADERS = ['Hersteller', 'Produkt', 'Info', 'Typ', 'Kategorie', 'Herstellungsland', 'Gewicht_kg', 'Zollwert', 'Wiederbeschaffungswert', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
+  const CSV_HEADERS = ['Mat-ID', 'Bezeichnung', 'Marke', 'Modell', 'Typ', 'Kategorie', 'Ursprungsland', 'Gewicht_kg', 'Zollwert', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
 
   const exportMaterialsCSV = () => {
     const q = (v: string | number | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const rows = [
       CSV_HEADERS.join(';'),
       ...sortedMaterials.map(m => [
-        q(m.hersteller), q(m.produkt), q(m.info), q(m.typ),
-        q(m.category_name), q(m.herstellungsland),
-        q(m.gewicht_kg), q(m.wert_zollwert), q(m.wert_wiederbeschaffungswert),
+        q(m.mat_id), q(m.bezeichnung), q(m.marke), q(m.modell), q(m.typ),
+        q(m.category_name), q(m.ursprungsland),
+        q(m.gewicht_kg), q(m.wert_zollwert),
         q(m.waehrung), q(m.anschaffungsdatum), q(m.notiz),
       ].join(';')),
     ].join('\n')
@@ -1435,25 +1572,24 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       const rows = parseCSV(text).slice(1) // Header überspringen
       let count = 0
       for (const row of rows) {
-        if (!col(row, 1)) continue // Produkt Pflicht
+        if (!col(row, 1)) continue // Bezeichnung Pflicht
         try {
           // Kategorie per Name suchen
-          const catName = col(row, 4)
+          const catName = col(row, 5)
           const cat = catName ? categories.find(c => c.name.toLowerCase() === catName.toLowerCase()) : undefined
           const n = (v: string) => v === '' ? null : parseFloat(v)
           await createEquipmentMaterial({
-            hersteller:             col(row, 0) || null,
-            produkt:                col(row, 1),
-            info:                   col(row, 2) || null,
-            typ:                    (col(row, 3) === 'serial' ? 'serial' : 'bulk') as 'serial' | 'bulk',
-            category_id:            cat?.id ?? null,
-            herstellungsland:       col(row, 5) || null,
-            gewicht_kg:             n(col(row, 6)),
-            wert_zollwert:          n(col(row, 7)),
-            wert_wiederbeschaffungswert: n(col(row, 8)),
-            waehrung:               col(row, 9) || 'EUR',
-            anschaffungsdatum:      col(row, 10) || null,
-            notiz:                  col(row, 11) || null,
+            bezeichnung:      col(row, 1),
+            marke:            col(row, 2) || null,
+            modell:           col(row, 3) || null,
+            typ:              (col(row, 4) === 'serial' ? 'serial' : 'bulk') as 'serial' | 'bulk',
+            category_id:      cat?.id ?? null,
+            ursprungsland:    col(row, 6) || null,
+            gewicht_kg:       n(col(row, 7)),
+            wert_zollwert:    n(col(row, 8)),
+            waehrung:         col(row, 9) || 'EUR',
+            anschaffungsdatum: col(row, 10) || null,
+            notiz:            col(row, 11) || null,
           })
           count++
         } catch {}
@@ -1514,14 +1650,17 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <thead>
               <tr>
                 {carnetEnabled && <th style={{ width: 24 }} title="Carnet ATA Status" />}
-                {isMatVisible('hersteller') && <th className="sortable" onClick={() => toggleMatSort('hersteller')}>Hersteller <SortIndicator active={matSortKey === 'hersteller'} dir={matSortDir} /></th>}
-                {isMatVisible('produkt')    && <th className="sortable" onClick={() => toggleMatSort('produkt')}>Produkt <SortIndicator active={matSortKey === 'produkt'} dir={matSortDir} /></th>}
-                {isMatVisible('category')   && <th className="sortable" onClick={() => toggleMatSort('category_name')}>Kategorie <SortIndicator active={matSortKey === 'category_name'} dir={matSortDir} /></th>}
-                {isMatVisible('typ')        && <th className="sortable" onClick={() => toggleMatSort('typ')}>Typ <SortIndicator active={matSortKey === 'typ'} dir={matSortDir} /></th>}
-                {isMatVisible('einheiten')  && <th className="sortable text-right" onClick={() => toggleMatSort('unit_count')}>Einheiten <SortIndicator active={matSortKey === 'unit_count'} dir={matSortDir} /></th>}
-                {isMatVisible('land')       && <th className="sortable" onClick={() => toggleMatSort('herstellungsland')}>Land <SortIndicator active={matSortKey === 'herstellungsland'} dir={matSortDir} /></th>}
-                {isMatVisible('wert')       && <th className="sortable text-right" onClick={() => toggleMatSort('wert_zollwert')}>Wert/Stk <SortIndicator active={matSortKey === 'wert_zollwert'} dir={matSortDir} /></th>}
-                {isMatVisible('gewicht')    && <th className="sortable text-right" onClick={() => toggleMatSort('gewicht_kg')}>Gewicht/Stk <SortIndicator active={matSortKey === 'gewicht_kg'} dir={matSortDir} /></th>}
+                {isMatVisible('mat_id')      && <th className="sortable font-mono" onClick={() => toggleMatSort('bezeichnung')}>Mat-ID</th>}
+                {isMatVisible('bezeichnung') && <th className="sortable" onClick={() => toggleMatSort('bezeichnung')}>Bezeichnung <SortIndicator active={matSortKey === 'bezeichnung'} dir={matSortDir} /></th>}
+                {isMatVisible('marke')       && <th className="sortable" onClick={() => toggleMatSort('marke')}>Marke <SortIndicator active={matSortKey === 'marke'} dir={matSortDir} /></th>}
+                {isMatVisible('modell')      && <th className="sortable" onClick={() => toggleMatSort('modell')}>Modell <SortIndicator active={matSortKey === 'modell'} dir={matSortDir} /></th>}
+                {isMatVisible('category')    && <th className="sortable" onClick={() => toggleMatSort('category_name')}>Kategorie <SortIndicator active={matSortKey === 'category_name'} dir={matSortDir} /></th>}
+                {isMatVisible('owner')       && <th>Eigentümer</th>}
+                {isMatVisible('typ')         && <th className="sortable" onClick={() => toggleMatSort('typ')}>Typ <SortIndicator active={matSortKey === 'typ'} dir={matSortDir} /></th>}
+                {isMatVisible('anzahl')      && <th className="sortable text-right" onClick={() => toggleMatSort('anzahl_gepackt')}>Anzahl <SortIndicator active={matSortKey === 'anzahl_gepackt'} dir={matSortDir} /></th>}
+                {isMatVisible('land')        && <th className="sortable" onClick={() => toggleMatSort('ursprungsland')}>Ursprungsland <SortIndicator active={matSortKey === 'ursprungsland'} dir={matSortDir} /></th>}
+                {isMatVisible('wert')        && <th className="sortable text-right" onClick={() => toggleMatSort('wert_zollwert')}>Zollwert/Stk <SortIndicator active={matSortKey === 'wert_zollwert'} dir={matSortDir} /></th>}
+                {isMatVisible('gewicht')     && <th className="sortable text-right" onClick={() => toggleMatSort('gewicht_kg')}>Gewicht/Stk <SortIndicator active={matSortKey === 'gewicht_kg'} dir={matSortDir} /></th>}
                 <th style={{ width: 60 }}>
                   <ColumnToggle columns={matColumns} isVisible={isMatVisible} toggle={toggleMatCol} />
                 </th>
@@ -1544,28 +1683,27 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                         )}
                       </td>
                     )}
-                    {isMatVisible('hersteller') && <td className={warnField('hersteller') ? 'text-red-500 font-medium' : 'text-gray-500'}>
-                      {mat.hersteller || '—'}
-                    </td>}
-                    {isMatVisible('produkt')    && <td className={`font-medium${warnField('produkt') ? ' text-red-500' : ''}`}>
-                      {mat.produkt}
-                    </td>}
-                    {isMatVisible('category')   && <td>{mat.category_name ?? '—'}</td>}
-                    {isMatVisible('typ')        && <td>
+                    {isMatVisible('mat_id')      && <td className="font-mono text-xs text-gray-400">{mat.mat_id ?? '—'}</td>}
+                    {isMatVisible('bezeichnung') && <td className={`font-medium${warnField('bezeichnung') ? ' text-red-500' : ''}`}>{mat.bezeichnung}</td>}
+                    {isMatVisible('marke')       && <td className="text-gray-500">{mat.marke || '—'}</td>}
+                    {isMatVisible('modell')      && <td className="text-gray-500">{mat.modell || '—'}</td>}
+                    {isMatVisible('category')    && <td>{mat.category_name ?? '—'}</td>}
+                    {isMatVisible('owner')       && <td>{(owners.find(o => o.id === mat.owner_id)?.name) ?? '—'}</td>}
+                    {isMatVisible('typ')         && <td>
                       <span className={`badge ${mat.typ === 'serial' ? 'badge-blue' : ''}`}>
                         {mat.typ === 'serial' ? 'Serienartikel' : 'Massenartikel'}
                       </span>
                     </td>}
-                    {isMatVisible('einheiten')  && <td className="text-right font-medium">
-                      {mat.typ === 'serial' ? `${mat.unit_count ?? 0}×` : '∞'}
+                    {isMatVisible('anzahl')      && <td className="text-right font-medium">
+                      {mat.typ === 'serial' ? `${mat.unit_count ?? 0}×` : (mat.anzahl_gepackt ?? 0)}
                     </td>}
-                    {isMatVisible('land')       && <td className={warnField('herstellungsland') ? 'text-red-500 font-medium' : ''}>
-                      {mat.herstellungsland || '—'}
+                    {isMatVisible('land')        && <td className={warnField('ursprungsland') ? 'text-red-500 font-medium' : ''}>
+                      {mat.ursprungsland || '—'}
                     </td>}
-                    {isMatVisible('wert')       && <td className={`text-right${warnField('wert_zollwert') || warnField('waehrung') ? ' text-red-500 font-medium' : ''}`}>
+                    {isMatVisible('wert')        && <td className={`text-right${warnField('wert_zollwert') || warnField('waehrung') ? ' text-red-500 font-medium' : ''}`}>
                       {mat.wert_zollwert != null ? `${mat.wert_zollwert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${mat.waehrung}` : '—'}
                     </td>}
-                    {isMatVisible('gewicht')    && <td className={`text-right${warnField('gewicht_kg') ? ' text-red-500 font-medium' : ''}`}>
+                    {isMatVisible('gewicht')     && <td className={`text-right${warnField('gewicht_kg') ? ' text-red-500 font-medium' : ''}`}>
                       {mat.gewicht_kg != null ? `${mat.gewicht_kg.toLocaleString('de-DE')} kg` : '—'}
                     </td>}
                     <td>
@@ -1575,7 +1713,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                             <PencilIcon className="w-3.5 h-3.5" />
                           </button>
                           <button onClick={async () => {
-                            if (!confirm(`${mat.hersteller ? mat.hersteller + ' ' : ''}${mat.produkt} wirklich löschen?`)) return
+                            if (!confirm(`${mat.bezeichnung} wirklich löschen?`)) return
                             await deleteEquipmentMaterial(mat.id)
                             load(true)
                           }} className="p-1 text-gray-400 hover:text-red-600">
@@ -1587,6 +1725,75 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                   </tr>
                 )
               })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
+
+  // ── Eigentümer ────────────────────────────────────────────────────────────────
+  const renderEigentuemer = () => (
+    <div className="space-y-4 max-w-2xl">
+      {canEdit && (
+        <button onClick={() => setOwnerModal({ open: true, owner: null })} className="btn btn-primary">
+          <PlusIcon className="w-4 h-4" />
+          Neuer Eigentümer
+        </button>
+      )}
+      {owners.length === 0 ? (
+        <div className="text-center py-12">
+          <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Noch keine Eigentümer angelegt</p>
+          {canEdit && (
+            <button onClick={() => setOwnerModal({ open: true, owner: null })}
+              className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
+              + Ersten Eigentümer anlegen
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Firma</th>
+                <th>Stadt</th>
+                <th>Land</th>
+                <th>Telefon</th>
+                <th>E-Mail</th>
+                {canEdit && <th style={{ width: 60 }} />}
+              </tr>
+            </thead>
+            <tbody>
+              {owners.map(o => (
+                <tr key={o.id} className="hoverable">
+                  <td className="font-medium">{o.name}</td>
+                  <td className="text-gray-500">{o.firma ?? '—'}</td>
+                  <td className="text-gray-500">{o.stadt ?? '—'}</td>
+                  <td className="text-gray-500">{o.land ?? '—'}</td>
+                  <td className="text-gray-500">{o.telefon ?? '—'}</td>
+                  <td className="text-gray-500">{o.email ?? '—'}</td>
+                  {canEdit && (
+                    <td>
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => setOwnerModal({ open: true, owner: o })} className="p-1 text-gray-400 hover:text-blue-600">
+                          <PencilIcon className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={async () => {
+                          if (!confirm(`Eigentümer "${o.name}" löschen?`)) return
+                          await deleteEquipmentOwner(o.id)
+                          load(true)
+                        }} className="p-1 text-gray-400 hover:text-red-600">
+                          <TrashIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -1763,10 +1970,11 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         </button>
       </div>
 
-      {activeTab === 'items'      && renderItems()}
-      {activeTab === 'materials'  && renderMaterials()}
-      {activeTab === 'categories' && renderCategories()}
-      {activeTab === 'carnets'    && renderCarnets()}
+      {activeTab === 'items'        && renderItems()}
+      {activeTab === 'materials'    && renderMaterials()}
+      {activeTab === 'categories'   && renderCategories()}
+      {activeTab === 'eigentuemer'  && renderEigentuemer()}
+      {activeTab === 'carnets'      && renderCarnets()}
 
       {settingsOpen && (
         <EquipmentSettingsModal
@@ -1813,10 +2021,22 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           onClose={() => setCarnetModal({ open: false, carnet: null })}
         />
       )}
+      {ownerModal.open && (
+        <EigentuemerModal
+          owner={ownerModal.owner}
+          onSave={async data => {
+            if (ownerModal.owner) await updateEquipmentOwner(ownerModal.owner.id, data)
+            else await createEquipmentOwner(data)
+            load(true)
+          }}
+          onClose={() => setOwnerModal({ open: false, owner: null })}
+        />
+      )}
       {matModal.open && (
         <MaterialModal
           mat={matModal.mat}
           categories={categories}
+          owners={owners}
           carnetEnabled={carnetEnabled}
           onSave={async data => {
             let id: number
