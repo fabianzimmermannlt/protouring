@@ -561,6 +561,14 @@ body {
 .pt-travel-action-btn:hover { color: #374151; }
 .pt-travel-action-btn--danger:hover { color: #ef4444; }
 
+/* Checkbox-Spalte: minimal breit */
+.data-table thead th.col-checkbox,
+.data-table tbody td.col-checkbox {
+  width: 16px !important;
+  padding: 0 8px !important;
+  text-align: center;
+}
+
 /* Kompaktes Padding für die Reisegruppe-Tabelle */
 .data-table.data-table--compact thead th,
 .data-table.data-table--compact tbody td {
