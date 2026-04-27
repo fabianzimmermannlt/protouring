@@ -1532,14 +1532,90 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     })
   }, [items, search, itemSortKey, itemSortDir])
 
+
+  const ITEM_CSV_HEADERS = [
+    'Case-ID', 'Bezeichnung', 'Typ', 'Typ_Eigene', 'Position', 'Position_Eigene',
+    'Ladereihenfolge', 'Hoehe_cm', 'Breite_cm', 'Tiefe_cm', 'Leergewicht_kg', 'Kategorie', 'Notiz'
+  ]
+
+  const exportItemsCSV = () => {
+    const q = (v: string | number | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const rows = [
+      ITEM_CSV_HEADERS.join(';'),
+      ...sortedItems.map(i => [
+        q(i.case_id), q(i.bezeichnung),
+        q(i.typ), q(i.typ_custom),
+        q(i.position), q(i.position_custom),
+        q(i.load_order), q(i.height_cm), q(i.width_cm), q(i.depth_cm),
+        q(i.weight_empty_kg), q(i.category_name), q(i.notiz),
+      ].join(';')),
+    ].join('\n')
+    const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `gegenstande_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
+  const importItemsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCSV(text).slice(1) // Header überspringen
+      let count = 0
+      for (const row of rows) {
+        if (!col(row, 1)) continue // Bezeichnung Pflicht
+        try {
+          const catName = col(row, 11)
+          const cat = catName ? categories.find(cat => cat.name.toLowerCase() === catName.toLowerCase()) : undefined
+          const n = (v: string) => v === '' ? null : parseFloat(v)
+          const ni = (v: string) => v === '' ? null : parseInt(v, 10)
+          const typVal = col(row, 2) as any
+          const posVal = col(row, 4) as any
+          await createEquipmentItem({
+            bezeichnung:     col(row, 1),
+            typ:             (['case','dolly','gitterbox','kulisse','sonstiges'].includes(typVal) ? typVal : 'case') as any,
+            typ_custom:      col(row, 3) || null,
+            position:        (['sl','sr','cs','us','ds','usl','usr','usc','cl','cr','dsl','dsr','dsc','swl','swr','osl','osr','osc','foh','mon','backstage','distro','delay','merchandise','balcony','sonstiges'].includes(posVal) ? posVal : null) as any,
+            position_custom: col(row, 5) || null,
+            load_order:      ni(col(row, 6)),
+            height_cm:       n(col(row, 7)),
+            width_cm:        n(col(row, 8)),
+            depth_cm:        n(col(row, 9)),
+            weight_empty_kg: n(col(row, 10)),
+            category_id:     cat?.id ?? null,
+            notiz:           col(row, 12) || null,
+          })
+          count++
+        } catch {}
+      }
+      if (count > 0) { alert(`${count} Gegenstände importiert.`); load(true) }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
   const renderItems = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         {canEdit && (
-          <button onClick={() => setItemModal({ open: true, item: null })} className="btn btn-primary">
-            <PlusIcon className="w-4 h-4" />
-            Neuer Gegenstand
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setItemModal({ open: true, item: null })} className="btn btn-primary">
+              <PlusIcon className="w-4 h-4" />
+              Neuer Gegenstand
+            </button>
+            <button onClick={exportItemsCSV} className="btn btn-ghost">
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              CSV
+            </button>
+            <label className="btn btn-ghost cursor-pointer">
+              <ArrowUpTrayIcon className="w-4 h-4" />
+              CSV
+              <input type="file" accept=".csv" onChange={importItemsCSV} className="hidden" />
+            </label>
+          </div>
         )}
         <input
           type="text"
