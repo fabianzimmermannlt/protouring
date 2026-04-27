@@ -1116,6 +1116,16 @@ function CarnetModal({ carnet, onSave, onClose }: {
                 <input className="form-input" value={form.vertreter_firma} onChange={e => s('vertreter_firma')(e.target.value)} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                {lbl('Kontaktperson Vorname')}
+                <input className="form-input" value={form.vertreter_kontaktperson_vorname} onChange={e => s('vertreter_kontaktperson_vorname')(e.target.value)} />
+              </div>
+              <div>
+                {lbl('Kontaktperson Name')}
+                <input className="form-input" value={form.vertreter_kontaktperson_name} onChange={e => s('vertreter_kontaktperson_name')(e.target.value)} />
+              </div>
+            </div>
             <div>
               {lbl('Adresse', true)}
               <input className={inp('vertreter_adresse', true)} value={form.vertreter_adresse} onChange={e => s('vertreter_adresse')(e.target.value)} placeholder="Straße und Hausnummer" />
@@ -1148,19 +1158,6 @@ function CarnetModal({ carnet, onSave, onClose }: {
               <div>
                 {lbl('E-Mail', true)}
                 <input type="email" className={inp('vertreter_email', true)} value={form.vertreter_email} onChange={e => s('vertreter_email')(e.target.value)} />
-              </div>
-            </div>
-            <div className="border-t border-gray-100 pt-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Kontaktperson</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  {lbl('Vorname')}
-                  <input className="form-input" value={form.vertreter_kontaktperson_vorname} onChange={e => s('vertreter_kontaktperson_vorname')(e.target.value)} />
-                </div>
-                <div>
-                  {lbl('Name')}
-                  <input className="form-input" value={form.vertreter_kontaktperson_name} onChange={e => s('vertreter_kontaktperson_name')(e.target.value)} />
-                </div>
               </div>
             </div>
           </>)}
