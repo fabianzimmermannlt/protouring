@@ -997,34 +997,32 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
   const renderMaterials = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {canEdit && (
-            <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
-              <PlusIcon className="w-4 h-4" />
-              Neues Material
+      {canEdit && (
+        <div className="flex justify-between items-center">
+          <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
+            <PlusIcon className="w-4 h-4" />
+            Neues Material
+          </button>
+          <div className="flex gap-3">
+            <button onClick={exportMaterialsCSV} className="btn btn-ghost">
+              <ArrowDownTrayIcon className="w-4 h-4" />
+              CSV
             </button>
-          )}
-          {canEdit && (
-            <>
-              <button onClick={exportMaterialsCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
-                <ArrowDownTrayIcon className="w-4 h-4" />
-              </button>
-              <label title="CSV Import" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer">
-                <ArrowUpTrayIcon className="w-4 h-4" />
-                <input type="file" accept=".csv" onChange={importMaterialsCSV} className="hidden" />
-              </label>
-            </>
-          )}
+            <label className="btn btn-ghost cursor-pointer">
+              <ArrowUpTrayIcon className="w-4 h-4" />
+              CSV
+              <input type="file" accept=".csv" onChange={importMaterialsCSV} className="hidden" />
+            </label>
+          </div>
         </div>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Material durchsuchen…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-      </div>
+      )}
+      <input
+        type="text"
+        className="search-input"
+        placeholder="Material durchsuchen…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
 
       {loading ? (
         <div className="data-table-wrapper">
