@@ -54,6 +54,17 @@ const ITEMS_COLUMNS = [
 
 type ItemSortKey = 'case_id' | 'name' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
 
+const CARNET_COLUMNS = [
+  { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true, alwaysVisible: true },
+  { id: 'status',           label: 'Status',           defaultVisible: true  },
+  { id: 'verwendungszweck', label: 'Verwendungszweck', defaultVisible: true  },
+  { id: 'zeitraum',         label: 'Zeitraum',         defaultVisible: true  },
+  { id: 'ziellaender',      label: 'Zielländer',       defaultVisible: true  },
+  { id: 'material',         label: 'Material',         defaultVisible: true  },
+]
+
+type CarnetSortKey = 'carnet_id' | 'status' | 'verwendungszweck' | 'startdatum' | 'ziellaender' | 'material_count'
+
 function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   if (!active) return <span className="ml-1 text-gray-300">↕</span>
   return <span className="ml-1 text-blue-500">{dir === 'asc' ? '↑' : '↓'}</span>
@@ -104,10 +115,12 @@ function CategoryModal({ cat, onSave, onClose }: {
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
         <div className="modal-footer">
-          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
-          <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
-            {saving ? 'Speichern…' : 'Speichern'}
-          </button>
+          <div className="ml-auto flex gap-2">
+            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">
+              {saving ? 'Speichern…' : 'Speichern'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1187,6 +1200,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [matSortKey, setMatSortKey] = useState<MatSortKey>('produkt')
   const [matSortDir, setMatSortDir] = useState<'asc' | 'desc'>('asc')
   const { isVisible: isMatVisible, toggle: toggleMatCol, columns: matColumns } = useColumnVisibility('equipment-materials', MATERIAL_COLUMNS)
+  const { isVisible: isCarnetVisible, toggle: toggleCarnetCol, columns: carnetColumns } = useColumnVisibility('equipment-carnets', CARNET_COLUMNS)
+  const [carnetSortKey, setCarnetSortKey] = useState<CarnetSortKey>('startdatum')
+  const [carnetSortDir, setCarnetSortDir] = useState<'asc' | 'desc'>('desc')
+  const toggleCarnetSort = (key: CarnetSortKey) => {
+    if (key === carnetSortKey) setCarnetSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setCarnetSortKey(key); setCarnetSortDir('asc') }
+  }
 
   const toggleMatSort = (key: MatSortKey) => {
     if (key === matSortKey) setMatSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -1628,49 +1648,74 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
+  const sortedCarnets = useMemo(() => {
+    const filtered = carnets.filter(c =>
+      !search || [c.carnet_id, c.verwendungszweck, c.ziellaender, c.inhaber_name]
+        .some(v => v?.toLowerCase().includes(search.toLowerCase()))
+    )
+    return [...filtered].sort((a, b) => {
+      let av: string | number = ''
+      let bv: string | number = ''
+      if (carnetSortKey === 'material_count') { av = a.material_count ?? 0; bv = b.material_count ?? 0 }
+      else { av = ((a as any)[carnetSortKey] ?? '').toString().toLowerCase(); bv = ((b as any)[carnetSortKey] ?? '').toString().toLowerCase() }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0
+      return carnetSortDir === 'asc' ? cmp : -cmp
+    })
+  }, [carnets, search, carnetSortKey, carnetSortDir])
+
   // ── Carnets ──────────────────────────────────────────────────────────────────
   const renderCarnets = () => (
     <div className="space-y-4">
-      {canEdit && (
-        <button onClick={() => setCarnetModal({ open: true, carnet: null })} className="btn btn-primary">
-          <PlusIcon className="w-4 h-4" />
-          Neues Carnet
-        </button>
-      )}
-      {carnets.length === 0 ? (
+      <div className="flex items-center gap-2">
+        {canEdit && (
+          <button onClick={() => setCarnetModal({ open: true, carnet: null })} className="btn btn-primary">
+            <PlusIcon className="w-4 h-4" />
+            Neues Carnet
+          </button>
+        )}
+      </div>
+      <input
+        className="search-input"
+        placeholder="Carnets durchsuchen…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
+      {sortedCarnets.length === 0 ? (
         <div className="text-center py-12">
           <DocumentTextIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Noch keine Carnets angelegt</p>
+          <p className="text-sm text-gray-500">{carnets.length === 0 ? 'Noch keine Carnets angelegt' : 'Keine Treffer'}</p>
         </div>
       ) : (
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Carnet-ID</th>
-                <th>Status</th>
-                <th>Verwendungszweck</th>
-                <th>Zeitraum</th>
-                <th>Zielländer</th>
-                <th className="text-right">Material</th>
-                {canEdit && <th style={{ width: 60 }} />}
+                {isCarnetVisible('carnet_id')        && <th className="sortable" onClick={() => toggleCarnetSort('carnet_id')}>Carnet-ID <SortIndicator active={carnetSortKey === 'carnet_id'} dir={carnetSortDir} /></th>}
+                {isCarnetVisible('status')           && <th className="sortable" onClick={() => toggleCarnetSort('status')}>Status <SortIndicator active={carnetSortKey === 'status'} dir={carnetSortDir} /></th>}
+                {isCarnetVisible('verwendungszweck') && <th className="sortable" onClick={() => toggleCarnetSort('verwendungszweck')}>Verwendungszweck <SortIndicator active={carnetSortKey === 'verwendungszweck'} dir={carnetSortDir} /></th>}
+                {isCarnetVisible('zeitraum')         && <th className="sortable" onClick={() => toggleCarnetSort('startdatum')}>Zeitraum <SortIndicator active={carnetSortKey === 'startdatum'} dir={carnetSortDir} /></th>}
+                {isCarnetVisible('ziellaender')      && <th className="sortable" onClick={() => toggleCarnetSort('ziellaender')}>Zielländer <SortIndicator active={carnetSortKey === 'ziellaender'} dir={carnetSortDir} /></th>}
+                {isCarnetVisible('material')         && <th className="sortable text-right" onClick={() => toggleCarnetSort('material_count')}>Material <SortIndicator active={carnetSortKey === 'material_count'} dir={carnetSortDir} /></th>}
+                <th style={{ width: 60 }}>
+                  <ColumnToggle columns={carnetColumns} isVisible={isCarnetVisible} toggle={toggleCarnetCol} />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {carnets.map(c => (
+              {sortedCarnets.map(c => (
                 <tr key={c.id} className="clickable" onClick={() => setCarnetModal({ open: true, carnet: c })}>
-                  <td><span className="font-mono text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{c.carnet_id}</span></td>
-                  <td><span className={`badge text-xs ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span></td>
-                  <td className="font-medium">{c.verwendungszweck || '—'}</td>
-                  <td className="text-gray-500 text-sm">
+                  {isCarnetVisible('carnet_id')        && <td><span className="font-mono text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">{c.carnet_id}</span></td>}
+                  {isCarnetVisible('status')           && <td><span className={`badge text-xs ${STATUS_COLORS[c.status]}`}>{STATUS_LABELS[c.status]}</span></td>}
+                  {isCarnetVisible('verwendungszweck') && <td className="font-medium">{c.verwendungszweck || '—'}</td>}
+                  {isCarnetVisible('zeitraum')         && <td className="text-gray-500 text-sm">
                     {c.startdatum && c.enddatum
                       ? `${new Date(c.startdatum).toLocaleDateString('de-DE')} – ${new Date(c.enddatum).toLocaleDateString('de-DE')}`
                       : '—'}
-                  </td>
-                  <td className="text-gray-500">{c.ziellaender || '—'}</td>
-                  <td className="text-right text-gray-500">{c.material_count ?? 0}</td>
-                  {canEdit && (
-                    <td>
+                  </td>}
+                  {isCarnetVisible('ziellaender')      && <td className="text-gray-500">{c.ziellaender || '—'}</td>}
+                  {isCarnetVisible('material')         && <td className="text-right text-gray-500">{c.material_count ?? 0}</td>}
+                  <td onClick={e => e.stopPropagation()}>
+                    {canEdit && (
                       <button onClick={async () => {
                         if (!confirm(`Carnet ${c.carnet_id} wirklich löschen?`)) return
                         await deleteCarnet(c.id)
@@ -1678,8 +1723,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       }} className="p-1 text-gray-400 hover:text-red-600">
                         <TrashIcon className="w-3.5 h-3.5" />
                       </button>
-                    </td>
-                  )}
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
