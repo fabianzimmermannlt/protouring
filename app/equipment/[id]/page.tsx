@@ -3,16 +3,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeftIcon, PlusIcon, TrashIcon, PencilIcon, XMarkIcon,
+  ArrowLeftIcon, PlusIcon, TrashIcon, XMarkIcon,
   ArchiveBoxIcon, WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
+import { Navigation } from '@/app/components/shared/Navigation'
+import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
+import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 import {
   getEquipmentItemDetail, getCaseContents, addToCaseContents, updateCaseContent, removeCaseContent,
-  getEquipmentMaterials, getMaterialUnits, updateEquipmentItem,
-  getEquipmentCategories,
-  isAuthenticated, canDo, getEffectiveRole,
+  getEquipmentMaterials, getMaterialUnits,
+  isAuthenticated, canDo, getEffectiveRole, getCurrentUser,
   type EquipmentItem, type EquipmentCaseContent, type EquipmentMaterial,
-  type EquipmentMaterialUnit, type EquipmentCategory,
+  type EquipmentMaterialUnit,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -53,7 +55,6 @@ function AddContentModal({ itemId, onDone, onClose }: {
     setErr('')
     if (mat.typ === 'serial') {
       const u = await getMaterialUnits(mat.id)
-      // Nur freie Einheiten anzeigen (nicht in einem anderen Case)
       setUnits(u.filter(u => !u.in_case_id))
     }
   }
@@ -205,10 +206,21 @@ export default function EquipmentItemDetailPage() {
   const [item, setItem] = useState<(EquipmentItem & { content_count: number; content_gewicht: number; content_wert: number }) | null>(null)
   const [contents, setContents] = useState<EquipmentCaseContent[]>([])
   const [loading, setLoading] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
 
   const role = getEffectiveRole()
   const canEdit = canDo(role, ['admin', 'agency', 'tourmanagement'])
+  const currentUser = getCurrentUser()
+  const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
+
+  const handleTabChange = useCallback((tabId: string) => {
+    let defaultSub = ''
+    if (tabId === 'settings') defaultSub = 'profil'
+    else if (tabId === 'contacts') defaultSub = 'overview'
+    else if (tabId === 'equipment') defaultSub = 'items'
+    window.location.href = defaultSub ? `/?tab=${tabId}&sub=${defaultSub}` : `/?tab=${tabId}`
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -225,8 +237,13 @@ export default function EquipmentItemDetailPage() {
 
   useEffect(() => {
     if (!isAuthenticated()) { router.replace('/login'); return }
+    setAuthChecked(true)
+  }, [router])
+
+  useEffect(() => {
+    if (!authChecked) return
     load()
-  }, [load, router])
+  }, [authChecked, load])
 
   const handleRemove = async (contentId: number) => {
     if (!confirm('Eintrag aus diesem Case entfernen?')) return
@@ -240,184 +257,167 @@ export default function EquipmentItemDetailPage() {
     load()
   }
 
-  if (loading || !item) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-400 text-sm">Lädt…</p>
-      </div>
-    )
-  }
+  const totalWeight = item ? (item.weight_empty_kg ?? 0) + (item.content_gewicht ?? 0) : 0
 
-  const totalWeight = (item.weight_empty_kg ?? 0) + (item.content_gewicht ?? 0)
-
-  // Inhalte gruppieren: erst nach Hersteller+Produkt, dann Seriennummern darunter
-  const grouped: { key: string; rows: EquipmentCaseContent[] }[] = []
-  for (const c of contents) {
-    const key = `${c.hersteller ?? ''}__${c.produkt}__${c.typ}`
-    const existing = grouped.find(g => g.key === key)
-    if (existing) existing.rows.push(c)
-    else grouped.push({ key, rows: [c] })
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-gray-900 text-white px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
+  const content = (
+    <div className="space-y-4 p-2">
+      {/* Breadcrumb / Titel */}
+      <div className="flex items-center gap-3">
         <button
-          onClick={() => router.push('/?tab=equipment&sub=items')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+          onClick={() => window.location.href = '/?tab=equipment&sub=items'}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           Gegenstände
         </button>
-        <span className="text-gray-600">|</span>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm font-semibold text-blue-400">{item.case_id}</span>
-          <span className="text-white font-semibold">{item.name}</span>
-        </div>
+        {item && (
+          <>
+            <span className="text-gray-300">/</span>
+            <span className="font-mono text-sm font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span>
+            <span className="font-semibold text-gray-900">{item.name}</span>
+            {item.typ && <span className="badge">{TYP_LABELS[item.typ] ?? item.typ}</span>}
+            {item.position && <span className="text-xs text-gray-400">{POSITION_LABELS[item.position] ?? item.position}</span>}
+          </>
+        )}
       </div>
 
-      {/* Sub-Info-Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-2 text-xs text-gray-500 flex flex-wrap gap-x-6 gap-y-1">
-        <span>{TYP_LABELS[item.typ] ?? item.typ}</span>
-        {item.position && <span>{POSITION_LABELS[item.position] ?? item.position}</span>}
-        {item.load_order && <span>Ladereihenfolge: {item.load_order}</span>}
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
-        {/* Info-Karte */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Maße (H×B×T)</p>
-              <p className="font-medium text-gray-900">
-                {item.height_cm || item.width_cm || item.depth_cm
-                  ? `${item.height_cm ?? '?'}×${item.width_cm ?? '?'}×${item.depth_cm ?? '?'} cm`
-                  : '—'}
-              </p>
+      {loading || !item ? (
+        <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Lädt…</div>
+      ) : (
+        <>
+          {/* Info-Karte */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Maße (H×B×T)</p>
+                <p className="font-medium text-gray-900">
+                  {item.height_cm || item.width_cm || item.depth_cm
+                    ? `${item.height_cm ?? '?'}×${item.width_cm ?? '?'}×${item.depth_cm ?? '?'} cm`
+                    : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Eigengewicht</p>
+                <p className="font-medium text-gray-900">{fmt(item.weight_empty_kg, ' kg')}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Gesamtgewicht</p>
+                <p className="font-semibold text-gray-900">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Inhalte</p>
+                <p className="font-medium text-gray-900">{item.content_count} {item.content_count === 1 ? 'Eintrag' : 'Einträge'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Gesamtwert</p>
+                <p className="font-semibold text-gray-900">
+                  {item.content_wert > 0
+                    ? `€ ${item.content_wert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '—'}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Eigengewicht</p>
-              <p className="font-medium text-gray-900">{fmt(item.weight_empty_kg, ' kg')}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Gesamtgewicht</p>
-              <p className="font-semibold text-gray-900">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Inhalte</p>
-              <p className="font-medium text-gray-900">{item.content_count} {item.content_count === 1 ? 'Eintrag' : 'Einträge'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Gesamtwert</p>
-              <p className="font-semibold text-gray-900">
-                {item.content_wert > 0
-                  ? `€ ${item.content_wert.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : '—'}
-              </p>
-            </div>
-          </div>
-          {item.notiz && (
-            <p className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-500">{item.notiz}</p>
-          )}
-        </div>
-
-        {/* Inhalte */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
-              <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
-              Inhalt
-            </h2>
-            {canEdit && (
-              <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-                <PlusIcon className="w-4 h-4" />
-                Hinzufügen
-              </button>
+            {item.notiz && (
+              <p className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-500">{item.notiz}</p>
             )}
           </div>
 
-          {contents.length === 0 ? (
-            <div className="bg-white rounded-lg border border-dashed border-gray-300 py-16 text-center">
-              <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-              <p className="text-sm text-gray-400">Noch kein Material in diesem Case</p>
+          {/* Inhalte */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <ArchiveBoxIcon className="w-4 h-4 text-gray-400" />
+                Inhalt
+              </h2>
               {canEdit && (
-                <button onClick={() => setShowAddModal(true)} className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
-                  + Material hinzufügen
+                <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+                  <PlusIcon className="w-4 h-4" />
+                  Hinzufügen
                 </button>
               )}
             </div>
-          ) : (
-            <div className="data-table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Hersteller</th>
-                    <th>Produkt</th>
-                    <th>Info</th>
-                    <th>Seriennummer</th>
-                    <th className="text-right">Anzahl</th>
-                    <th>Land</th>
-                    <th className="text-right">Wert</th>
-                    <th className="text-right">Gewicht</th>
-                    {canEdit && <th style={{ width: 40 }} />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {contents.map(c => {
-                    const gewicht = c.gewicht_kg != null ? c.gewicht_kg * (c.typ === 'bulk' ? c.anzahl : 1) : null
-                    const wert = c.wert_zeitwert != null ? c.wert_zeitwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
-                    return (
-                      <tr key={c.id}>
-                        <td className="text-gray-500">{c.hersteller || '—'}</td>
-                        <td className="font-medium">{c.produkt}</td>
-                        <td className="text-gray-500 text-xs">{c.info || '—'}</td>
-                        <td>
-                          {c.seriennummer
-                            ? <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.seriennummer}</span>
-                            : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="text-right">
-                          {c.typ === 'bulk' ? (
-                            canEdit ? (
-                              <input
-                                type="number"
-                                className="form-input text-right w-16 ml-auto"
-                                value={c.anzahl}
-                                min={1}
-                                onChange={e => handleAnzahlChange(c.id, parseInt(e.target.value) || 1)}
-                              />
-                            ) : c.anzahl
-                          ) : (
-                            <span className="text-gray-400">1</span>
-                          )}
-                        </td>
-                        <td className="text-xs">{c.herstellungsland || '—'}</td>
-                        <td className="text-right text-xs">
-                          {wert != null ? `${wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${c.waehrung}` : '—'}
-                        </td>
-                        <td className="text-right text-xs">
-                          {gewicht != null ? `${gewicht.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}
-                        </td>
-                        {canEdit && (
-                          <td>
-                            <button onClick={() => handleRemove(c.id)} className="p-1 text-gray-300 hover:text-red-500">
-                              <TrashIcon className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {showAddModal && (
+            {contents.length === 0 ? (
+              <div className="bg-white rounded-lg border border-dashed border-gray-300 py-16 text-center">
+                <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">Noch kein Material in diesem Case</p>
+                {canEdit && (
+                  <button onClick={() => setShowAddModal(true)} className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    + Material hinzufügen
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="data-table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Hersteller</th>
+                      <th>Produkt</th>
+                      <th>Info</th>
+                      <th>Seriennummer</th>
+                      <th className="text-right">Anzahl</th>
+                      <th>Land</th>
+                      <th className="text-right">Wert</th>
+                      <th className="text-right">Gewicht</th>
+                      {canEdit && <th style={{ width: 40 }} />}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contents.map(c => {
+                      const gewicht = c.gewicht_kg != null ? c.gewicht_kg * (c.typ === 'bulk' ? c.anzahl : 1) : null
+                      const wert = c.wert_zeitwert != null ? c.wert_zeitwert * (c.typ === 'bulk' ? c.anzahl : 1) : null
+                      return (
+                        <tr key={c.id}>
+                          <td className="text-gray-500">{c.hersteller || '—'}</td>
+                          <td className="font-medium">{c.produkt}</td>
+                          <td className="text-gray-500 text-xs">{c.info || '—'}</td>
+                          <td>
+                            {c.seriennummer
+                              ? <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.seriennummer}</span>
+                              : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="text-right">
+                            {c.typ === 'bulk' ? (
+                              canEdit ? (
+                                <input
+                                  type="number"
+                                  className="form-input text-right w-16 ml-auto"
+                                  value={c.anzahl}
+                                  min={1}
+                                  onChange={e => handleAnzahlChange(c.id, parseInt(e.target.value) || 1)}
+                                />
+                              ) : c.anzahl
+                            ) : (
+                              <span className="text-gray-400">1</span>
+                            )}
+                          </td>
+                          <td className="text-xs">{c.herstellungsland || '—'}</td>
+                          <td className="text-right text-xs">
+                            {wert != null ? `${wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${c.waehrung}` : '—'}
+                          </td>
+                          <td className="text-right text-xs">
+                            {gewicht != null ? `${gewicht.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}
+                          </td>
+                          {canEdit && (
+                            <td>
+                              <button onClick={() => handleRemove(c.id)} className="p-1 text-gray-300 hover:text-red-500">
+                                <TrashIcon className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {showAddModal && item && (
         <AddContentModal
           itemId={itemId}
           onDone={load}
@@ -425,5 +425,46 @@ export default function EquipmentItemDetailPage() {
         />
       )}
     </div>
+  )
+
+  return (
+    <>
+      {/* ── MOBILE ── */}
+      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: 'calc(100dvh - var(--pt-preview-height, 0px))' }}>
+        <Navigation
+          activeTab="equipment"
+          onTabChange={handleTabChange}
+          showMobileNavigation={true}
+        />
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-2 py-2">
+            {content}
+          </div>
+        </div>
+        <FeedbackButton />
+        <MobileBottomNav
+          activeTab="equipment"
+          onTabChange={handleTabChange}
+          isSuperadmin={isSuperadmin}
+        />
+      </div>
+
+      {/* ── DESKTOP ── */}
+      <main className="hidden md:block min-h-screen bg-gray-100">
+        <Navigation
+          activeTab="equipment"
+          onTabChange={handleTabChange}
+          showMobileNavigation={false}
+        />
+        <FeedbackButton />
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-lg shadow-lg p-4">
+            <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
+              {content}
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
   )
 }
