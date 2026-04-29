@@ -98,8 +98,8 @@ async function generateEquipmentLabel(opts) {
     // Header links: Logo oder Artist-Name
     if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
       try {
-        // Ca. 2/3 der Labelbreite, Seitenverhältnis erhalten
-        const maxLogoW = Math.round(W * 2 / 3); // ~280pt ≈ 10cm
+        // Ca. 2/3 der Labelbreite minus 1cm, Seitenverhältnis erhalten
+        const maxLogoW = Math.round(W * 2 / 3 - 28.35); // ~252pt ≈ 9cm
         doc.image(logoPath, M, 6, { fit: [maxLogoW, HEADER_H - 12] });
       } catch {
         doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold')
@@ -112,9 +112,14 @@ async function generateEquipmentLabel(opts) {
 
     // Header rechts: Tour-Name
     if (tourName) {
-      doc.fillColor('#ffffff').fontSize(11).font('Helvetica')
-        .text(tourName, W - M - 180, headerTextY + 1,
-          { width: 180, align: 'right', lineBreak: false, ellipsis: true });
+      // Tour-Name: 2-zeilig, rechts ausgerichtet, vertikal zentriert im Header
+      const tourFontSize = 14;
+      const tourLineH    = tourFontSize * 1.3;
+      const tourLines    = Math.ceil(tourName.length / 18); // Schätzung Zeilenanzahl
+      const tourY        = (HEADER_H - Math.min(tourLines, 2) * tourLineH) / 2;
+      doc.fillColor('#ffffff').fontSize(tourFontSize).font('Helvetica-Bold')
+        .text(tourName, W - M - 160, Math.max(tourY, 4),
+          { width: 160, align: 'right', lineBreak: true, ellipsis: false });
     }
 
     // ── INHALT-SECTION ─────────────────────────────────────────────────────
