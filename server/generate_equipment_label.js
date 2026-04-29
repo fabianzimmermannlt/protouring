@@ -26,7 +26,7 @@ const fs = require('fs');
 // A6 landscape: width=419.53, height=297.64
 const W = 419.53;
 const H = 297.64;
-const M = 14; // margin
+const M = 7; // margin
 
 const HEADER_H  = 68;
 const CONTENT_Y = HEADER_H + 10;   // 78
@@ -98,9 +98,9 @@ async function generateEquipmentLabel(opts) {
     // Header links: Logo oder Artist-Name
     if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
       try {
-        // Max 4cm Breite (113pt) im Header
-        const maxLogoW = Math.round(4 * 28.35);
-        doc.image(logoPath, M, 6, { height: HEADER_H - 12, fit: [maxLogoW, HEADER_H - 12] });
+        // Max 4cm Breite (113pt) × Header-Höhe, Seitenverhältnis erhalten
+        const maxLogoW = Math.round(4 * 28.35); // ~113pt
+        doc.image(logoPath, M, 6, { fit: [maxLogoW, HEADER_H - 12] });
       } catch {
         doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold')
           .text(artistName || '', M, headerTextY, { width: 210, lineBreak: false, ellipsis: true });
