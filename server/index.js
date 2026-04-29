@@ -6912,7 +6912,8 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
     const gesamtgewicht = (item.weight_empty_kg ?? 0) + (weightRow?.content_gewicht ?? 0);
 
     // Compute Gruppe info (all items in same gruppe_name, sorted by load_order)
-    let gruppeInfo = null;
+    let gruppeName = null;
+    let gruppeXY   = null;
     if (item.gruppe_name) {
       const gruppe = await db.all(
         `SELECT id FROM equipment_items WHERE tenant_id=? AND gruppe_name=? ORDER BY load_order ASC NULLS LAST, case_id ASC`,
@@ -6920,7 +6921,8 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
       );
       const idx = gruppe.findIndex(r => r.id === item.id);
       if (idx >= 0) {
-        gruppeInfo = `${item.gruppe_name} ${idx + 1}/${gruppe.length}`;
+        gruppeName = item.gruppe_name;
+        gruppeXY   = `${idx + 1}/${gruppe.length}`;
       }
     }
 
@@ -6935,7 +6937,8 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
       loadOrder: item.load_order ?? null,
       position: item.position ?? null,
       positionCustom: item.position_custom ?? null,
-      gruppeInfo,
+      gruppeName,
+      gruppeXY,
       gesamtgewicht: gesamtgewicht > 0 ? gesamtgewicht : null,
     });
 
