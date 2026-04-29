@@ -503,6 +503,7 @@ export interface EquipmentItem {
   weight_empty_kg: number | null;
   label_color: string | null;
   standort_status: string | null;
+  gruppe_name: string | null;
   notiz: string | null;
   material_count?: number;
   material_wert?: number;

@@ -90,6 +90,7 @@ type MatSortKey = 'bezeichnung' | 'marke' | 'modell' | 'category_name' | 'typ' |
 const ITEMS_COLUMNS = [
   { id: 'case_id',      label: 'Case ID',         defaultVisible: true  },
   { id: 'name',         label: 'Bezeichnung',     defaultVisible: true,  alwaysVisible: true },
+  { id: 'gruppe',       label: 'Gruppe',          defaultVisible: true  },
   { id: 'typ',          label: 'Typ',             defaultVisible: true  },
   { id: 'position',     label: 'Position',        defaultVisible: true  },
   { id: 'status',       label: 'Status',          defaultVisible: true  },
@@ -205,6 +206,7 @@ function ItemModal({ item, onSave, onClose }: {
     weight_empty_kg: item?.weight_empty_kg != null ? String(item.weight_empty_kg) : '',
     label_color:   item?.label_color ?? '',
     standort_status: item?.standort_status ?? '',
+    gruppe_name:   item?.gruppe_name ?? '',
     notiz:         item?.notiz ?? '',
   })
   const [saving, setSaving] = useState(false)
@@ -232,6 +234,7 @@ function ItemModal({ item, onSave, onClose }: {
         weight_empty_kg: n(form.weight_empty_kg),
         label_color:     form.label_color || null,
         standort_status: form.standort_status || null,
+        gruppe_name:     form.gruppe_name.trim() || null,
         notiz:           form.notiz || null,
       })
       onClose()
@@ -369,6 +372,14 @@ function ItemModal({ item, onSave, onClose }: {
                 <option value="vermisst">Vermisst</option>
               </select>
             </div>
+          </div>
+
+          {/* Gruppe */}
+          <div>
+            <label className="form-label">Gruppe <span className="text-gray-400 font-normal">(z.B. „PA-Cases" → wird zu „PA-Cases 1/3")</span></label>
+            <input className="form-input" value={form.gruppe_name}
+              onChange={e => setForm({...form, gruppe_name: e.target.value})}
+              placeholder="z.B. PA-Cases" />
           </div>
 
           {/* Notiz */}
@@ -1583,6 +1594,32 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     })
   }, [items, search, itemSortKey, itemSortDir])
 
+  // Gruppeninfo: für jede gruppe_name → sortierte item-IDs → Position ermittelbar
+  const gruppenMap = useMemo(() => {
+    const map = new Map<string, number[]>() // gruppe_name → [item.id, ...] sortiert nach load_order, case_id
+    items.filter(i => i.gruppe_name).forEach(i => {
+      const g = i.gruppe_name!
+      if (!map.has(g)) map.set(g, [])
+      map.get(g)!.push(i.id)
+    })
+    // Innerhalb jeder Gruppe nach load_order, dann case_id sortieren
+    map.forEach((ids, g) => {
+      const sorted = ids
+        .map(id => items.find(i => i.id === id)!)
+        .sort((a, b) => (a.load_order ?? 9999) - (b.load_order ?? 9999) || a.case_id.localeCompare(b.case_id))
+      map.set(g, sorted.map(i => i.id))
+    })
+    return map
+  }, [items])
+
+  const getGruppeInfo = (item: EquipmentItem): string | null => {
+    if (!item.gruppe_name) return null
+    const ids = gruppenMap.get(item.gruppe_name)
+    if (!ids) return null
+    const pos = ids.indexOf(item.id) + 1
+    return `${item.gruppe_name} ${pos}/${ids.length}`
+  }
+
 
   const ITEM_CSV_HEADERS = [
     'Case-ID', 'Bezeichnung', 'Typ', 'Typ_Eigene', 'Position', 'Position_Eigene',
@@ -1701,6 +1738,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               <tr>
                 {isVisible('case_id')   && <th className="sortable" onClick={() => toggleItemSort('case_id')}>Case ID <SortIndicator active={itemSortKey === 'case_id'} dir={itemSortDir} /></th>}
                 {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('bezeichnung')}>Bezeichnung <SortIndicator active={itemSortKey === 'bezeichnung'} dir={itemSortDir} /></th>}
+                {isVisible('gruppe')    && <th>Gruppe</th>}
                 {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
                 {isVisible('status')    && <th>Status</th>}
@@ -1723,6 +1761,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                     <tr key={item.id} className="clickable" onClick={() => setExpandedItemId(isExpanded ? null : item.id)}>
                       {isVisible('case_id')   && <td><span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{item.case_id}</span></td>}
                       {isVisible('name')      && <td className="font-medium">{item.bezeichnung}</td>}
+                      {isVisible('gruppe')    && <td>{(() => { const g = getGruppeInfo(item); return g ? <span className="badge badge-blue">{g}</span> : '—' })()}</td>}
                       {isVisible('typ')       && <td><span className="badge">{item.typ === 'sonstiges' ? (item.typ_custom || 'Sonstiges') : (TYP_LABELS[item.typ] ?? item.typ)}</span></td>}
                       {isVisible('position')  && <td className="text-xs text-gray-600">{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
                       {isVisible('status')    && <td>{item.standort_status
