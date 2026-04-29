@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon, PrinterIcon, PhotoIcon, SwatchIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { parseCSV, col } from '@/lib/csvParser'
@@ -21,7 +21,7 @@ import {
   canDo, getEffectiveRole,
   type EquipmentSettings, type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
   type EquipmentCaseContent, type Carnet, type CarnetMaterial, type EquipmentOwner,
-  type LabelTemplate, DEFAULT_LABEL_TEMPLATE,
+  type LabelTemplate, type LabelElement, type LabelElementType, DEFAULT_ELEMENTS,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -1164,180 +1164,201 @@ function EigentuemerModal({ owner, onSave, onClose }: {
   )
 }
 
-// ── Label-Vorlage: SVG-Vorschau ───────────────────────────────────────────────
+// ── Label-Vorlage: Drag & Drop Editor ────────────────────────────────────────
 
 const LBL_W = 419.53
 const LBL_H = 297.64
-const LBL_M = 7
 
-function LabelPreview({ tpl }: { tpl: LabelTemplate }) {
-  const HEADER_H  = tpl.headerH
-  const CONTENT_Y = HEADER_H + 10
-  const LOWER_Y   = CONTENT_Y + 58
-  const qrSize    = LBL_H - LOWER_Y - LBL_M
-  const qrX       = tpl.showQrCode ? LBL_W - LBL_M - qrSize : LBL_W - LBL_M
-  const leftColW  = tpl.showLoadOrder ? 148 : 0
-  const midX      = LBL_M + leftColW + (leftColW > 0 ? 6 : 0)
-  const midW      = qrX - midX - 8
-  const gfs       = tpl.gruppeFontSize
-
-  // Sample data
-  const artistName = 'BETONTOD'
-  const tourText   = 'TOUR 2026'
-  const caseId     = 'BTD-D1'
-  const bezeichnung = 'Drumriser'
-  const loadStr    = '01'
-  const gruppeName = 'DRU'
-  const gruppeXY   = '1/3'
-  const posAbbr    = 'FOH'
-
-  const bezMax  = tpl.bezeichnungMaxFontSize
-  const bezSize = bezeichnung.length > 28 ? Math.round(bezMax * 0.77)
-    : bezeichnung.length > 20 ? Math.round(bezMax * 0.86)
-    : bezMax
-
-  const numFontSize = tpl.loadOrderFontSize
-  const numY        = Math.max(LBL_H - numFontSize * 1.2, LOWER_Y + 12)
-
-  const tourFontSize = tpl.tourNameFontSize
-  const tourLineH    = tourFontSize * 1.25
-  const tourBlockH   = tourLineH
-  const tourY        = Math.max((HEADER_H - tourBlockH) / 2, 4)
-
-  const artistY = (HEADER_H - 14) / 2
-
-  // Middle column items
-  const midItems: Array<{ key: string; y: number; text: string; fs: number; bold: boolean }> = []
-  let midY = LOWER_Y
-  if (tpl.showGruppe) {
-    midItems.push({ key: 'g-lbl', y: midY + 7, text: 'Gruppe', fs: 7, bold: false })
-    midY += 12
-    midItems.push({ key: 'g-val', y: midY + gfs * 0.78, text: gruppeName, fs: gfs, bold: true })
-    midY += Math.round(gfs * 1.2)
-    midItems.push({ key: 'g-xy', y: midY + gfs * 0.78, text: gruppeXY, fs: gfs, bold: true })
-    midY += Math.round(gfs * 1.2)
-    midY += 6
-  }
-  if (tpl.showPosition) {
-    midItems.push({ key: 'p-lbl', y: midY + 7, text: 'Standort', fs: 7, bold: false })
-    midY += 12
-    midItems.push({ key: 'p-val', y: midY + gfs * 0.78, text: posAbbr, fs: gfs, bold: true })
-  }
-
-  return (
-    <svg
-      viewBox={`0 0 ${LBL_W} ${LBL_H}`}
-      style={{ width: '100%', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}
-    >
-      {/* Header */}
-      <rect x="0" y="0" width={LBL_W} height={HEADER_H} fill="#111111" />
-
-      {/* Artist name */}
-      <text x={LBL_M} y={artistY + 11} fill="white" fontSize={14}
-        fontWeight="bold" fontFamily="Arial, sans-serif">
-        {artistName}
-      </text>
-
-      {/* Tour name */}
-      <text x={LBL_W - LBL_M - 90} y={tourY + tourFontSize * 0.8}
-        fill="white" fontSize={tourFontSize} fontWeight="bold"
-        fontFamily="Arial, sans-serif" textAnchor="middle">
-        {tourText}
-      </text>
-
-      {/* INHALT label */}
-      <text x={LBL_M} y={CONTENT_Y + 9} fill="#111" fontSize={7} fontFamily="Arial, sans-serif">INHALT:</text>
-
-      {/* Case ID */}
-      {tpl.showCaseId && (
-        <text x={LBL_W - LBL_M} y={CONTENT_Y + 9} fill="#111" fontSize={8}
-          fontWeight="bold" fontFamily="Arial, sans-serif" textAnchor="end">{caseId}</text>
-      )}
-
-      {/* Bezeichnung */}
-      {tpl.showBezeichnung && (
-        <text x={LBL_M} y={CONTENT_Y + 14 + bezSize * 0.82} fill="#111"
-          fontSize={bezSize} fontWeight="bold" fontFamily="Arial, sans-serif">{bezeichnung}</text>
-      )}
-
-      {/* Separator */}
-      <line x1={LBL_M} y1={LOWER_Y - 5} x2={LBL_W - LBL_M} y2={LOWER_Y - 5}
-        stroke="#111" strokeWidth="0.5" />
-
-      {/* QR placeholder */}
-      {tpl.showQrCode && (() => {
-        const cells = 8
-        const cs    = qrSize / cells
-        const rects = []
-        const pattern = [
-          [1,1,1,0,1,1,1,1],[1,0,1,1,0,1,0,1],[1,1,0,1,1,0,1,0],
-          [0,1,1,0,1,1,0,1],[1,0,1,1,0,0,1,1],[1,1,0,0,1,1,0,0],
-          [0,1,1,1,0,1,1,0],[1,0,0,1,1,0,1,1],
-        ]
-        for (let r = 0; r < cells; r++) {
-          for (let c = 0; c < cells; c++) {
-            if (pattern[r][c]) {
-              rects.push(
-                <rect key={`qr-${r}-${c}`} x={qrX + c * cs + 0.3} y={LOWER_Y + r * cs + 0.3}
-                  width={cs - 0.6} height={cs - 0.6} fill="#111" />
-              )
-            }
-          }
-        }
-        return <>{rects}</>
-      })()}
-
-      {/* Load order */}
-      {tpl.showLoadOrder && (
-        <>
-          <text x={LBL_M} y={LOWER_Y + 9} fill="#111" fontSize={7} fontFamily="Arial, sans-serif">
-            Ladereihenfolge
-          </text>
-          <text x={LBL_M} y={numY + numFontSize * 0.82} fill="#111"
-            fontSize={numFontSize} fontWeight="bold" fontFamily="Arial, sans-serif">
-            {loadStr}
-          </text>
-        </>
-      )}
-
-      {/* Middle column */}
-      {midItems.map(item => (
-        <text key={item.key} x={midX} y={item.y} fill="#111"
-          fontSize={item.fs} fontWeight={item.bold ? 'bold' : 'normal'}
-          fontFamily="Arial, sans-serif">
-          {item.text}
-        </text>
-      ))}
-    </svg>
-  )
+const ELEMENT_LABELS: Record<LabelElementType, string> = {
+  header_bg:   'Header-Hintergrund',
+  separator:   'Trennlinie',
+  artist:      'Artist / Logo',
+  tour_name:   'Tourname',
+  case_id:     'Case-ID',
+  bezeichnung: 'Bezeichnung',
+  load_order:  'Ladereihenfolge-Zahl',
+  gruppe:      'Gruppe (DRU / 1/3)',
+  position:    'Standort / Position',
+  qr_code:     'QR-Code',
+  gewicht:     'Gesamtgewicht',
+  typ:         'Typ (Case / Dolly)',
 }
 
-// ── Label-Vorlage Modal ───────────────────────────────────────────────────────
+const SAMPLE: Record<string, string> = {
+  artist: 'BETONTOD', tour1: 'TOUR', tour2: '2026',
+  case_id: 'BTD-D1', bezeichnung: 'Drumriser',
+  load_order: '01', gruppe: 'DRU', gruppe_xy: '1/3',
+  position: 'FOH', gewicht: '42 kg', typ: 'Case',
+}
+
+const QR_PATTERN = [
+  [1,1,1,0,1,1,1,1],[1,0,1,1,0,1,0,1],[1,1,0,1,1,0,1,0],[0,1,1,0,1,1,0,1],
+  [1,0,1,1,0,0,1,1],[1,1,0,0,1,1,0,0],[0,1,1,1,0,1,1,0],[1,0,0,1,1,0,1,1],
+]
+
+function renderSVGElement(el: LabelElement): React.ReactNode {
+  const { x, y, w, h, fontSize, align, color } = el
+  const tx = align === 'center' ? x + w / 2 : align === 'right' ? x + w : x
+  const ta = align === 'center' ? 'middle' : align === 'right' ? 'end' : 'start'
+  const ff = 'Arial, sans-serif'
+
+  switch (el.type) {
+    case 'header_bg':
+      return <rect x={x} y={y} width={w} height={h} fill={el.bgColor || color} />
+
+    case 'separator':
+      return <line x1={x} y1={y} x2={x + w} y2={y} stroke={color} strokeWidth={Math.max(h, 0.5)} />
+
+    case 'artist':
+      return <text x={x + 2} y={y + h / 2 + fontSize * 0.36} fill={color}
+        fontSize={fontSize} fontWeight="bold" fontFamily={ff} dominantBaseline="middle">{SAMPLE.artist}</text>
+
+    case 'tour_name': {
+      const lh = fontSize * 1.25
+      const by = y + (h - 2 * lh) / 2
+      return <g>
+        <text x={tx} y={by + fontSize * 0.82} fill={color} fontSize={fontSize} fontWeight="bold" fontFamily={ff} textAnchor={ta}>{SAMPLE.tour1}</text>
+        <text x={tx} y={by + lh + fontSize * 0.82} fill={color} fontSize={fontSize} fontWeight="bold" fontFamily={ff} textAnchor={ta}>{SAMPLE.tour2}</text>
+      </g>
+    }
+
+    case 'case_id':
+      return <g>
+        <text x={x} y={y + 7} fill={color} fontSize={7} fontFamily={ff}>INHALT:</text>
+        <text x={x + w} y={y + 7} fill={color} fontSize={fontSize} fontWeight="bold" fontFamily={ff} textAnchor="end">{SAMPLE.case_id}</text>
+      </g>
+
+    case 'bezeichnung':
+      return <text x={x} y={y + Math.min(fontSize, h) * 0.85} fill={color}
+        fontSize={Math.min(fontSize, h)} fontWeight="bold" fontFamily={ff}>{SAMPLE.bezeichnung}</text>
+
+    case 'load_order': {
+      const numH = fontSize * 1.2
+      const numY = y + h - numH + fontSize * 0.85
+      return <g>
+        <text x={x} y={y + 7} fill={color} fontSize={7} fontFamily={ff}>Ladereihenfolge</text>
+        <text x={x} y={numY} fill={color} fontSize={Math.min(fontSize, h - 12)} fontWeight="bold" fontFamily={ff}>{SAMPLE.load_order}</text>
+      </g>
+    }
+
+    case 'gruppe':
+      return <g>
+        <text x={x} y={y + 7} fill={color} fontSize={7} fontFamily={ff}>Gruppe</text>
+        <text x={x} y={y + 12 + fontSize * 0.85} fill={color} fontSize={fontSize} fontWeight="bold" fontFamily={ff}>{SAMPLE.gruppe}</text>
+        <text x={x} y={y + 12 + fontSize * 0.85 + fontSize * 1.2} fill={color} fontSize={fontSize} fontWeight="bold" fontFamily={ff}>{SAMPLE.gruppe_xy}</text>
+      </g>
+
+    case 'position':
+      return <g>
+        <text x={x} y={y + 7} fill={color} fontSize={7} fontFamily={ff}>Standort</text>
+        <text x={x} y={y + 12 + fontSize * 0.85} fill={color} fontSize={fontSize} fontWeight="bold" fontFamily={ff}>{SAMPLE.position}</text>
+      </g>
+
+    case 'qr_code': {
+      const s = Math.min(w, h)
+      const cs = s / 8
+      return <g>
+        {QR_PATTERN.flatMap((row, r) => row.map((v, c) =>
+          v ? <rect key={`${r}-${c}`} x={x + c * cs + 0.2} y={y + r * cs + 0.2}
+            width={cs - 0.4} height={cs - 0.4} fill={color} /> : null
+        ))}
+      </g>
+    }
+
+    case 'gewicht':
+      return <text x={x} y={y + fontSize * 0.85} fill={color} fontSize={fontSize} fontFamily={ff}>Gewicht: {SAMPLE.gewicht}</text>
+
+    case 'typ':
+      return <text x={x} y={y + fontSize * 0.85} fill={color} fontSize={fontSize} fontFamily={ff}>{SAMPLE.typ}</text>
+
+    default:
+      return null
+  }
+}
+
+const HANDLE_CURSORS: Record<string, string> = {
+  nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize',
+  w: 'w-resize', e: 'e-resize',
+  sw: 'sw-resize', s: 's-resize', se: 'se-resize',
+}
 
 function LabelTemplateModal({ onClose }: { onClose: () => void }) {
-  const [tpl, setTpl] = useState<LabelTemplate>(DEFAULT_LABEL_TEMPLATE)
+  const [elements, setElements] = useState<LabelElement[]>(DEFAULT_ELEMENTS)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const interaction = useRef<null | {
+    type: 'drag' | 'resize'
+    id: string; handle: string
+    startX: number; startY: number
+    origX: number; origY: number; origW: number; origH: number
+  }>(null)
 
   useEffect(() => {
     getLabelTemplate()
-      .then(t => setTpl(t))
+      .then(t => { if (t?.elements?.length) setElements(t.elements) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  const toggle = (key: keyof LabelTemplate) => setTpl(prev => ({ ...prev, [key]: !prev[key] }))
-  const slider = (key: keyof LabelTemplate, val: number) => setTpl(prev => ({ ...prev, [key]: val }))
+  const toSVG = useCallback((e: React.MouseEvent) => {
+    const r = svgRef.current!.getBoundingClientRect()
+    return { x: (e.clientX - r.left) * LBL_W / r.width, y: (e.clientY - r.top) * LBL_H / r.height }
+  }, [])
+
+  const onElemDown = useCallback((id: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    e.preventDefault(); e.stopPropagation()
+    const { x, y } = toSVG(e)
+    const el = elements.find(el => el.id === id)!
+    interaction.current = { type: 'drag', id, handle: '', startX: x, startY: y, origX: el.x, origY: el.y, origW: el.w, origH: el.h }
+    setSelectedId(id)
+  }, [elements, toSVG])
+
+  const onHandleDown = useCallback((id: string, handle: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    e.preventDefault(); e.stopPropagation()
+    const { x, y } = toSVG(e)
+    const el = elements.find(el => el.id === id)!
+    interaction.current = { type: 'resize', id, handle, startX: x, startY: y, origX: el.x, origY: el.y, origW: el.w, origH: el.h }
+  }, [elements, toSVG])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!interaction.current) return
+    const { x, y } = toSVG(e)
+    const { type, id, handle, startX, startY, origX, origY, origW, origH } = interaction.current
+    const dx = x - startX, dy = y - startY
+    setElements(prev => prev.map(el => {
+      if (el.id !== id) return el
+      if (type === 'drag') return {
+        ...el,
+        x: Math.round(Math.max(0, Math.min(LBL_W - 20, origX + dx))),
+        y: Math.round(Math.max(0, Math.min(LBL_H - 5,  origY + dy))),
+      }
+      // resize
+      let nx = origX, ny = origY, nw = origW, nh = origH
+      if (handle.includes('e')) nw = Math.max(20, origW + dx)
+      if (handle.includes('s')) nh = Math.max(5,  origH + dy)
+      if (handle.includes('w')) { nx = origX + dx; nw = Math.max(20, origW - dx) }
+      if (handle.includes('n')) { ny = origY + dy; nh = Math.max(5,  origH - dy) }
+      return { ...el, x: Math.round(nx), y: Math.round(ny), w: Math.round(nw), h: Math.round(nh) }
+    }))
+  }, [toSVG])
+
+  const onMouseUp = useCallback(() => { interaction.current = null }, [])
+
+  const updateEl = useCallback((id: string, updates: Partial<LabelElement>) =>
+    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el)), [])
+
+  const selectedEl = elements.find(el => el.id === selectedId) ?? null
+  const isTextEl = selectedEl && !['header_bg', 'separator', 'qr_code'].includes(selectedEl.type)
 
   const handleSave = async () => {
     setSaving(true)
-    try {
-      await saveLabelTemplate(tpl)
-      onClose()
-    } catch { setSaving(false) }
+    try { await saveLabelTemplate({ elements }); onClose() }
+    catch { setSaving(false) }
   }
-
-  const handleReset = () => setTpl(DEFAULT_LABEL_TEMPLATE)
 
   if (loading) return (
     <div className="modal-overlay">
@@ -1347,88 +1368,196 @@ function LabelTemplateModal({ onClose }: { onClose: () => void }) {
     </div>
   )
 
-  const ToggleRow = ({ label, field }: { label: string; field: keyof LabelTemplate }) => (
-    <label className="flex items-center justify-between gap-3 py-1.5 cursor-pointer">
-      <span className="text-sm text-gray-700">{label}</span>
-      <div
-        onClick={() => toggle(field)}
-        className={`relative w-10 h-5 rounded-full transition-colors ${tpl[field] ? 'bg-blue-600' : 'bg-gray-300'}`}
-      >
-        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${tpl[field] ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </div>
-    </label>
-  )
-
-  const SliderRow = ({ label, field, min, max, step }: {
-    label: string; field: keyof LabelTemplate; min: number; max: number; step: number
-  }) => (
-    <div className="py-1.5">
-      <div className="flex justify-between mb-1">
-        <span className="text-sm text-gray-700">{label}</span>
-        <span className="text-sm font-mono text-gray-500">{tpl[field] as number}</span>
-      </div>
-      <input type="range" min={min} max={max} step={step}
-        value={tpl[field] as number}
-        onChange={e => slider(field, Number(e.target.value))}
-        className="w-full h-1.5 rounded accent-blue-600" />
-    </div>
-  )
+  const renderHandles = (el: LabelElement) => {
+    const handles = [
+      { id: 'nw', cx: el.x,          cy: el.y },
+      { id: 'n',  cx: el.x + el.w/2, cy: el.y },
+      { id: 'ne', cx: el.x + el.w,   cy: el.y },
+      { id: 'e',  cx: el.x + el.w,   cy: el.y + el.h/2 },
+      { id: 'se', cx: el.x + el.w,   cy: el.y + el.h },
+      { id: 's',  cx: el.x + el.w/2, cy: el.y + el.h },
+      { id: 'sw', cx: el.x,          cy: el.y + el.h },
+      { id: 'w',  cx: el.x,          cy: el.y + el.h/2 },
+    ]
+    return <>
+      <rect x={el.x - 0.5} y={el.y - 0.5} width={el.w + 1} height={Math.max(el.h, 1) + 1}
+        fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4,2" />
+      {handles.map(h => (
+        <circle key={h.id} cx={h.cx} cy={h.cy} r={4} fill="#3b82f6" stroke="white" strokeWidth={1}
+          style={{ cursor: HANDLE_CURSORS[h.id] }}
+          onMouseDown={e => onHandleDown(el.id, h.id, e)} />
+      ))}
+    </>
+  }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-container" style={{ maxWidth: 900, width: '95vw' }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Label-Vorlage bearbeiten</h2>
-          <button onClick={onClose} className="modal-close"><XMarkIcon className="w-5 h-5" /></button>
+    <div className="modal-overlay">
+      <div className="modal-container" style={{ maxWidth: 1100, width: '98vw', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
+        {/* Header */}
+        <div className="modal-header flex-shrink-0">
+          <h2 className="modal-title">Label-Vorlage</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setElements(DEFAULT_ELEMENTS); setSelectedId(null) }} className="btn btn-ghost text-sm">Zurücksetzen</button>
+            <button onClick={handleSave} disabled={saving} className="btn btn-primary">{saving ? 'Speichert…' : 'Speichern'}</button>
+            <button onClick={onClose} className="modal-close"><XMarkIcon className="w-5 h-5" /></button>
+          </div>
         </div>
 
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Controls */}
-          <div className="space-y-4">
-            {/* Felder */}
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Felder</h3>
-              <div className="divide-y divide-gray-100">
-                <ToggleRow label="Case-ID (z.B. BTD-D1)" field="showCaseId" />
-                <ToggleRow label="Bezeichnung" field="showBezeichnung" />
-                <ToggleRow label="Ladereihenfolge" field="showLoadOrder" />
-                <ToggleRow label="Gruppe (DRU / 1/3)" field="showGruppe" />
-                <ToggleRow label="Standort / Position" field="showPosition" />
-                <ToggleRow label="QR-Code" field="showQrCode" />
-              </div>
-            </div>
+        {/* Body */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
 
-            {/* Größen */}
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Größen</h3>
-              <div className="divide-y divide-gray-100">
-                <SliderRow label="Header-Höhe" field="headerH" min={40} max={100} step={2} />
-                <SliderRow label="Ladereihenfolge-Zahl" field="loadOrderFontSize" min={40} max={120} step={4} />
-                <SliderRow label="Gruppe / Standort" field="gruppeFontSize" min={14} max={60} step={2} />
-                <SliderRow label="Bezeichnung (max.)" field="bezeichnungMaxFontSize" min={12} max={36} step={1} />
-                <SliderRow label="Tourname" field="tourNameFontSize" min={10} max={28} step={1} />
+          {/* Left: element list */}
+          <div className="w-44 flex-shrink-0 border-r border-gray-200 overflow-y-auto p-2">
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Felder</div>
+            {elements.map(el => (
+              <div key={el.id}
+                onClick={() => setSelectedId(el.id === selectedId ? null : el.id)}
+                className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer text-xs mb-0.5 ${selectedId === el.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <button
+                  onClick={e => { e.stopPropagation(); updateEl(el.id, { visible: !el.visible }) }}
+                  className={`w-4 h-4 rounded border flex-shrink-0 text-xs flex items-center justify-center transition-colors ${el.visible ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
+                  {el.visible ? '✓' : ''}
+                </button>
+                <span className="truncate">{ELEMENT_LABELS[el.type]}</span>
               </div>
-            </div>
+            ))}
+          </div>
 
-            <div className="flex gap-2 pt-2">
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary flex-1">
-                {saving ? 'Speichert…' : 'Speichern'}
+          {/* Center: SVG Canvas */}
+          <div className="flex-1 overflow-auto bg-gray-100 flex items-center justify-center p-4 min-w-0"
+            onClick={() => setSelectedId(null)}>
+            <svg
+              ref={svgRef}
+              viewBox={`0 0 ${LBL_W} ${LBL_H}`}
+              style={{ background: 'white', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxWidth: '100%', maxHeight: 'calc(92vh - 80px)', userSelect: 'none' }}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+              onMouseLeave={onMouseUp}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Render all visible elements */}
+              {elements.map(el => !el.visible ? null : (
+                <g key={el.id}
+                  style={{ cursor: 'grab' }}
+                  onMouseDown={e => onElemDown(el.id, e)}
+                  onClick={e => { e.stopPropagation(); setSelectedId(el.id) }}>
+                  {renderSVGElement(el)}
+                  {/* Hover outline (non-selected) */}
+                  {selectedId !== el.id && el.type !== 'header_bg' && (
+                    <rect x={el.x} y={el.y} width={el.w} height={Math.max(el.h, 1)}
+                      fill="rgba(59,130,246,0)" stroke="transparent"
+                      onMouseEnter={e => (e.currentTarget.setAttribute('stroke', 'rgba(59,130,246,0.3)'))}
+                      onMouseLeave={e => (e.currentTarget.setAttribute('stroke', 'transparent'))}
+                    />
+                  )}
+                </g>
+              ))}
+              {/* Selection handles on top */}
+              {selectedEl?.visible && (
+                <g onMouseDown={e => e.stopPropagation()}>
+                  {renderHandles(selectedEl)}
+                </g>
+              )}
+            </svg>
+          </div>
+
+          {/* Right: properties */}
+          {selectedEl ? (
+            <div className="w-48 flex-shrink-0 border-l border-gray-200 overflow-y-auto p-3">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                {ELEMENT_LABELS[selectedEl.type]}
+              </div>
+
+              {/* Position & Size */}
+              <div className="mb-4">
+                <div className="text-xs text-gray-400 mb-1">Position &amp; Größe</div>
+                <div className="grid grid-cols-2 gap-1">
+                  {(['x','y','w','h'] as const).map(k => (
+                    <div key={k}>
+                      <div className="text-xs text-gray-400">{k === 'w' ? 'Breite' : k === 'h' ? 'Höhe' : k.toUpperCase()}</div>
+                      <input type="number"
+                        value={Math.round(selectedEl[k])}
+                        onChange={e => updateEl(selectedEl.id, { [k]: Number(e.target.value) })}
+                        className="w-full text-xs border border-gray-200 rounded px-1.5 py-0.5 font-mono" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font size */}
+              {isTextEl && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>Schriftgröße</span><span className="font-mono">{selectedEl.fontSize}pt</span>
+                  </div>
+                  <input type="range" min={6} max={120} step={1}
+                    value={selectedEl.fontSize}
+                    onChange={e => updateEl(selectedEl.id, { fontSize: Number(e.target.value) })}
+                    className="w-full h-1.5 accent-blue-600" />
+                </div>
+              )}
+
+              {/* Alignment */}
+              {isTextEl && !['load_order'].includes(selectedEl.type) && (
+                <div className="mb-4">
+                  <div className="text-xs text-gray-400 mb-1">Ausrichtung</div>
+                  <div className="flex gap-1">
+                    {(['left','center','right'] as const).map(a => (
+                      <button key={a}
+                        onClick={() => updateEl(selectedEl.id, { align: a })}
+                        className={`flex-1 py-0.5 text-xs rounded border transition-colors ${selectedEl.align === a ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                        {a === 'left' ? '⬅' : a === 'center' ? '↔' : '➡'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Color */}
+              <div className="mb-4">
+                <div className="text-xs text-gray-400 mb-1">Textfarbe</div>
+                <div className="flex gap-2">
+                  {['#111111','#ffffff','#555555','#cc0000'].map(c => (
+                    <button key={c}
+                      onClick={() => updateEl(selectedEl.id, { color: c })}
+                      title={c}
+                      style={{ background: c, border: selectedEl.color === c ? '2px solid #3b82f6' : '2px solid #e5e7eb' }}
+                      className="w-6 h-6 rounded" />
+                  ))}
+                </div>
+                {selectedEl.type === 'header_bg' && (
+                  <div className="mt-2">
+                    <div className="text-xs text-gray-400 mb-1">Hintergrundfarbe</div>
+                    <div className="flex gap-2">
+                      {['#111111','#1a1a2e','#003366','#2d2d2d'].map(c => (
+                        <button key={c}
+                          onClick={() => updateEl(selectedEl.id, { bgColor: c })}
+                          title={c}
+                          style={{ background: c, border: (selectedEl.bgColor || selectedEl.color) === c ? '2px solid #3b82f6' : '2px solid #e5e7eb' }}
+                          className="w-6 h-6 rounded" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Visibility */}
+              <button
+                onClick={() => updateEl(selectedEl.id, { visible: !selectedEl.visible })}
+                className="w-full text-left text-xs text-gray-500 hover:text-gray-700 py-1">
+                {selectedEl.visible ? '🙈 Ausblenden' : '👁 Einblenden'}
               </button>
-              <button onClick={handleReset} className="btn btn-ghost">Zurücksetzen</button>
-              <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
             </div>
-          </div>
+          ) : (
+            <div className="w-48 flex-shrink-0 border-l border-gray-200 p-3 flex items-center justify-center">
+              <p className="text-xs text-gray-400 text-center">Element anklicken<br/>zum Bearbeiten</p>
+            </div>
+          )}
+        </div>
 
-          {/* SVG Preview */}
-          <div>
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Vorschau (Beispieldaten)
-            </h3>
-            <LabelPreview tpl={tpl} />
-            <p className="text-xs text-gray-400 mt-2">
-              Die Vorschau zeigt Beispieldaten. Schriften weichen im PDF leicht ab.
-            </p>
-          </div>
+        {/* Footer hint */}
+        <div className="flex-shrink-0 px-4 py-2 border-t border-gray-100 text-xs text-gray-400">
+          Felder verschieben: Klicken &amp; Ziehen · Größe ändern: Eck-Handles · Vorschau mit Beispieldaten
         </div>
       </div>
     </div>
