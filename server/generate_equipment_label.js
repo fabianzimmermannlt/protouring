@@ -123,7 +123,7 @@ async function generateEquipmentLabel(opts) {
       const tourY      = Math.max((HEADER_H - tourBlockH) / 2, 4);
       doc.fillColor('#ffffff').fontSize(tourFontSize).font('Helvetica-Bold')
         .text(tourText, W - M - 180, tourY,
-          { width: 180, align: 'right', lineBreak: true, ellipsis: false });
+          { width: 180, align: 'center', lineBreak: true, ellipsis: false });
     }
 
     // ── INHALT-SECTION ─────────────────────────────────────────────────────
