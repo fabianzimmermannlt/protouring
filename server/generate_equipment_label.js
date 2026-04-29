@@ -149,13 +149,19 @@ async function generateEquipmentLabel(opts) {
     const leftColW = 148;
     const loadStr  = loadOrder != null ? String(loadOrder).padStart(2, '0') : '—';
 
-    // "Ladereihenfolge" Überschrift
-    doc.fillColor('#888888').fontSize(7).font('Helvetica')
-      .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
+    // Zahl unten bündig mit QR-Code
+    // Visuelle Höhe der Ziffer ≈ 75% der Fontgröße (Versalhöhe, keine Unterlänge)
+    const numFontSize   = 108;
+    const numVisHeight  = numFontSize * 0.75;
+    const qrBottom      = H - M;                        // Unterkante QR-Code
+    const numY          = qrBottom - numVisHeight;       // Top der Zahl
+    const labelY        = numY - 12;                     // "Ladereihenfolge" drüber
 
-    // Zahl — riesig, kein Umbruch
-    doc.fillColor('#111111').fontSize(108).font('Helvetica-Bold')
-      .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' });
+    doc.fillColor('#888888').fontSize(7).font('Helvetica')
+      .text('Ladereihenfolge', M, labelY, { width: leftColW });
+
+    doc.fillColor('#111111').fontSize(numFontSize).font('Helvetica-Bold')
+      .text(loadStr, M, numY, { width: leftColW, lineBreak: false, align: 'left' });
 
     // Mittlere Spalte: Gruppe + Standort
     const midX = M + leftColW + 6;
