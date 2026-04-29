@@ -152,9 +152,8 @@ async function generateEquipmentLabel(opts) {
     // Zahl unten bündig mit QR-Code
     // Visuelle Höhe der Ziffer ≈ 75% der Fontgröße (Versalhöhe, keine Unterlänge)
     const numFontSize   = 108;
-    const numVisHeight  = numFontSize * 0.48;            // nur Ziffernhöhe, kein Durchschuss
-    const qrBottom      = H - M;                        // Unterkante QR-Code
-    const numY          = qrBottom - numVisHeight;       // Top der Zahl → Zahl unten bündig
+    // pdfkit interne Zeilenhöhe ≈ fontSize * 1.15 → numY so wählen dass Zahl gerade auf die Seite passt
+    const numY          = H - numFontSize * 1.15;        // so weit unten wie möglich ohne Seitenumbruch
     const labelY        = numY - 12;                     // "Ladereihenfolge" drüber
 
     doc.fillColor('#888888').fontSize(7).font('Helvetica')
