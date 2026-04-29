@@ -110,7 +110,7 @@ async function generateEquipmentLabel(opts) {
 
     // Header rechts: Tour-Name
     if (tourName) {
-      doc.fillColor('#cccccc').fontSize(11).font('Helvetica')
+      doc.fillColor('#ffffff').fontSize(11).font('Helvetica')
         .text(tourName, W - M - 180, headerTextY + 1,
           { width: 180, align: 'right', lineBreak: false, ellipsis: true });
     }
@@ -118,10 +118,10 @@ async function generateEquipmentLabel(opts) {
     // ── INHALT-SECTION ─────────────────────────────────────────────────────
     const contentW = W - M * 2;
 
-    doc.fillColor('#888888').fontSize(7).font('Helvetica')
+    doc.fillColor('#111111').fontSize(7).font('Helvetica')
       .text('INHALT:', M, CONTENT_Y + 2);
 
-    doc.fillColor('#444444').fontSize(8).font('Helvetica-Bold')
+    doc.fillColor('#111111').fontSize(8).font('Helvetica-Bold')
       .text(caseId, M, CONTENT_Y + 2, { width: contentW, align: 'right' });
 
     const bezSize = bezeichnung.length > 28 ? 17 : bezeichnung.length > 20 ? 19 : 22;
@@ -130,7 +130,7 @@ async function generateEquipmentLabel(opts) {
 
     // ── TRENNLINIE ──────────────────────────────────────────────────────────
     doc.moveTo(M, LOWER_Y - 5).lineTo(W - M, LOWER_Y - 5)
-      .lineWidth(0.5).stroke('#dddddd');
+      .lineWidth(0.5).stroke('#111111');
 
     // ── SPALTEN-LAYOUT ──────────────────────────────────────────────────────
     // QR-Code: rechts, quadratisch bis Unterrand
@@ -140,8 +140,8 @@ async function generateEquipmentLabel(opts) {
     if (qrBuffer) {
       doc.image(qrBuffer, qrX, LOWER_Y, { width: qrSize, height: qrSize });
     } else {
-      doc.rect(qrX, LOWER_Y, qrSize, qrSize).stroke('#aaaaaa');
-      doc.fillColor('#aaaaaa').fontSize(8).font('Helvetica')
+      doc.rect(qrX, LOWER_Y, qrSize, qrSize).stroke('#111111');
+      doc.fillColor('#111111').fontSize(8).font('Helvetica')
         .text(caseId, qrX, LOWER_Y + qrSize / 2 - 4, { width: qrSize, align: 'center' });
     }
 
@@ -156,7 +156,7 @@ async function generateEquipmentLabel(opts) {
     const numY          = H - numFontSize * 1.2;         // 168pt → passt gerade auf Seite
 
     // Label bleibt oben bei LOWER_Y, Zahl sitzt unten
-    doc.fillColor('#888888').fontSize(7).font('Helvetica')
+    doc.fillColor('#111111').fontSize(7).font('Helvetica')
       .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
     doc.fillColor('#111111').fontSize(numFontSize).font('Helvetica-Bold')
@@ -169,7 +169,7 @@ async function generateEquipmentLabel(opts) {
 
     if (gruppeName) {
       // Überschrift "Gruppe"
-      doc.fillColor('#888888').fontSize(7).font('Helvetica')
+      doc.fillColor('#111111').fontSize(7).font('Helvetica')
         .text('Gruppe', midX, midY, { width: midW });
       midY += 12;
 
@@ -189,7 +189,7 @@ async function generateEquipmentLabel(opts) {
 
     if (posAbbr) {
       // Überschrift "Standort"
-      doc.fillColor('#888888').fontSize(7).font('Helvetica')
+      doc.fillColor('#111111').fontSize(7).font('Helvetica')
         .text('Standort', midX, midY, { width: midW });
       midY += 12;
 
