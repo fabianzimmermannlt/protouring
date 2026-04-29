@@ -93,33 +93,37 @@ async function generateEquipmentLabel(opts) {
     // ── HEADER (schwarzer Balken) ─────────────────────────────────────────
     doc.rect(0, 0, W, HEADER_H).fill('#111111');
 
-    const headerTextY = (HEADER_H - 18) / 2;
-
-    // Header links: Logo oder Artist-Name
+    // Header links: Logo oder Artist-Name — vertikal zentriert
     if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
       try {
         // Ca. 2/3 der Labelbreite minus 1cm, Seitenverhältnis erhalten
         const maxLogoW = Math.round(W * 2 / 3 - 28.35); // ~252pt ≈ 9cm
         doc.image(logoPath, M, 6, { fit: [maxLogoW, HEADER_H - 12] });
       } catch {
-        doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold')
-          .text(artistName || '', M, headerTextY, { width: 210, lineBreak: false, ellipsis: true });
+        const artistFontSize = 18;
+        const artistY = (HEADER_H - artistFontSize) / 2;
+        doc.fillColor('#ffffff').fontSize(artistFontSize).font('Helvetica-Bold')
+          .text(artistName || '', M, artistY, { width: 210, lineBreak: false, ellipsis: true });
       }
     } else {
-      doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold')
-        .text(artistName || '', M, headerTextY, { width: 200, lineBreak: false, ellipsis: true });
+      const artistFontSize = 14;
+      const artistY = (HEADER_H - artistFontSize) / 2;
+      doc.fillColor('#ffffff').fontSize(artistFontSize).font('Helvetica-Bold')
+        .text(artistName || '', M, artistY, { width: 200, lineBreak: false, ellipsis: true });
     }
 
-    // Header rechts: Tour-Name
+    // Header rechts: Tour-Name — <br> als manueller Zeilenumbruch, 18pt, vertikal zentriert
     if (tourName) {
-      // Tour-Name: 2-zeilig, rechts ausgerichtet, vertikal zentriert im Header
-      const tourFontSize = 14;
-      const tourLineH    = tourFontSize * 1.3;
-      const tourLines    = Math.ceil(tourName.length / 18); // Schätzung Zeilenanzahl
-      const tourY        = (HEADER_H - Math.min(tourLines, 2) * tourLineH) / 2;
+      const tourFontSize = 18;
+      const tourLineH    = tourFontSize * 1.25;
+      // <br> (case-insensitive) → echtes Newline
+      const tourText  = tourName.replace(/<br\s*\/?>/gi, '\n');
+      const tourLines = tourText.split('\n').length;
+      const tourBlockH = tourLines * tourLineH;
+      const tourY      = Math.max((HEADER_H - tourBlockH) / 2, 4);
       doc.fillColor('#ffffff').fontSize(tourFontSize).font('Helvetica-Bold')
-        .text(tourName, W - M - 160, Math.max(tourY, 4),
-          { width: 160, align: 'right', lineBreak: true, ellipsis: false });
+        .text(tourText, W - M - 180, tourY,
+          { width: 180, align: 'right', lineBreak: true, ellipsis: false });
     }
 
     // ── INHALT-SECTION ─────────────────────────────────────────────────────
