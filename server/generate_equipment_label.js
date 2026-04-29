@@ -153,9 +153,11 @@ async function generateEquipmentLabel(opts) {
     doc.fillColor('#888888').fontSize(7).font('Helvetica')
       .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
-    // Zahl — riesig, kein Umbruch
-    doc.fillColor('#111111').fontSize(96).font('Helvetica-Bold')
-      .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' });
+    // Zahl — riesig, kein Umbruch, enger Zeichenabstand
+    doc.fillColor('#111111').fontSize(108).font('Helvetica-Bold')
+      .characterSpacing(-4)
+      .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' })
+      .characterSpacing(0);
 
     // Mittlere Spalte: Gruppe + Standort
     const midX = M + leftColW + 6;
