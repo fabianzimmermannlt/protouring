@@ -154,10 +154,10 @@ async function generateEquipmentLabel(opts) {
     const numFontSize   = 108;
     // pdfkit Zeilenhöhe für 108pt ≈ 129.4pt → sicher mit factor 1.2
     const numY          = H - numFontSize * 1.2;         // 168pt → passt gerade auf Seite
-    const labelY        = numY - 12;                     // "Ladereihenfolge" drüber
 
+    // Label bleibt oben bei LOWER_Y, Zahl sitzt unten
     doc.fillColor('#888888').fontSize(7).font('Helvetica')
-      .text('Ladereihenfolge', M, labelY, { width: leftColW });
+      .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
     doc.fillColor('#111111').fontSize(numFontSize).font('Helvetica-Bold')
       .text(loadStr, M, numY, { width: leftColW, lineBreak: false, align: 'left' });
