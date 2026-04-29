@@ -686,6 +686,7 @@ async function initDatabase() {
     `ALTER TABLE tenants ADD COLUMN label_tour_name TEXT DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN label_use_artist_name INTEGER DEFAULT 1`,
     `ALTER TABLE tenants ADD COLUMN label_logo_path TEXT DEFAULT NULL`,
+    `ALTER TABLE tenants ADD COLUMN label_template TEXT DEFAULT NULL`,
     // Rename wert_zeitwert → wert_zollwert, wert_wiederbeschaffung → wert_wiederbeschaffungswert
     `ALTER TABLE equipment_materials RENAME COLUMN wert_zeitwert TO wert_zollwert`,
     `ALTER TABLE equipment_materials RENAME COLUMN wert_wiederbeschaffung TO wert_wiederbeschaffungswert`,
@@ -5465,6 +5466,29 @@ app.delete('/api/equipment/settings/logo', authenticateToken, requireTenant, asy
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// GET /api/equipment/label-template
+app.get('/api/equipment/label-template', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const { DEFAULT_TEMPLATE } = require('./generate_equipment_label');
+    const row = await db.get('SELECT label_template FROM tenants WHERE id = ?', [req.tenant.id]);
+    const saved = row?.label_template ? JSON.parse(row.label_template) : {};
+    res.json({ ...DEFAULT_TEMPLATE, ...saved });
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/equipment/label-template
+app.put('/api/equipment/label-template', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const { DEFAULT_TEMPLATE } = require('./generate_equipment_label');
+    const tpl = { ...DEFAULT_TEMPLATE, ...req.body };
+    await db.run(
+      `UPDATE tenants SET label_template=?, updated_at=datetime('now') WHERE id=?`,
+      [JSON.stringify(tpl), req.tenant.id]
+    );
+    res.json(tpl);
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // ── Equipment: Kategorien ────────────────────────────────────────────────────
 
 // GET /api/equipment/categories
@@ -6886,7 +6910,7 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
     // Load item
     const item = await db.get(
       `SELECT ei.*, t.display_name, t.name AS tenant_name,
-              t.label_tour_name, t.label_use_artist_name, t.label_logo_path
+              t.label_tour_name, t.label_use_artist_name, t.label_logo_path, t.label_template
        FROM equipment_items ei
        JOIN tenants t ON t.id = ei.tenant_id
        WHERE ei.id = ? AND ei.tenant_id = ?`,
@@ -6927,6 +6951,10 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
     }
 
     const artistName = item.display_name || item.tenant_name || '';
+    const { DEFAULT_TEMPLATE } = require('./generate_equipment_label');
+    const savedTemplate = item.label_template ? JSON.parse(item.label_template) : {};
+    const template = { ...DEFAULT_TEMPLATE, ...savedTemplate };
+
     const pdfBuffer = await generateEquipmentLabel({
       artistName,
       logoPath: item.label_logo_path || null,
@@ -6940,6 +6968,7 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
       gruppeName,
       gruppeXY,
       gesamtgewicht: gesamtgewicht > 0 ? gesamtgewicht : null,
+      template,
     });
 
     const safeName = (item.case_id || 'label').replace(/[^a-zA-Z0-9_-]/g, '_');

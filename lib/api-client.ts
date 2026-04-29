@@ -466,6 +466,44 @@ export async function deleteEquipmentLogo(): Promise<void> {
   await request('/api/equipment/settings/logo', { method: 'DELETE' });
 }
 
+// ── Label Template ───────────────────────────────────────────────────────────
+
+export interface LabelTemplate {
+  showCaseId:             boolean;
+  showBezeichnung:        boolean;
+  showLoadOrder:          boolean;
+  showGruppe:             boolean;
+  showPosition:           boolean;
+  showQrCode:             boolean;
+  headerH:                number;
+  loadOrderFontSize:      number;
+  gruppeFontSize:         number;
+  bezeichnungMaxFontSize: number;
+  tourNameFontSize:       number;
+}
+
+export const DEFAULT_LABEL_TEMPLATE: LabelTemplate = {
+  showCaseId:             true,
+  showBezeichnung:        true,
+  showLoadOrder:          true,
+  showGruppe:             true,
+  showPosition:           true,
+  showQrCode:             true,
+  headerH:                68,
+  loadOrderFontSize:      108,
+  gruppeFontSize:         30,
+  bezeichnungMaxFontSize: 22,
+  tourNameFontSize:       18,
+};
+
+export async function getLabelTemplate(): Promise<LabelTemplate> {
+  return request<LabelTemplate>('/api/equipment/label-template');
+}
+
+export async function saveLabelTemplate(tpl: LabelTemplate): Promise<LabelTemplate> {
+  return request<LabelTemplate>('/api/equipment/label-template', { method: 'PUT', body: tpl });
+}
+
 /** Opens the label PDF in a new browser tab. Includes auth token via URL so server can validate. */
 export async function printEquipmentLabel(itemId: number): Promise<void> {
   const token = getAuthToken();

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon, PrinterIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon, PrinterIcon, PhotoIcon, SwatchIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { parseCSV, col } from '@/lib/csvParser'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -17,9 +17,11 @@ import {
   getCarnets, createCarnet, updateCarnet, deleteCarnet, getCarnet,
   addCarnetMaterial, removeCarnetMaterial,
   getEquipmentOwners, createEquipmentOwner, updateEquipmentOwner, deleteEquipmentOwner,
+  getLabelTemplate, saveLabelTemplate,
   canDo, getEffectiveRole,
   type EquipmentSettings, type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
   type EquipmentCaseContent, type Carnet, type CarnetMaterial, type EquipmentOwner,
+  type LabelTemplate, DEFAULT_LABEL_TEMPLATE,
 } from '@/lib/api-client'
 
 const TYP_LABELS: Record<string, string> = {
@@ -1162,6 +1164,277 @@ function EigentuemerModal({ owner, onSave, onClose }: {
   )
 }
 
+// ── Label-Vorlage: SVG-Vorschau ───────────────────────────────────────────────
+
+const LBL_W = 419.53
+const LBL_H = 297.64
+const LBL_M = 7
+
+function LabelPreview({ tpl }: { tpl: LabelTemplate }) {
+  const HEADER_H  = tpl.headerH
+  const CONTENT_Y = HEADER_H + 10
+  const LOWER_Y   = CONTENT_Y + 58
+  const qrSize    = LBL_H - LOWER_Y - LBL_M
+  const qrX       = tpl.showQrCode ? LBL_W - LBL_M - qrSize : LBL_W - LBL_M
+  const leftColW  = tpl.showLoadOrder ? 148 : 0
+  const midX      = LBL_M + leftColW + (leftColW > 0 ? 6 : 0)
+  const midW      = qrX - midX - 8
+  const gfs       = tpl.gruppeFontSize
+
+  // Sample data
+  const artistName = 'BETONTOD'
+  const tourText   = 'TOUR 2026'
+  const caseId     = 'BTD-D1'
+  const bezeichnung = 'Drumriser'
+  const loadStr    = '01'
+  const gruppeName = 'DRU'
+  const gruppeXY   = '1/3'
+  const posAbbr    = 'FOH'
+
+  const bezMax  = tpl.bezeichnungMaxFontSize
+  const bezSize = bezeichnung.length > 28 ? Math.round(bezMax * 0.77)
+    : bezeichnung.length > 20 ? Math.round(bezMax * 0.86)
+    : bezMax
+
+  const numFontSize = tpl.loadOrderFontSize
+  const numY        = Math.max(LBL_H - numFontSize * 1.2, LOWER_Y + 12)
+
+  const tourFontSize = tpl.tourNameFontSize
+  const tourLineH    = tourFontSize * 1.25
+  const tourBlockH   = tourLineH
+  const tourY        = Math.max((HEADER_H - tourBlockH) / 2, 4)
+
+  const artistY = (HEADER_H - 14) / 2
+
+  // Middle column items
+  const midItems: Array<{ key: string; y: number; text: string; fs: number; bold: boolean }> = []
+  let midY = LOWER_Y
+  if (tpl.showGruppe) {
+    midItems.push({ key: 'g-lbl', y: midY + 7, text: 'Gruppe', fs: 7, bold: false })
+    midY += 12
+    midItems.push({ key: 'g-val', y: midY + gfs * 0.78, text: gruppeName, fs: gfs, bold: true })
+    midY += Math.round(gfs * 1.2)
+    midItems.push({ key: 'g-xy', y: midY + gfs * 0.78, text: gruppeXY, fs: gfs, bold: true })
+    midY += Math.round(gfs * 1.2)
+    midY += 6
+  }
+  if (tpl.showPosition) {
+    midItems.push({ key: 'p-lbl', y: midY + 7, text: 'Standort', fs: 7, bold: false })
+    midY += 12
+    midItems.push({ key: 'p-val', y: midY + gfs * 0.78, text: posAbbr, fs: gfs, bold: true })
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${LBL_W} ${LBL_H}`}
+      style={{ width: '100%', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}
+    >
+      {/* Header */}
+      <rect x="0" y="0" width={LBL_W} height={HEADER_H} fill="#111111" />
+
+      {/* Artist name */}
+      <text x={LBL_M} y={artistY + 11} fill="white" fontSize={14}
+        fontWeight="bold" fontFamily="Arial, sans-serif">
+        {artistName}
+      </text>
+
+      {/* Tour name */}
+      <text x={LBL_W - LBL_M - 90} y={tourY + tourFontSize * 0.8}
+        fill="white" fontSize={tourFontSize} fontWeight="bold"
+        fontFamily="Arial, sans-serif" textAnchor="middle">
+        {tourText}
+      </text>
+
+      {/* INHALT label */}
+      <text x={LBL_M} y={CONTENT_Y + 9} fill="#111" fontSize={7} fontFamily="Arial, sans-serif">INHALT:</text>
+
+      {/* Case ID */}
+      {tpl.showCaseId && (
+        <text x={LBL_W - LBL_M} y={CONTENT_Y + 9} fill="#111" fontSize={8}
+          fontWeight="bold" fontFamily="Arial, sans-serif" textAnchor="end">{caseId}</text>
+      )}
+
+      {/* Bezeichnung */}
+      {tpl.showBezeichnung && (
+        <text x={LBL_M} y={CONTENT_Y + 14 + bezSize * 0.82} fill="#111"
+          fontSize={bezSize} fontWeight="bold" fontFamily="Arial, sans-serif">{bezeichnung}</text>
+      )}
+
+      {/* Separator */}
+      <line x1={LBL_M} y1={LOWER_Y - 5} x2={LBL_W - LBL_M} y2={LOWER_Y - 5}
+        stroke="#111" strokeWidth="0.5" />
+
+      {/* QR placeholder */}
+      {tpl.showQrCode && (() => {
+        const cells = 8
+        const cs    = qrSize / cells
+        const rects = []
+        const pattern = [
+          [1,1,1,0,1,1,1,1],[1,0,1,1,0,1,0,1],[1,1,0,1,1,0,1,0],
+          [0,1,1,0,1,1,0,1],[1,0,1,1,0,0,1,1],[1,1,0,0,1,1,0,0],
+          [0,1,1,1,0,1,1,0],[1,0,0,1,1,0,1,1],
+        ]
+        for (let r = 0; r < cells; r++) {
+          for (let c = 0; c < cells; c++) {
+            if (pattern[r][c]) {
+              rects.push(
+                <rect key={`qr-${r}-${c}`} x={qrX + c * cs + 0.3} y={LOWER_Y + r * cs + 0.3}
+                  width={cs - 0.6} height={cs - 0.6} fill="#111" />
+              )
+            }
+          }
+        }
+        return <>{rects}</>
+      })()}
+
+      {/* Load order */}
+      {tpl.showLoadOrder && (
+        <>
+          <text x={LBL_M} y={LOWER_Y + 9} fill="#111" fontSize={7} fontFamily="Arial, sans-serif">
+            Ladereihenfolge
+          </text>
+          <text x={LBL_M} y={numY + numFontSize * 0.82} fill="#111"
+            fontSize={numFontSize} fontWeight="bold" fontFamily="Arial, sans-serif">
+            {loadStr}
+          </text>
+        </>
+      )}
+
+      {/* Middle column */}
+      {midItems.map(item => (
+        <text key={item.key} x={midX} y={item.y} fill="#111"
+          fontSize={item.fs} fontWeight={item.bold ? 'bold' : 'normal'}
+          fontFamily="Arial, sans-serif">
+          {item.text}
+        </text>
+      ))}
+    </svg>
+  )
+}
+
+// ── Label-Vorlage Modal ───────────────────────────────────────────────────────
+
+function LabelTemplateModal({ onClose }: { onClose: () => void }) {
+  const [tpl, setTpl] = useState<LabelTemplate>(DEFAULT_LABEL_TEMPLATE)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getLabelTemplate()
+      .then(t => setTpl(t))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const toggle = (key: keyof LabelTemplate) => setTpl(prev => ({ ...prev, [key]: !prev[key] }))
+  const slider = (key: keyof LabelTemplate, val: number) => setTpl(prev => ({ ...prev, [key]: val }))
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await saveLabelTemplate(tpl)
+      onClose()
+    } catch { setSaving(false) }
+  }
+
+  const handleReset = () => setTpl(DEFAULT_LABEL_TEMPLATE)
+
+  if (loading) return (
+    <div className="modal-overlay">
+      <div className="modal-container" style={{ maxWidth: 340 }}>
+        <p className="text-sm text-gray-500 p-6">Lade Vorlage…</p>
+      </div>
+    </div>
+  )
+
+  const ToggleRow = ({ label, field }: { label: string; field: keyof LabelTemplate }) => (
+    <label className="flex items-center justify-between gap-3 py-1.5 cursor-pointer">
+      <span className="text-sm text-gray-700">{label}</span>
+      <div
+        onClick={() => toggle(field)}
+        className={`relative w-10 h-5 rounded-full transition-colors ${tpl[field] ? 'bg-blue-600' : 'bg-gray-300'}`}
+      >
+        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${tpl[field] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </div>
+    </label>
+  )
+
+  const SliderRow = ({ label, field, min, max, step }: {
+    label: string; field: keyof LabelTemplate; min: number; max: number; step: number
+  }) => (
+    <div className="py-1.5">
+      <div className="flex justify-between mb-1">
+        <span className="text-sm text-gray-700">{label}</span>
+        <span className="text-sm font-mono text-gray-500">{tpl[field] as number}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step}
+        value={tpl[field] as number}
+        onChange={e => slider(field, Number(e.target.value))}
+        className="w-full h-1.5 rounded accent-blue-600" />
+    </div>
+  )
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-container" style={{ maxWidth: 900, width: '95vw' }}>
+        <div className="modal-header">
+          <h2 className="modal-title">Label-Vorlage bearbeiten</h2>
+          <button onClick={onClose} className="modal-close"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Controls */}
+          <div className="space-y-4">
+            {/* Felder */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Felder</h3>
+              <div className="divide-y divide-gray-100">
+                <ToggleRow label="Case-ID (z.B. BTD-D1)" field="showCaseId" />
+                <ToggleRow label="Bezeichnung" field="showBezeichnung" />
+                <ToggleRow label="Ladereihenfolge" field="showLoadOrder" />
+                <ToggleRow label="Gruppe (DRU / 1/3)" field="showGruppe" />
+                <ToggleRow label="Standort / Position" field="showPosition" />
+                <ToggleRow label="QR-Code" field="showQrCode" />
+              </div>
+            </div>
+
+            {/* Größen */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Größen</h3>
+              <div className="divide-y divide-gray-100">
+                <SliderRow label="Header-Höhe" field="headerH" min={40} max={100} step={2} />
+                <SliderRow label="Ladereihenfolge-Zahl" field="loadOrderFontSize" min={40} max={120} step={4} />
+                <SliderRow label="Gruppe / Standort" field="gruppeFontSize" min={14} max={60} step={2} />
+                <SliderRow label="Bezeichnung (max.)" field="bezeichnungMaxFontSize" min={12} max={36} step={1} />
+                <SliderRow label="Tourname" field="tourNameFontSize" min={10} max={28} step={1} />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={handleSave} disabled={saving} className="btn btn-primary flex-1">
+                {saving ? 'Speichert…' : 'Speichern'}
+              </button>
+              <button onClick={handleReset} className="btn btn-ghost">Zurücksetzen</button>
+              <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            </div>
+          </div>
+
+          {/* SVG Preview */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Vorschau (Beispieldaten)
+            </h3>
+            <LabelPreview tpl={tpl} />
+            <p className="text-xs text-gray-400 mt-2">
+              Die Vorschau zeigt Beispieldaten. Schriften weichen im PDF leicht ab.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Equipment-Settings Modal ──────────────────────────────────────────────────
 
 function EquipmentSettingsModal({ carnetEnabled, labelTourName, labelUseArtistName, labelLogoPath, onSave, onClose }: {
@@ -1676,6 +1949,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
   const [ownerModal, setOwnerModal] = useState<{ open: boolean; owner: EquipmentOwner | null }>({ open: false, owner: null })
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [templateOpen, setTemplateOpen] = useState(false)
   const [carnetEnabled, setCarnetEnabled] = useState(false)
   const [labelSettings, setLabelSettings] = useState<Pick<EquipmentSettings, 'label_tour_name' | 'label_use_artist_name' | 'label_logo_path'>>({
     label_tour_name: null, label_use_artist_name: true, label_logo_path: null,
@@ -2450,6 +2724,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           )}
         </div>
         <button
+          onClick={() => setTemplateOpen(true)}
+          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Label-Vorlage bearbeiten"
+        >
+          <SwatchIcon className="w-5 h-5" />
+        </button>
+        <button
           onClick={() => setSettingsOpen(true)}
           className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           title="Equipment Einstellungen"
@@ -2463,6 +2744,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       {activeTab === 'categories'   && renderCategories()}
       {activeTab === 'eigentuemer'  && renderEigentuemer()}
       {activeTab === 'carnets'      && renderCarnets()}
+
+      {templateOpen && (
+        <LabelTemplateModal onClose={() => setTemplateOpen(false)} />
+      )}
 
       {settingsOpen && (
         <EquipmentSettingsModal
