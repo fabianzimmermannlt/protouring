@@ -28,9 +28,9 @@ const W = 419.53;
 const H = 297.64;
 const M = 14; // margin
 
-const HEADER_H  = 44;
-const CONTENT_Y = HEADER_H + 10;   // 54
-const LOWER_Y   = CONTENT_Y + 72;  // 126 — start of lower section
+const HEADER_H  = 60;
+const CONTENT_Y = HEADER_H + 10;   // 70
+const LOWER_Y   = CONTENT_Y + 68;  // 138 — start of lower section
 
 async function generateEquipmentLabel(opts) {
   const {
@@ -93,7 +93,7 @@ async function generateEquipmentLabel(opts) {
     // ── HEADER (schwarzer Balken) ─────────────────────────────────────────
     doc.rect(0, 0, W, HEADER_H).fill('#111111');
 
-    const headerTextY = (HEADER_H - 14) / 2;
+    const headerTextY = (HEADER_H - 16) / 2;
 
     // Header links: Logo oder Artist-Name
     if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
@@ -146,19 +146,19 @@ async function generateEquipmentLabel(opts) {
     }
 
     // Linke Spalte: Ladereihenfolge-Label + riesige Zahl
-    const leftColW = 95;
+    const leftColW = 128;
     const loadStr  = loadOrder != null ? String(loadOrder).padStart(3, '0') : '—';
 
     // "Ladereihenfolge" Überschrift
     doc.fillColor('#888888').fontSize(7).font('Helvetica')
       .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
-    // Zahl — groß, kein Umbruch, passt in Spalte
-    doc.fillColor('#111111').fontSize(52).font('Helvetica-Bold')
-      .text(loadStr, M, LOWER_Y + 11, { width: leftColW, lineBreak: false, align: 'left' });
+    // Zahl — riesig, kein Umbruch
+    doc.fillColor('#111111').fontSize(72).font('Helvetica-Bold')
+      .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' });
 
     // Mittlere Spalte: Gruppe + Standort
-    const midX = M + leftColW + 8;
+    const midX = M + leftColW + 6;
     const midW = qrX - midX - 8;
     let   midY = LOWER_Y;
 
