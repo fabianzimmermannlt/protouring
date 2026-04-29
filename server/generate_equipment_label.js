@@ -154,7 +154,7 @@ async function generateEquipmentLabel(opts) {
       .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
     // Zahl — riesig, kein Umbruch
-    doc.fillColor('#111111').fontSize(80).font('Helvetica-Bold')
+    doc.fillColor('#111111').fontSize(96).font('Helvetica-Bold')
       .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' });
 
     // Mittlere Spalte: Gruppe + Standort
@@ -169,17 +169,17 @@ async function generateEquipmentLabel(opts) {
       midY += 12;
 
       // gruppe_name (z.B. "DRU") — groß
-      doc.fillColor('#111111').fontSize(22).font('Helvetica-Bold')
+      doc.fillColor('#111111').fontSize(30).font('Helvetica-Bold')
         .text(gruppeName, midX, midY, { width: midW, lineBreak: false, ellipsis: true });
-      midY += 28;
+      midY += 36;
 
-      // x/y (z.B. "1/3") — mittel
+      // x/y (z.B. "1/3") — gleich groß wie gruppe_name
       if (gruppeXY) {
-        doc.fillColor('#333333').fontSize(16).font('Helvetica-Bold')
+        doc.fillColor('#111111').fontSize(30).font('Helvetica-Bold')
           .text(gruppeXY, midX, midY, { width: midW, lineBreak: false });
-        midY += 24;
+        midY += 36;
       }
-      midY += 8; // Abstand vor Standort
+      midY += 6; // Abstand vor Standort
     }
 
     if (posAbbr) {
@@ -189,7 +189,7 @@ async function generateEquipmentLabel(opts) {
       midY += 12;
 
       // Position (z.B. "FOH") — groß
-      doc.fillColor('#111111').fontSize(22).font('Helvetica-Bold')
+      doc.fillColor('#111111').fontSize(30).font('Helvetica-Bold')
         .text(posAbbr, midX, midY, { width: midW, lineBreak: false });
     }
 
