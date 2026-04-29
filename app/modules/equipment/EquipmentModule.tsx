@@ -888,46 +888,48 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
             <p className="text-sm text-gray-400 py-4 text-center">Lädt…</p>
           ) : detail && (
             <>
-              {/* Info-Strip + Label-Button */}
-              <div className="flex items-start gap-2">
-                <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm bg-white rounded-lg border border-gray-200 p-4">
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Maße H×B×T</p>
-                    <p className="font-medium text-gray-900 text-xs">
-                      {detail.height_cm || detail.width_cm || detail.depth_cm
-                        ? `${detail.height_cm ?? '?'}×${detail.width_cm ?? '?'}×${detail.depth_cm ?? '?'} cm`
-                        : '—'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Eigengewicht</p>
-                    <p className="font-medium text-gray-900 text-xs">{detail.weight_empty_kg != null ? `${detail.weight_empty_kg} kg` : '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Gesamtgewicht</p>
-                    <p className="font-semibold text-gray-900 text-xs">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Einträge</p>
-                    <p className="font-medium text-gray-900 text-xs">{detail.content_count}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Gesamtwert</p>
-                    <p className="font-semibold text-gray-900 text-xs">
-                      {detail.content_wert > 0 ? `€ ${detail.content_wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })}` : '—'}
-                    </p>
-                  </div>
-                </div>
+              {/* Label-Button */}
+              <div className="flex justify-end">
                 <button
                   onClick={handlePrint}
                   disabled={printing}
-                  className="btn btn-ghost flex-shrink-0"
-                  style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
                   title="Label als PDF drucken (A6)"
                 >
                   <PrinterIcon className="w-3.5 h-3.5" />
-                  {printing ? 'Generiert…' : 'Label'}
+                  {printing ? 'Generiert…' : 'Label drucken'}
                 </button>
+              </div>
+
+              {/* Info-Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm bg-white rounded-lg border border-gray-200 p-4">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Maße H×B×T</p>
+                  <p className="font-medium text-gray-900 text-xs">
+                    {detail.height_cm || detail.width_cm || detail.depth_cm
+                      ? `${detail.height_cm ?? '?'}×${detail.width_cm ?? '?'}×${detail.depth_cm ?? '?'} cm`
+                      : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Eigengewicht</p>
+                  <p className="font-medium text-gray-900 text-xs">{detail.weight_empty_kg != null ? `${detail.weight_empty_kg} kg` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Gesamtgewicht</p>
+                  <p className="font-semibold text-gray-900 text-xs">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE', { maximumFractionDigits: 2 })} kg` : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Einträge</p>
+                  <p className="font-medium text-gray-900 text-xs">{detail.content_count}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Gesamtwert</p>
+                  <p className="font-semibold text-gray-900 text-xs">
+                    {detail.content_wert > 0 ? `€ ${detail.content_wert.toLocaleString('de-DE', { minimumFractionDigits: 2 })}` : '—'}
+                  </p>
+                </div>
               </div>
 
               {/* Inhalt */}
