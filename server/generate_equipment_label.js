@@ -98,8 +98,8 @@ async function generateEquipmentLabel(opts) {
     // Header links: Logo oder Artist-Name
     if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
       try {
-        // Max 4cm Breite (113pt) × Header-Höhe, Seitenverhältnis erhalten
-        const maxLogoW = Math.round(4 * 28.35); // ~113pt
+        // Ca. 2/3 der Labelbreite, Seitenverhältnis erhalten
+        const maxLogoW = Math.round(W * 2 / 3); // ~280pt ≈ 10cm
         doc.image(logoPath, M, 6, { fit: [maxLogoW, HEADER_H - 12] });
       } catch {
         doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold')
