@@ -28,9 +28,9 @@ const W = 419.53;
 const H = 297.64;
 const M = 14; // margin
 
-const HEADER_H  = 74;
-const CONTENT_Y = HEADER_H + 10;   // 84
-const LOWER_Y   = CONTENT_Y + 62;  // 146 — start of lower section
+const HEADER_H  = 68;
+const CONTENT_Y = HEADER_H + 10;   // 78
+const LOWER_Y   = CONTENT_Y + 58;  // 136 — start of lower section
 
 async function generateEquipmentLabel(opts) {
   const {
@@ -147,14 +147,14 @@ async function generateEquipmentLabel(opts) {
 
     // Linke Spalte: Ladereihenfolge-Label + riesige Zahl
     const leftColW = 148;
-    const loadStr  = loadOrder != null ? String(loadOrder).padStart(3, '0') : '—';
+    const loadStr  = loadOrder != null ? String(loadOrder).padStart(2, '0') : '—';
 
     // "Ladereihenfolge" Überschrift
     doc.fillColor('#888888').fontSize(7).font('Helvetica')
       .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
     // Zahl — riesig, kein Umbruch
-    doc.fillColor('#111111').fontSize(90).font('Helvetica-Bold')
+    doc.fillColor('#111111').fontSize(80).font('Helvetica-Bold')
       .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' });
 
     // Mittlere Spalte: Gruppe + Standort
