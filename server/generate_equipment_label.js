@@ -28,9 +28,9 @@ const W = 419.53;
 const H = 297.64;
 const M = 14; // margin
 
-const HEADER_H  = 60;
-const CONTENT_Y = HEADER_H + 10;   // 70
-const LOWER_Y   = CONTENT_Y + 68;  // 138 — start of lower section
+const HEADER_H  = 74;
+const CONTENT_Y = HEADER_H + 10;   // 84
+const LOWER_Y   = CONTENT_Y + 62;  // 146 — start of lower section
 
 async function generateEquipmentLabel(opts) {
   const {
@@ -93,15 +93,15 @@ async function generateEquipmentLabel(opts) {
     // ── HEADER (schwarzer Balken) ─────────────────────────────────────────
     doc.rect(0, 0, W, HEADER_H).fill('#111111');
 
-    const headerTextY = (HEADER_H - 16) / 2;
+    const headerTextY = (HEADER_H - 18) / 2;
 
     // Header links: Logo oder Artist-Name
     if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
       try {
         doc.image(logoPath, M, 6, { height: HEADER_H - 12, fit: [160, HEADER_H - 12] });
       } catch {
-        doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold')
-          .text(artistName || '', M, headerTextY, { width: 200, lineBreak: false, ellipsis: true });
+        doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold')
+          .text(artistName || '', M, headerTextY, { width: 210, lineBreak: false, ellipsis: true });
       }
     } else {
       doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold')
@@ -146,7 +146,7 @@ async function generateEquipmentLabel(opts) {
     }
 
     // Linke Spalte: Ladereihenfolge-Label + riesige Zahl
-    const leftColW = 128;
+    const leftColW = 148;
     const loadStr  = loadOrder != null ? String(loadOrder).padStart(3, '0') : '—';
 
     // "Ladereihenfolge" Überschrift
@@ -154,7 +154,7 @@ async function generateEquipmentLabel(opts) {
       .text('Ladereihenfolge', M, LOWER_Y, { width: leftColW });
 
     // Zahl — riesig, kein Umbruch
-    doc.fillColor('#111111').fontSize(72).font('Helvetica-Bold')
+    doc.fillColor('#111111').fontSize(90).font('Helvetica-Bold')
       .text(loadStr, M, LOWER_Y + 10, { width: leftColW, lineBreak: false, align: 'left' });
 
     // Mittlere Spalte: Gruppe + Standort
