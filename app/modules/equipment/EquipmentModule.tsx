@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon, PrinterIcon, PhotoIcon } from '@heroicons/react/24/outline'
 import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { parseCSV, col } from '@/lib/csvParser'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -13,11 +13,12 @@ import {
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
   getEquipmentItemDetail, getCaseContents, addToCaseContents, updateCaseContent, removeCaseContent,
   initEquipmentKuerzel, getEquipmentSettings, updateEquipmentSettings,
+  uploadEquipmentLogo, deleteEquipmentLogo, printEquipmentLabel,
   getCarnets, createCarnet, updateCarnet, deleteCarnet, getCarnet,
   addCarnetMaterial, removeCarnetMaterial,
   getEquipmentOwners, createEquipmentOwner, updateEquipmentOwner, deleteEquipmentOwner,
   canDo, getEffectiveRole,
-  type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
+  type EquipmentSettings, type EquipmentCategory, type EquipmentItem, type EquipmentMaterial, type EquipmentMaterialUnit,
   type EquipmentCaseContent, type Carnet, type CarnetMaterial, type EquipmentOwner,
 } from '@/lib/api-client'
 
@@ -842,6 +843,7 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
   const [contents, setContents] = useState<EquipmentCaseContent[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -867,6 +869,16 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
   }
 
   const totalWeight = detail ? (detail.weight_empty_kg ?? 0) + (detail.content_gewicht ?? 0) : 0
+
+  const handlePrint = async () => {
+    setPrinting(true)
+    try {
+      await printEquipmentLabel(item.id)
+    } catch (e) {
+      alert('Label konnte nicht generiert werden')
+    }
+    setPrinting(false)
+  }
 
   return (
     <tr>
@@ -912,11 +924,23 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                     <ArchiveBoxIcon className="w-3.5 h-3.5" /> Inhalt
                   </p>
-                  {canEdit && (
-                    <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
-                      <PlusIcon className="w-3.5 h-3.5" /> Hinzufügen
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePrint}
+                      disabled={printing}
+                      className="btn btn-ghost"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
+                      title="Label als PDF drucken (A6)"
+                    >
+                      <PrinterIcon className="w-3.5 h-3.5" />
+                      {printing ? 'Generiert…' : 'Label drucken'}
                     </button>
-                  )}
+                    {canEdit && (
+                      <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                        <PlusIcon className="w-3.5 h-3.5" /> Hinzufügen
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {contents.length === 0 ? (
@@ -1138,28 +1162,74 @@ function EigentuemerModal({ owner, onSave, onClose }: {
 
 // ── Equipment-Settings Modal ──────────────────────────────────────────────────
 
-function EquipmentSettingsModal({ carnetEnabled, onSave, onClose }: {
+function EquipmentSettingsModal({ carnetEnabled, labelTourName, labelUseArtistName, labelLogoPath, onSave, onClose }: {
   carnetEnabled: boolean
-  onSave: (enabled: boolean) => Promise<void>
+  labelTourName: string | null
+  labelUseArtistName: boolean
+  labelLogoPath: string | null
+  onSave: (data: Partial<EquipmentSettings>) => Promise<void>
   onClose: () => void
 }) {
   const [enabled, setEnabled] = useState(carnetEnabled)
+  const [tourName, setTourName] = useState(labelTourName ?? '')
+  const [useArtistName, setUseArtistName] = useState(labelUseArtistName)
+  const [logoPath, setLogoPath] = useState(labelLogoPath)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setLogoFile(f)
+    const reader = new FileReader()
+    reader.onload = ev => setLogoPreview(ev.target?.result as string)
+    reader.readAsDataURL(f)
+  }
+
+  const handleDeleteLogo = async () => {
+    try {
+      await deleteEquipmentLogo()
+      setLogoPath(null)
+      setLogoFile(null)
+      setLogoPreview(null)
+    } catch {}
+  }
 
   const handle = async () => {
     setSaving(true)
-    await onSave(enabled)
-    onClose()
+    try {
+      // Upload logo first if a new file was selected
+      if (logoFile) {
+        setUploading(true)
+        try {
+          const result = await uploadEquipmentLogo(logoFile)
+          setLogoPath(result.label_logo_path)
+        } catch { /* ignore logo errors, continue saving */ }
+        setUploading(false)
+      }
+      await onSave({
+        carnet_ata_enabled: enabled,
+        label_tour_name: tourName.trim() || null,
+        label_use_artist_name: useArtistName,
+      })
+      onClose()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container max-w-sm">
+      <div className="modal-container max-w-md">
         <div className="modal-header">
           <h3 className="modal-title">Equipment Einstellungen</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
         </div>
-        <div className="modal-body space-y-4">
+        <div className="modal-body space-y-5">
+
+          {/* Carnet ATA */}
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -1176,6 +1246,67 @@ function EquipmentSettingsModal({ carnetEnabled, onSave, onClose }: {
               </p>
             </div>
           </label>
+
+          <hr className="border-gray-200" />
+
+          {/* Label Settings */}
+          <div className="space-y-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+              <PrinterIcon className="w-3.5 h-3.5" /> Label-Druck (A6)
+            </p>
+
+            <div>
+              <label className="form-label">Tour-Name (erscheint auf dem Label)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="z.B. World Tour 2025"
+                value={tourName}
+                onChange={e => setTourName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="form-label">Header links</p>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" name="labelHeader" checked={useArtistName} onChange={() => setUseArtistName(true)} className="accent-blue-600" />
+                Artist-Namen verwenden
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" name="labelHeader" checked={!useArtistName} onChange={() => setUseArtistName(false)} className="accent-blue-600" />
+                Logo hochladen
+              </label>
+            </div>
+
+            {!useArtistName && (
+              <div className="space-y-2">
+                {(logoPreview || logoPath) ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-24 h-10 rounded border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={logoPreview || ''}
+                        alt="Logo Vorschau"
+                        className="max-h-full max-w-full object-contain"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                      {!logoPreview && logoPath && (
+                        <span className="text-xs text-gray-400">Logo gesetzt</span>
+                      )}
+                    </div>
+                    <button onClick={handleDeleteLogo} className="btn btn-ghost text-xs text-red-500">
+                      <TrashIcon className="w-3.5 h-3.5" /> Entfernen
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-blue-600 hover:text-blue-700">
+                    <PhotoIcon className="w-4 h-4" />
+                    <span>{uploading ? 'Lädt…' : 'Logo auswählen (PNG/JPEG, max. 5 MB)'}</span>
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleLogoChange} />
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="modal-footer">
           <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
@@ -1544,6 +1675,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [ownerModal, setOwnerModal] = useState<{ open: boolean; owner: EquipmentOwner | null }>({ open: false, owner: null })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [carnetEnabled, setCarnetEnabled] = useState(false)
+  const [labelSettings, setLabelSettings] = useState<Pick<EquipmentSettings, 'label_tour_name' | 'label_use_artist_name' | 'label_logo_path'>>({
+    label_tour_name: null, label_use_artist_name: true, label_logo_path: null,
+  })
   const [carnets, setCarnets] = useState<Carnet[]>([])
 
   const role = getEffectiveRole()
@@ -1567,6 +1701,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       setItems(itms)
       setMaterials(mats)
       setCarnetEnabled(settings.carnet_ata_enabled)
+      setLabelSettings({ label_tour_name: settings.label_tour_name, label_use_artist_name: settings.label_use_artist_name, label_logo_path: settings.label_logo_path })
       setCarnets(carnetsData)
       setOwners(ownersData)
     } catch {}
@@ -2330,9 +2465,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       {settingsOpen && (
         <EquipmentSettingsModal
           carnetEnabled={carnetEnabled}
-          onSave={async (enabled) => {
-            await updateEquipmentSettings({ carnet_ata_enabled: enabled })
-            setCarnetEnabled(enabled)
+          labelTourName={labelSettings.label_tour_name}
+          labelUseArtistName={labelSettings.label_use_artist_name}
+          labelLogoPath={labelSettings.label_logo_path}
+          onSave={async (data) => {
+            const updated = await updateEquipmentSettings(data)
+            setCarnetEnabled(updated.carnet_ata_enabled)
+            setLabelSettings({ label_tour_name: updated.label_tour_name, label_use_artist_name: updated.label_use_artist_name, label_logo_path: updated.label_logo_path })
           }}
           onClose={() => setSettingsOpen(false)}
         />

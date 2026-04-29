@@ -430,12 +430,57 @@ export async function initEquipmentKuerzel(): Promise<string> {
   return res.kuerzel;
 }
 
-export async function getEquipmentSettings(): Promise<{ carnet_ata_enabled: boolean }> {
-  return request<{ carnet_ata_enabled: boolean }>('/api/equipment/settings');
+export interface EquipmentSettings {
+  carnet_ata_enabled: boolean;
+  label_tour_name: string | null;
+  label_use_artist_name: boolean;
+  label_logo_path: string | null;
 }
 
-export async function updateEquipmentSettings(data: { carnet_ata_enabled: boolean }): Promise<{ carnet_ata_enabled: boolean }> {
-  return request<{ carnet_ata_enabled: boolean }>('/api/equipment/settings', { method: 'PUT', body: data });
+export async function getEquipmentSettings(): Promise<EquipmentSettings> {
+  return request<EquipmentSettings>('/api/equipment/settings');
+}
+
+export async function updateEquipmentSettings(data: Partial<EquipmentSettings>): Promise<EquipmentSettings> {
+  return request<EquipmentSettings>('/api/equipment/settings', { method: 'PUT', body: data });
+}
+
+export async function uploadEquipmentLogo(file: File): Promise<{ label_logo_path: string; filename: string }> {
+  const token = getAuthToken();
+  const tenant = getCurrentTenant();
+  const formData = new FormData();
+  formData.append('logo', file);
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (tenant) headers['X-Tenant-Slug'] = tenant.slug;
+  const res = await fetch(`${API_BASE}/api/equipment/settings/logo`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteEquipmentLogo(): Promise<void> {
+  await request('/api/equipment/settings/logo', { method: 'DELETE' });
+}
+
+/** Opens the label PDF in a new browser tab. Includes auth token via URL so server can validate. */
+export async function printEquipmentLabel(itemId: number): Promise<void> {
+  const token = getAuthToken();
+  const tenant = getCurrentTenant();
+  // Fetch the PDF as blob (credentials can't be set on window.open)
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (tenant) headers['X-Tenant-Slug'] = tenant.slug;
+  const res = await fetch(`${API_BASE}/api/equipment/items/${itemId}/label-pdf`, { headers });
+  if (!res.ok) throw new Error('Label konnte nicht generiert werden');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  // Revoke after a short delay to allow the tab to load
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 // ============================================

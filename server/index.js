@@ -683,6 +683,9 @@ async function initDatabase() {
     // Equipment-Modul: Kürzel pro Tenant (global unique für Case IDs)
     `ALTER TABLE tenants ADD COLUMN equipment_kuerzel TEXT DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN carnet_ata_enabled INTEGER DEFAULT 0`,
+    `ALTER TABLE tenants ADD COLUMN label_tour_name TEXT DEFAULT NULL`,
+    `ALTER TABLE tenants ADD COLUMN label_use_artist_name INTEGER DEFAULT 1`,
+    `ALTER TABLE tenants ADD COLUMN label_logo_path TEXT DEFAULT NULL`,
     // Rename wert_zeitwert → wert_zollwert, wert_wiederbeschaffung → wert_wiederbeschaffungswert
     `ALTER TABLE equipment_materials RENAME COLUMN wert_zeitwert TO wert_zollwert`,
     `ALTER TABLE equipment_materials RENAME COLUMN wert_wiederbeschaffung TO wert_wiederbeschaffungswert`,
@@ -5384,18 +5387,81 @@ app.post('/api/equipment/init', authenticateToken, requireTenant, async (req, re
 // GET /api/equipment/settings
 app.get('/api/equipment/settings', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const row = await db.get('SELECT carnet_ata_enabled FROM tenants WHERE id = ?', [req.tenant.id])
-    res.json({ carnet_ata_enabled: !!row?.carnet_ata_enabled })
+    const row = await db.get(
+      'SELECT carnet_ata_enabled, label_tour_name, label_use_artist_name, label_logo_path FROM tenants WHERE id = ?',
+      [req.tenant.id]
+    )
+    res.json({
+      carnet_ata_enabled: !!row?.carnet_ata_enabled,
+      label_tour_name: row?.label_tour_name ?? null,
+      label_use_artist_name: row?.label_use_artist_name !== 0,
+      label_logo_path: row?.label_logo_path ?? null,
+    })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // PUT /api/equipment/settings
 app.put('/api/equipment/settings', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const { carnet_ata_enabled } = req.body
-    await db.run(`UPDATE tenants SET carnet_ata_enabled=?, updated_at=datetime('now') WHERE id=?`,
-      [carnet_ata_enabled ? 1 : 0, req.tenant.id])
-    res.json({ carnet_ata_enabled: !!carnet_ata_enabled })
+    const { carnet_ata_enabled, label_tour_name, label_use_artist_name } = req.body
+    await db.run(
+      `UPDATE tenants SET carnet_ata_enabled=?, label_tour_name=?, label_use_artist_name=?, updated_at=datetime('now') WHERE id=?`,
+      [carnet_ata_enabled ? 1 : 0, label_tour_name || null, label_use_artist_name ? 1 : 0, req.tenant.id]
+    )
+    const row = await db.get(
+      'SELECT carnet_ata_enabled, label_tour_name, label_use_artist_name, label_logo_path FROM tenants WHERE id = ?',
+      [req.tenant.id]
+    )
+    res.json({
+      carnet_ata_enabled: !!row?.carnet_ata_enabled,
+      label_tour_name: row?.label_tour_name ?? null,
+      label_use_artist_name: row?.label_use_artist_name !== 0,
+      label_logo_path: row?.label_logo_path ?? null,
+    })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/equipment/settings/logo  (Logo-Upload)
+const equipmentLogoStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = path.join(__dirname, 'uploads', 'equipment-logos');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    cb(null, `logo_${Date.now()}${ext}`);
+  },
+});
+const equipmentLogoUpload = multer({ storage: equipmentLogoStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+app.post('/api/equipment/settings/logo', authenticateToken, requireTenant,
+  equipmentLogoUpload.single('logo'),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'Keine Datei' });
+      // Delete old logo if any
+      const old = await db.get('SELECT label_logo_path FROM tenants WHERE id = ?', [req.tenant.id]);
+      if (old?.label_logo_path && fs.existsSync(old.label_logo_path)) {
+        try { fs.unlinkSync(old.label_logo_path); } catch {}
+      }
+      const logoPath = req.file.path;
+      await db.run(`UPDATE tenants SET label_logo_path=?, updated_at=datetime('now') WHERE id=?`,
+        [logoPath, req.tenant.id]);
+      res.json({ label_logo_path: logoPath, filename: req.file.filename });
+    } catch (e) { res.status(500).json({ error: e.message }) }
+  }
+)
+
+// DELETE /api/equipment/settings/logo
+app.delete('/api/equipment/settings/logo', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const old = await db.get('SELECT label_logo_path FROM tenants WHERE id = ?', [req.tenant.id]);
+    if (old?.label_logo_path && fs.existsSync(old.label_logo_path)) {
+      try { fs.unlinkSync(old.label_logo_path); } catch {}
+    }
+    await db.run(`UPDATE tenants SET label_logo_path=NULL, updated_at=datetime('now') WHERE id=?`, [req.tenant.id]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -6809,6 +6875,80 @@ app.put('/api/superadmin/tenants/:id/trial', authenticateToken, requireSuperadmi
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
+
+// ── Equipment: Label PDF ─────────────────────────────────────────────────────
+
+// GET /api/equipment/items/:id/label-pdf
+app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const { generateEquipmentLabel } = require('./generate_equipment_label');
+
+    // Load item
+    const item = await db.get(
+      `SELECT ei.*, t.display_name, t.name AS tenant_name,
+              t.label_tour_name, t.label_use_artist_name, t.label_logo_path
+       FROM equipment_items ei
+       JOIN tenants t ON t.id = ei.tenant_id
+       WHERE ei.id = ? AND ei.tenant_id = ?`,
+      [req.params.id, req.tenant.id]
+    );
+    if (!item) return res.status(404).json({ error: 'Gegenstand nicht gefunden' });
+
+    // Compute Gesamtgewicht
+    const weightRow = await db.get(
+      `SELECT
+        COALESCE(SUM(
+          CASE
+            WHEN ecc.material_unit_id IS NOT NULL THEN COALESCE(em.gewicht_kg, 0)
+            ELSE COALESCE(em.gewicht_kg, 0) * COALESCE(ecc.anzahl, 1)
+          END
+        ), 0) AS content_gewicht
+       FROM equipment_case_contents ecc
+       LEFT JOIN equipment_materials em ON em.id = COALESCE(ecc.material_id,
+         (SELECT material_id FROM equipment_material_units WHERE id = ecc.material_unit_id))
+       WHERE ecc.item_id = ? AND ecc.tenant_id = ?`,
+      [req.params.id, req.tenant.id]
+    );
+    const gesamtgewicht = (item.weight_empty_kg ?? 0) + (weightRow?.content_gewicht ?? 0);
+
+    // Compute Gruppe info (all items in same gruppe_name, sorted by load_order)
+    let gruppeInfo = null;
+    if (item.gruppe_name) {
+      const gruppe = await db.all(
+        `SELECT id FROM equipment_items WHERE tenant_id=? AND gruppe_name=? ORDER BY load_order ASC NULLS LAST, case_id ASC`,
+        [req.tenant.id, item.gruppe_name]
+      );
+      const idx = gruppe.findIndex(r => r.id === item.id);
+      if (idx >= 0) {
+        gruppeInfo = `${item.gruppe_name} ${idx + 1}/${gruppe.length}`;
+      }
+    }
+
+    const artistName = item.display_name || item.tenant_name || '';
+    const pdfBuffer = await generateEquipmentLabel({
+      artistName,
+      logoPath: item.label_logo_path || null,
+      useArtistName: item.label_use_artist_name !== 0,
+      tourName: item.label_tour_name || '',
+      caseId: item.case_id || '',
+      bezeichnung: item.bezeichnung || '',
+      loadOrder: item.load_order ?? null,
+      position: item.position ?? null,
+      positionCustom: item.position_custom ?? null,
+      gruppeInfo,
+      gesamtgewicht: gesamtgewicht > 0 ? gesamtgewicht : null,
+    });
+
+    const safeName = (item.case_id || 'label').replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="label_${safeName}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
+  } catch (e) {
+    console.error('label-pdf error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── Equipment: Eigentümer ────────────────────────────────────────────────────
 
