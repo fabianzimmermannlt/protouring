@@ -243,12 +243,29 @@ async function generateEquipmentLabel(opts) {
     doc.on('end',   () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
+    // Clip everything to page bounds – overflow gets cut, never a 2nd page
+    doc.save();
+    doc.rect(0, 0, W, H).clip();
+
+    let ended = false;
+    doc.on('pageAdded', () => {
+      if (!ended) {
+        ended = true;
+        console.warn('Label: content overflowed – truncated to 1 page');
+        doc.end();
+      }
+    });
+
     // Render elements in order (painter's algorithm)
     for (const el of elements) {
+      if (ended) break;
       renderElement(doc, el, data);
     }
 
-    doc.end();
+    if (!ended) {
+      ended = true;
+      doc.end();
+    }
   });
 }
 
