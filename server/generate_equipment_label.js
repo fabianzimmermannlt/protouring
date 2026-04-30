@@ -222,7 +222,7 @@ async function generateEquipmentLabel(opts) {
     }
 
     if (showPosition && posAbbr) {
-      const posFS = posAbbr.length <= 5 ? 30 : 22;
+      const posFS = posAbbr.length <= 3 ? 44 : posAbbr.length <= 5 ? 36 : 28;
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
       txt(doc, 'Standort', midX, BOT_Y + 94, { width: midW, lineBreak: false });
       doc.fillColor('#111111').fontSize(posFS).font('Helvetica-Bold');

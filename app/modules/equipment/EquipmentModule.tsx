@@ -1272,7 +1272,7 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
       {/* Position */}
       {showPosition && <>
         <text x={161} y={BOT_Y + 94 + 7} fill="#111111" fontSize={7} fontFamily={ff}>Standort</text>
-        <text x={161} y={BOT_Y + 106 + 30 * 0.85} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.posAbbr}</text>
+        <text x={161} y={BOT_Y + 106 + 44 * 0.85} fill="#111111" fontSize={44} fontWeight="bold" fontFamily={ff}>{PREV.posAbbr}</text>
       </>}
 
       {/* QR */}
