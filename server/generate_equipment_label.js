@@ -198,8 +198,9 @@ async function generateEquipmentLabel(opts) {
     if (showLoadOrder && loadOrder != null) {
       const loadStr = String(loadOrder).padStart(2, '0');
       const numFS   = 118; // 3 cm cap-height
-      // Baseline at H - M (same as QR bottom) → top = (H-M) - 0.718×numFS ≈ 206
-      const numY    = Math.round(H - M - 0.718 * numFS);
+      // Baseline at H - M (same as QR bottom) → top = (H-M) - 0.718×numFS
+      // Shift up 5pt to compensate for pdfkit's practical rendering offset
+      const numY    = Math.round(H - M - 0.718 * numFS) - 5;
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
       txt(doc, 'Ladereihenfolge', M, BOT_Y, { width: 148, lineBreak: false });
       doc.fillColor('#111111').fontSize(numFS).font('Helvetica-Bold');
