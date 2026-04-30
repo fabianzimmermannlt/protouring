@@ -193,9 +193,8 @@ async function generateEquipmentLabel(opts) {
       const loadStr = String(loadOrder).padStart(2, '0');
       // 3 cm cap-height: Helvetica cap-height ≈ 0.718 × em → em ≈ 85 / 0.718 ≈ 118 pt
       const numFS = 118;
-      // Bottom-anchor: zone bottom = y=290, visible glyph sits from numY to numY+numFS.
-      // Leave 2 pt bottom margin.
-      const numY = 290 - numFS - 2;
+      // Bottom margin = M (same as left margin), so bottom of glyph at H - M
+      const numY = H - M - numFS; // = 297.64 - 7 - 118 = 172.64
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
       txt(doc, 'Ladereihenfolge', M, 136, { width: 148, lineBreak: false });
       doc.fillColor('#111111').fontSize(numFS).font('Helvetica-Bold');
@@ -226,12 +225,11 @@ async function generateEquipmentLabel(opts) {
       txt(doc, posAbbr, midX, 242, { width: midW, lineBreak: false });
     }
 
-    // ── QR CODE (x=258, 4.5 cm = 128 pt) ───────────────────────────────────
+    // ── QR CODE (4.5 cm = 128 pt, flush right with separator, M from bottom) ─
     if (showQR) {
-      const qrX = 258;
-      const qrS = 128; // 4.5 cm = 127.56 pt ≈ 128 pt
-      // Center vertically in the 154pt zone (y=136..290)
-      const qrY = 136 + Math.round((154 - qrS) / 2);
+      const qrS = 128;
+      const qrX = W - M - qrS; // flush with separator right end (W - M = 412.53)
+      const qrY = H - M - qrS; // M from bottom = 297.64 - 7 - 128 = 162.64
       if (qrBuffer) {
         doc.image(qrBuffer, qrX, qrY, { width: qrS, height: qrS });
       } else {
