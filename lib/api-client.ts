@@ -466,48 +466,27 @@ export async function deleteEquipmentLogo(): Promise<void> {
   await request('/api/equipment/settings/logo', { method: 'DELETE' });
 }
 
-// ── Label Template (element-based) ───────────────────────────────────────────
-
-export type LabelElementType =
-  | 'header_bg' | 'separator' | 'artist' | 'tour_name'
-  | 'case_id'   | 'bezeichnung' | 'load_order' | 'gruppe'
-  | 'position'  | 'qr_code' | 'gewicht' | 'typ';
-
-export interface LabelElement {
-  id:       string;
-  type:     LabelElementType;
-  visible:  boolean;
-  x:        number;
-  y:        number;
-  w:        number;
-  h:        number;
-  fontSize: number;
-  align:    'left' | 'center' | 'right';
-  color:    string;
-  bgColor?: string;
-}
+// ── Label Template ────────────────────────────────────────────────────────────
 
 export interface LabelTemplate {
-  elements: LabelElement[];
+  headerBgColor?: string;   // default '#111111'
+  showLoadOrder?: boolean;  // default true
+  showGruppe?:    boolean;  // default true
+  showPosition?:  boolean;  // default true
+  showQR?:        boolean;  // default true
+  showGewicht?:   boolean;  // default false
+  showTyp?:       boolean;  // default false
 }
 
-const LBL_W = 419.53;
-const LBL_M = 7;
-
-export const DEFAULT_ELEMENTS: LabelElement[] = [
-  { id: 'header_bg',   type: 'header_bg',   visible: true,  x: 0,     y: 0,   w: LBL_W, h: 68,  fontSize: 0,   align: 'left',   color: '#111111', bgColor: '#111111' },
-  { id: 'artist',      type: 'artist',      visible: true,  x: LBL_M, y: 0,   w: 240,   h: 68,  fontSize: 14,  align: 'left',   color: '#ffffff' },
-  { id: 'tour_name',   type: 'tour_name',   visible: true,  x: 232,   y: 0,   w: 180,   h: 68,  fontSize: 18,  align: 'center', color: '#ffffff' },
-  { id: 'case_id',     type: 'case_id',     visible: true,  x: LBL_M, y: 80,  w: 405,   h: 12,  fontSize: 8,   align: 'right',  color: '#111111' },
-  { id: 'bezeichnung', type: 'bezeichnung', visible: true,  x: LBL_M, y: 92,  w: 405,   h: 35,  fontSize: 22,  align: 'left',   color: '#111111' },
-  { id: 'separator',   type: 'separator',   visible: true,  x: LBL_M, y: 131, w: 405,   h: 1,   fontSize: 0,   align: 'left',   color: '#111111' },
-  { id: 'load_order',  type: 'load_order',  visible: true,  x: LBL_M, y: 136, w: 148,   h: 154, fontSize: 108, align: 'left',   color: '#111111' },
-  { id: 'gruppe',      type: 'gruppe',      visible: true,  x: 161,   y: 136, w: 90,    h: 90,  fontSize: 30,  align: 'left',   color: '#111111' },
-  { id: 'position',    type: 'position',    visible: true,  x: 161,   y: 230, w: 90,    h: 60,  fontSize: 30,  align: 'left',   color: '#111111' },
-  { id: 'qr_code',     type: 'qr_code',     visible: true,  x: 258,   y: 136, w: 154,   h: 154, fontSize: 0,   align: 'left',   color: '#111111' },
-  { id: 'gewicht',     type: 'gewicht',     visible: false, x: LBL_M, y: 265, w: 160,   h: 20,  fontSize: 10,  align: 'left',   color: '#111111' },
-  { id: 'typ',         type: 'typ',         visible: false, x: LBL_M, y: 250, w: 160,   h: 15,  fontSize: 10,  align: 'left',   color: '#111111' },
-];
+export const DEFAULT_TEMPLATE: LabelTemplate = {
+  headerBgColor: '#111111',
+  showLoadOrder: true,
+  showGruppe:    true,
+  showPosition:  true,
+  showQR:        true,
+  showGewicht:   false,
+  showTyp:       false,
+};
 
 export async function getLabelTemplate(): Promise<LabelTemplate> {
   return request<LabelTemplate>('/api/equipment/label-template');

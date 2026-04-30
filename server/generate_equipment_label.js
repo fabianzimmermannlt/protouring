@@ -1,7 +1,8 @@
 'use strict';
 /**
- * Element-based A6 landscape label generator (pdfkit + qrcode).
- * Each element has absolute x/y/w/h in PDF points (A6: 419.53 × 297.64 pt).
+ * Fixed-zone A6 landscape label generator (pdfkit + qrcode).
+ * Zones are fixed; content adapts via auto font-scaling.
+ * A6 landscape: 419.53 × 297.64 pt
  */
 const PDFDocument = require('pdfkit');
 const QRCode      = require('qrcode');
@@ -11,160 +12,54 @@ const W = 419.53;
 const H = 297.64;
 const M = 7;
 
-// ── Default element layout (matches original hardcoded design) ────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const DEFAULT_ELEMENTS = [
-  { id: 'header_bg',   type: 'header_bg',   visible: true,  x: 0,   y: 0,   w: W,   h: 68,  fontSize: 0,   align: 'left',   color: '#111111', bgColor: '#111111' },
-  { id: 'artist',      type: 'artist',      visible: true,  x: M,   y: 0,   w: 240, h: 68,  fontSize: 14,  align: 'left',   color: '#ffffff' },
-  { id: 'tour_name',   type: 'tour_name',   visible: true,  x: 232, y: 0,   w: 180, h: 68,  fontSize: 18,  align: 'center', color: '#ffffff' },
-  { id: 'case_id',     type: 'case_id',     visible: true,  x: M,   y: 80,  w: 405, h: 12,  fontSize: 8,   align: 'right',  color: '#111111' },
-  { id: 'bezeichnung', type: 'bezeichnung', visible: true,  x: M,   y: 92,  w: 405, h: 35,  fontSize: 22,  align: 'left',   color: '#111111' },
-  { id: 'separator',   type: 'separator',   visible: true,  x: M,   y: 131, w: 405, h: 1,   fontSize: 0,   align: 'left',   color: '#111111' },
-  { id: 'load_order',  type: 'load_order',  visible: true,  x: M,   y: 136, w: 148, h: 154, fontSize: 108, align: 'left',   color: '#111111' },
-  { id: 'gruppe',      type: 'gruppe',      visible: true,  x: 161, y: 136, w: 90,  h: 90,  fontSize: 30,  align: 'left',   color: '#111111' },
-  { id: 'position',    type: 'position',    visible: true,  x: 161, y: 230, w: 90,  h: 60,  fontSize: 30,  align: 'left',   color: '#111111' },
-  { id: 'qr_code',     type: 'qr_code',     visible: true,  x: 258, y: 136, w: 154, h: 154, fontSize: 0,   align: 'left',   color: '#111111' },
-  { id: 'gewicht',     type: 'gewicht',     visible: false, x: M,   y: 265, w: 160, h: 20,  fontSize: 10,  align: 'left',   color: '#111111' },
-  { id: 'typ',         type: 'typ',         visible: false, x: M,   y: 250, w: 160, h: 15,  fontSize: 10,  align: 'left',   color: '#111111' },
-];
+/** Auto font-size: steps = [[maxLen, size], ...] */
+function autoSize(text, steps) {
+  const len = (text || '').replace(/\n/g, '').length;
+  for (const [max, size] of steps) {
+    if (len <= max) return size;
+  }
+  return steps[steps.length - 1][1];
+}
 
-// ── Element renderer ──────────────────────────────────────────────────────────
+/**
+ * Draw text and immediately reset doc.y to prevent pdfkit's
+ * internal cursor from crossing page bottom and auto-adding a 2nd page.
+ */
+function txt(doc, text, x, y, opts) {
+  doc.text(text, x, y, opts);
+  if (doc.y > H - 1) doc.y = Math.min(y, H - 1);
+}
+
+// ── Position abbreviation map ─────────────────────────────────────────────────
+
+const POSITION_ABBR = {
+  sl: 'SL', sr: 'SR', cs: 'CS', us: 'US', ds: 'DS',
+  usl: 'USL', usr: 'USR', usc: 'USC',
+  cl: 'CL', cr: 'CR',
+  dsl: 'DSL', dsr: 'DSR', dsc: 'DSC',
+  swl: 'SWL', swr: 'SWR',
+  osl: 'OSL', osr: 'OSR', osc: 'OSC',
+  foh: 'FOH', mon: 'MON', backstage: 'BST',
+  distro: 'DIST', delay: 'DLY', merchandise: 'MERCH',
+  balcony: 'BAL', sonstiges: null,
+};
 
 const TYP_LABELS = {
   case: 'Case', dolly: 'Dolly', gitterbox: 'Gitterbox',
   kulisse: 'Kulisse', sonstiges: 'Sonstiges',
 };
 
-function renderElement(doc, el, data) {
-  if (!el.visible) return;
-  const { type, x, y, w, h, fontSize, align, color } = el;
-
-  switch (type) {
-
-    case 'header_bg':
-      doc.rect(x, y, w, h).fill(el.bgColor || color);
-      break;
-
-    case 'separator':
-      doc.moveTo(x, y).lineTo(x + w, y)
-        .lineWidth(Math.max(h, 0.5)).stroke(color);
-      break;
-
-    case 'artist':
-      if (!data.useArtistName && data.logoPath && fs.existsSync(data.logoPath)) {
-        try {
-          doc.image(data.logoPath, x + 2, y + 4, { fit: [w - 4, h - 8] });
-        } catch {
-          const ay = y + (h - fontSize) / 2;
-          doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-            .text(data.artistName || '', x, ay, { width: w, lineBreak: false, ellipsis: true });
-        }
-      } else {
-        const ay = y + (h - fontSize) / 2;
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-          .text(data.artistName || '', x, ay, { width: w, lineBreak: false, ellipsis: true });
-      }
-      break;
-
-    case 'tour_name':
-      if (data.tourName) {
-        // <br> → actual newline
-        const text    = data.tourName.replace(/<br\s*\/?>/gi, '\n');
-        const nLines  = text.split('\n').length;
-        const lineH   = fontSize * 1.25;
-        const blockH  = nLines * lineH;
-        const ty      = y + Math.max((h - blockH) / 2, 0);
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-          .text(text, x, ty, { width: w, align, lineBreak: true, ellipsis: false });
-      }
-      break;
-
-    case 'case_id':
-      doc.fillColor(color).fontSize(7).font('Helvetica')
-        .text('INHALT:', x, y, { lineBreak: false });
-      if (data.caseId) {
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-          .text(data.caseId, x, y, { width: w, align: 'right', lineBreak: false });
-      }
-      break;
-
-    case 'bezeichnung':
-      if (data.bezeichnung) {
-        const max = fontSize;
-        const fs2 = data.bezeichnung.length > 28 ? Math.round(max * 0.77)
-          : data.bezeichnung.length > 20 ? Math.round(max * 0.86)
-          : max;
-        doc.fillColor(color).fontSize(fs2).font('Helvetica-Bold')
-          .text(data.bezeichnung, x, y, { width: w, lineBreak: false, ellipsis: true });
-      }
-      break;
-
-    case 'load_order': {
-      // Number always bottom-anchored within its box
-      const loadStr = data.loadOrder != null ? String(data.loadOrder).padStart(2, '0') : '—';
-      const numH    = fontSize * 1.2;
-      const numY    = Math.max(y + h - numH, y + 12);
-      doc.fillColor(color).fontSize(7).font('Helvetica')
-        .text('Ladereihenfolge', x, y, { width: w });
-      doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-        .text(loadStr, x, numY, { width: w, lineBreak: false, align: 'left' });
-      break;
-    }
-
-    case 'gruppe':
-      if (data.gruppeName) {
-        let gy = y;
-        doc.fillColor(color).fontSize(7).font('Helvetica')
-          .text('Gruppe', x, gy, { width: w });
-        gy += 12;
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-          .text(data.gruppeName, x, gy, { width: w, lineBreak: false, ellipsis: true });
-        gy += Math.round(fontSize * 1.2);
-        if (data.gruppeXY) {
-          doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-            .text(data.gruppeXY, x, gy, { width: w, lineBreak: false });
-        }
-      }
-      break;
-
-    case 'position':
-      if (data.posAbbr) {
-        let py = y;
-        doc.fillColor(color).fontSize(7).font('Helvetica')
-          .text('Standort', x, py, { width: w });
-        py += 12;
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica-Bold')
-          .text(data.posAbbr, x, py, { width: w, lineBreak: false });
-      }
-      break;
-
-    case 'qr_code': {
-      const s = Math.min(w, h);
-      if (data.qrBuffer) {
-        doc.image(data.qrBuffer, x, y, { width: s, height: s });
-      } else {
-        doc.rect(x, y, s, s).stroke(color);
-        doc.fillColor(color).fontSize(8).font('Helvetica')
-          .text(data.caseId || '', x, y + s / 2 - 4, { width: s, align: 'center' });
-      }
-      break;
-    }
-
-    case 'gewicht':
-      if (data.gesamtgewicht) {
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica')
-          .text(`Gewicht: ${data.gesamtgewicht} kg`, x, y, { width: w, lineBreak: false });
-      }
-      break;
-
-    case 'typ':
-      if (data.typ) {
-        doc.fillColor(color).fontSize(fontSize).font('Helvetica')
-          .text(TYP_LABELS[data.typ] || data.typ, x, y, { width: w, lineBreak: false });
-      }
-      break;
-  }
-}
+const DEFAULT_TEMPLATE = {
+  headerBgColor: '#111111',
+  showLoadOrder: true,
+  showGruppe:    true,
+  showPosition:  true,
+  showQR:        true,
+  showGewicht:   false,
+  showTyp:       false,
+};
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
@@ -186,16 +81,27 @@ async function generateEquipmentLabel(opts) {
     template       = {},
   } = opts;
 
-  // Merge saved element overrides onto defaults
-  const savedElements = template.elements || null;
-  const elements = savedElements && savedElements.length
-    ? savedElements
-    : DEFAULT_ELEMENTS;
+  const {
+    headerBgColor = '#111111',
+    showLoadOrder = true,
+    showGruppe    = true,
+    showPosition  = true,
+    showQR        = true,
+    showGewicht   = false,
+    showTyp       = false,
+  } = { ...DEFAULT_TEMPLATE, ...template };
 
-  // QR code buffer (only if qr_code element is visible)
-  const needsQR = elements.some(el => el.type === 'qr_code' && el.visible);
+  // Position abbreviation
+  let posAbbr = null;
+  if (position && position !== 'sonstiges') {
+    posAbbr = POSITION_ABBR[position] ?? position.toUpperCase().slice(0, 5);
+  } else if (position === 'sonstiges' && positionCustom) {
+    posAbbr = positionCustom.toUpperCase().slice(0, 6);
+  }
+
+  // QR code
   let qrBuffer = null;
-  if (needsQR) {
+  if (showQR) {
     try {
       qrBuffer = await QRCode.toBuffer(caseId || 'N/A', {
         type: 'png', width: 160, margin: 1,
@@ -206,31 +112,9 @@ async function generateEquipmentLabel(opts) {
     }
   }
 
-  // Position abbreviation
-  const POSITION_ABBR = {
-    sl: 'SL', sr: 'SR', cs: 'CS', us: 'US', ds: 'DS',
-    usl: 'USL', usr: 'USR', usc: 'USC',
-    cl: 'CL', cr: 'CR',
-    dsl: 'DSL', dsr: 'DSR', dsc: 'DSC',
-    swl: 'SWL', swr: 'SWR',
-    osl: 'OSL', osr: 'OSR', osc: 'OSC',
-    foh: 'FOH', mon: 'MON', backstage: 'BST',
-    distro: 'DIST', delay: 'DLY', merchandise: 'MERCH',
-    balcony: 'BAL', sonstiges: null,
-  };
-  let posAbbr = null;
-  if (position && position !== 'sonstiges') {
-    posAbbr = POSITION_ABBR[position] ?? position.toUpperCase().slice(0, 5);
-  } else if (position === 'sonstiges' && positionCustom) {
-    posAbbr = positionCustom.toUpperCase().slice(0, 6);
-  }
-
-  const data = {
-    artistName, logoPath, useArtistName, tourName,
-    caseId, bezeichnung, loadOrder, posAbbr,
-    gruppeName, gruppeXY, gesamtgewicht, typ,
-    qrBuffer,
-  };
+  // Tour name: replace <br> with newline
+  const tourText  = (tourName || '').replace(/<br\s*\/?>/gi, '\n').trim();
+  const tourLines = tourText ? tourText.split('\n') : [];
 
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -243,30 +127,141 @@ async function generateEquipmentLabel(opts) {
     doc.on('end',   () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    // Clip everything to page bounds – overflow gets cut, never a 2nd page
+    // Block any attempt by pdfkit to add a 2nd page.
+    // doc.addPage() is called internally when text overflows page height.
+    // We clip visually AND prevent the page addition entirely.
     doc.save();
     doc.rect(0, 0, W, H).clip();
+    const _addPage = doc.addPage.bind(doc);
+    doc.addPage = function () {
+      console.warn('Label: overflow blocked – staying on page 1');
+      return doc; // no-op
+    };
 
-    let ended = false;
-    doc.on('pageAdded', () => {
-      if (!ended) {
-        ended = true;
-        console.warn('Label: content overflowed – truncated to 1 page');
-        doc.end();
+    // ── HEADER BACKGROUND ───────────────────────────────────────────────────
+    const HDR_H = 68;
+    doc.rect(0, 0, W, HDR_H).fill(headerBgColor);
+
+    // ── ARTIST ZONE (x=M, w=232) ────────────────────────────────────────────
+    const artistW = 232;
+    if (!useArtistName && logoPath && fs.existsSync(logoPath)) {
+      try {
+        doc.image(logoPath, M + 2, 4, { fit: [artistW - 8, HDR_H - 8], align: 'left', valign: 'center' });
+      } catch {
+        drawArtistText(doc, artistName, artistW, HDR_H);
       }
-    });
-
-    // Render elements in order (painter's algorithm)
-    for (const el of elements) {
-      if (ended) break;
-      renderElement(doc, el, data);
+    } else {
+      drawArtistText(doc, artistName, artistW, HDR_H);
     }
 
-    if (!ended) {
-      ended = true;
-      doc.end();
+    // ── TOUR NAME ZONE (x=242, w=170) ───────────────────────────────────────
+    if (tourLines.length > 0) {
+      const tourW  = 170;
+      const tourX  = 242;
+      const tourFS = autoSize(tourText, [[12, 18], [20, 14], [Infinity, 11]]);
+      const lineH  = tourFS * 1.25;
+      const blockH = tourLines.length * lineH;
+      const startY = Math.max((HDR_H - blockH) / 2, 2);
+      tourLines.forEach((line, i) => {
+        const ty = startY + i * lineH;
+        doc.fillColor('#ffffff').fontSize(tourFS).font('Helvetica-Bold');
+        txt(doc, line.trim(), tourX, ty, { width: tourW, align: 'center', lineBreak: false, ellipsis: true });
+      });
     }
+
+    // ── CASE ID (y=80) ──────────────────────────────────────────────────────
+    doc.fillColor('#111111').fontSize(7).font('Helvetica');
+    txt(doc, 'INHALT:', M, 80, { lineBreak: false });
+    if (caseId) {
+      doc.fillColor('#111111').fontSize(8).font('Helvetica-Bold');
+      txt(doc, caseId, M, 80, { width: W - M * 2, align: 'right', lineBreak: false });
+    }
+
+    // ── BEZEICHNUNG (y=92, h=35) ────────────────────────────────────────────
+    if (bezeichnung) {
+      const bezFS = autoSize(bezeichnung, [[20, 22], [28, 18], [Infinity, 14]]);
+      const bezY  = 92 + Math.max((35 - bezFS) / 2, 0);
+      doc.fillColor('#111111').fontSize(bezFS).font('Helvetica-Bold');
+      txt(doc, bezeichnung, M, bezY, { width: W - M * 2, lineBreak: false, ellipsis: true });
+    }
+
+    // ── SEPARATOR (y=131) ────────────────────────────────────────────────────
+    doc.moveTo(M, 131).lineTo(W - M, 131).lineWidth(0.75).stroke('#111111');
+
+    // ── LOAD ORDER (x=M, w=148, bottom-anchored) ────────────────────────────
+    if (showLoadOrder && loadOrder != null) {
+      const loadStr = String(loadOrder).padStart(2, '0');
+      const numFS   = 108;
+      const numH    = numFS * 1.2;
+      // Bottom of the 154pt zone is y=290; baseline = 290 - (numH - numFS)
+      const numY    = 290 - (numH - numFS) - 4;
+      doc.fillColor('#111111').fontSize(7).font('Helvetica');
+      txt(doc, 'Ladereihenfolge', M, 136, { width: 148, lineBreak: false });
+      doc.fillColor('#111111').fontSize(numFS).font('Helvetica-Bold');
+      txt(doc, loadStr, M, numY, { width: 148, lineBreak: false });
+    }
+
+    // ── GRUPPE + POSITION ZONE (x=161, w=90) ────────────────────────────────
+    const midX = 161;
+    const midW = 90;
+
+    if (showGruppe && gruppeName) {
+      const grpFS = autoSize(gruppeName, [[5, 30], [8, 22], [Infinity, 16]]);
+      doc.fillColor('#111111').fontSize(7).font('Helvetica');
+      txt(doc, 'Gruppe', midX, 136, { width: midW, lineBreak: false });
+      doc.fillColor('#111111').fontSize(grpFS).font('Helvetica-Bold');
+      txt(doc, gruppeName, midX, 148, { width: midW, lineBreak: false, ellipsis: true });
+      if (gruppeXY) {
+        const gyXY = 148 + Math.round(grpFS * 1.2);
+        txt(doc, gruppeXY, midX, gyXY, { width: midW, lineBreak: false });
+      }
+    }
+
+    if (showPosition && posAbbr) {
+      const posFS = posAbbr.length <= 5 ? 30 : 22;
+      doc.fillColor('#111111').fontSize(7).font('Helvetica');
+      txt(doc, 'Standort', midX, 230, { width: midW, lineBreak: false });
+      doc.fillColor('#111111').fontSize(posFS).font('Helvetica-Bold');
+      txt(doc, posAbbr, midX, 242, { width: midW, lineBreak: false });
+    }
+
+    // ── QR CODE (x=258, 150×150) ────────────────────────────────────────────
+    if (showQR) {
+      const qrX = 258;
+      const qrS = 150;
+      if (qrBuffer) {
+        doc.image(qrBuffer, qrX, 136, { width: qrS, height: qrS });
+      } else {
+        doc.rect(qrX, 136, qrS, qrS).stroke('#111111');
+        doc.fillColor('#111111').fontSize(8).font('Helvetica');
+        txt(doc, caseId || '', qrX, 136 + qrS / 2 - 4, { width: qrS, align: 'center', lineBreak: false });
+      }
+    }
+
+    // ── OPTIONAL FOOTER ──────────────────────────────────────────────────────
+    let footY = 254;
+    if (showTyp && typ) {
+      doc.fillColor('#555555').fontSize(9).font('Helvetica');
+      txt(doc, TYP_LABELS[typ] || typ, M, footY, { width: 160, lineBreak: false });
+      footY += 14;
+    }
+    if (showGewicht && gesamtgewicht) {
+      doc.fillColor('#555555').fontSize(9).font('Helvetica');
+      txt(doc, `Gewicht: ${gesamtgewicht} kg`, M, footY, { width: 160, lineBreak: false });
+    }
+
+    // Restore real addPage before ending (pdfkit needs it internally for finalization)
+    doc.addPage = _addPage;
+    doc.end();
   });
 }
 
-module.exports = { generateEquipmentLabel, DEFAULT_ELEMENTS };
+function drawArtistText(doc, name, w, hdrH) {
+  if (!name) return;
+  const fs = autoSize(name, [[10, 20], [16, 16], [22, 12], [Infinity, 9]]);
+  const ty = Math.max((hdrH - fs) / 2, 2);
+  doc.fillColor('#ffffff').fontSize(fs).font('Helvetica-Bold');
+  txt(doc, name, M + 2, ty, { width: w - 8, lineBreak: false, ellipsis: true });
+}
+
+module.exports = { generateEquipmentLabel, DEFAULT_TEMPLATE };
