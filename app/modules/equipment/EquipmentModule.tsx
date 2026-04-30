@@ -1216,11 +1216,11 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
   const bezFS = autoSz(PREV.bezeichnung, [[20, 22], [28, 18], [Infinity, 14]])
   const bezY  = 92 + (35 - bezFS) / 2 + bezFS * 0.82
 
-  const numFS = 108
-  const numH  = numFS * 1.2
-  const numY  = 136 + 154 - numH + numFS * 0.85
+  const numFS = 118                      // 3 cm cap-height
+  const numY  = 290 - numFS - 2          // bottom-anchored, 2pt margin
 
-  const qrX = 258; const qrS = 150; const cs = qrS / 8
+  const qrX = 258; const qrS = 128; const cs = qrS / 8  // 4.5 cm
+  const qrY = 136 + Math.round((154 - qrS) / 2)         // vertically centered
 
   let footY = 252 + 9 * 0.85
 
@@ -1265,7 +1265,7 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
 
       {/* QR */}
       {showQR && QR_PATTERN.flatMap((row, r) => row.map((v, c) =>
-        v ? <rect key={`${r}-${c}`} x={qrX + c * cs + 0.2} y={136 + r * cs + 0.2}
+        v ? <rect key={`${r}-${c}`} x={qrX + c * cs + 0.2} y={qrY + r * cs + 0.2}
           width={cs - 0.4} height={cs - 0.4} fill="#111111" /> : null
       ))}
 

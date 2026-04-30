@@ -191,10 +191,11 @@ async function generateEquipmentLabel(opts) {
     // ── LOAD ORDER (x=M, w=148, bottom-anchored) ────────────────────────────
     if (showLoadOrder && loadOrder != null) {
       const loadStr = String(loadOrder).padStart(2, '0');
-      const numFS   = 108;
-      const numH    = numFS * 1.2;
-      // Bottom of the 154pt zone is y=290; baseline = 290 - (numH - numFS)
-      const numY    = 290 - (numH - numFS) - 4;
+      // 3 cm cap-height: Helvetica cap-height ≈ 0.718 × em → em ≈ 85 / 0.718 ≈ 118 pt
+      const numFS = 118;
+      // Bottom-anchor: zone bottom = y=290, visible glyph sits from numY to numY+numFS.
+      // Leave 2 pt bottom margin.
+      const numY = 290 - numFS - 2;
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
       txt(doc, 'Ladereihenfolge', M, 136, { width: 148, lineBreak: false });
       doc.fillColor('#111111').fontSize(numFS).font('Helvetica-Bold');
@@ -225,16 +226,18 @@ async function generateEquipmentLabel(opts) {
       txt(doc, posAbbr, midX, 242, { width: midW, lineBreak: false });
     }
 
-    // ── QR CODE (x=258, 150×150) ────────────────────────────────────────────
+    // ── QR CODE (x=258, 4.5 cm = 128 pt) ───────────────────────────────────
     if (showQR) {
       const qrX = 258;
-      const qrS = 150;
+      const qrS = 128; // 4.5 cm = 127.56 pt ≈ 128 pt
+      // Center vertically in the 154pt zone (y=136..290)
+      const qrY = 136 + Math.round((154 - qrS) / 2);
       if (qrBuffer) {
-        doc.image(qrBuffer, qrX, 136, { width: qrS, height: qrS });
+        doc.image(qrBuffer, qrX, qrY, { width: qrS, height: qrS });
       } else {
-        doc.rect(qrX, 136, qrS, qrS).stroke('#111111');
+        doc.rect(qrX, qrY, qrS, qrS).stroke('#111111');
         doc.fillColor('#111111').fontSize(8).font('Helvetica');
-        txt(doc, caseId || '', qrX, 136 + qrS / 2 - 4, { width: qrS, align: 'center', lineBreak: false });
+        txt(doc, caseId || '', qrX, qrY + qrS / 2 - 4, { width: qrS, align: 'center', lineBreak: false });
       }
     }
 
