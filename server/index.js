@@ -6968,6 +6968,10 @@ app.get('/api/equipment/items/:id/label-pdf', authenticateToken, requireTenant, 
       gruppeName,
       gruppeXY,
       gesamtgewicht: gesamtgewicht > 0 ? gesamtgewicht : null,
+      typ:      item.typ ?? null,
+      heightCm: item.height_cm ?? null,
+      widthCm:  item.width_cm ?? null,
+      depthCm:  item.depth_cm ?? null,
       template,
     });
 

@@ -78,6 +78,9 @@ async function generateEquipmentLabel(opts) {
     gruppeXY       = null,
     gesamtgewicht  = null,
     typ            = null,
+    heightCm       = null,
+    widthCm        = null,
+    depthCm        = null,
     template       = {},
   } = opts;
 
@@ -183,12 +186,37 @@ async function generateEquipmentLabel(opts) {
       txt(doc, caseId, M, MID_Y, { width: W - M * 2, align: 'right', lineBreak: false });
     }
 
-    // ── BEZEICHNUNG ──────────────────────────────────────────────────────────
+    // ── BEZEICHNUNG (left, 230pt wide) ───────────────────────────────────────
     if (bezeichnung) {
       const bezFS = autoSize(bezeichnung, [[20, 22], [28, 18], [Infinity, 14]]);
       const bezY  = BEZ_Y + Math.max((35 - bezFS) / 2, 0);
       doc.fillColor('#111111').fontSize(bezFS).font('Helvetica-Bold');
-      txt(doc, bezeichnung, M, bezY, { width: W - M * 2, lineBreak: false, ellipsis: true });
+      txt(doc, bezeichnung, M, bezY, { width: 230, lineBreak: false, ellipsis: true });
+    }
+
+    // ── RECHTE META-SPALTE (Maße / Gewicht / Typ, right-aligned) ────────────
+    {
+      const metaFS    = 9;
+      const metaLineH = 11;
+      let   metaY     = BEZ_Y + 2;
+      const hasMasse  = heightCm != null || widthCm != null || depthCm != null;
+
+      if (hasMasse) {
+        const fmt = v => (v != null ? v : '?');
+        const masseStr = `${fmt(heightCm)} × ${fmt(widthCm)} × ${fmt(depthCm)} cm`;
+        doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
+        txt(doc, masseStr, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        metaY += metaLineH;
+      }
+      if (gesamtgewicht) {
+        doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
+        txt(doc, `${gesamtgewicht} kg`, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        metaY += metaLineH;
+      }
+      if (typ) {
+        doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
+        txt(doc, TYP_LABELS[typ] || typ, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+      }
     }
 
     // ── SEPARATOR ────────────────────────────────────────────────────────────
@@ -244,19 +272,7 @@ async function generateEquipmentLabel(opts) {
       }
     }
 
-    // ── OPTIONAL FOOTER ──────────────────────────────────────────────────────
-    let footY = 254;
-    if (showTyp && typ) {
-      doc.fillColor('#555555').fontSize(9).font('Helvetica');
-      txt(doc, TYP_LABELS[typ] || typ, M, footY, { width: 160, lineBreak: false });
-      footY += 14;
-    }
-    if (showGewicht && gesamtgewicht) {
-      doc.fillColor('#555555').fontSize(9).font('Helvetica');
-      txt(doc, `Gewicht: ${gesamtgewicht} kg`, M, footY, { width: 160, lineBreak: false });
-    }
-
-    // Restore real addPage before ending (pdfkit needs it internally for finalization)
+// Restore real addPage before ending (pdfkit needs it internally for finalization)
     doc.addPage = _addPage;
     doc.end();
   });

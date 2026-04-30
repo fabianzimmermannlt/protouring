@@ -1250,8 +1250,13 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
       <text x={7} y={midBaseline} fill="#111111" fontSize={7} fontFamily={ff}>INHALT:</text>
       <text x={LBL_W - 7} y={midBaseline} fill="#111111" fontSize={8} fontWeight="bold" fontFamily={ff} textAnchor="end">{PREV.caseId}</text>
 
-      {/* Bezeichnung */}
+      {/* Bezeichnung (left, narrowed) */}
       <text x={7} y={bezY} fill="#111111" fontSize={bezFS} fontWeight="bold" fontFamily={ff}>{PREV.bezeichnung}</text>
+
+      {/* Right meta column: Maße / Gewicht / Typ */}
+      <text x={LBL_W - 7} y={BEZ_Y + 2 + 9 * 0.82} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">48 × 80 × 60 cm</text>
+      <text x={LBL_W - 7} y={BEZ_Y + 13 + 9 * 0.82} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">42 kg</text>
+      <text x={LBL_W - 7} y={BEZ_Y + 24 + 9 * 0.82} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">Case</text>
 
       {/* Separator */}
       <line x1={7} y1={SEP_Y} x2={LBL_W - 7} y2={SEP_Y} stroke="#111111" strokeWidth={0.75} />
@@ -1281,9 +1286,6 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
           width={cs - 0.4} height={cs - 0.4} fill="#111111" /> : null
       ))}
 
-      {/* Optional footer */}
-      {showTyp && <text x={7} y={footY} fill="#555555" fontSize={9} fontFamily={ff}>{PREV.typ}</text>}
-      {showGewicht && <text x={7} y={showTyp ? footY + 14 : footY} fill="#555555" fontSize={9} fontFamily={ff}>Gewicht: {PREV.gewicht}</text>}
     </svg>
   )
 }
@@ -1302,8 +1304,6 @@ const LABEL_TOGGLES: { key: keyof LabelTemplate; label: string }[] = [
   { key: 'showGruppe',    label: 'Gruppe' },
   { key: 'showPosition',  label: 'Standort / Position' },
   { key: 'showQR',        label: 'QR-Code' },
-  { key: 'showGewicht',   label: 'Gesamtgewicht' },
-  { key: 'showTyp',       label: 'Typ (Case / Dolly…)' },
 ]
 
 function LabelTemplateModal({ onClose }: { onClose: () => void }) {
