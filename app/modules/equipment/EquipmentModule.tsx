@@ -1216,8 +1216,9 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
   const bezFS = autoSz(PREV.bezeichnung, [[20, 22], [28, 18], [Infinity, 14]])
   const bezY  = 92 + (35 - bezFS) / 2 + bezFS * 0.82
 
-  const numFS = 118                        // 3 cm cap-height
-  const numY  = LBL_H - 7 - numFS         // M from bottom, same as left margin
+  const numFS = 118                             // 3 cm cap-height
+  // SVG text y = baseline; for digits visual bottom = baseline → y = H - M
+  const numY  = LBL_H - 7                       // baseline at bottom margin
 
   const qrS = 128; const cs = qrS / 8    // 4.5 cm
   const qrX = LBL_W - 7 - qrS            // flush right with separator end

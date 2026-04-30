@@ -193,8 +193,10 @@ async function generateEquipmentLabel(opts) {
       const loadStr = String(loadOrder).padStart(2, '0');
       // 3 cm cap-height: Helvetica cap-height ≈ 0.718 × em → em ≈ 85 / 0.718 ≈ 118 pt
       const numFS = 118;
-      // Bottom margin = M (same as left margin), so bottom of glyph at H - M
-      const numY = H - M - numFS; // = 297.64 - 7 - 118 = 172.64
+      // Visible bottom of digit (baseline) = H - M.
+      // pdfkit places text with TOP of em at y; baseline = y + ascender (0.718 × em for Helvetica).
+      // → y = (H - M) - 0.718 × numFS
+      const numY = Math.round(H - M - 0.718 * numFS); // ≈ 206
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
       txt(doc, 'Ladereihenfolge', M, 136, { width: 148, lineBreak: false });
       doc.fillColor('#111111').fontSize(numFS).font('Helvetica-Bold');
