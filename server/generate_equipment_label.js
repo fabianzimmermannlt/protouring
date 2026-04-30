@@ -138,8 +138,14 @@ async function generateEquipmentLabel(opts) {
       return doc; // no-op
     };
 
+    // ── LAYOUT CONSTANTS ────────────────────────────────────────────────────
+    const HDR_H = 71;              // 2.5 cm = 70.87 pt
+    const MID_Y = HDR_H + 12;     // Case-ID zone top   (= 83)
+    const BEZ_Y = MID_Y + 12;     // Bezeichnung top    (= 95)
+    const SEP_Y = BEZ_Y + 35 + 4; // Separator          (= 134)
+    const BOT_Y = SEP_Y + 5;      // Bottom section top (= 139)
+
     // ── HEADER BACKGROUND ───────────────────────────────────────────────────
-    const HDR_H = 68;
     doc.rect(0, 0, W, HDR_H).fill(headerBgColor);
 
     // ── ARTIST ZONE (x=M, w=232) ────────────────────────────────────────────
@@ -169,36 +175,33 @@ async function generateEquipmentLabel(opts) {
       });
     }
 
-    // ── CASE ID (y=80) ──────────────────────────────────────────────────────
+    // ── CASE ID ──────────────────────────────────────────────────────────────
     doc.fillColor('#111111').fontSize(7).font('Helvetica');
-    txt(doc, 'INHALT:', M, 80, { lineBreak: false });
+    txt(doc, 'INHALT:', M, MID_Y, { lineBreak: false });
     if (caseId) {
       doc.fillColor('#111111').fontSize(8).font('Helvetica-Bold');
-      txt(doc, caseId, M, 80, { width: W - M * 2, align: 'right', lineBreak: false });
+      txt(doc, caseId, M, MID_Y, { width: W - M * 2, align: 'right', lineBreak: false });
     }
 
-    // ── BEZEICHNUNG (y=92, h=35) ────────────────────────────────────────────
+    // ── BEZEICHNUNG ──────────────────────────────────────────────────────────
     if (bezeichnung) {
       const bezFS = autoSize(bezeichnung, [[20, 22], [28, 18], [Infinity, 14]]);
-      const bezY  = 92 + Math.max((35 - bezFS) / 2, 0);
+      const bezY  = BEZ_Y + Math.max((35 - bezFS) / 2, 0);
       doc.fillColor('#111111').fontSize(bezFS).font('Helvetica-Bold');
       txt(doc, bezeichnung, M, bezY, { width: W - M * 2, lineBreak: false, ellipsis: true });
     }
 
-    // ── SEPARATOR (y=131) ────────────────────────────────────────────────────
-    doc.moveTo(M, 131).lineTo(W - M, 131).lineWidth(0.75).stroke('#111111');
+    // ── SEPARATOR ────────────────────────────────────────────────────────────
+    doc.moveTo(M, SEP_Y).lineTo(W - M, SEP_Y).lineWidth(0.75).stroke('#111111');
 
-    // ── LOAD ORDER (x=M, w=148, bottom-anchored) ────────────────────────────
+    // ── LOAD ORDER LABEL (number stays bottom-anchored from H) ──────────────
     if (showLoadOrder && loadOrder != null) {
       const loadStr = String(loadOrder).padStart(2, '0');
-      // 3 cm cap-height: Helvetica cap-height ≈ 0.718 × em → em ≈ 85 / 0.718 ≈ 118 pt
-      const numFS = 118;
-      // Visible bottom of digit (baseline) = H - M.
-      // pdfkit places text with TOP of em at y; baseline = y + ascender (0.718 × em for Helvetica).
-      // → y = (H - M) - 0.718 × numFS
-      const numY = Math.round(H - M - 0.718 * numFS); // ≈ 206
+      const numFS   = 118; // 3 cm cap-height
+      // Baseline at H - M (same as QR bottom) → top = (H-M) - 0.718×numFS ≈ 206
+      const numY    = Math.round(H - M - 0.718 * numFS);
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
-      txt(doc, 'Ladereihenfolge', M, 136, { width: 148, lineBreak: false });
+      txt(doc, 'Ladereihenfolge', M, BOT_Y, { width: 148, lineBreak: false });
       doc.fillColor('#111111').fontSize(numFS).font('Helvetica-Bold');
       txt(doc, loadStr, M, numY, { width: 148, lineBreak: false });
     }
@@ -210,21 +213,20 @@ async function generateEquipmentLabel(opts) {
     if (showGruppe && gruppeName) {
       const grpFS = autoSize(gruppeName, [[5, 30], [8, 22], [Infinity, 16]]);
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
-      txt(doc, 'Gruppe', midX, 136, { width: midW, lineBreak: false });
+      txt(doc, 'Gruppe', midX, BOT_Y, { width: midW, lineBreak: false });
       doc.fillColor('#111111').fontSize(grpFS).font('Helvetica-Bold');
-      txt(doc, gruppeName, midX, 148, { width: midW, lineBreak: false, ellipsis: true });
+      txt(doc, gruppeName, midX, BOT_Y + 12, { width: midW, lineBreak: false, ellipsis: true });
       if (gruppeXY) {
-        const gyXY = 148 + Math.round(grpFS * 1.2);
-        txt(doc, gruppeXY, midX, gyXY, { width: midW, lineBreak: false });
+        txt(doc, gruppeXY, midX, BOT_Y + 12 + Math.round(grpFS * 1.2), { width: midW, lineBreak: false });
       }
     }
 
     if (showPosition && posAbbr) {
       const posFS = posAbbr.length <= 5 ? 30 : 22;
       doc.fillColor('#111111').fontSize(7).font('Helvetica');
-      txt(doc, 'Standort', midX, 230, { width: midW, lineBreak: false });
+      txt(doc, 'Standort', midX, BOT_Y + 94, { width: midW, lineBreak: false });
       doc.fillColor('#111111').fontSize(posFS).font('Helvetica-Bold');
-      txt(doc, posAbbr, midX, 242, { width: midW, lineBreak: false });
+      txt(doc, posAbbr, midX, BOT_Y + 106, { width: midW, lineBreak: false });
     }
 
     // ── QR CODE (4.5 cm = 128 pt, flush right with separator, M from bottom) ─

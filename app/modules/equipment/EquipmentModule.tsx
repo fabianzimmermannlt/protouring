@@ -1209,27 +1209,37 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
   const artY   = (68 - artFS) / 2 + artFS * 0.82
 
   const tourFS = 18
+  // Same layout constants as generator
+  const HDR_H = 71
+  const MID_Y = HDR_H + 12   // = 83
+  const BEZ_Y = MID_Y + 12   // = 95
+  const SEP_Y = BEZ_Y + 39   // = 134
+  const BOT_Y = SEP_Y + 5    // = 139
+
   const lineH  = tourFS * 1.25
   const blockH = PREV.tourLines.length * lineH
-  const tourSY = (68 - blockH) / 2
+  const tourSY = (HDR_H - blockH) / 2
 
   const bezFS = autoSz(PREV.bezeichnung, [[20, 22], [28, 18], [Infinity, 14]])
-  const bezY  = 92 + (35 - bezFS) / 2 + bezFS * 0.82
+  // SVG y = baseline; baseline ≈ top + fontSize * 0.82
+  const bezY  = BEZ_Y + (35 - bezFS) / 2 + bezFS * 0.82
 
-  const numFS = 118                             // 3 cm cap-height
-  // SVG text y = baseline; for digits visual bottom = baseline → y = H - M
-  const numY  = LBL_H - 7                       // baseline at bottom margin
+  // Case ID baseline (SVG)
+  const midBaseline = MID_Y + 7
 
-  const qrS = 128; const cs = qrS / 8    // 4.5 cm
-  const qrX = LBL_W - 7 - qrS            // flush right with separator end
-  const qrY = LBL_H - 7 - qrS            // M from bottom
+  const numFS = 118                        // 3 cm cap-height
+  const numY  = LBL_H - 7                  // SVG baseline at bottom margin (unchanged)
 
-  let footY = 252 + 9 * 0.85
+  const qrS = 128; const cs = qrS / 8     // 4.5 cm
+  const qrX = LBL_W - 7 - qrS
+  const qrY = LBL_H - 7 - qrS
+
+  const footY = SEP_Y + 120 + 9 * 0.85   // optional footer baseline
 
   return (
     <svg viewBox={`0 0 ${LBL_W} ${LBL_H}`} style={{ background: 'white', width: '100%', display: 'block', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
       {/* Header */}
-      <rect x={0} y={0} width={LBL_W} height={68} fill={headerBgColor} />
+      <rect x={0} y={0} width={LBL_W} height={HDR_H} fill={headerBgColor} />
       <text x={9} y={artY} fill="#ffffff" fontSize={artFS} fontWeight="bold" fontFamily={ff}>{PREV.artistName}</text>
       {PREV.tourLines.map((line, i) => (
         <text key={i} x={242 + 85} y={tourSY + i * lineH + tourFS * 0.82}
@@ -1237,32 +1247,32 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
       ))}
 
       {/* Case ID */}
-      <text x={7} y={87} fill="#111111" fontSize={7} fontFamily={ff}>INHALT:</text>
-      <text x={LBL_W - 7} y={87} fill="#111111" fontSize={8} fontWeight="bold" fontFamily={ff} textAnchor="end">{PREV.caseId}</text>
+      <text x={7} y={midBaseline} fill="#111111" fontSize={7} fontFamily={ff}>INHALT:</text>
+      <text x={LBL_W - 7} y={midBaseline} fill="#111111" fontSize={8} fontWeight="bold" fontFamily={ff} textAnchor="end">{PREV.caseId}</text>
 
       {/* Bezeichnung */}
       <text x={7} y={bezY} fill="#111111" fontSize={bezFS} fontWeight="bold" fontFamily={ff}>{PREV.bezeichnung}</text>
 
       {/* Separator */}
-      <line x1={7} y1={131} x2={LBL_W - 7} y2={131} stroke="#111111" strokeWidth={0.75} />
+      <line x1={7} y1={SEP_Y} x2={LBL_W - 7} y2={SEP_Y} stroke="#111111" strokeWidth={0.75} />
 
       {/* Load order */}
       {showLoadOrder && <>
-        <text x={7} y={143} fill="#111111" fontSize={7} fontFamily={ff}>Ladereihenfolge</text>
-        <text x={7} y={Math.max(numY, 160)} fill="#111111" fontSize={numFS} fontWeight="bold" fontFamily={ff}>{PREV.loadOrder}</text>
+        <text x={7} y={BOT_Y + 7} fill="#111111" fontSize={7} fontFamily={ff}>Ladereihenfolge</text>
+        <text x={7} y={numY} fill="#111111" fontSize={numFS} fontWeight="bold" fontFamily={ff}>{PREV.loadOrder}</text>
       </>}
 
       {/* Gruppe */}
       {showGruppe && <>
-        <text x={161} y={143} fill="#111111" fontSize={7} fontFamily={ff}>Gruppe</text>
-        <text x={161} y={161 + 30 * 0.85} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.gruppeName}</text>
-        <text x={161} y={161 + 30 * 0.85 + 30 * 1.2} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.gruppeXY}</text>
+        <text x={161} y={BOT_Y + 7} fill="#111111" fontSize={7} fontFamily={ff}>Gruppe</text>
+        <text x={161} y={BOT_Y + 12 + 30 * 0.85} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.gruppeName}</text>
+        <text x={161} y={BOT_Y + 12 + 30 * 0.85 + 30 * 1.2} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.gruppeXY}</text>
       </>}
 
       {/* Position */}
       {showPosition && <>
-        <text x={161} y={237} fill="#111111" fontSize={7} fontFamily={ff}>Standort</text>
-        <text x={161} y={249 + 30 * 0.85} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.posAbbr}</text>
+        <text x={161} y={BOT_Y + 94 + 7} fill="#111111" fontSize={7} fontFamily={ff}>Standort</text>
+        <text x={161} y={BOT_Y + 106 + 30 * 0.85} fill="#111111" fontSize={30} fontWeight="bold" fontFamily={ff}>{PREV.posAbbr}</text>
       </>}
 
       {/* QR */}
