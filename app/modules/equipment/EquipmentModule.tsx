@@ -1200,6 +1200,7 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
     showGruppe    = true,
     showPosition  = true,
     showQR        = true,
+    showMasse     = false,
     showGewicht   = false,
     showTyp       = false,
   } = tpl
@@ -1253,10 +1254,23 @@ function LabelPreviewSVG({ tpl }: { tpl: LabelTemplate }) {
       {/* Bezeichnung (left, narrowed) */}
       <text x={7} y={bezY} fill="#111111" fontSize={bezFS} fontWeight="bold" fontFamily={ff}>{PREV.bezeichnung}</text>
 
-      {/* Right meta column: Maße / Gewicht / Typ */}
-      <text x={LBL_W - 7} y={BEZ_Y + 2 + 9 * 0.82} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">48 × 80 × 60 cm</text>
-      <text x={LBL_W - 7} y={BEZ_Y + 13 + 9 * 0.82} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">42 kg</text>
-      <text x={LBL_W - 7} y={BEZ_Y + 24 + 9 * 0.82} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">Case</text>
+      {/* Right meta column: Maße / Gewicht / Typ – only when toggled on */}
+      {(() => {
+        let my = BEZ_Y + 2 + 9 * 0.82
+        const items: React.ReactNode[] = []
+        if (showMasse) {
+          items.push(<text key="masse" x={LBL_W - 7} y={my} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">H×B×T: 48 × 80 × 60 cm</text>)
+          my += 11
+        }
+        if (showGewicht) {
+          items.push(<text key="gew" x={LBL_W - 7} y={my} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">Gewicht: 42 kg</text>)
+          my += 11
+        }
+        if (showTyp) {
+          items.push(<text key="typ" x={LBL_W - 7} y={my} fill="#555555" fontSize={9} fontFamily={ff} textAnchor="end">Typ: Case</text>)
+        }
+        return items
+      })()}
 
       {/* Separator */}
       <line x1={7} y1={SEP_Y} x2={LBL_W - 7} y2={SEP_Y} stroke="#111111" strokeWidth={0.75} />
@@ -1304,6 +1318,9 @@ const LABEL_TOGGLES: { key: keyof LabelTemplate; label: string }[] = [
   { key: 'showGruppe',    label: 'Gruppe' },
   { key: 'showPosition',  label: 'Standort / Position' },
   { key: 'showQR',        label: 'QR-Code' },
+  { key: 'showMasse',     label: 'Maße (H×B×T)' },
+  { key: 'showGewicht',   label: 'Gesamtgewicht' },
+  { key: 'showTyp',       label: 'Typ (Case / Dolly…)' },
 ]
 
 function LabelTemplateModal({ onClose }: { onClose: () => void }) {

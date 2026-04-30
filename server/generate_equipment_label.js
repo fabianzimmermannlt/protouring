@@ -57,6 +57,7 @@ const DEFAULT_TEMPLATE = {
   showGruppe:    true,
   showPosition:  true,
   showQR:        true,
+  showMasse:     false,
   showGewicht:   false,
   showTyp:       false,
 };
@@ -90,6 +91,7 @@ async function generateEquipmentLabel(opts) {
     showGruppe    = true,
     showPosition  = true,
     showQR        = true,
+    showMasse     = false,
     showGewicht   = false,
     showTyp       = false,
   } = { ...DEFAULT_TEMPLATE, ...template };
@@ -199,23 +201,22 @@ async function generateEquipmentLabel(opts) {
       const metaFS    = 9;
       const metaLineH = 11;
       let   metaY     = BEZ_Y + 2;
-      const hasMasse  = heightCm != null || widthCm != null || depthCm != null;
+      const fmt = v => (v != null ? v : '?');
 
-      if (hasMasse) {
-        const fmt = v => (v != null ? v : '?');
-        const masseStr = `${fmt(heightCm)} × ${fmt(widthCm)} × ${fmt(depthCm)} cm`;
+      if (showMasse && (heightCm != null || widthCm != null || depthCm != null)) {
+        const masseStr = `H×B×T: ${fmt(heightCm)} × ${fmt(widthCm)} × ${fmt(depthCm)} cm`;
         doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
         txt(doc, masseStr, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
         metaY += metaLineH;
       }
-      if (gesamtgewicht) {
+      if (showGewicht && gesamtgewicht) {
         doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
-        txt(doc, `${gesamtgewicht} kg`, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        txt(doc, `Gewicht: ${gesamtgewicht} kg`, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
         metaY += metaLineH;
       }
-      if (typ) {
+      if (showTyp && typ) {
         doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
-        txt(doc, TYP_LABELS[typ] || typ, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        txt(doc, `Typ: ${TYP_LABELS[typ] || typ}`, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
       }
     }
 

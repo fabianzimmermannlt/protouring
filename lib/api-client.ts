@@ -474,6 +474,7 @@ export interface LabelTemplate {
   showGruppe?:    boolean;  // default true
   showPosition?:  boolean;  // default true
   showQR?:        boolean;  // default true
+  showMasse?:     boolean;  // default false
   showGewicht?:   boolean;  // default false
   showTyp?:       boolean;  // default false
 }
@@ -484,6 +485,7 @@ export const DEFAULT_TEMPLATE: LabelTemplate = {
   showGruppe:    true,
   showPosition:  true,
   showQR:        true,
+  showMasse:     false,
   showGewicht:   false,
   showTyp:       false,
 };
