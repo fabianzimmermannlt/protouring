@@ -32,6 +32,7 @@ function ProTouringAppInner() {
   const [activeSubTab, setActiveSubTab] = useState('')
   const [authChecked, setAuthChecked] = useState(false)
   const activeTabRef = useRef('desk') // Ref für stale-closure-sichere Tab-Zugriffe
+  const { layout } = useLayout() // Hook muss vor jedem bedingten Return stehen
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -92,7 +93,6 @@ function ProTouringAppInner() {
   const currentUser = getCurrentUser()
   const currentTenant = getCurrentTenant()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
-  const { layout } = useLayout()
   const role = getEffectiveRole()
   const useL2 = layout === 'L2' && role === 'admin'
 
