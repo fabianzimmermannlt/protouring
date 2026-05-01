@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/app/components/shared/AppShell'
 import {
-  ArrowLeft, ChevronLeft, ChevronRight as ChevronRightIcon, Pencil, Upload, Trash2, X, AlertCircle,
+  ArrowLeft, Pencil, Upload, Trash2, X, AlertCircle,
   File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight,
   Image as ImageIcon, ExternalLink, Loader2,
 } from 'lucide-react'
+import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 import {
   getAuthToken, getCurrentTenant, getCurrentUser, isAuthenticated,
   isEditorRole, getEffectiveRole, type Venue,
@@ -118,10 +119,9 @@ export default function VenueDetailPage() {
   const [shows, setShows] = useState<Show[]>([])
   const [showsLoading, setShowsLoading] = useState(true)
 
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [lightboxBlobUrl, setLightboxBlobUrl] = useState<string | null>(null)
-  const [lightboxLoading, setLightboxLoading] = useState(false)
-  const lightboxIndexRef = useRef<number | null>(null)
+  // Lightbox — shared hook; photos werden via filesRef aktuell gehalten
+  const [photos, setPhotos] = useState<FileItem[]>([])
+  const lightbox = useLightbox(photos, API_BASE, authHeaders)
 
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadType, setUploadType] = useState<'files' | 'photos'>('files')
@@ -189,8 +189,11 @@ export default function VenueDetailPage() {
   }, [authChecked, loadVenue, loadFiles, loadShows])
 
   // ─── File helpers ─────────────────────────────────────────────────────────
-  const photos = files.filter(f => f.mimeType.startsWith('image/'))
   const docs = files.filter(f => !f.mimeType.startsWith('image/'))
+  // photos als State damit useLightbox immer aktuell ist
+  useEffect(() => {
+    setPhotos(files.filter(f => f.mimeType.startsWith('image/')))
+  }, [files])
 
   const docsByCategory = VENUE_FILE_CATEGORIES.reduce<Record<string, FileItem[]>>((acc, cat) => {
     const matching = docs.filter(f => f.category === cat)
@@ -247,43 +250,7 @@ export default function VenueDetailPage() {
     } catch { alert('Datei konnte nicht geöffnet werden') }
   }
 
-  async function openLightbox(index: number) {
-    setLightboxLoading(true)
-    setLightboxIndex(index)
-    lightboxIndexRef.current = index
-    try {
-      const file = photos[index]
-      const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
-      if (!res.ok) throw new Error()
-      const blob = await res.blob()
-      setLightboxBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob) })
-    } catch { alert('Bild konnte nicht geladen werden') }
-    finally { setLightboxLoading(false) }
-  }
-
-  function closeLightbox() {
-    setLightboxBlobUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-    setLightboxIndex(null)
-    lightboxIndexRef.current = null
-  }
-
-  function navigateLightbox(dir: 1 | -1) {
-    const idx = lightboxIndexRef.current
-    if (idx === null || photos.length === 0) return
-    openLightbox((idx + dir + photos.length) % photos.length)
-  }
-
-  // Keyboard navigation
-  useEffect(() => {
-    if (lightboxIndex === null) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'ArrowRight') navigateLightbox(1)
-      else if (e.key === 'ArrowLeft') navigateLightbox(-1)
-      else if (e.key === 'Escape') closeLightbox()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex])
+  // Lightbox — openLightbox/closeLightbox/navigateLightbox via shared hook (lightbox.open / lightbox.close)
 
   // ─── Content ──────────────────────────────────────────────────────────────
   if (!authChecked) return null
@@ -418,7 +385,7 @@ export default function VenueDetailPage() {
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
                 {photos.map((photo, idx) => (
                   <div key={photo.id} className="relative group aspect-square rounded overflow-hidden bg-gray-100 cursor-pointer"
-                    onClick={() => openLightbox(idx)}>
+                    onClick={() => lightbox.open(idx)}>
                     <PhotoThumb file={photo} />
                     {isEditor && (
                       <button onClick={e => { e.stopPropagation(); handleDeleteFile(photo.id) }}
@@ -535,46 +502,8 @@ export default function VenueDetailPage() {
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightboxIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={closeLightbox}>
-          {/* Close */}
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white z-10" onClick={closeLightbox}>
-            <X className="w-6 h-6" />
-          </button>
-          {/* Prev */}
-          {photos.length > 1 && (
-            <button
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/40 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-              onClick={e => { e.stopPropagation(); navigateLightbox(-1) }}>
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          )}
-          {/* Image */}
-          {lightboxLoading ? (
-            <Loader2 className="w-10 h-10 text-white/60 animate-spin" onClick={e => e.stopPropagation()} />
-          ) : lightboxBlobUrl ? (
-            <img src={lightboxBlobUrl} alt={photos[lightboxIndex]?.originalName}
-              className="max-w-full max-h-full object-contain rounded"
-              onClick={e => e.stopPropagation()} />
-          ) : null}
-          {/* Next */}
-          {photos.length > 1 && (
-            <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/40 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-              onClick={e => { e.stopPropagation(); navigateLightbox(1) }}>
-              <ChevronRightIcon className="w-6 h-6" />
-            </button>
-          )}
-          {/* Caption + counter */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center">
-            <p className="text-white/60 text-sm">{photos[lightboxIndex]?.originalName}</p>
-            {photos.length > 1 && (
-              <p className="text-white/40 text-xs mt-0.5">{lightboxIndex + 1} / {photos.length}</p>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Lightbox — shared component */}
+      <Lightbox {...lightbox.props} />
 
       {/* Edit Modal */}
       {editModalOpen && venue && (

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { ChevronRight, ChevronDown, Loader2, ExternalLink, Download, FileIcon, Pencil, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect } from 'react'
+import { ChevronRight, ChevronDown, Loader2, ExternalLink, FileIcon, Pencil } from 'lucide-react'
 import { getVenue, getAuthToken, getCurrentTenant, type Venue } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
+import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 
 // ─── API ──────────────────────────────────────────────────────
 
@@ -76,102 +76,6 @@ function AuthImage({ fileId, alt, className }: { fileId: string; alt: string; cl
   return <img src={src} alt={alt} className={className} />
 }
 
-// ─── Lightbox ────────────────────────────────────────────────
-
-function Lightbox({ fileIds, initialIndex, onClose }: {
-  fileIds: string[]
-  initialIndex: number
-  onClose: () => void
-}) {
-  const [index, setIndex] = useState(initialIndex)
-  const [src, setSrc] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const go = useCallback((dir: number) => {
-    setLoading(true)
-    setSrc(null)
-    setIndex(i => (i + dir + fileIds.length) % fileIds.length)
-  }, [fileIds.length])
-
-  useEffect(() => {
-    let url: string
-    setLoading(true)
-    fetch(`${API_BASE}/api/files/download/${fileIds[index]}`, { headers: authHeaders() })
-      .then(r => r.blob())
-      .then(blob => { url = URL.createObjectURL(blob); setSrc(url); setLoading(false) })
-      .catch(() => setLoading(false))
-    return () => { if (url) URL.revokeObjectURL(url) }
-  }, [index, fileIds])
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowLeft')  go(-1)
-      if (e.key === 'ArrowRight') go(1)
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [go, onClose])
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.92)' }}
-      onClick={onClose}
-    >
-      {/* Close */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
-      >
-        <X size={24} />
-      </button>
-
-      {/* Counter */}
-      {fileIds.length > 1 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/50 text-sm">
-          {index + 1} / {fileIds.length}
-        </div>
-      )}
-
-      {/* Prev */}
-      {fileIds.length > 1 && (
-        <button
-          onClick={e => { e.stopPropagation(); go(-1) }}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-2"
-        >
-          <ChevronLeft size={32} />
-        </button>
-      )}
-
-      {/* Image */}
-      <div className="flex items-center justify-center w-full h-full p-16" onClick={e => e.stopPropagation()}>
-        {loading || !src ? (
-          <Loader2 size={32} className="animate-spin text-white/40" />
-        ) : (
-          <img
-            src={src}
-            alt=""
-            className="max-w-full max-h-full object-contain rounded shadow-2xl"
-            style={{ maxHeight: 'calc(100vh - 8rem)' }}
-          />
-        )}
-      </div>
-
-      {/* Next */}
-      {fileIds.length > 1 && (
-        <button
-          onClick={e => { e.stopPropagation(); go(1) }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-2"
-        >
-          <ChevronRightIcon size={32} />
-        </button>
-      )}
-    </div>,
-    document.body
-  )
-}
-
 // ─── Accordion ───────────────────────────────────────────────
 
 function Accordion({ title, children, defaultOpen = false, onEdit, isAdmin }: {
@@ -231,88 +135,94 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin?: boolean; onEdit?: () => void }) {
   const [files, setFiles] = useState<VenueFile[]>([])
   const [loading, setLoading] = useState(true)
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [images, setImages] = useState<VenueFile[]>([])
 
   useEffect(() => {
-    fetchVenueFiles(venueId).then(setFiles).finally(() => setLoading(false))
+    fetchVenueFiles(venueId).then(f => {
+      setFiles(f)
+      setImages(f.filter(x => x.mimeType?.startsWith('image/')))
+    }).finally(() => setLoading(false))
   }, [venueId])
 
-  const images = files.filter(f => f.mimeType?.startsWith('image/'))
-  const docs   = files.filter(f => !f.mimeType?.startsWith('image/'))
+  // Shared lightbox — identisch zu Venue-Page
+  const lightbox = useLightbox(images, API_BASE, authHeaders)
+
+  const docs = files.filter(f => !f.mimeType?.startsWith('image/'))
 
   const title = loading
     ? 'Dateien & Dokumente'
     : `Dateien & Dokumente${files.length > 0 ? ` (${files.length})` : ''}`
 
   return (
-    <Accordion title={title} isAdmin={isAdmin} onEdit={onEdit}>
-      {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-          <Loader2 size={13} className="animate-spin" /> Laden…
-        </div>
-      ) : files.length === 0 ? (
-        <p className="text-sm text-gray-400 py-2">Keine Dateien am Venue hinterlegt</p>
-      ) : (
-        <>
-          {images.length > 0 && (
-            <div className="mb-3">
-              <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-1">Fotos</div>
-              <div className="grid grid-cols-4 gap-2">
-                {images.map((f, i) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setLightboxIndex(i)}
-                    title={f.originalName}
-                    className="focus:outline-none rounded overflow-hidden"
-                  >
-                    <AuthImage
-                      fileId={f.id}
-                      alt={f.originalName}
-                      className="w-full aspect-square object-cover hover:opacity-80 transition-opacity"
-                    />
-                  </button>
-                ))}
+    <>
+      <Accordion title={title} isAdmin={isAdmin} onEdit={onEdit}>
+        {loading ? (
+          <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
+            <Loader2 size={13} className="animate-spin" /> Laden…
+          </div>
+        ) : files.length === 0 ? (
+          <p className="text-sm text-gray-400 py-2">Keine Dateien am Venue hinterlegt</p>
+        ) : (
+          <>
+            {images.length > 0 && (
+              <div className="mb-3">
+                <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-1">Fotos</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {images.map((f, i) => (
+                    <button
+                      key={f.id}
+                      onClick={() => lightbox.open(i)}
+                      title={f.originalName}
+                      className="focus:outline-none rounded overflow-hidden"
+                    >
+                      <AuthImage
+                        fileId={f.id}
+                        alt={f.originalName}
+                        className="w-full aspect-square object-cover hover:opacity-80 transition-opacity"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-              {lightboxIndex !== null && (
-                <Lightbox
-                  fileIds={images.map(f => f.id)}
-                  initialIndex={lightboxIndex}
-                  onClose={() => setLightboxIndex(null)}
-                />
-              )}
-            </div>
-          )}
-          {docs.length > 0 && (
-            <div>
-              {images.length > 0 && (
-                <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-2">Dokumente</div>
-              )}
-              <div className="flex flex-col gap-1">
-                {docs.map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
-                        .then(r => r.blob())
-                        .then(blob => window.open(URL.createObjectURL(blob), '_blank'))
-                    }}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left"
-                  >
-                    <FileIcon size={13} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 flex-1 truncate group-hover:text-blue-600">{f.originalName}</span>
-                    {f.category && f.category !== 'Allgemein' && (
-                      <span className="text-xs text-gray-400 flex-shrink-0">{f.category}</span>
-                    )}
-                    <span className="text-xs text-gray-400 flex-shrink-0">{formatSize(f.size)}</span>
-                    <Download size={11} className="text-gray-300 group-hover:text-blue-500 flex-shrink-0" />
-                  </button>
-                ))}
+            )}
+            {docs.length > 0 && (
+              <div>
+                {images.length > 0 && (
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-2">Dokumente</div>
+                )}
+                <div className="flex flex-col gap-1">
+                  {docs.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => {
+                        fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
+                          .then(r => r.blob())
+                          .then(blob => {
+                            const url = URL.createObjectURL(blob)
+                            window.open(url, '_blank')
+                            setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                          })
+                      }}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left"
+                    >
+                      <FileIcon size={13} className="text-gray-400 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 flex-1 truncate group-hover:text-blue-600">{f.originalName}</span>
+                      {f.category && f.category !== 'Allgemein' && (
+                        <span className="text-xs text-gray-400 flex-shrink-0">{f.category}</span>
+                      )}
+                      <span className="text-xs text-gray-400 flex-shrink-0">{formatSize(f.size)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
-    </Accordion>
+            )}
+          </>
+        )}
+      </Accordion>
+
+      {/* Lightbox — shared component, identisch zu Venue-Page */}
+      <Lightbox {...lightbox.props} />
+    </>
   )
 }
 
