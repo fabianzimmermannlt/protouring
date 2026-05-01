@@ -39,6 +39,7 @@ import {
   CAN_CREATE_TERMIN,
   CAN_SEE_GEBUCHT,
   CAN_SEE_FILES_TERMIN,
+  CAN_SEE_KALENDER,
   TERMIN_ART,
   TERMIN_ART_SUB,
   TERMIN_STATUS_BOOKING,
@@ -1012,12 +1013,55 @@ export default function TerminePage() {
       {/* ---- LIST VIEW ---- */}
       {(
         <>
-          {/* Header */}
-          {canCreate && (
-            <button onClick={openNew} className="btn btn-primary">
-              <Plus size={16} /> Neuer Termin
-            </button>
-          )}
+          {/* Header: Neuer Termin + Filter-Buttons */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            {canCreate ? (
+              <button onClick={openNew} className="btn btn-primary">
+                <Plus size={16} /> Neuer Termin
+              </button>
+            ) : <div />}
+
+            {/* Filter-Gruppe */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+              {(['aktuell', 'vergangen', 'alle'] as const).map(f => {
+                const labels = { aktuell: 'Aktuell', vergangen: 'Vergangen', alle: 'Alle' }
+                const active = listView === 'list' && termineFilter === f
+                return (
+                  <button
+                    key={f}
+                    onClick={() => {
+                      setTermineFilter(f)
+                      setListView('list')
+                      window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f } }))
+                      window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {labels[f]}
+                  </button>
+                )
+              })}
+              {canDo(effectiveRole, CAN_SEE_KALENDER) && (
+                <button
+                  onClick={() => {
+                    setListView('calendar')
+                    window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    listView === 'calendar'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Kalender
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Search */}
           {listView === 'list' && (

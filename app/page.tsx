@@ -18,6 +18,7 @@ import EquipmentModule from './modules/equipment/EquipmentModule'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 import { LayoutProvider, useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import { L2Layout } from '@/app/components/shared/Navigation/L2Layout'
+import { L3Layout } from '@/app/components/shared/Navigation/L3Layout'
 import { getEffectiveRole } from '@/lib/api-client'
 
 function ProTouringAppInner() {
@@ -95,6 +96,7 @@ function ProTouringAppInner() {
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const role = getEffectiveRole()
   const useL2 = layout === 'L2' && role === 'admin'
+  const useL3 = layout === 'L3' && role === 'admin'
 
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
@@ -162,7 +164,7 @@ function ProTouringAppInner() {
       </div>
 
       {/* ── DESKTOP L1: bisheriges Layout ── */}
-      {!useL2 && (
+      {!useL2 && !useL3 && (
         <main className="hidden md:block min-h-screen bg-gray-100">
           <Navigation
             activeTab={activeTab}
@@ -187,15 +189,25 @@ function ProTouringAppInner() {
         <L2Layout
           activeTab={activeTab}
           activeSubTab={activeSubTab}
-          onTabChange={(tab, sub) => {
-            handleTabChange(tab)
-            if (sub) handleSubTabChange(sub)
-          }}
+          onTabChange={(tab, sub) => { handleTabChange(tab); if (sub) handleSubTabChange(sub) }}
           onSubTabChange={handleSubTabChange}
         >
           <FeedbackButton />
           {content}
         </L2Layout>
+      )}
+
+      {/* ── DESKTOP L3: Rail + Context Panel ── */}
+      {useL3 && (
+        <L3Layout
+          activeTab={activeTab}
+          activeSubTab={activeSubTab}
+          onTabChange={(tab, sub) => { handleTabChange(tab); if (sub) handleSubTabChange(sub) }}
+          onSubTabChange={handleSubTabChange}
+        >
+          <FeedbackButton />
+          {content}
+        </L3Layout>
       )}
     </>
   )

@@ -358,7 +358,14 @@ export function Navigation({
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                           >
                             <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
-                            Layout L2 aktivieren
+                            Layout L2 (Sidebar)
+                          </button>
+                          <button
+                            onClick={() => { setShowUserMenu(false); setLayout('L3') }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
+                            Layout L3 (Rail + Panel)
                           </button>
                         </>
                       )}

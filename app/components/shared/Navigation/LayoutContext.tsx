@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { getEffectiveRole } from '@/lib/api-client'
 
-export type LayoutMode = 'L1' | 'L2'
+export type LayoutMode = 'L1' | 'L2' | 'L3'
 
 const STORAGE_KEY = 'protouring_layout'
 
@@ -24,7 +24,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
     const role = getEffectiveRole()
     if (role !== 'admin') return
     const stored = localStorage.getItem(STORAGE_KEY) as LayoutMode | null
-    if (stored === 'L2') setLayoutState('L2')
+    if (stored === 'L2' || stored === 'L3') setLayoutState(stored)
   }, [])
 
   const setLayout = (mode: LayoutMode) => {
