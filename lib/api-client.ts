@@ -846,6 +846,18 @@ export async function updateUserFormat(data: UserFormat): Promise<UserFormat> {
   };
 }
 
+// UI-Sprache (cross-device, in DB gespeichert)
+export async function getUiLanguage(): Promise<'de' | 'en'> {
+  try {
+    const res = await request<{ language: string }>('/api/me/language', { skipTenant: true })
+    return (res.language === 'en' ? 'en' : 'de') as 'de' | 'en'
+  } catch { return 'de' }
+}
+
+export async function setUiLanguage(language: 'de' | 'en'): Promise<void> {
+  await request('/api/me/language', { method: 'PUT', body: { language }, skipTenant: true })
+}
+
 // ============================================
 // Hotels API
 // ============================================

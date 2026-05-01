@@ -668,6 +668,7 @@ async function initDatabase() {
     `ALTER TABLE tenants ADD COLUMN billing_phone TEXT DEFAULT ''`,
     `ALTER TABLE tenants ADD COLUMN billing_tax_id TEXT DEFAULT ''`,
     `ALTER TABLE tenants ADD COLUMN billing_email TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN ui_language TEXT DEFAULT 'de'`,
     // users: Format-Einstellungen (user-global)
     `ALTER TABLE users ADD COLUMN format_language TEXT DEFAULT 'de-DE'`,
     `ALTER TABLE users ADD COLUMN format_timezone TEXT DEFAULT 'Europe/Berlin'`,
@@ -1565,7 +1566,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   try {
     const user = await db.get(
-      'SELECT id, email, password_hash, first_name, last_name, is_superadmin FROM users WHERE email = ?',
+      'SELECT id, email, password_hash, first_name, last_name, is_superadmin, ui_language FROM users WHERE email = ?',
       [email]
     );
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
@@ -1604,7 +1605,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, isSuperadmin: !!user.is_superadmin },
+      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name, isSuperadmin: !!user.is_superadmin, uiLanguage: user.ui_language || 'de' },
       tenants,
       currentTenant: tenants[0]
     });
@@ -6022,6 +6023,24 @@ app.put('/api/me/format', authenticateToken, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+
+// GET /api/me/language — UI-Sprache des Users laden
+app.get('/api/me/language', authenticateToken, async (req, res) => {
+  try {
+    const row = await db.get('SELECT ui_language FROM users WHERE id = ?', [req.user.id])
+    res.json({ language: row?.ui_language || 'de' })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/me/language — UI-Sprache speichern
+app.put('/api/me/language', authenticateToken, async (req, res) => {
+  try {
+    const { language } = req.body
+    if (!['de', 'en'].includes(language)) return res.status(400).json({ error: 'Invalid language' })
+    await db.run('UPDATE users SET ui_language = ? WHERE id = ?', [language, req.user.id])
+    res.json({ language })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
 // POST /api/tenants — Neuen Tenant anlegen (User wird automatisch Admin)
 app.post('/api/tenants', authenticateToken, async (req, res) => {
   const { name, email } = req.body

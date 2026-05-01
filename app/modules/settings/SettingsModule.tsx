@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { Loader2 } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
+import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
   adminSetUserEmail, adminSetUserPassword, adminToggleUserStatus,
@@ -549,6 +550,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
 function UserProfil() {
   const currentUser = getCurrentUser()
+  const { language, setLanguage } = useLanguage()
   const [currentTenant, setCurrentTenant] = useState(getCurrentTenant())
   const isAdmin = isAdminRole(currentTenant?.role ?? '')
 
@@ -768,6 +770,35 @@ function UserProfil() {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      {/* Sprache / Language */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+          {language === 'de' ? 'Sprache / Language' : 'Language / Sprache'}
+        </h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setLanguage('de')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              language === 'de'
+                ? 'bg-blue-50 border-blue-400 text-blue-700'
+                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            🇩🇪 Deutsch
+          </button>
+          <button
+            onClick={() => setLanguage('en')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              language === 'en'
+                ? 'bg-blue-50 border-blue-400 text-blue-700'
+                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            🇺🇸 English
+          </button>
         </div>
       </div>
 
