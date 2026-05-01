@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Navigation } from '@/app/components/shared/Navigation'
-import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
-import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
+import { AppShell } from '@/app/components/shared/AppShell'
 import {
   ArrowLeft, ChevronLeft, ChevronRight as ChevronRightIcon, Pencil, Upload, Trash2, X, AlertCircle,
   File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight,
@@ -591,30 +589,9 @@ export default function VenueDetailPage() {
   )
 
   return (
-    <>
-      {/* MOBILE */}
-      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: 'calc(100dvh - var(--pt-preview-height, 0px))' }}>
-        <Navigation activeTab="venues" onTabChange={handleTabChange} showMobileNavigation={true} />
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-2 py-2">{content}</div>
-        </div>
-        <FeedbackButton />
-        <MobileBottomNav activeTab="venues" onTabChange={handleTabChange} isSuperadmin={isSuperadmin} />
-      </div>
-
-      {/* DESKTOP */}
-      <main className="hidden md:block min-h-screen bg-gray-100">
-        <Navigation activeTab="venues" onTabChange={handleTabChange} showMobileNavigation={false} />
-        <FeedbackButton />
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-lg shadow-lg p-4">
-            <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
-              {content}
-            </div>
-          </div>
-        </div>
-      </main>
-    </>
+    <AppShell activeTab="venues" onTabChange={handleTabChange}>
+      {content}
+    </AppShell>
   )
 }
 
