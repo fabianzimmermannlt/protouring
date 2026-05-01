@@ -31,10 +31,49 @@ import {
   NAV_VISIBLE,
   canDo,
   getEffectiveRole,
+  isEditorRole,
+  type TenantRole,
 } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
+
+// ─── Sub-item definitions ─────────────────────────────────────────────────────
+
+type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
+
+const SETTINGS_SUBS: SubItem[] = [
+  { id: 'profil',         name: 'Mein Profil' },
+  { id: 'permissions',    name: 'Berechtigungen', editorOnly: true },
+  { id: 'appearance',     name: 'Darstellung' },
+  { id: 'notifications',  name: 'Benachrichtigungen' },
+  { id: 'contacts',       name: 'Kontakte',          editorOnly: true },
+  { id: 'guestlist',      name: 'Gästeliste',        editorOnly: true },
+  { id: 'daysheet',       name: 'Daysheet',          editorOnly: true },
+  { id: 'vorlagen',       name: 'Vorlagen',          editorOnly: true },
+  { id: 'artist',         name: 'Artist',            adminOnly: true },
+  { id: 'erste-schritte', name: 'Erste Schritte' },
+]
+
+const CONTACTS_SUBS: SubItem[] = [
+  { id: 'overview',     name: 'Übersicht' },
+  { id: 'crew-booking', name: 'Crew-Vermittlung', editorOnly: true },
+  { id: 'conditions',   name: 'Konditionen',      editorOnly: true },
+]
+
+const EQUIPMENT_SUBS: SubItem[] = [
+  { id: 'items',        name: 'Gegenstände' },
+  { id: 'materials',    name: 'Material' },
+  { id: 'categories',   name: 'Kategorien' },
+  { id: 'eigentuemer',  name: 'Eigentümer' },
+  { id: 'carnets',      name: 'Carnets' },
+]
+
+const SUB_ITEMS: Record<string, SubItem[]> = {
+  settings:  SETTINGS_SUBS,
+  contacts:  CONTACTS_SUBS,
+  equipment: EQUIPMENT_SUBS,
+}
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
@@ -53,28 +92,17 @@ const MODULE_NAV = [
   { id: 'equipment', name: 'Equipment', icon: WrenchScrewdriverIcon },
 ]
 
-// Label for breadcrumb
+// ─── Breadcrumb labels ────────────────────────────────────────────────────────
+
 const TAB_LABELS: Record<string, string> = {
-  desk:         'Schreibtisch',
-  appointments: 'Termine',
-  contacts:     'Kontakte',
-  venues:       'Venues',
-  partners:     'Partner',
-  hotels:       'Hotels',
-  vehicles:     'Fahrzeuge',
-  settings:     'Einstellungen',
-  equipment:    'Equipment',
+  desk: 'Schreibtisch', appointments: 'Termine', contacts: 'Kontakte',
+  venues: 'Venues', partners: 'Partner', hotels: 'Hotels',
+  vehicles: 'Fahrzeuge', settings: 'Einstellungen', equipment: 'Equipment',
 }
 
-const SUB_LABELS: Record<string, string> = {
-  profil:        'Profil',
-  artist:        'Artist',
-  team:          'Team',
-  overview:      'Übersicht',
-  items:         'Gegenstände',
-  material:      'Material',
-  categories:    'Kategorien',
-}
+// Build from all sub-items
+const SUB_LABELS: Record<string, string> = {}
+Object.values(SUB_ITEMS).flat().forEach(s => { SUB_LABELS[s.id] = s.name })
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -107,7 +135,8 @@ export function L2Layout({
 
   const currentUser = getCurrentUser()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
-  const role = getEffectiveRole()
+  const role = getEffectiveRole() as TenantRole
+  const isEditor = isEditorRole(role)
 
   const initials = [currentUser?.firstName, currentUser?.lastName]
     .filter(Boolean)
@@ -130,7 +159,7 @@ export function L2Layout({
   useEffect(() => {
     setActiveTenantSlug(getCurrentTenant()?.slug ?? null)
     const cached = getAllTenants()
-    if (cached.length > 0) { setAllTenantsState(cached) }
+    if (cached.length > 0) setAllTenantsState(cached)
     getMyTenants()
       .then(res => { setAllTenants(res.tenants); setAllTenantsState(res.tenants) })
       .catch(() => {})
@@ -139,9 +168,8 @@ export function L2Layout({
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node))
         setShowUserMenu(false)
-      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -156,6 +184,10 @@ export function L2Layout({
     setShowUserMenu(false)
   }
 
+  const handleSubNav = (sub: string) => {
+    onSubTabChange?.(sub)
+  }
+
   const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string }) => {
     setShowUserMenu(false)
     localStorage.removeItem('protouring_preview_role')
@@ -164,11 +196,70 @@ export function L2Layout({
     window.location.href = '/'
   }
 
+  // Filter sub-items by role
+  const getVisibleSubs = (tabId: string): SubItem[] => {
+    return (SUB_ITEMS[tabId] ?? []).filter(s => {
+      if (s.adminOnly) return role === 'admin'
+      if (s.editorOnly) return isEditor
+      return true
+    })
+  }
+
   // Breadcrumb
   const breadcrumb = [
     TAB_LABELS[activeTab] ?? activeTab,
     activeSubTab ? (SUB_LABELS[activeSubTab] ?? activeSubTab) : null,
   ].filter(Boolean)
+
+  // Nav item renderer (used for both main nav and module nav)
+  const renderNavItem = (item: { id: string; name: string; icon: React.ComponentType<{ className?: string }> }, isModule = false) => {
+    const isActive = activeTab === item.id
+    const subs = getVisibleSubs(item.id)
+    const hasSubNav = subs.length > 0
+
+    return (
+      <div key={item.id}>
+        <button
+          onClick={() => handleNav(item.id)}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
+            isActive
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-300 hover:text-white hover:bg-gray-800'
+          }`}
+        >
+          <item.icon className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1">{item.name}</span>
+          {isModule && (
+            <span className="text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
+              ADDON
+            </span>
+          )}
+          {hasSubNav && (
+            <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${isActive ? 'rotate-180 text-blue-200' : 'text-gray-500'}`} />
+          )}
+        </button>
+
+        {/* Sub-items accordion */}
+        {isActive && hasSubNav && (
+          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-700 space-y-0.5">
+            {subs.map(sub => (
+              <button
+                key={sub.id}
+                onClick={() => handleSubNav(sub.id)}
+                className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+                  activeSubTab === sub.id
+                    ? 'text-white font-medium bg-gray-700'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                }`}
+              >
+                {sub.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
@@ -179,7 +270,6 @@ export function L2Layout({
         {/* Top: Identity */}
         <div className="px-4 py-4 border-b border-gray-700">
           <div className="flex items-center gap-2.5 mb-1">
-            {/* User Menu trigger */}
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(v => !v)}
@@ -192,10 +282,8 @@ export function L2Layout({
                 <ChevronDownIcon className={`w-3 h-3 text-gray-400 transition-transform flex-shrink-0 ${showUserMenu ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* User dropdown */}
               {showUserMenu && (
                 <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                  {/* Profil */}
                   <button
                     onClick={() => { setShowUserMenu(false); onTabChange('settings', 'profil') }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
@@ -204,7 +292,6 @@ export function L2Layout({
                     Mein Profil
                   </button>
 
-                  {/* Layout toggle */}
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { setShowUserMenu(false); setLayout('L1') }}
@@ -214,7 +301,6 @@ export function L2Layout({
                     Layout: zurück zu L1
                   </button>
 
-                  {/* Artists */}
                   {allTenantsState.length > 0 && (
                     <>
                       <div className="border-t border-gray-100 my-1" />
@@ -247,7 +333,6 @@ export function L2Layout({
                     </>
                   )}
 
-                  {/* Superadmin: Feedback */}
                   {isSuperadmin && (
                     <>
                       <div className="border-t border-gray-100 my-1" />
@@ -261,7 +346,6 @@ export function L2Layout({
                     </>
                   )}
 
-                  {/* Abmelden */}
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { setShowUserMenu(false); logout() }}
@@ -274,8 +358,6 @@ export function L2Layout({
               )}
             </div>
           </div>
-
-          {/* Artist name */}
           {artistName && (
             <p className="text-xs text-gray-400 truncate pl-[42px]">{artistName}</p>
           )}
@@ -283,43 +365,16 @@ export function L2Layout({
 
         {/* Main Nav */}
         <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
-          {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item => (
-            <button
-              key={item.id}
-              onClick={() => handleNav(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                activeTab === item.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {item.name}
-            </button>
-          ))}
+          {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item =>
+            renderNavItem(item)
+          )}
         </nav>
 
-        {/* Module section (bottom) */}
+        {/* Module section */}
         {canDo(role, NAV_VISIBLE['modules'] ?? []) && (
-          <div className="px-2 pb-3 border-t border-gray-700 pt-3">
+          <div className="px-2 pb-3 border-t border-gray-700 pt-3 space-y-0.5">
             <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">Module</p>
-            {MODULE_NAV.map(item => (
-              <button
-                key={item.id}
-                onClick={() => handleNav(item.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
-                  activeTab === item.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                }`}
-              >
-                <item.icon className="w-4 h-4 flex-shrink-0" />
-                {item.name}
-                <span className="ml-auto text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
-                  ADDON
-                </span>
-              </button>
-            ))}
+            {MODULE_NAV.map(item => renderNavItem(item, true))}
           </div>
         )}
       </aside>
@@ -329,7 +384,6 @@ export function L2Layout({
 
         {/* Header bar */}
         <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
-          {/* Breadcrumb */}
           <nav className="flex items-center gap-1.5 text-sm">
             {breadcrumb.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1.5">
@@ -340,8 +394,6 @@ export function L2Layout({
               </span>
             ))}
           </nav>
-
-          {/* Right: PreviewBanner */}
           <div className="flex items-center gap-3">
             <PreviewBanner />
           </div>
