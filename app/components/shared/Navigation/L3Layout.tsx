@@ -28,6 +28,7 @@ import {
   getAllTenants,
   setAllTenants,
   getMyTenants,
+  getTermine,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -37,6 +38,7 @@ import {
   isEditorRole,
   CAN_SEE_KALENDER,
   type TenantRole,
+  type Termin,
 } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
@@ -137,6 +139,8 @@ export function L3Layout({
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
   const [activeTenantSlug, setActiveTenantSlug] = useState<string | null>(null)
+  const [termineList, setTermineList] = useState<Termin[]>([])
+  const [activeTerminId, setActiveTerminId] = useState<number | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -189,6 +193,18 @@ export function L3Layout({
       window.removeEventListener('termine-listview-changed', onListView)
     }
   }, [])
+
+  // ── Termine list laden ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab !== 'appointments') return
+    getTermine().then(setTermineList).catch(() => {})
+  }, [activeTab])
+
+  // Aktiven Termin aus URL lesen (z.B. /appointments/42/details)
+  useEffect(() => {
+    const match = window.location.pathname.match(/\/appointments\/(\d+)/)
+    setActiveTerminId(match ? parseInt(match[1], 10) : null)
+  }, [activeTab, termineInDetail])
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -288,54 +304,111 @@ export function L3Layout({
   const renderPanelContent = () => {
     // ── Termine ──────────────────────────────────────────────────────────────
     if (activeTab === 'appointments') {
-      if (termineInDetail) {
-        const views = [
-          { id: 'details',       label: 'Details' },
-          { id: 'travelparty',   label: 'Reisegruppe' },
-          ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-          { id: 'guestlist',     label: 'Gästeliste' },
-        ]
-        return (
-          <div className="space-y-0.5 px-2">
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
-              className="w-full text-left px-3 py-2 rounded-md text-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-1.5"
-            >
-              <ChevronLeftIcon className="w-3.5 h-3.5" />
-              Terminliste
-            </button>
-            <div className="border-t border-gray-700 my-1" />
-            {views.map(v => subBtn(v.id, v.label, termineView === v.id, () => {
-              setTermineView(v.id as TermineDetailView)
-              window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
-            }))}
-          </div>
-        )
-      }
-      // Liste
-      const filters: { id: TermineListFilter; label: string }[] = [
-        { id: 'aktuell',   label: 'Aktuelle Termine' },
-        { id: 'vergangen', label: 'Vergangene Termine' },
-        { id: 'alle',      label: 'Alle Termine' },
+      const today = new Date().toISOString().slice(0, 10)
+
+      // Filter-Funktion
+      const filtered = termineList.filter(t => {
+        if (termineFilter === 'aktuell')   return t.date >= today
+        if (termineFilter === 'vergangen') return t.date < today
+        return true
+      }).sort((a, b) => {
+        if (termineFilter === 'vergangen') return b.date.localeCompare(a.date)
+        return a.date.localeCompare(b.date)
+      })
+
+      // Detail-View: Termin-Liste oben + View-Tabs darunter
+      const detailViews = [
+        { id: 'details',       label: 'Details' },
+        { id: 'travelparty',   label: 'Reisegruppe' },
+        ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
+        { id: 'guestlist',     label: 'Gästeliste' },
       ]
+
       return (
-        <div className="space-y-0.5 px-2">
-          {panelSectionLabel('Filter')}
-          {filters.map(f => subBtn(f.id, f.label,
-            termineListView === 'list' && termineFilter === f.id,
-            () => {
-              setTermineFilter(f.id)
-              setTermineListView('list')
-              window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f.id } }))
-              window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
-            }
-          ))}
-          {canSeeKalender && subBtn('calendar', 'Kalender',
-            termineListView === 'calendar',
-            () => {
-              setTermineListView('calendar')
-              window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
-            }
+        <div className="flex flex-col h-full">
+          {/* Filter-Tabs kompakt */}
+          <div className="flex gap-0.5 px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => {
+              const labels = { aktuell: 'Aktuell', vergangen: 'Vergangen', alle: 'Alle' }
+              return (
+                <button
+                  key={f}
+                  onClick={() => {
+                    setTermineFilter(f)
+                    setTermineListView('list')
+                    window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f } }))
+                    window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
+                  }}
+                  className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
+                    termineFilter === f && termineListView === 'list'
+                      ? 'bg-gray-600 text-white'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {labels[f]}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Terminliste scrollbar */}
+          <div className="flex-1 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-gray-600 text-center">Keine Termine</p>
+            ) : filtered.map(t => {
+              const isActive = t.id === activeTerminId
+              const dateStr = new Date(t.date).toLocaleDateString('de-DE', {
+                day: '2-digit', month: '2-digit', year: '2-digit'
+              })
+              const label = t.title && !t.showTitleAsHeader
+                ? t.title
+                : t.venueName || t.city || '–'
+
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setActiveTerminId(t.id)
+                    router.push(`/appointments/${t.id}/details`)
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
+                    isActive
+                      ? 'border-blue-500 bg-gray-700'
+                      : 'border-transparent hover:bg-gray-800'
+                  }`}
+                >
+                  <p className="text-[11px] text-gray-400 leading-none mb-0.5">{dateStr}</p>
+                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>
+                    {label}
+                  </p>
+                  {t.city && t.venueName && (
+                    <p className="text-[10px] text-gray-500 truncate">{t.city}</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Detail-View-Tabs — nur wenn Termin offen */}
+          {termineInDetail && (
+            <div className="border-t border-gray-700 py-1 flex-shrink-0">
+              {detailViews.map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setTermineView(v.id as TermineDetailView)
+                    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                    termineView === v.id
+                      ? 'text-white font-medium bg-gray-700'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )
