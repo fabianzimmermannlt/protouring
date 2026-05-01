@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, ReactNode } from 'react'
+import { useState, useEffect, useRef, ReactNode, useCallback } from 'react'
 import {
   HomeIcon,
   CalendarDaysIcon,
@@ -18,6 +18,7 @@ import {
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
   ViewColumnsIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
   getCurrentUser,
@@ -42,35 +43,37 @@ import PreviewBanner from '@/app/components/shared/PreviewBanner'
 
 type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
 
-const SETTINGS_SUBS: SubItem[] = [
+// Settings: grouped für Modal-Sidebar
+const SETTINGS_KONTO: SubItem[] = [
   { id: 'profil',         name: 'Mein Profil' },
-  { id: 'permissions',    name: 'Berechtigungen', editorOnly: true },
   { id: 'appearance',     name: 'Darstellung' },
   { id: 'notifications',  name: 'Benachrichtigungen' },
-  { id: 'contacts',       name: 'Kontakte',          editorOnly: true },
-  { id: 'guestlist',      name: 'Gästeliste',        editorOnly: true },
-  { id: 'daysheet',       name: 'Daysheet',          editorOnly: true },
-  { id: 'vorlagen',       name: 'Vorlagen',          editorOnly: true },
-  { id: 'artist',         name: 'Artist',            adminOnly: true },
   { id: 'erste-schritte', name: 'Erste Schritte' },
+]
+const SETTINGS_WORKSPACE: SubItem[] = [
+  { id: 'artist',      name: 'Artist',          adminOnly: true },
+  { id: 'permissions', name: 'Berechtigungen',  editorOnly: true },
+  { id: 'contacts',    name: 'Kontakte',         editorOnly: true },
+  { id: 'guestlist',   name: 'Gästeliste',       editorOnly: true },
+  { id: 'daysheet',    name: 'Daysheet',         editorOnly: true },
+  { id: 'vorlagen',    name: 'Vorlagen',         editorOnly: true },
 ]
 
 const CONTACTS_SUBS: SubItem[] = [
   { id: 'overview',     name: 'Übersicht' },
   { id: 'crew-booking', name: 'Crew-Vermittlung', editorOnly: true },
-  { id: 'conditions',   name: 'Konditionen',      editorOnly: true },
+  { id: 'conditions',   name: 'Konditionen',       editorOnly: true },
 ]
 
 const EQUIPMENT_SUBS: SubItem[] = [
-  { id: 'items',        name: 'Gegenstände' },
-  { id: 'materials',    name: 'Material' },
-  { id: 'categories',   name: 'Kategorien' },
-  { id: 'eigentuemer',  name: 'Eigentümer' },
-  { id: 'carnets',      name: 'Carnets' },
+  { id: 'items',       name: 'Gegenstände' },
+  { id: 'materials',   name: 'Material' },
+  { id: 'categories',  name: 'Kategorien' },
+  { id: 'eigentuemer', name: 'Eigentümer' },
+  { id: 'carnets',     name: 'Carnets' },
 ]
 
 const SUB_ITEMS: Record<string, SubItem[]> = {
-  settings:  SETTINGS_SUBS,
   contacts:  CONTACTS_SUBS,
   equipment: EQUIPMENT_SUBS,
 }
@@ -85,7 +88,6 @@ const MAIN_NAV = [
   { id: 'partners',     name: 'Partner',       icon: BriefcaseIcon },
   { id: 'hotels',       name: 'Hotels',        icon: BuildingOfficeIcon },
   { id: 'vehicles',     name: 'Fahrzeuge',     icon: TruckIcon },
-  { id: 'settings',     name: 'Einstellungen', icon: Cog6ToothIcon },
 ]
 
 const MODULE_NAV = [
@@ -97,12 +99,13 @@ const MODULE_NAV = [
 const TAB_LABELS: Record<string, string> = {
   desk: 'Schreibtisch', appointments: 'Termine', contacts: 'Kontakte',
   venues: 'Venues', partners: 'Partner', hotels: 'Hotels',
-  vehicles: 'Fahrzeuge', settings: 'Einstellungen', equipment: 'Equipment',
+  vehicles: 'Fahrzeuge', equipment: 'Equipment',
 }
 
-// Build from all sub-items
 const SUB_LABELS: Record<string, string> = {}
-Object.values(SUB_ITEMS).flat().forEach(s => { SUB_LABELS[s.id] = s.name })
+;[...CONTACTS_SUBS, ...EQUIPMENT_SUBS, ...SETTINGS_KONTO, ...SETTINGS_WORKSPACE].forEach(
+  s => { SUB_LABELS[s.id] = s.name }
+)
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -128,7 +131,9 @@ export function L2Layout({
 
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [allTenantsState, setAllTenantsState] = useState<Array<{ id: number; name: string; slug: string; status: string; role: string }>>([])
+  const [allTenantsState, setAllTenantsState] = useState<
+    Array<{ id: number; name: string; slug: string; status: string; role: string }>
+  >([])
   const [activeTenantSlug, setActiveTenantSlug] = useState<string | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -138,10 +143,27 @@ export function L2Layout({
   const role = getEffectiveRole() as TenantRole
   const isEditor = isEditorRole(role)
 
-  const initials = [currentUser?.firstName, currentUser?.lastName]
-    .filter(Boolean)
-    .map(n => n![0].toUpperCase())
-    .join('') || currentUser?.email?.[0]?.toUpperCase() || '?'
+  const initials =
+    [currentUser?.firstName, currentUser?.lastName]
+      .filter(Boolean)
+      .map(n => n![0].toUpperCase())
+      .join('') ||
+    currentUser?.email?.[0]?.toUpperCase() ||
+    '?'
+
+  // Settings modal state
+  const isSettingsOpen = activeTab === 'settings'
+  const closeSettings = useCallback(() => {
+    onTabChange('desk')
+  }, [onTabChange])
+
+  // ESC closes settings modal
+  useEffect(() => {
+    if (!isSettingsOpen) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeSettings() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [isSettingsOpen, closeSettings])
 
   // Artist name
   useEffect(() => {
@@ -165,7 +187,7 @@ export function L2Layout({
       .catch(() => {})
   }, [])
 
-  // Close dropdown on outside click
+  // Close user dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node))
@@ -176,16 +198,12 @@ export function L2Layout({
   }, [])
 
   const handleNav = (id: string) => {
+    if (id === 'settings') { onTabChange('settings', 'profil'); return }
     let defaultSub: string | undefined
-    if (id === 'settings') defaultSub = 'profil'
-    else if (id === 'contacts') defaultSub = 'overview'
+    if (id === 'contacts') defaultSub = 'overview'
     else if (id === 'equipment') defaultSub = 'items'
     onTabChange(id, defaultSub)
     setShowUserMenu(false)
-  }
-
-  const handleSubNav = (sub: string) => {
-    onSubTabChange?.(sub)
   }
 
   const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string }) => {
@@ -196,23 +214,31 @@ export function L2Layout({
     window.location.href = '/'
   }
 
-  // Filter sub-items by role
-  const getVisibleSubs = (tabId: string): SubItem[] => {
-    return (SUB_ITEMS[tabId] ?? []).filter(s => {
+  const getVisibleSubs = (tabId: string): SubItem[] =>
+    (SUB_ITEMS[tabId] ?? []).filter(s => {
       if (s.adminOnly) return role === 'admin'
       if (s.editorOnly) return isEditor
       return true
     })
-  }
 
-  // Breadcrumb
+  const filterSettings = (items: SubItem[]) =>
+    items.filter(s => {
+      if (s.adminOnly) return role === 'admin'
+      if (s.editorOnly) return isEditor
+      return true
+    })
+
+  // Breadcrumb (only for non-settings tabs)
   const breadcrumb = [
     TAB_LABELS[activeTab] ?? activeTab,
     activeSubTab ? (SUB_LABELS[activeSubTab] ?? activeSubTab) : null,
   ].filter(Boolean)
 
-  // Nav item renderer (used for both main nav and module nav)
-  const renderNavItem = (item: { id: string; name: string; icon: React.ComponentType<{ className?: string }> }, isModule = false) => {
+  // ── Nav item renderer ───────────────────────────────────────────────────────
+  const renderNavItem = (
+    item: { id: string; name: string; icon: React.ComponentType<{ className?: string }> },
+    isModule = false
+  ) => {
     const isActive = activeTab === item.id
     const subs = getVisibleSubs(item.id)
     const hasSubNav = subs.length > 0
@@ -235,17 +261,20 @@ export function L2Layout({
             </span>
           )}
           {hasSubNav && (
-            <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${isActive ? 'rotate-180 text-blue-200' : 'text-gray-500'}`} />
+            <ChevronDownIcon
+              className={`w-3 h-3 flex-shrink-0 transition-transform ${
+                isActive ? 'rotate-180 text-blue-200' : 'text-gray-500'
+              }`}
+            />
           )}
         </button>
 
-        {/* Sub-items accordion */}
         {isActive && hasSubNav && (
           <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-700 space-y-0.5">
             {subs.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => handleSubNav(sub.id)}
+                onClick={() => onSubTabChange?.(sub.id)}
                 className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'text-white font-medium bg-gray-700'
@@ -261,13 +290,39 @@ export function L2Layout({
     )
   }
 
+  // ── Settings modal sidebar group ────────────────────────────────────────────
+  const renderSettingsGroup = (label: string, items: SubItem[]) => {
+    const visible = filterSettings(items)
+    if (visible.length === 0) return null
+    return (
+      <div className="mb-4">
+        <p className="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+          {label}
+        </p>
+        {visible.map(item => (
+          <button
+            key={item.id}
+            onClick={() => onSubTabChange?.(item.id)}
+            className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
+              activeSubTab === item.id
+                ? 'bg-gray-200 text-gray-900 font-medium'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
+          >
+            {item.name}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
       <aside className="w-56 flex-shrink-0 bg-gray-900 text-white flex flex-col border-r border-gray-700">
 
-        {/* Top: Identity */}
+        {/* Identity */}
         <div className="px-4 py-4 border-b border-gray-700">
           <div className="flex items-center gap-2.5 mb-1">
             <div className="relative" ref={userMenuRef}>
@@ -291,7 +346,6 @@ export function L2Layout({
                     <UserCircleIcon className="w-4 h-4 text-gray-400" />
                     Mein Profil
                   </button>
-
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { setShowUserMenu(false); setLayout('L1') }}
@@ -300,7 +354,6 @@ export function L2Layout({
                     <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
                     Layout: zurück zu L1
                   </button>
-
                   {allTenantsState.length > 0 && (
                     <>
                       <div className="border-t border-gray-100 my-1" />
@@ -332,7 +385,6 @@ export function L2Layout({
                       )}
                     </>
                   )}
-
                   {isSuperadmin && (
                     <>
                       <div className="border-t border-gray-100 my-1" />
@@ -345,7 +397,6 @@ export function L2Layout({
                       </button>
                     </>
                   )}
-
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { setShowUserMenu(false); logout() }}
@@ -368,21 +419,41 @@ export function L2Layout({
           {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item =>
             renderNavItem(item)
           )}
+
+          {/* Module section inside main nav */}
+          {canDo(role, NAV_VISIBLE['modules'] ?? []) && (
+            <>
+              <div className="pt-2 pb-1">
+                <div className="border-t border-gray-700" />
+              </div>
+              <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                Module
+              </p>
+              {MODULE_NAV.map(item => renderNavItem(item, true))}
+            </>
+          )}
         </nav>
 
-        {/* Module section */}
-        {canDo(role, NAV_VISIBLE['modules'] ?? []) && (
-          <div className="px-2 pb-3 border-t border-gray-700 pt-3 space-y-0.5">
-            <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">Module</p>
-            {MODULE_NAV.map(item => renderNavItem(item, true))}
-          </div>
-        )}
+        {/* Einstellungen – ganz unten */}
+        <div className="px-2 pb-3 border-t border-gray-700 pt-3">
+          <button
+            onClick={() => handleNav('settings')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
+              activeTab === 'settings'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
+            Einstellungen
+          </button>
+        </div>
       </aside>
 
       {/* ── MAIN AREA ───────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* Header bar */}
+        {/* Header */}
         <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
           <nav className="flex items-center gap-1.5 text-sm">
             {breadcrumb.map((crumb, i) => (
@@ -399,15 +470,60 @@ export function L2Layout({
           </div>
         </header>
 
-        {/* Scrollable content */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
-              {children}
+              {!isSettingsOpen && children}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── SETTINGS MODAL ──────────────────────────────────────────────────── */}
+      {isSettingsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={e => { if (e.target === e.currentTarget) closeSettings() }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl flex overflow-hidden"
+               style={{ width: '860px', height: '600px', maxWidth: '95vw', maxHeight: '90vh' }}>
+
+            {/* Modal left sidebar */}
+            <div className="w-52 flex-shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto p-3">
+              {/* User info */}
+              <div className="flex items-center gap-2 px-3 py-2 mb-3">
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
+                  {initials}
+                </div>
+                <span className="text-xs font-medium text-gray-700 truncate">
+                  {currentUser?.firstName
+                    ? `${currentUser.firstName} ${currentUser.lastName ?? ''}`.trim()
+                    : currentUser?.email ?? ''}
+                </span>
+              </div>
+
+              {renderSettingsGroup('Konto', SETTINGS_KONTO)}
+              {renderSettingsGroup('Workspace', SETTINGS_WORKSPACE)}
+            </div>
+
+            {/* Modal content */}
+            <div className="flex-1 overflow-y-auto relative">
+              {/* Close button */}
+              <button
+                onClick={closeSettings}
+                className="absolute top-4 right-4 z-10 p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+
+              <div className="p-8 pr-14">
+                {children}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
