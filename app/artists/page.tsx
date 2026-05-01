@@ -13,9 +13,10 @@ import {
   getCurrentUser,
   logout,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
-  superadminGetTenants, superadminExtendTrial,
+  superadminGetTenants, superadminExtendTrial, superadminSetModules,
+  ADDON_MODULES,
   CURRENT_TENANT_KEY,
-  type MyTermin, type SuperadminUser, type SuperadminTenant,
+  type MyTermin, type SuperadminUser, type SuperadminTenant, type AddonModuleId,
 } from '@/lib/api-client'
 import { Shield, Loader2 } from 'lucide-react'
 
@@ -388,36 +389,80 @@ function SuperadminConsole() {
                 <>
                   {tenantsLoading && <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-500" size={20} /></div>}
                   {!tenantsLoading && (
-                    <div className="divide-y divide-gray-800">
-                      {tenants.map(t => {
-                        const endsAt = t.trialEndsAt ? new Date(t.trialEndsAt) : null
-                        const daysLeft = endsAt ? Math.ceil((endsAt.getTime() - Date.now()) / 86400000) : null
-                        const expired = daysLeft !== null && daysLeft <= 0
-                        return (
-                          <div key={t.id} className="px-4 py-3 flex items-center justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white text-sm font-medium truncate">{t.name}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {t.userCount} User · {t.status === 'trial' ? (
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-gray-900 border-b border-gray-700">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Artist</th>
+                          <th className="text-left px-4 py-2.5 text-xs text-gray-400 font-medium">Status</th>
+                          {ADDON_MODULES.map(m => (
+                            <th key={m.id} className="text-center px-3 py-2.5 text-xs text-gray-400 font-medium w-20">{m.label}</th>
+                          ))}
+                          <th className="px-4 py-2.5 w-32" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {tenants.map(t => {
+                          const endsAt = t.trialEndsAt ? new Date(t.trialEndsAt) : null
+                          const daysLeft = endsAt ? Math.ceil((endsAt.getTime() - Date.now()) / 86400000) : null
+                          const expired = daysLeft !== null && daysLeft <= 0
+                          return (
+                            <tr key={t.id} className="hover:bg-gray-800/50">
+                              <td className="px-4 py-2.5">
+                                <p className="text-white font-medium truncate">{t.name}</p>
+                                <p className="text-xs text-gray-500">{t.userCount} User</p>
+                              </td>
+                              <td className="px-4 py-2.5 text-xs">
+                                {t.status === 'trial' ? (
                                   expired
                                     ? <span className="text-red-400 font-medium">Trial abgelaufen</span>
-                                    : <span className="text-yellow-400">Trial: noch {daysLeft} {daysLeft === 1 ? 'Tag' : 'Tage'}</span>
+                                    : <span className="text-yellow-400">Trial: {daysLeft}d</span>
                                 ) : (
                                   <span className="text-green-400">{t.status}</span>
                                 )}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => { setExtendTarget(t); setExtendDays('30'); setExtendError('') }}
-                              className="text-xs px-2.5 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded-lg flex-shrink-0"
-                            >
-                              Trial verlängern
-                            </button>
-                          </div>
-                        )
-                      })}
-                      {tenants.length === 0 && <p className="text-center py-8 text-gray-600 text-sm">Keine Artists</p>}
-                    </div>
+                              </td>
+                              {ADDON_MODULES.map(m => {
+                                const enabled = t.modulesEnabled?.includes(m.id as AddonModuleId) ?? false
+                                return (
+                                  <td key={m.id} className="text-center px-3 py-2.5">
+                                    <button
+                                      onClick={async () => {
+                                        const current = t.modulesEnabled ?? []
+                                        const next = enabled
+                                          ? current.filter(x => x !== m.id)
+                                          : [...current, m.id as AddonModuleId]
+                                        // Optimistic update
+                                        setTenants(prev => prev.map(x => x.id === t.id ? { ...x, modulesEnabled: next } : x))
+                                        try { await superadminSetModules(t.id, next) }
+                                        catch { loadTenants() } // Rollback bei Fehler
+                                      }}
+                                      className={`w-6 h-6 rounded flex items-center justify-center mx-auto transition-colors ${
+                                        enabled
+                                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                                          : 'bg-gray-700 hover:bg-gray-600 text-gray-500'
+                                      }`}
+                                      title={enabled ? `${m.label} deaktivieren` : `${m.label} aktivieren`}
+                                    >
+                                      {enabled && <span className="text-xs leading-none">✓</span>}
+                                    </button>
+                                  </td>
+                                )
+                              })}
+                              <td className="px-4 py-2.5 text-right">
+                                <button
+                                  onClick={() => { setExtendTarget(t); setExtendDays('30'); setExtendError('') }}
+                                  className="text-xs px-2.5 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded-lg"
+                                >
+                                  Trial verlängern
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {tenants.length === 0 && (
+                          <tr><td colSpan={2 + ADDON_MODULES.length + 1} className="text-center py-8 text-gray-600 text-sm">Keine Artists</td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   )}
                 </>
               )}

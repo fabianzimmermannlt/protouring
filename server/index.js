@@ -684,6 +684,7 @@ async function initDatabase() {
     // Equipment-Modul: Kürzel pro Tenant (global unique für Case IDs)
     `ALTER TABLE tenants ADD COLUMN equipment_kuerzel TEXT DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN carnet_ata_enabled INTEGER DEFAULT 0`,
+    `ALTER TABLE tenants ADD COLUMN modules_enabled TEXT DEFAULT '[]'`,
     `ALTER TABLE tenants ADD COLUMN label_tour_name TEXT DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN label_use_artist_name INTEGER DEFAULT 1`,
     `ALTER TABLE tenants ADD COLUMN label_logo_path TEXT DEFAULT NULL`,
@@ -5286,22 +5287,21 @@ app.get('/api/me/tenants', authenticateToken, async (req, res) => {
   try {
     let rows
     if (req.user.isSuperadmin) {
-      // Superadmin sieht alle Tenants mit virtueller Admin-Rolle
       rows = await db.all(`
-        SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, 'admin' AS role
+        SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, t.modules_enabled, 'admin' AS role
         FROM tenants t
         ORDER BY name
       `)
     } else {
       rows = await db.all(`
-        SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, ut.role
+        SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status, t.trial_ends_at, t.modules_enabled, ut.role
         FROM user_tenants ut
         JOIN tenants t ON ut.tenant_id = t.id
         WHERE ut.user_id = ? AND ut.status = 'active'
         ORDER BY name
       `, [req.user.id])
     }
-    res.json({ tenants: rows })
+    res.json({ tenants: rows.map(r => ({ ...r, modules_enabled: JSON.parse(r.modules_enabled || '[]') })) })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -6880,12 +6880,12 @@ app.delete('/api/superadmin/users/:userId', authenticateToken, requireSuperadmin
   }
 })
 
-// GET /api/superadmin/tenants — alle Tenants mit Trial-Info
+// GET /api/superadmin/tenants — alle Tenants mit Trial-Info + Module
 app.get('/api/superadmin/tenants', authenticateToken, requireSuperadmin, async (req, res) => {
   try {
     const tenants = await db.all(`
       SELECT t.id, COALESCE(NULLIF(t.display_name,''), t.name) AS name, t.slug, t.status,
-             t.trial_ends_at,
+             t.trial_ends_at, t.modules_enabled,
              (SELECT COUNT(*) FROM user_tenants ut WHERE ut.tenant_id=t.id AND ut.status='active') AS user_count
       FROM tenants t
       ORDER BY t.created_at DESC
@@ -6893,7 +6893,18 @@ app.get('/api/superadmin/tenants', authenticateToken, requireSuperadmin, async (
     res.json({ tenants: tenants.map(t => ({
       id: t.id, name: t.name, slug: t.slug, status: t.status,
       trialEndsAt: t.trial_ends_at, userCount: t.user_count,
+      modulesEnabled: JSON.parse(t.modules_enabled || '[]'),
     })) })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// PUT /api/superadmin/tenants/:id/modules — Addon-Module setzen
+app.put('/api/superadmin/tenants/:id/modules', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const { modules } = req.body
+    if (!Array.isArray(modules)) return res.status(400).json({ error: 'modules muss ein Array sein' })
+    await db.run(`UPDATE tenants SET modules_enabled=? WHERE id=?`, [JSON.stringify(modules), req.params.id])
+    res.json({ modulesEnabled: modules })
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 

@@ -2702,6 +2702,12 @@ export function getIcalUrl(token: string): string {
   return `${API_BASE}/api/ical/${token}.ics`.replace(/^https?:\/\//, 'webcal://')
 }
 
+// Addon-Module — zentrale Definition, Frontend + Backend orientieren sich daran
+export const ADDON_MODULES = [
+  { id: 'equipment', label: 'Equipment' },
+] as const
+export type AddonModuleId = typeof ADDON_MODULES[number]['id']
+
 export interface SuperadminTenant {
   id: number
   name: string
@@ -2709,6 +2715,7 @@ export interface SuperadminTenant {
   status: string
   trialEndsAt: string | null
   userCount: number
+  modulesEnabled: AddonModuleId[]
 }
 
 export async function superadminGetTenants(): Promise<SuperadminTenant[]> {
@@ -2721,6 +2728,23 @@ export async function superadminExtendTrial(tenantId: number, days: number): Pro
     method: 'PUT', body: { days }, skipTenant: true,
   })
   return res.trialEndsAt
+}
+
+export async function superadminSetModules(tenantId: number, modules: AddonModuleId[]): Promise<void> {
+  await request(`/api/superadmin/tenants/${tenantId}/modules`, {
+    method: 'PUT', body: { modules }, skipTenant: true,
+  })
+}
+
+/** Prüft ob ein Addon-Modul für den aktuellen Tenant aktiviert ist */
+export function isTenantModuleEnabled(moduleId: AddonModuleId): boolean {
+  if (typeof window === 'undefined') return false
+  const raw = localStorage.getItem(CURRENT_TENANT_KEY)
+  if (!raw) return false
+  try {
+    const tenant = JSON.parse(raw)
+    return Array.isArray(tenant.modules_enabled) && tenant.modules_enabled.includes(moduleId)
+  } catch { return false }
 }
 
 // ── Carnets ──────────────────────────────────────────────────────────────────
