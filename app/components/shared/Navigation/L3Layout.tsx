@@ -164,10 +164,11 @@ export function L3Layout({
 
   // ── Advancing state ────────────────────────────────────────────────────────
   const [advancingView, setAdvancingView] = useState<TermineDetailView>(() => {
-    if (typeof window === 'undefined') return 'details'
+    if (typeof window === 'undefined') return 'details2'
     const m = window.location.pathname.match(/\/advancing\/\d+\/(.+)/)
     const v = m?.[1] as TermineDetailView | undefined
-    return (['details','details2','travel','schedule','catering','agreements','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
+    const valid = ['details2','travel','schedule','catering','agreements','travelparty','advance-sheet','guestlist']
+    return (valid.includes(v ?? '')) ? v! : 'details2'
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
@@ -284,7 +285,7 @@ export function L3Layout({
     // Advancing hat eine eigene Next.js-Route
     if (id === 'advancing') {
       const lastId = localStorage.getItem('pt_advancing_last_id')
-      window.location.href = lastId ? `/advancing/${lastId}/details` : '/advancing'
+      window.location.href = lastId ? `/advancing/${lastId}/details2` : '/advancing'
       return
     }
     let defaultSub: string | undefined
@@ -365,7 +366,7 @@ export function L3Layout({
                   onClick={() => {
                     setActiveTerminId(item.id)
                     localStorage.setItem('pt_advancing_last_id', String(item.id))
-                    router.push(`/advancing/${item.id}/details`)
+                    router.push(`/advancing/${item.id}/details2`)
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
                     isActive
@@ -851,8 +852,8 @@ export function L3Layout({
               return (
                 <div className="flex items-center gap-0.5">
                   {([
-                    { id: 'details',       label: t('appointments.view.details') },
-                    ...(isAdvancing ? [{ id: 'details2', label: 'Details 2' }] : []),
+                    ...(!isAdvancing ? [{ id: 'details', label: t('appointments.view.details') }] : []),
+                    ...(isAdvancing ? [{ id: 'details2', label: 'Details' }] : []),
                     ...(isAdvancing ? [{ id: 'travel', label: 'Travel' }] : []),
                     ...(isAdvancing ? [{ id: 'schedule', label: 'Schedule' }] : []),
                     ...(isAdvancing ? [{ id: 'catering', label: 'Catering' }] : []),

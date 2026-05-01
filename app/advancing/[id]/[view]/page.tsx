@@ -32,9 +32,11 @@ export default function AdvancingDetailPage() {
   const isMobile = useIsMobile()
 
   const terminId = parseInt(String(params.id), 10)
-  const view = (VALID_VIEWS.includes(params.view as DetailView)
-    ? params.view as DetailView
-    : 'details')
+  // 'details' ist in Advancing deprecated — Details2 ist der Standard
+  const rawView = params.view as string
+  const view = (VALID_VIEWS.includes(rawView as DetailView)
+    ? rawView === 'details' ? 'details2' : rawView as DetailView
+    : 'details2')
 
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,10 +48,12 @@ export default function AdvancingDetailPage() {
   const isEditor = isEditorRole(effectiveRole)
   const canSeeFiles = canDo(effectiveRole, CAN_SEE_FILES_TERMIN)
 
-  // Auth check
+  // Auth check + redirect 'details' → 'details2'
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace('/login')
+    } else if (rawView === 'details') {
+      router.replace(`/advancing/${terminId}/details2`)
     } else {
       setAuthChecked(true)
     }
