@@ -684,43 +684,38 @@ function UserProfil() {
 
   return (
     <div className="space-y-6">
-    <div className="flex flex-col md:flex-row gap-6 items-start">
 
-      {/* Linke Spalte: Avatar + Kurzinfo */}
-      <div className="md:w-44 flex-shrink-0 flex md:flex-col items-center gap-3 md:pt-1">
-        {/* Avatar */}
-        <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl md:text-2xl font-semibold select-none flex-shrink-0">
+      {/* Avatar + Kurzinfo */}
+      <div className="flex items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-semibold select-none flex-shrink-0">
           {initials}
         </div>
-        <div className="text-left md:text-center">
-          <p className="text-sm font-semibold text-gray-900 leading-tight">
-            {displayFirst} {displayLast}
-          </p>
+        <div>
+          <p className="text-sm font-semibold text-gray-900 leading-tight">{displayFirst} {displayLast}</p>
           <p className="text-xs text-gray-500 mt-0.5">{profileData.email || currentUser?.email}</p>
-          <span className="inline-block mt-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+          <span className="inline-block mt-1.5 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
             {ROLE_LABELS[currentTenant?.role as TenantRole] ?? currentTenant?.role}
           </span>
         </div>
       </div>
 
-      {/* Mittlere Spalte: Profildaten */}
-      <div className="flex-1 min-w-0 w-full">
-        <ProfileEditor
-          isOpen={true}
-          onClose={() => {}}
-          profileData={profileData}
-          onSave={handleProfileSave}
-          isAdmin={isAdmin}
-          isSelf={true}
-          inline={true}
-        />
-      </div>
+      {/* Profildaten */}
+      <ProfileEditor
+        isOpen={true}
+        onClose={() => {}}
+        profileData={profileData}
+        onSave={handleProfileSave}
+        isAdmin={isAdmin}
+        isSelf={true}
+        inline={true}
+      />
 
+      {/* Passwort */}
+      <div className="space-y-3" ref={pwAccordionRef}>
+        <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Passwort</h3>
 
-      {/* Rechte Spalte: Passwort */}
-      <div className="w-full md:w-56 flex-shrink-0">
         {/* Mobile: Akkordion */}
-        <div className="md:hidden" ref={pwAccordionRef}>
+        <div className="md:hidden">
           <button
             type="button"
             onClick={() => {
@@ -730,12 +725,7 @@ function UserProfil() {
             }}
             className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700"
           >
-            <span className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Passwort ändern
-            </span>
+            <span>Passwort ändern</span>
             <svg className={`w-4 h-4 text-gray-400 transition-transform${showPwForm ? ' rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -760,37 +750,31 @@ function UserProfil() {
           )}
         </div>
 
-        {/* Desktop: immer sichtbar */}
-        <div className="hidden md:block bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Passwort
-          </h4>
-          <form onSubmit={handlePwChange} className="space-y-2.5">
-            {pwError && <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{pwError}</div>}
-            {pwSuccess && <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">Gespeichert.</div>}
+        {/* Desktop */}
+        <div className="hidden md:block">
+          <form onSubmit={handlePwChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(['current','next','confirm'] as const).map((key, i) => (
               <div key={key}>
-                <label className="block text-xs text-gray-500 mb-1">{['Aktuell','Neu','Bestätigen'][i]}</label>
+                <label className="block text-xs text-gray-500 mb-1">{['Aktuelles Passwort','Neues Passwort','Bestätigen'][i]}</label>
                 <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             ))}
-            <button type="submit" disabled={pwSaving} className="w-full mt-1 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5">
-              {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
-              Speichern
-            </button>
+            {pwError && <div className="md:col-span-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{pwError}</div>}
+            {pwSuccess && <div className="md:col-span-3 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">Gespeichert.</div>}
+            <div className="md:col-span-3 flex">
+              <button type="submit" disabled={pwSaving} className="py-1.5 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
+                {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
+                Speichern
+              </button>
+            </div>
           </form>
         </div>
       </div>
 
+      {/* iCal Feed */}
+      <IcalSection />
+
     </div>
-
-    {/* iCal Feed */}
-    <IcalSection />
-
-  </div>
   )
 }
 

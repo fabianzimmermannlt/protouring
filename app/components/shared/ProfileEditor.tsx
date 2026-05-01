@@ -118,51 +118,26 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
         {/* Editor Content */}
         <div className={inline ? '' : 'modal-body'}>
           <div className="space-y-6">
-            
-            {/* Erste Zeile: Persönliche Daten und Kontaktdaten */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Persönliche Daten */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Persönliche Daten</h3>
-                
+
+            {/* Persönliche Daten */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Persönliche Daten</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Vorname</label>
-                  <input
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e) => handleChange('firstName', e.target.value)}
-                    className="form-input"
-                  />
+                  <input type="text" value={formData.firstName} onChange={(e) => handleChange('firstName', e.target.value)} className="form-input" />
                 </div>
-
                 <div>
                   <label className="form-label">Nachname</label>
-                  <input
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e) => handleChange('lastName', e.target.value)}
-                    className="form-input"
-                  />
+                  <input type="text" value={formData.lastName} onChange={(e) => handleChange('lastName', e.target.value)} className="form-input" />
                 </div>
-
                 <div>
                   <label className="form-label">Geburtstag</label>
-                  <input
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) => handleChange('birthDate', e.target.value)}
-                    className="form-input"
-                  />
+                  <input type="date" value={formData.birthDate} onChange={(e) => handleChange('birthDate', e.target.value)} className="form-input" />
                 </div>
-
                 <div>
                   <label className="form-label">Geschlecht</label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => handleChange('gender', e.target.value)}
-                    className="form-input"
-                  >
+                  <select value={formData.gender} onChange={(e) => handleChange('gender', e.target.value)} className="form-input">
                     <option value="">Bitte wählen...</option>
                     <option value="männlich">Männlich</option>
                     <option value="weiblich">Weiblich</option>
@@ -170,308 +145,157 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
                     <option value="keine_angabe">Keine Angabe</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="form-label">Pronomen</label>
-                  <input
-                    type="text"
-                    value={formData.pronouns}
-                    onChange={(e) => handleChange('pronouns', e.target.value)}
-                    className="form-input"
-                    placeholder="er/ihm, sie/ihr, divers"
-                  />
-                </div>
-              </div>
-
-              {/* Kontaktdaten */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kontaktdaten</h3>
-                
-                <div>
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    readOnly
-                    className="form-input bg-gray-50 text-gray-500 cursor-not-allowed"
-                    title="E-Mail kann nur von einem Admin geändert werden"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Telefon</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="grid grid-cols-[auto_1fr] gap-1">
-                  <div>
-                    <label className="form-label">PLZ</label>
-                    <input
-                      type="text"
-                      value={formData.postalCode}
-                      onChange={(e) => handleChange('postalCode', e.target.value)}
-                      maxLength={5}
-                      className="form-input !w-20"
-                      placeholder="12345"
-                    />
-                  </div>
-                  <div>
-                    <label className="form-label">Wohnort</label>
-                    <input
-                      type="text"
-                      value={formData.residence}
-                      onChange={(e) => handleChange('residence', e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label">Adresse</label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                    className="form-input"
-                  />
+                  <input type="text" value={formData.pronouns} onChange={(e) => handleChange('pronouns', e.target.value)} className="form-input" placeholder="er/ihm, sie/ihr, divers" />
                 </div>
               </div>
             </div>
 
-            {/* Berufliche Daten - einspaltig */}
+            {/* Kontaktdaten */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kontaktdaten</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Email</label>
+                  <input type="email" value={formData.email} readOnly className="form-input bg-gray-50 text-gray-500 cursor-not-allowed" title="E-Mail kann nur von einem Admin geändert werden" />
+                </div>
+                <div>
+                  <label className="form-label">Telefon</label>
+                  <input type="tel" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} className="form-input" />
+                </div>
+                <div className="grid grid-cols-[auto_1fr] gap-1">
+                  <div>
+                    <label className="form-label">PLZ</label>
+                    <input type="text" value={formData.postalCode} onChange={(e) => handleChange('postalCode', e.target.value)} maxLength={5} className="form-input !w-20" placeholder="12345" />
+                  </div>
+                  <div>
+                    <label className="form-label">Wohnort</label>
+                    <input type="text" value={formData.residence} onChange={(e) => handleChange('residence', e.target.value)} className="form-input" />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Adresse</label>
+                  <input type="text" value={formData.address} onChange={(e) => handleChange('address', e.target.value)} className="form-input" />
+                </div>
+              </div>
+            </div>
+
+            {/* Berufliche Daten */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Berufliche Daten</h3>
-              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {(['function1', 'function2', 'function3'] as const).map((field, i) => {
                   const currentVal = formData[field]
                   const activeNames = new Set(activeFunctions.map(f => f.name))
-                  // Aktuellen Wert erhalten, auch wenn er in den Einstellungen deaktiviert wurde
                   const showLegacy = currentVal && !activeNames.has(currentVal)
                   return (
                     <div key={field}>
                       <label className="form-label">{i + 1}. Funktion</label>
-                      <select
-                        value={currentVal}
-                        onChange={(e) => handleChange(field, e.target.value)}
-                        className="form-input"
-                      >
+                      <select value={currentVal} onChange={(e) => handleChange(field, e.target.value)} className="form-input">
                         <option value="">– keine –</option>
-                        {showLegacy && (
-                          <option value={currentVal}>{currentVal} ⚠ (deaktiviert)</option>
-                        )}
-                        {activeFunctions.map(fn => (
-                          <option key={fn.name} value={fn.name}>{fn.name}</option>
-                        ))}
+                        {showLegacy && <option value={currentVal}>{currentVal} ⚠ (deaktiviert)</option>}
+                        {activeFunctions.map(fn => <option key={fn.name} value={fn.name}>{fn.name}</option>)}
                       </select>
                     </div>
                   )
                 })}
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Spezifikation</label>
-                  <input
-                    type="text"
-                    value={formData.specification}
-                    onChange={(e) => handleChange('specification', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. Schlagzeug"
-                  />
+                  <input type="text" value={formData.specification} onChange={(e) => handleChange('specification', e.target.value)} className="form-input" placeholder="z.B. Schlagzeug" />
                 </div>
-
                 <div>
                   <label className="form-label">Sprachen</label>
-                  <input
-                    type="text"
-                    value={formData.languages}
-                    onChange={(e) => handleChange('languages', e.target.value)}
-                    className="form-input"
-                    placeholder="Deutsch, Englisch, Französisch"
-                  />
+                  <input type="text" value={formData.languages} onChange={(e) => handleChange('languages', e.target.value)} className="form-input" placeholder="Deutsch, Englisch, Französisch" />
                 </div>
               </div>
             </div>
 
-            {/* Zweite Zeile: Ernährung und Reisedaten */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Ernährung */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Ernährung</h3>
-                
+            {/* Reisedaten */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Reisedaten</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Führerschein</label>
+                  <input type="text" value={formData.driversLicense} onChange={(e) => handleChange('driversLicense', e.target.value)} className="form-input" placeholder="z.B. Klasse B, Klasse C, Internationaler Führerschein..." />
+                </div>
+                <div>
+                  <label className="form-label">Bahncard</label>
+                  <input type="text" value={formData.railcard} onChange={(e) => handleChange('railcard', e.target.value)} className="form-input" placeholder="z.B. Bahncard 25, Bahncard 50, Business..." />
+                </div>
+                <div>
+                  <label className="form-label">Vielfliegernummer</label>
+                  <input type="text" value={formData.frequentFlyer} onChange={(e) => handleChange('frequentFlyer', e.target.value)} className="form-input" placeholder="z.B. Lufthansa Miles & More, Emirates Skywards..." />
+                </div>
+                <div>
+                  <label className="form-label">Hotel Deckname</label>
+                  <input type="text" value={formData.hotelAlias} onChange={(e) => handleChange('hotelAlias', e.target.value)} className="form-input" placeholder="z.B. John Smith, Mike Johnson..." />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="form-label">Hotelwünsche</label>
+                  <textarea value={formData.hotelInfo} onChange={(e) => handleChange('hotelInfo', e.target.value)} className="form-input" rows={2} placeholder="z.B. Einzelzimmer bevorzugt, ruhiges Zimmer, hohe Etage, Suite wenn möglich..." />
+                </div>
+              </div>
+            </div>
+
+            {/* Ernährung */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Ernährung</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Ernährungsweise</label>
-                  <select
-                    value={formData.diet}
-                    onChange={(e) => handleChange('diet', e.target.value)}
-                    className="form-input"
-                  >
+                  <select value={formData.diet} onChange={(e) => handleChange('diet', e.target.value)} className="form-input">
                     <option value="">Bitte wählen...</option>
                     <option value="alles">Alles</option>
                     <option value="vegetarisch">Vegetarisch</option>
                     <option value="vegan">Vegan</option>
                   </select>
                 </div>
-
                 <div>
-                  <h4 className="text-xs font-medium text-gray-700 mb-2">Unverträglichkeiten</h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.glutenFree}
-                        onChange={(e) => handleChange('glutenFree', e.target.checked)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Glutenfrei</span>
+                  <label className="form-label">Allergien</label>
+                  <input type="text" value={formData.allergies} onChange={(e) => handleChange('allergies', e.target.value)} className="form-input" placeholder="z.B. Nüsse, Erdnüsse, Fisch..." />
+                </div>
+                <div>
+                  <label className="form-label block text-xs text-gray-500 mb-1">Unverträglichkeiten</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={formData.glutenFree} onChange={(e) => handleChange('glutenFree', e.target.checked)} />
+                      Glutenfrei
                     </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.lactoseFree}
-                        onChange={(e) => handleChange('lactoseFree', e.target.checked)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Laktosefrei</span>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={formData.lactoseFree} onChange={(e) => handleChange('lactoseFree', e.target.checked)} />
+                      Laktosefrei
                     </label>
                   </div>
                 </div>
-
-                <div>
-                  <label className="form-label">Allergien</label>
-                  <input
-                    type="text"
-                    value={formData.allergies}
-                    onChange={(e) => handleChange('allergies', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. Nüsse, Erdnüsse, Fisch..."
-                  />
-                </div>
-
                 <div>
                   <label className="form-label">Besonderheiten</label>
-                  <input
-                    type="text"
-                    value={formData.specialNotes}
-                    onChange={(e) => handleChange('specialNotes', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. scharf essen, keine Koffein..."
-                  />
-                </div>
-              </div>
-
-              {/* Reisedaten */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Reisedaten</h3>
-                
-                <div>
-                  <label className="form-label">Führerschein</label>
-                  <input
-                    type="text"
-                    value={formData.driversLicense}
-                    onChange={(e) => handleChange('driversLicense', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. Klasse B, Klasse C, Internationaler Führerschein..."
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Bahncard</label>
-                  <input
-                    type="text"
-                    value={formData.railcard}
-                    onChange={(e) => handleChange('railcard', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. Bahncard 25, Bahncard 50, Business..."
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Vielfliegernummer</label>
-                  <input
-                    type="text"
-                    value={formData.frequentFlyer}
-                    onChange={(e) => handleChange('frequentFlyer', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. Lufthansa Miles & More, Emirates Skywards..."
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Hotelwünsche</label>
-                  <textarea
-                    value={formData.hotelInfo}
-                    onChange={(e) => handleChange('hotelInfo', e.target.value)}
-                    className="form-input"
-                    rows={3}
-                    placeholder="z.B. Einzelzimmer bevorzugt, ruhiges Zimmer, hohe Etage, Suite wenn möglich..."
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Hotel Deckname</label>
-                  <input
-                    type="text"
-                    value={formData.hotelAlias}
-                    onChange={(e) => handleChange('hotelAlias', e.target.value)}
-                    className="form-input"
-                    placeholder="z.B. John Smith, Mike Johnson..."
-                  />
+                  <input type="text" value={formData.specialNotes} onChange={(e) => handleChange('specialNotes', e.target.value)} className="form-input" placeholder="z.B. scharf essen, kein Koffein..." />
                 </div>
               </div>
             </div>
 
-            {/* Dritte Zeile: Kleidergrößen */}
+            {/* Kleidergrößen */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kleidergrößen</h3>
-
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <label className="form-label">Shirt</label>
-                  <input
-                    type="text"
-                    value={formData.shirtSize}
-                    onChange={(e) => handleChange('shirtSize', e.target.value)}
-                    className="form-input"
-                    placeholder="S, M, L, XL"
-                  />
+                  <input type="text" value={formData.shirtSize} onChange={(e) => handleChange('shirtSize', e.target.value)} className="form-input" placeholder="S, M, L, XL" />
                 </div>
                 <div>
                   <label className="form-label">Hoodie</label>
-                  <input
-                    type="text"
-                    value={formData.hoodieSize}
-                    onChange={(e) => handleChange('hoodieSize', e.target.value)}
-                    className="form-input"
-                    placeholder="S, M, L, XL"
-                  />
+                  <input type="text" value={formData.hoodieSize} onChange={(e) => handleChange('hoodieSize', e.target.value)} className="form-input" placeholder="S, M, L, XL" />
                 </div>
                 <div>
                   <label className="form-label">Hose</label>
-                  <input
-                    type="text"
-                    value={formData.pantsSize}
-                    onChange={(e) => handleChange('pantsSize', e.target.value)}
-                    className="form-input"
-                    placeholder="32, 34, 36"
-                  />
+                  <input type="text" value={formData.pantsSize} onChange={(e) => handleChange('pantsSize', e.target.value)} className="form-input" placeholder="32, 34, 36" />
                 </div>
                 <div>
                   <label className="form-label">Schuhe</label>
-                  <input
-                    type="text"
-                    value={formData.shoeSize}
-                    onChange={(e) => handleChange('shoeSize', e.target.value)}
-                    className="form-input"
-                    placeholder="42, 43, 44"
-                  />
+                  <input type="text" value={formData.shoeSize} onChange={(e) => handleChange('shoeSize', e.target.value)} className="form-input" placeholder="42, 43, 44" />
                 </div>
               </div>
             </div>
