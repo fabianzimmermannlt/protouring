@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
+import { useT } from '@/app/lib/i18n/LanguageContext'
+import type { TranslationKey } from '@/app/lib/i18n/translations/de'
 import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
@@ -61,11 +63,11 @@ type AvailStatus = 'available' | 'maybe' | 'unavailable' | null
 // Constants
 // ============================================================
 
-const AVAIL_ICON: Record<string, { label: string; color: string; symbol: string }> = {
-  available:   { label: 'Verfügbar',       color: '#22c55e', symbol: '✓' },
-  maybe:       { label: 'Vielleicht',      color: '#eab308', symbol: '?' },
-  unavailable: { label: 'Nicht verfügbar', color: '#ef4444', symbol: '✗' },
-  null:        { label: 'Keine Angabe',    color: '#9ca3af', symbol: '–' },
+const AVAIL_ICON: Record<string, { tKey: TranslationKey; color: string; symbol: string }> = {
+  available:   { tKey: 'availability.available',   color: '#22c55e', symbol: '✓' },
+  maybe:       { tKey: 'availability.maybe',       color: '#eab308', symbol: '?' },
+  unavailable: { tKey: 'availability.unavailable', color: '#ef4444', symbol: '✗' },
+  null:        { tKey: 'availability.unknown',     color: '#9ca3af', symbol: '–' },
 }
 
 const STATUS_BOOKING_COLOR: Record<string, string> = {
@@ -81,6 +83,21 @@ const STATUS_PUBLIC_COLOR: Record<string, string> = {
   'nicht öffentlich': 'badge badge-gray',
   'tba':              'badge badge-yellow',
   'veröffentlicht':   'badge badge-green',
+}
+
+// Maps DB status values (stored in German) → translation keys
+const STATUS_BOOKING_TKEY: Record<string, TranslationKey> = {
+  'Idee':                 'status.booking.idea',
+  'Option':               'status.booking.option',
+  'noch nicht bestätigt': 'status.booking.pending',
+  'bestätigt':            'status.booking.confirmed',
+  'abgeschlossen':        'status.booking.completed',
+  'abgesagt':             'status.booking.cancelled',
+}
+const STATUS_PUBLIC_TKEY: Record<string, TranslationKey> = {
+  'nicht öffentlich': 'status.public.notPublic',
+  'tba':              'status.public.tba',
+  'veröffentlicht':   'status.public.published',
 }
 
 const EMPTY_FORM: TerminFormData = {
@@ -121,10 +138,11 @@ function VeranstaltungCard({ termin, isAdmin, onEditClick }: {
   isAdmin: boolean
   onEditClick: () => void
 }) {
+  const t = useT()
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Veranstaltung</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('appointments.card.event')}</span>
         {isAdmin && (
           <button onClick={onEditClick} className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors">
             <Edit2 size={12} />
@@ -133,13 +151,13 @@ function VeranstaltungCard({ termin, isAdmin, onEditClick }: {
       </div>
       <div className="px-5 py-4">
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
-          <dt className="text-gray-400 font-medium whitespace-nowrap">Datum</dt>
+          <dt className="text-gray-400 font-medium whitespace-nowrap">{t('appointments.card.date')}</dt>
           <dd className="text-gray-800">{formatDateLong(termin.date)}</dd>
-          <dt className="text-gray-400 font-medium">Titel</dt>
+          <dt className="text-gray-400 font-medium">{t('appointments.card.title')}</dt>
           <dd className="text-gray-800 font-semibold">{termin.title}</dd>
           {(termin.art || termin.artSub) && (
             <>
-              <dt className="text-gray-400 font-medium">Art</dt>
+              <dt className="text-gray-400 font-medium">{t('appointments.card.type')}</dt>
               <dd className="text-gray-800">
                 {termin.art}{termin.artSub && <span className="text-gray-400 ml-1">· {termin.artSub}</span>}
               </dd>
@@ -147,14 +165,22 @@ function VeranstaltungCard({ termin, isAdmin, onEditClick }: {
           )}
           {termin.statusBooking && (
             <>
-              <dt className="text-gray-400 font-medium">Status</dt>
-              <dd><span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>{termin.statusBooking}</span></dd>
+              <dt className="text-gray-400 font-medium">{t('appointments.card.statusBooking')}</dt>
+              <dd>
+                <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>
+                  {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
+                </span>
+              </dd>
             </>
           )}
           {termin.statusPublic && (
             <>
-              <dt className="text-gray-400 font-medium">Öffentlich</dt>
-              <dd><span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>{termin.statusPublic}</span></dd>
+              <dt className="text-gray-400 font-medium">{t('appointments.card.statusPublic')}</dt>
+              <dd>
+                <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>
+                  {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
+                </span>
+              </dd>
             </>
           )}
         </dl>
@@ -188,6 +214,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
   isAdmin: boolean
   onUpdated: (t: Termin) => void
 }) {
+  const t = useT()
   const [venues, setVenues] = useState<Venue[]>([])
   const [selecting, setSelecting] = useState(false)
   const [search, setSearch] = useState('')
@@ -217,7 +244,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
       setSelecting(false)
       setSearch('')
     } catch (e) {
-      setCardError(e instanceof Error ? e.message : 'Fehler beim Speichern')
+      setCardError(e instanceof Error ? e.message : t('general.error'))
     } finally {
       setSaving(false)
     }
@@ -230,7 +257,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Spielstätte & Ort</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('appointments.card.venue')}</span>
         {isAdmin && !selecting && (
           termin.venueId && currentVenue ? (
             <div className="flex items-center gap-3">
@@ -275,7 +302,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
             <input
               type="text"
               autoFocus
-              placeholder="Name oder Ort suchen…"
+              placeholder={t('general.search')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -284,15 +311,15 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
               {termin.venueId && (
                 <button onClick={() => linkVenue(null)} disabled={saving}
                   className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
-                  Spielstätte entfernen
+                  {t('appointments.card.removeVenue')}
                 </button>
               )}
               <button onClick={() => { setVenueToEdit(null); setVenueModalOpen(true); setSelecting(false) }}
                 className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
-                <Plus size={11} /> Neue Spielstätte anlegen
+                <Plus size={11} /> {t('appointments.card.newVenue')}
               </button>
               {filtered.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Treffer</div>
+                <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
               ) : filtered.map(v => (
                 <button key={v.id} onClick={() => linkVenue(v)} disabled={saving}
                   className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin.venueId ? 'bg-blue-50 font-medium' : ''}`}>
@@ -313,7 +340,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
             <dd className="text-gray-800 font-semibold">{currentVenue?.name || termin.venueName}</dd>
             {(currentVenue?.city || termin.city) && (
               <>
-                <dt className="text-gray-400 font-medium">Ort</dt>
+                <dt className="text-gray-400 font-medium">{t('table.city')}</dt>
                 <dd className="text-gray-800">
                   {[currentVenue?.postalCode, currentVenue?.city || termin.city].filter(Boolean).join(' ')}
                 </dd>
@@ -321,13 +348,13 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
             )}
             {currentVenue?.capacity && (
               <>
-                <dt className="text-gray-400 font-medium">Kapazität</dt>
+                <dt className="text-gray-400 font-medium">{t('appointments.card.capacity')}</dt>
                 <dd className="text-gray-800">{Number(currentVenue.capacity).toLocaleString('de-DE')}</dd>
               </>
             )}
             {currentVenue?.website && (
               <>
-                <dt className="text-gray-400 font-medium">Website</dt>
+                <dt className="text-gray-400 font-medium">{t('appointments.card.website')}</dt>
                 <dd>
                   <a href={currentVenue.website} target="_blank" rel="noopener noreferrer"
                     className="text-blue-600 hover:underline text-xs truncate block">
@@ -339,8 +366,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
           </dl>
         ) : (
           <p className="text-sm text-gray-400 text-center py-2">
-            Keine Spielstätte verknüpft
-            {isAdmin && <span className="block text-xs mt-1">→ „Verknüpfen" oben rechts</span>}
+            {t('appointments.card.noVenue')}
           </p>
         )}
       </div>
@@ -380,6 +406,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
   isAdmin: boolean
   onUpdated: (t: Termin) => void
 }) {
+  const t = useT()
   const [partners, setPartners] = useState<Partner[]>([])
   const [selecting, setSelecting] = useState(false)
   const [search, setSearch] = useState('')
@@ -409,7 +436,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
       setSelecting(false)
       setSearch('')
     } catch (e) {
-      setCardError(e instanceof Error ? e.message : 'Fehler beim Speichern')
+      setCardError(e instanceof Error ? e.message : t('general.error'))
     } finally {
       setSaving(false)
     }
@@ -422,7 +449,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Partner</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('partners.title')}</span>
         {isAdmin && !selecting && (
           termin.partnerId && currentPartner ? (
             <div className="flex items-center gap-3">
@@ -458,23 +485,23 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
       <div className="px-5 py-4">
         {selecting ? (
           <div className="space-y-2">
-            <input type="text" autoFocus placeholder="Firma, Ort oder Ansprechpartner…"
+            <input type="text" autoFocus placeholder={t('general.search')}
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
               {termin.partnerId && (
                 <button onClick={() => linkPartner(null)} disabled={saving}
                   className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
-                  Partner entfernen
+                  {t('appointments.card.removePartner')}
                 </button>
               )}
               <button
                 onClick={() => { setPartnerToEdit(null); setPartnerModalOpen(true); setSelecting(false) }}
                 className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
-                <Plus size={11} /> Neuen Partner anlegen
+                <Plus size={11} /> {t('appointments.card.newPartner')}
               </button>
               {filtered.length === 0 ? (
-                <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Treffer</div>
+                <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
               ) : filtered.map(p => (
                 <button key={p.id} onClick={() => linkPartner(p)} disabled={saving}
                   className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(p.id) === termin.partnerId ? 'bg-blue-50 font-medium' : ''}`}>
@@ -526,8 +553,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
           </dl>
         ) : (
           <p className="text-sm text-gray-400 text-center py-2">
-            Kein Partner verknüpft
-            {isAdmin && <span className="block text-xs mt-1">→ „Verknüpfen" oben rechts</span>}
+            {t('appointments.card.noPartner')}
           </p>
         )}
       </div>
@@ -841,6 +867,7 @@ export default function TerminePage() {
   const [commentPopup, setCommentPopup] = useState<{ terminId: number; comment: string } | null>(null)
   const [commentSaving, setCommentSaving] = useState(false)
 
+  const t = useT()
   const isMobile = useIsMobile()
   const currentUser = getCurrentUser()
   const effectiveRole = getEffectiveRole()
@@ -857,8 +884,8 @@ export default function TerminePage() {
     try {
       setLoading(true)
       setError(null)
-      const t = await getTermine()
-      setTermine(t)
+      const data = await getTermine()
+      setTermine(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verbindung zum Server fehlgeschlagen')
     } finally {
@@ -870,8 +897,8 @@ export default function TerminePage() {
   const silentRefresh = useCallback(async () => {
     if (!isAuthenticated()) return
     try {
-      const t = await getTermine()
-      setTermine(t)
+      const data = await getTermine()
+      setTermine(data)
     } catch {
       // still ignorieren
     }
@@ -887,12 +914,12 @@ export default function TerminePage() {
   const closeModal = () => { setIsModalOpen(false); setEditingTermin(null) }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Termin wirklich löschen?')) return
+    if (!confirm(t('general.delete') + '?')) return
     try {
       await deleteTermin(id)
-      setTermine(prev => prev.filter(t => t.id !== id))
+      setTermine(prev => prev.filter(item => item.id !== id))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Löschen fehlgeschlagen')
+      setError(e instanceof Error ? e.message : t('general.error'))
     }
   }
 
@@ -953,12 +980,12 @@ export default function TerminePage() {
   // ---- Sort + Filter ----
   const today = new Date().toISOString().slice(0, 10)
   const sortedTermine = [...termine].sort((a, b) => a.date.localeCompare(b.date))
-  const filteredTermine = sortedTermine.filter(t => {
-    if (termineFilter === 'aktuell')   { if (t.date < today) return false }
-    if (termineFilter === 'vergangen') { if (t.date >= today) return false }
+  const filteredTermine = sortedTermine.filter(item => {
+    if (termineFilter === 'aktuell')   { if (item.date < today) return false }
+    if (termineFilter === 'vergangen') { if (item.date >= today) return false }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase()
-      if (![t.title, t.city, t.venueName, t.art].some(v => v?.toLowerCase().includes(q))) return false
+      if (![item.title, item.city, item.venueName, item.art].some(v => v?.toLowerCase().includes(q))) return false
     }
     return true
   })
@@ -992,7 +1019,7 @@ export default function TerminePage() {
   if (loading) return (
     <div className="p-8 text-center text-gray-400">
       <Loader2 className="inline animate-spin mb-2" size={24} />
-      <p>Lade Termine…</p>
+      <p>{t('appointments.loading')}</p>
     </div>
   )
 
@@ -1017,14 +1044,18 @@ export default function TerminePage() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             {canCreate ? (
               <button onClick={openNew} className="btn btn-primary">
-                <Plus size={16} /> Neuer Termin
+                <Plus size={16} /> {t('appointments.new')}
               </button>
             ) : <div />}
 
             {/* Filter-Gruppe */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
               {(['aktuell', 'vergangen', 'alle'] as const).map(f => {
-                const labels = { aktuell: 'Aktuell', vergangen: 'Vergangen', alle: 'Alle' }
+                const labels = {
+                  aktuell:  t('appointments.filter.current'),
+                  vergangen: t('appointments.filter.past'),
+                  alle:     t('appointments.filter.all'),
+                }
                 const active = listView === 'list' && termineFilter === f
                 return (
                   <button
@@ -1057,7 +1088,7 @@ export default function TerminePage() {
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Kalender
+                  {t('appointments.calendar')}
                 </button>
               )}
             </div>
@@ -1067,7 +1098,7 @@ export default function TerminePage() {
           {listView === 'list' && (
             <input
               type="text"
-              placeholder="Termine durchsuchen..."
+              placeholder={t('appointments.search')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
@@ -1087,21 +1118,21 @@ export default function TerminePage() {
             <div className="flex flex-col gap-2 mt-2">
               {tableRows.length === 0 ? (
                 <div className="text-center py-10 text-gray-400 text-sm">
-                  {termine.length === 0 ? 'Noch keine Termine. Mit „+ Neuer Termin" starten.' : 'Keine Treffer'}
+                  {termine.length === 0 ? t('appointments.emptyState') : t('appointments.noResults')}
                 </div>
-              ) : tableRows.map(t => (
+              ) : tableRows.map(item => (
                 <button
-                  key={t.id}
-                  onClick={() => router.push(`/appointments/${t.id}/details`)}
+                  key={item.id}
+                  onClick={() => router.push(`/appointments/${item.id}/details`)}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
                   {/* Date column */}
                   <div className="flex-shrink-0 w-12 text-center">
                     <div className="text-lg font-bold text-gray-800 leading-none">
-                      {new Date(t.date).toLocaleDateString('de-DE', { day: '2-digit' })}
+                      {new Date(item.date).toLocaleDateString('de-DE', { day: '2-digit' })}
                     </div>
                     <div className="text-xs text-gray-400 uppercase mt-0.5">
-                      {new Date(t.date).toLocaleDateString('de-DE', { month: 'short' })}
+                      {new Date(item.date).toLocaleDateString('de-DE', { month: 'short' })}
                     </div>
                   </div>
                   {/* Divider */}
@@ -1109,28 +1140,28 @@ export default function TerminePage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-gray-900 text-sm truncate">{t.title}</span>
-                      {t.statusBooking && (
-                        <span className={`${STATUS_BOOKING_COLOR[t.statusBooking] || 'badge badge-gray'} flex-shrink-0`}>
-                          {t.statusBooking}
+                      <span className="font-semibold text-gray-900 text-sm truncate">{item.title}</span>
+                      {item.statusBooking && (
+                        <span className={`${STATUS_BOOKING_COLOR[item.statusBooking] || 'badge badge-gray'} flex-shrink-0`}>
+                          {STATUS_BOOKING_TKEY[item.statusBooking] ? t(STATUS_BOOKING_TKEY[item.statusBooking]) : item.statusBooking}
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-gray-400 mt-0.5 truncate">
-                      {[t.city, t.venueName].filter(Boolean).join(' · ') || <span className="italic">Kein Ort</span>}
+                      {[item.city, item.venueName].filter(Boolean).join(' · ') || <span className="italic">Kein Ort</span>}
                     </div>
                   </div>
                   {/* Availability dots + Gebucht */}
                   <div className="flex-shrink-0 flex flex-col items-end gap-1">
                     <div className="flex gap-1">
                       {(['available', 'maybe', 'unavailable'] as AvailStatus[]).map(s => {
-                        const active = t.myAvailability === s
+                        const active = item.myAvailability === s
                         const cfg = AVAIL_ICON[s as string]
                         return (
                           <button
                             key={s}
-                            onClick={e => { e.stopPropagation(); selectAvailability(t, s) }}
-                            title={cfg.label}
+                            onClick={e => { e.stopPropagation(); selectAvailability(item, s) }}
+                            title={t(cfg.tKey)}
                             className="w-5 h-5 rounded-full font-bold text-white flex items-center justify-center text-xs transition-transform active:scale-110"
                             style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}
                           >
@@ -1140,13 +1171,13 @@ export default function TerminePage() {
                       })}
                     </div>
                     {/* Gebucht-Status: Admins sehen ihn immer, Crew sieht eigenen Status */}
-                    {(canSeeGebucht || t.inTravelParty || t.isRejected) && (
-                      t.inTravelParty
-                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title="Gebucht">✓</span>
-                        : t.isRejected
-                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }} title="Abgesagt">✗</span>
+                    {(canSeeGebucht || item.inTravelParty || item.isRejected) && (
+                      item.inTravelParty
+                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title={t('availability.booked')}>✓</span>
+                        : item.isRejected
+                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }} title={t('availability.rejected')}>✗</span>
                           : canSeeGebucht
-                            ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title="Offen">–</span>
+                            ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title={t('availability.open')}>–</span>
                             : null
                     )}
                   </div>
@@ -1161,13 +1192,13 @@ export default function TerminePage() {
               <thead>
                 <tr>
                   {([
-                    ['Datum', 'date', '7rem'],
-                    ['Art', 'art', '8rem'],
-                    ['Status', 'statusBooking', '11rem'],
-                    ['Öffentlich', 'statusPublic', '8rem'],
-                    ['Titel', 'title', '14rem'],
-                    ['Ort', 'city', '8rem'],
-                    ['Spielstätte', 'venueName', '11rem'],
+                    [t('table.date'),   'date',          '7rem'],
+                    [t('table.type'),   'art',           '8rem'],
+                    [t('table.status'), 'statusBooking', '11rem'],
+                    [t('table.public'), 'statusPublic',  '8rem'],
+                    [t('table.title'),  'title',         '14rem'],
+                    [t('table.city'),   'city',          '8rem'],
+                    [t('table.venue'),  'venueName',     '11rem'],
                   ] as [string, keyof Termin, string | null][]).map(([label, key, w]) => (
                     <th
                       key={key as string}
@@ -1181,19 +1212,19 @@ export default function TerminePage() {
                       </span>
                     </th>
                   ))}
-                  <th className="text-center" style={{ width: '5.5rem' }}>Verf.</th>
-                  {canSeeGebucht && <th className="text-center" style={{ width: '4rem' }}>Gebucht</th>}
+                  <th className="text-center" style={{ width: '5.5rem' }}>{t('table.availability')}</th>
+                  {canSeeGebucht && <th className="text-center" style={{ width: '4rem' }}>{t('table.booked')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {(() => {
-                  const filtered = tableRows.filter(t =>
-                    `${t.title} ${t.city} ${t.art} ${t.artSub} ${t.date}`.toLowerCase().includes(searchTerm.toLowerCase())
+                  const filtered = tableRows.filter(row =>
+                    `${row.title} ${row.city} ${row.art} ${row.artSub} ${row.date}`.toLowerCase().includes(searchTerm.toLowerCase())
                   )
                   if (filtered.length === 0) return (
                     <tr>
                       <td colSpan={canSeeGebucht ? 9 : 8} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
-                        {termine.length === 0 ? 'Noch keine Termine. Mit „+ Neuer Termin" starten.' : 'Keine Treffer'}
+                        {termine.length === 0 ? t('appointments.emptyState') : t('appointments.noResults')}
                       </td>
                     </tr>
                   )
@@ -1207,12 +1238,16 @@ export default function TerminePage() {
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.statusBooking
-                        ? <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>{termin.statusBooking}</span>
+                        ? <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>
+                            {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
+                          </span>
                         : <span className="text-gray-400">–</span>}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.statusPublic
-                        ? <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>{termin.statusPublic}</span>
+                        ? <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>
+                            {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
+                          </span>
                         : <span className="text-gray-400">–</span>}
                     </td>
                     <td className="font-medium text-gray-900" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '14rem' }}>{termin.title}</td>
@@ -1228,7 +1263,7 @@ export default function TerminePage() {
                           return (
                             <button key={s}
                               onClick={e => { e.stopPropagation(); selectAvailability(termin, s) }}
-                              title={cfg.label}
+                              title={t(cfg.tKey)}
                               className="w-4 h-4 rounded-full font-bold text-white transition-transform hover:scale-110 flex items-center justify-center text-xs"
                               style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}>
                               {cfg.symbol}
@@ -1238,7 +1273,7 @@ export default function TerminePage() {
                         {termin.myAvailability === 'maybe' && (
                           <button
                             onClick={e => { e.stopPropagation(); setCommentPopup({ terminId: termin.id, comment: termin.myComment || '' }) }}
-                            title={termin.myComment || 'Kommentar hinzufügen'}
+                            title={termin.myComment || ''}
                             className="text-gray-400 hover:text-yellow-500 transition-colors ml-0.5">
                             <MessageSquare size={11} fill={termin.myComment ? '#eab308' : 'none'} />
                           </button>
@@ -1250,10 +1285,10 @@ export default function TerminePage() {
                     {canSeeGebucht && (
                     <td className="text-center">
                       {termin.inTravelParty
-                        ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title="Gebucht – in Reisegruppe">✓</span>
+                        ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title={t('availability.booked')}>✓</span>
                         : termin.isRejected
-                          ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#ef4444' }} title="Abgesagt">✗</span>
-                          : <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title="Offen">–</span>
+                          ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#ef4444' }} title={t('availability.rejected')}>✗</span>
+                          : <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title={t('availability.open')}>–</span>
                       }
                     </td>
                     )}
@@ -1290,7 +1325,7 @@ export default function TerminePage() {
       {commentPopup && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="font-semibold mb-3 text-gray-800">Kommentar zu „Vielleicht"</h3>
+            <h3 className="font-semibold mb-3 text-gray-800">{t('availability.maybe')}</h3>
             <textarea
               value={commentPopup.comment}
               onChange={e => setCommentPopup(prev => prev ? { ...prev, comment: e.target.value } : null)}
@@ -1300,10 +1335,10 @@ export default function TerminePage() {
               autoFocus
             />
             <div className="flex gap-3 mt-4 justify-end">
-              <button onClick={() => setCommentPopup(null)} className="text-sm text-gray-500 hover:text-gray-700">Abbrechen</button>
+              <button onClick={() => setCommentPopup(null)} className="text-sm text-gray-500 hover:text-gray-700">{t('general.cancel')}</button>
               <button onClick={saveComment} disabled={commentSaving}
                 className="flex items-center gap-1 bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-600 disabled:opacity-50">
-                {commentSaving ? <Loader2 size={12} className="animate-spin" /> : null} Speichern
+                {commentSaving ? <Loader2 size={12} className="animate-spin" /> : null} {t('general.save')}
               </button>
             </div>
           </div>
