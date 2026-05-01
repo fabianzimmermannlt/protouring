@@ -878,15 +878,7 @@ export function TerminDetail2({
         <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
       </section>
 
-      {/* Zeile 4: Produktion */}
-      <section>
-        <SectionLabel label="Produktion" />
-        <div className="grid grid-cols-3 gap-4">
-          <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
-        </div>
-      </section>
-
-      {/* Zeile 5: Organisation */}
+      {/* Zeile 4: Organisation */}
       <section>
         <SectionLabel label="Organisation" />
         <div className="grid grid-cols-3 gap-4">
