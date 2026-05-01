@@ -294,12 +294,7 @@ function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin
                     onClick={() => {
                       fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
                         .then(r => r.blob())
-                        .then(blob => {
-                          const a = document.createElement('a')
-                          a.href = URL.createObjectURL(blob)
-                          a.download = f.originalName
-                          a.click()
-                        })
+                        .then(blob => window.open(URL.createObjectURL(blob), '_blank'))
                     }}
                     className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left"
                   >
