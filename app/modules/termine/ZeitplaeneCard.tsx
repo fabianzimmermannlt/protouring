@@ -33,7 +33,7 @@ function openSchedulePdf(terminId: number, scheduleId: number) {
   window.open(url, '_blank')
 }
 
-export default function ZeitplaeneCard({ terminId, isAdmin }: { terminId: number; isAdmin: boolean }) {
+export default function ZeitplaeneCard({ terminId, isAdmin, layout = 'stack' }: { terminId: number; isAdmin: boolean; layout?: 'stack' | 'grid-2' }) {
   const [schedules, setSchedules] = useState<TerminSchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -76,10 +76,8 @@ export default function ZeitplaeneCard({ terminId, isAdmin }: { terminId: number
     )
   }
 
-  return (
-    <>
-      {schedules.map(s => (
-        <div key={s.id} className="pt-card">
+  const cards = schedules.map(s => (
+    <div key={s.id} className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title">
               {s.title || <span className="normal-case font-normal tracking-normal text-gray-400 italic">Ohne Titel</span>}
@@ -118,15 +116,34 @@ export default function ZeitplaeneCard({ terminId, isAdmin }: { terminId: number
             </div>
           )}
         </div>
-      ))}
+  ))
 
-      {isAdmin && (
-        <button onClick={openNew} className="pt-card-new">
-          <div className="flex items-center justify-center gap-2 px-4 py-4 text-gray-300">
-            <Plus size={14} />
-            <span className="text-xs font-medium">Neuer Zeitplan</span>
-          </div>
-        </button>
+  return (
+    <>
+      {layout === 'grid-2' ? (
+        <div className="grid grid-cols-2 gap-4">
+          {cards}
+          {isAdmin && (
+            <button onClick={openNew} className="pt-card-new">
+              <div className="flex items-center justify-center gap-2 px-4 py-4 text-gray-300">
+                <Plus size={14} />
+                <span className="text-xs font-medium">Neuer Zeitplan</span>
+              </div>
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {cards}
+          {isAdmin && (
+            <button onClick={openNew} className="pt-card-new">
+              <div className="flex items-center justify-center gap-2 px-4 py-4 text-gray-300">
+                <Plus size={14} />
+                <span className="text-xs font-medium">Neuer Zeitplan</span>
+              </div>
+            </button>
+          )}
+        </>
       )}
 
       {modalOpen && (

@@ -8,9 +8,5 @@ interface ScheduleViewProps {
 }
 
 export default function ScheduleView({ terminId, isAdmin }: ScheduleViewProps) {
-  return (
-    <div className="max-w-3xl">
-      <ZeitplaeneCard terminId={terminId} isAdmin={isAdmin} />
-    </div>
-  )
+  return <ZeitplaeneCard terminId={terminId} isAdmin={isAdmin} layout="grid-2" />
 }
