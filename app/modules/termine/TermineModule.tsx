@@ -882,7 +882,7 @@ export function TerminDetail2({
       {/* Zeile 3: Venue-Daten */}
       {termin.venueId && (
         <section>
-          <VenueInfoSection venueId={termin.venueId} venueName={termin.venueName} />
+          <VenueInfoSection venueId={termin.venueId} venueName={termin.venueName} isAdmin={isAdmin} />
         </section>
       )}
 
