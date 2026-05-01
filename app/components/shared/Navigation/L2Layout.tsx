@@ -587,8 +587,9 @@ export function L2Layout({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Header */}
-        <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
-          <nav className="flex items-center gap-1.5 text-sm">
+        <header className="h-12 bg-white border-b border-gray-200 flex items-center px-6 flex-shrink-0 gap-4">
+          {/* Left: Breadcrumb */}
+          <nav className="flex-1 flex items-center gap-1.5 text-sm min-w-0">
             {breadcrumb.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1.5">
                 {i > 0 && <span className="text-gray-300">/</span>}
@@ -598,7 +599,36 @@ export function L2Layout({
               </span>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+
+          {/* Center: Termine detail view tabs */}
+          {activeTab === 'appointments' && termineInDetail && (
+            <div className="flex items-center gap-0.5">
+              {([
+                { id: 'details',       label: 'Details' },
+                { id: 'travelparty',   label: 'Reisegruppe' },
+                ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
+                { id: 'guestlist',     label: 'Gästeliste' },
+              ] as { id: string; label: string }[]).map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setTermineView(v.id as TermineDetailView)
+                    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    termineView === v.id
+                      ? 'bg-gray-100 text-gray-900 font-medium'
+                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Right: Preview Banner */}
+          <div className="flex-1 flex items-center justify-end gap-3">
             <PreviewBanner />
           </div>
         </header>

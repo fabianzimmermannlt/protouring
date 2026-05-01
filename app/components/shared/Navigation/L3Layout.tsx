@@ -694,15 +694,15 @@ export function L3Layout({
           {hasPanelForSection && !panelOpen && (
             <button
               onClick={togglePanel}
-              className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
               title="Panel öffnen"
             >
               <ChevronRightIcon className="w-4 h-4" />
             </button>
           )}
 
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-sm flex-1">
+          {/* Left: Breadcrumb */}
+          <nav className="flex-1 flex items-center gap-1.5 text-sm min-w-0">
             {breadcrumb.map((crumb, i) => (
               <span key={i} className="flex items-center gap-1.5">
                 {i > 0 && <span className="text-gray-300">/</span>}
@@ -713,7 +713,35 @@ export function L3Layout({
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          {/* Center: Termine detail view tabs */}
+          {activeTab === 'appointments' && termineInDetail && (
+            <div className="flex items-center gap-0.5">
+              {([
+                { id: 'details',       label: 'Details' },
+                { id: 'travelparty',   label: 'Reisegruppe' },
+                ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
+                { id: 'guestlist',     label: 'Gästeliste' },
+              ] as { id: string; label: string }[]).map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setTermineView(v.id as TermineDetailView)
+                    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
+                  }}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    termineView === v.id
+                      ? 'bg-gray-100 text-gray-900 font-medium'
+                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Right: Preview Banner */}
+          <div className="flex-1 flex items-center justify-end gap-3">
             <PreviewBanner />
           </div>
         </header>
