@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { usePolling } from '@/app/hooks/usePolling'
 import {
   PlusIcon, LockClosedIcon, LockOpenIcon, ArrowDownTrayIcon,
@@ -21,6 +23,15 @@ const DEFAULT_PASS_TYPES = ['guestlist', 'backstage', 'aftershow', 'photo']
 const PASS_LABELS: Record<string, string> = {
   guestlist: 'Gästeliste', backstage: 'Backstage', aftershow: 'Aftershow', photo: 'Photo',
 }
+const PASS_ABBREV: Record<string, string> = {
+  guestlist: 'GL', backstage: 'BS', aftershow: 'AS', photo: 'PH',
+}
+
+const GUEST_COL_DEFS = [
+  { id: 'invited_by', label: 'Eingeladen von', defaultVisible: true },
+  { id: 'email',      label: 'E-Mail',         defaultVisible: false },
+  { id: 'total',      label: '∑ Total',        defaultVisible: true },
+]
 
 interface Props { terminId: number }
 
@@ -389,6 +400,7 @@ export default function GaestelisteView({ terminId }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<GuestListEntry | null>(null)
   const [creatingList, setCreatingList] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined)
+  const { isVisible, toggle, columns: colDefs } = useColumnVisibility(`guestlist-${terminId}`, GUEST_COL_DEFS)
 
   useEffect(() => {
     import('@/lib/api-client').then(({ getCurrentUser }) => {
@@ -839,19 +851,25 @@ export default function GaestelisteView({ terminId }: Props) {
                   <th className="sortable text-left" onClick={() => toggleSort('first_name')}>
                     Vorname <span className={`sort-indicator${sortKey === 'first_name' ? ' active' : ''}`}>{sortKey === 'first_name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
                   </th>
-                  <th className="sortable text-left" onClick={() => toggleSort('invited_by_text')}>
-                    Eingeladen von <span className={`sort-indicator${sortKey === 'invited_by_text' ? ' active' : ''}`}>{sortKey === 'invited_by_text' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
-                  </th>
-                  <th className="sortable text-left" onClick={() => toggleSort('email')}>
-                    E-Mail <span className={`sort-indicator${sortKey === 'email' ? ' active' : ''}`}>{sortKey === 'email' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
-                  </th>
+                  {isVisible('invited_by') && (
+                    <th className="sortable text-left" onClick={() => toggleSort('invited_by_text')}>
+                      Eingeladen von <span className={`sort-indicator${sortKey === 'invited_by_text' ? ' active' : ''}`}>{sortKey === 'invited_by_text' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                    </th>
+                  )}
+                  {isVisible('email') && (
+                    <th className="sortable text-left" onClick={() => toggleSort('email')}>
+                      E-Mail <span className={`sort-indicator${sortKey === 'email' ? ' active' : ''}`}>{sortKey === 'email' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                    </th>
+                  )}
                   {passTypes.map(t => (
-                    <th key={t} className="text-center whitespace-nowrap">
-                      {PASS_LABELS[t] ?? t}
+                    <th key={t} className="text-center w-10" title={PASS_LABELS[t] ?? t}>
+                      {PASS_ABBREV[t] ?? t.substring(0, 3).toUpperCase()}
                     </th>
                   ))}
-                  <th className="text-center">∑</th>
-                  <th />
+                  {isVisible('total') && <th className="text-center w-10">∑</th>}
+                  <th className="w-8 text-right pr-2">
+                    <ColumnToggle columns={colDefs} isVisible={isVisible} toggle={toggle} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -895,18 +913,20 @@ export default function GaestelisteView({ terminId }: Props) {
                       <td className="px-4 py-2.5">
                         <span className={isRejected ? 'line-through' : ''}>{entry.first_name}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-sm">{inviterName || '–'}</td>
-                      <td className="px-4 py-2.5 text-xs">{entry.email || '–'}</td>
+                      {isVisible('invited_by') && <td className="px-4 py-2.5 text-sm">{inviterName || '–'}</td>}
+                      {isVisible('email') && <td className="px-4 py-2.5 text-xs">{entry.email || '–'}</td>}
                       {passTypes.map(t => (
-                        <td key={t} className="px-2 py-2.5 text-center text-sm">
+                        <td key={t} className="px-1 py-2.5 text-center text-sm w-10">
                           {(entry.passes[t] ?? 0) > 0
                             ? <span className="font-medium">{entry.passes[t]}</span>
                             : <span className="text-gray-300">–</span>}
                         </td>
                       ))}
-                      <td className="px-2 py-2.5 text-center font-semibold text-sm">
-                        {total > 0 ? total : <span className="text-gray-300">–</span>}
-                      </td>
+                      {isVisible('total') && (
+                        <td className="px-1 py-2.5 text-center font-semibold text-sm w-10">
+                          {total > 0 ? total : <span className="text-gray-300">–</span>}
+                        </td>
+                      )}
                       <td className="px-4 py-2.5">
                         {!isLocked && (
                           <div className="flex items-center gap-1 justify-end">
