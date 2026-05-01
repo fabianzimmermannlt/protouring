@@ -8,7 +8,7 @@ import {
 } from '@/lib/api-client'
 import KontaktModal from './KontaktModal'
 
-export default function LokaleKontakteCard({ terminId, isAdmin }: { terminId: number; isAdmin: boolean }) {
+export default function LokaleKontakteCard({ terminId, isAdmin, layout = 'stack' }: { terminId: number; isAdmin: boolean; layout?: 'stack' | 'grid-3' }) {
   const [contacts, setContacts] = useState<TerminContact[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -49,9 +49,7 @@ export default function LokaleKontakteCard({ terminId, isAdmin }: { terminId: nu
     )
   }
 
-  return (
-    <>
-      {contacts.map(contact => (
+  const cards = contacts.map(contact => (
         <div key={contact.id} className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title">{contact.label || 'Ansprechpartner'}</span>
@@ -98,15 +96,29 @@ export default function LokaleKontakteCard({ terminId, isAdmin }: { terminId: nu
             )}
           </div>
         </div>
-      ))}
+  ))
 
-      {isAdmin && (
-        <button onClick={openNew} className="pt-card-new">
-          <div className="flex items-center justify-center gap-2 px-4 py-4 text-gray-300">
-            <Plus size={14} />
-            <span className="text-xs font-medium">Neuer Ansprechpartner</span>
-          </div>
-        </button>
+  const addButton = isAdmin && (
+    <button onClick={openNew} className="pt-card-new">
+      <div className="flex items-center justify-center gap-2 px-4 py-4 text-gray-300">
+        <Plus size={14} />
+        <span className="text-xs font-medium">Neuer Ansprechpartner</span>
+      </div>
+    </button>
+  )
+
+  return (
+    <>
+      {layout === 'grid-3' ? (
+        <div className="grid grid-cols-3 gap-4">
+          {cards}
+          {addButton}
+        </div>
+      ) : (
+        <>
+          {cards}
+          {addButton}
+        </>
       )}
 
       {modalOpen && (

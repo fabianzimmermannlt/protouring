@@ -875,7 +875,7 @@ export function TerminDetail2({
       {/* Zeile 2: Lokale Ansprechpartner */}
       <section>
         <SectionLabel label="Lokale Ansprechpartner" />
-        <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+        <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
       </section>
 
       {/* Zeile 4: Produktion */}
