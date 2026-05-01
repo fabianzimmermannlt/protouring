@@ -159,7 +159,7 @@ export function L3Layout({
     if (typeof window === 'undefined') return 'details'
     const m = window.location.pathname.match(/\/appointments\/\d+\/(.+)/)
     const v = m?.[1] as TermineDetailView | undefined
-    return (['details','details2','travel','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
+    return (['details','details2','travel','schedule','catering','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
   })
 
   // ── Advancing state ────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ export function L3Layout({
     if (typeof window === 'undefined') return 'details'
     const m = window.location.pathname.match(/\/advancing\/\d+\/(.+)/)
     const v = m?.[1] as TermineDetailView | undefined
-    return (['details','details2','travel','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
+    return (['details','details2','travel','schedule','catering','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
@@ -854,6 +854,8 @@ export function L3Layout({
                     { id: 'details',       label: t('appointments.view.details') },
                     ...(isAdvancing ? [{ id: 'details2', label: 'Details 2' }] : []),
                     ...(isAdvancing ? [{ id: 'travel', label: 'Travel' }] : []),
+                    ...(isAdvancing ? [{ id: 'schedule', label: 'Schedule' }] : []),
+                    ...(isAdvancing ? [{ id: 'catering', label: 'Catering' }] : []),
                     { id: 'travelparty',   label: t('appointments.view.travelparty') },
                     ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
                     { id: 'guestlist',     label: t('appointments.view.guestlist') },

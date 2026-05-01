@@ -14,13 +14,15 @@ import ReisegruppeView from '@/app/modules/termine/ReisegruppeView'
 import AdvanceSheetView from '@/app/modules/termine/AdvanceSheetView'
 import GaestelisteView from '@/app/modules/termine/GaestelisteView'
 import TravelView from '@/app/modules/termine/TravelView'
+import ScheduleView from '@/app/modules/termine/ScheduleView'
+import CateringView from '@/app/modules/termine/CateringView'
 import TerminModal from '@/app/modules/termine/TerminModal'
 import { TerminDetail, TerminDetail2 } from '@/app/modules/termine/TermineModule'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 const ADVANCING_LAST_KEY = 'pt_advancing_last_id'
-const VALID_VIEWS = ['details', 'details2', 'travel', 'travelparty', 'advance-sheet', 'guestlist'] as const
+const VALID_VIEWS = ['details', 'details2', 'travel', 'schedule', 'catering', 'travelparty', 'advance-sheet', 'guestlist'] as const
 type DetailView = typeof VALID_VIEWS[number]
 
 export default function AdvancingDetailPage() {
@@ -157,6 +159,10 @@ export default function AdvancingDetailPage() {
 
       {view === 'travel' ? (
         <TravelView termin={termin} termine={sortedTermine} isAdmin={isEditor} />
+      ) : view === 'schedule' ? (
+        <ScheduleView terminId={termin.id} isAdmin={isEditor} />
+      ) : view === 'catering' ? (
+        <CateringView terminId={termin.id} isAdmin={isEditor} />
       ) : view === 'travelparty' ? (
         <ReisegruppeView terminId={termin.id} isAdmin={isEditor} />
       ) : view === 'advance-sheet' ? (

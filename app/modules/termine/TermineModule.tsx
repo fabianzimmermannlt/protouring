@@ -882,8 +882,6 @@ export function TerminDetail2({
       <section>
         <SectionLabel label="Produktion" />
         <div className="grid grid-cols-3 gap-4">
-          <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
-          <CateringCard terminId={termin.id} isAdmin={isAdmin} />
           <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
         </div>
       </section>
