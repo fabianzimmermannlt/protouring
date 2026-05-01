@@ -97,7 +97,7 @@ export function Navigation({
     if (typeof window === 'undefined') return 'details'
     const parts = window.location.pathname.split('/')
     const view = parts[3]
-    const validViews: TermineDetailView[] = ['details', 'details2', 'travelparty', 'advance-sheet', 'guestlist']
+    const validViews: TermineDetailView[] = ['details', 'details2', 'travel', 'travelparty', 'advance-sheet', 'guestlist']
     return (validViews.includes(view as TermineDetailView) ? view : 'details') as TermineDetailView
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>(() => {

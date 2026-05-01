@@ -2,7 +2,7 @@
 
 import { getEffectiveRole, canDo, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
 
-export type TermineDetailView = 'details' | 'details2' | 'travelparty' | 'advance-sheet' | 'guestlist'
+export type TermineDetailView = 'details' | 'details2' | 'travel' | 'travelparty' | 'advance-sheet' | 'guestlist'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
 

@@ -834,24 +834,9 @@ export function TerminDetail2({
   onDeleted: () => void
 }) {
   const [modalOpen, setModalOpen] = useState(false)
-  const [abreiseRefreshKey, setAbreiseRefreshKey] = useState(0)
-  const [anreiseRefreshKey, setAnreiseRefreshKey] = useState(0)
 
   const currentUser = getCurrentUser()
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
-
-  const ONE_DAY_MS = 86400000
-  const idx = termine.findIndex(item => item.id === termin.id)
-  const prevTermin = idx > 0 ? termine[idx - 1] : null
-  const nextTermin = idx < termine.length - 1 ? termine[idx + 1] : null
-  const prevTerminCity: string | undefined =
-    prevTermin?.date && termin.date &&
-    new Date(termin.date).getTime() - new Date(prevTermin.date).getTime() === ONE_DAY_MS
-      ? (prevTermin.city || undefined) : undefined
-  const nextTerminCity: string | undefined =
-    nextTermin?.date && termin.date &&
-    new Date(nextTermin.date).getTime() - new Date(termin.date).getTime() === ONE_DAY_MS
-      ? (nextTermin.city || undefined) : undefined
 
   const SectionLabel = ({ label }: { label: string }) => (
     <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-0.5">
@@ -887,39 +872,7 @@ export function TerminDetail2({
         </div>
       </section>
 
-      {/* Zeile 2: Logistik */}
-      <section>
-        <SectionLabel label="Logistik" />
-        <div className="grid grid-cols-3 gap-4">
-          <AnreiseCard
-            terminId={termin.id}
-            legType="anreise"
-            isAdmin={isAdmin}
-            terminDate={termin.date}
-            terminCity={termin.city || ''}
-            prevTerminCity={prevTerminCity}
-            refreshKey={anreiseRefreshKey}
-            onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
-          />
-          <HotelCard
-            terminId={termin.id}
-            isAdmin={isAdmin}
-            terminDate={termin.date}
-          />
-          <AnreiseCard
-            terminId={termin.id}
-            legType="abreise"
-            isAdmin={isAdmin}
-            terminDate={termin.date}
-            terminCity={termin.city || ''}
-            nextTerminCity={nextTerminCity}
-            refreshKey={abreiseRefreshKey}
-            onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
-          />
-        </div>
-      </section>
-
-      {/* Zeile 3: Lokale Ansprechpartner */}
+      {/* Zeile 2: Lokale Ansprechpartner */}
       <section>
         <SectionLabel label="Lokale Ansprechpartner" />
         <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
