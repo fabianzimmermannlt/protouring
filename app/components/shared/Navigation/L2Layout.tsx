@@ -33,8 +33,10 @@ import {
   canDo,
   getEffectiveRole,
   isEditorRole,
+  CAN_SEE_KALENDER,
   type TenantRole,
 } from '@/lib/api-client'
+import type { TermineDetailView, TermineListFilter, TermineListView } from './TermineSubNavigation'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
@@ -142,6 +144,45 @@ export function L2Layout({
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const role = getEffectiveRole() as TenantRole
   const isEditor = isEditorRole(role)
+  const canSeeKalender = canDo(role, CAN_SEE_KALENDER)
+
+  // ── Termine state (event-driven, mirrors Navigation/index.tsx) ───────────
+  const [termineInDetail, setTermineInDetail] = useState(false)
+  const [termineView, setTermineView] = useState<TermineDetailView>('details')
+  const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
+  const [termineListView, setTermineListView] = useState<TermineListView>('list')
+
+  useEffect(() => {
+    const onViewChanged = (e: Event) => {
+      const d = (e as CustomEvent<{ inDetail: boolean; view?: TermineDetailView }>).detail
+      if (d.inDetail) { setTermineInDetail(true); if (d.view) setTermineView(d.view) }
+    }
+    const onGoToList = () => { setTermineInDetail(false); setTermineView('details') }
+    const onSetView = (e: Event) => {
+      const v = (e as CustomEvent<{ view: TermineDetailView }>).detail?.view
+      if (v) setTermineView(v)
+    }
+    const onFilterChanged = (e: Event) => {
+      const f = (e as CustomEvent<{ filter: TermineListFilter }>).detail?.filter
+      if (f) setTermineFilter(f)
+    }
+    const onListViewChanged = (e: Event) => {
+      const v = (e as CustomEvent<{ view: TermineListView }>).detail?.view
+      if (v) setTermineListView(v)
+    }
+    window.addEventListener('termine-view-changed', onViewChanged)
+    window.addEventListener('termine-go-to-list', onGoToList)
+    window.addEventListener('termine-set-view', onSetView)
+    window.addEventListener('termine-filter-changed', onFilterChanged)
+    window.addEventListener('termine-listview-changed', onListViewChanged)
+    return () => {
+      window.removeEventListener('termine-view-changed', onViewChanged)
+      window.removeEventListener('termine-go-to-list', onGoToList)
+      window.removeEventListener('termine-set-view', onSetView)
+      window.removeEventListener('termine-filter-changed', onFilterChanged)
+      window.removeEventListener('termine-listview-changed', onListViewChanged)
+    }
+  }, [])
 
   const initials =
     [currentUser?.firstName, currentUser?.lastName]
@@ -234,6 +275,90 @@ export function L2Layout({
     activeSubTab ? (SUB_LABELS[activeSubTab] ?? activeSubTab) : null,
   ].filter(Boolean)
 
+  // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
+  const renderTermineSubs = () => {
+    if (termineInDetail) {
+      // Detail-Ansicht: Zurück + View-Tabs
+      const views = [
+        { id: 'details',       label: 'Details' },
+        { id: 'travelparty',   label: 'Reisegruppe' },
+        ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
+        { id: 'guestlist',     label: 'Gästeliste' },
+      ] as { id: string; label: string }[]
+
+      return (
+        <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-700 space-y-0.5">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
+            className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-1"
+          >
+            ← Terminliste
+          </button>
+          {views.map(v => (
+            <button
+              key={v.id}
+              onClick={() => {
+                setTermineView(v.id as TermineDetailView)
+                window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
+              }}
+              className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+                termineView === v.id
+                  ? 'text-white font-medium bg-gray-700'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )
+    }
+
+    // Listen-Ansicht: Filter + optional Kalender
+    const filters: { id: TermineListFilter; label: string }[] = [
+      { id: 'aktuell',   label: 'Aktuelle Termine' },
+      { id: 'vergangen', label: 'Vergangene Termine' },
+      { id: 'alle',      label: 'Alle Termine' },
+    ]
+    return (
+      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-700 space-y-0.5">
+        {filters.map(f => (
+          <button
+            key={f.id}
+            onClick={() => {
+              setTermineFilter(f.id)
+              setTermineListView('list')
+              window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f.id } }))
+              window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
+            }}
+            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+              termineListView === 'list' && termineFilter === f.id
+                ? 'text-white font-medium bg-gray-700'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+        {canSeeKalender && (
+          <button
+            onClick={() => {
+              setTermineListView('calendar')
+              window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
+            }}
+            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+              termineListView === 'calendar'
+                ? 'text-white font-medium bg-gray-700'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+            }`}
+          >
+            Kalender
+          </button>
+        )}
+      </div>
+    )
+  }
+
   // ── Nav item renderer ───────────────────────────────────────────────────────
   const renderNavItem = (
     item: { id: string; name: string; icon: React.ComponentType<{ className?: string }> },
@@ -241,7 +366,7 @@ export function L2Layout({
   ) => {
     const isActive = activeTab === item.id
     const subs = getVisibleSubs(item.id)
-    const hasSubNav = subs.length > 0
+    const hasSubNav = subs.length > 0 || item.id === 'appointments'
 
     return (
       <div key={item.id}>
@@ -269,7 +394,9 @@ export function L2Layout({
           )}
         </button>
 
-        {isActive && hasSubNav && (
+        {isActive && item.id === 'appointments' && renderTermineSubs()}
+
+        {isActive && item.id !== 'appointments' && hasSubNav && (
           <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-700 space-y-0.5">
             {subs.map(sub => (
               <button
