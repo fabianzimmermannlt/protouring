@@ -20,7 +20,9 @@ import {
   CircleStackIcon,
   PuzzlePieceIcon,
   WrenchScrewdriverIcon,
+  ViewColumnsIcon,
 } from '@heroicons/react/24/outline'
+import { useLayout } from './LayoutContext'
 import { MobileBottomNav } from './MobileBottomNav'
 import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
@@ -120,6 +122,7 @@ export function Navigation({
   const router = useRouter()
   const hasMultipleTenants = tenantCount > 1
   const role = getEffectiveRole()
+  const { setLayout } = useLayout()
 
   // Tenant-Liste beim Mount aktualisieren
   useEffect(() => {
@@ -345,6 +348,20 @@ export function Navigation({
                         <UserCircleIcon className="w-4 h-4 text-gray-400" />
                         Mein Profil
                       </button>
+
+                      {/* Layout toggle (Admin only) */}
+                      {role === 'admin' && (
+                        <>
+                          <div className="border-t border-gray-100 my-1" />
+                          <button
+                            onClick={() => { setShowUserMenu(false); setLayout('L2') }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
+                            Layout L2 aktivieren
+                          </button>
+                        </>
+                      )}
 
                       {/* Artist-Liste */}
                       {allTenants.length > 0 && (

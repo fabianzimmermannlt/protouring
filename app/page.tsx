@@ -16,8 +16,11 @@ import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 import FeedbackPage from './modules/feedback/FeedbackPage'
 import EquipmentModule from './modules/equipment/EquipmentModule'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
+import { LayoutProvider, useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { L2Layout } from '@/app/components/shared/Navigation/L2Layout'
+import { getEffectiveRole } from '@/lib/api-client'
 
-export default function ProTouringApp() {
+function ProTouringAppInner() {
   const router = useRouter()
 
   const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','equipment','settings','feedback']
@@ -89,6 +92,9 @@ export default function ProTouringApp() {
   const currentUser = getCurrentUser()
   const currentTenant = getCurrentTenant()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
+  const { layout } = useLayout()
+  const role = getEffectiveRole()
+  const useL2 = layout === 'L2' && role === 'admin'
 
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
@@ -155,24 +161,50 @@ export default function ProTouringApp() {
         />
       </div>
 
-      {/* ── DESKTOP: bisheriges Layout ── */}
-      <main className="hidden md:block min-h-screen bg-gray-100">
-        <Navigation
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          activeSubTab={activeSubTab}
-          onSubTabChange={handleSubTabChange}
-          showMobileNavigation={false}
-        />
-        <FeedbackButton />
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-lg shadow-lg p-4">
-            <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
-              {content}
+      {/* ── DESKTOP L1: bisheriges Layout ── */}
+      {!useL2 && (
+        <main className="hidden md:block min-h-screen bg-gray-100">
+          <Navigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            activeSubTab={activeSubTab}
+            onSubTabChange={handleSubTabChange}
+            showMobileNavigation={false}
+          />
+          <FeedbackButton />
+          <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="bg-white rounded-lg shadow-lg p-4">
+              <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
+                {content}
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      )}
+
+      {/* ── DESKTOP L2: Sidebar Layout ── */}
+      {useL2 && (
+        <L2Layout
+          activeTab={activeTab}
+          activeSubTab={activeSubTab}
+          onTabChange={(tab, sub) => {
+            handleTabChange(tab)
+            if (sub) handleSubTabChange(sub)
+          }}
+          onSubTabChange={handleSubTabChange}
+        >
+          <FeedbackButton />
+          {content}
+        </L2Layout>
+      )}
     </>
+  )
+}
+
+export default function ProTouringApp() {
+  return (
+    <LayoutProvider>
+      <ProTouringAppInner />
+    </LayoutProvider>
   )
 }
