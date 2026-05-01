@@ -5,7 +5,7 @@ const en = {
   // ── Navigation ──────────────────────────────────────────────────────────────
   'nav.desk':          'Dashboard',
   'nav.advancing':     'Advancing',
-  'nav.appointments':  'Appointments',
+  'nav.appointments':  'Events',
   'nav.contacts':      'Contacts',
   'nav.venues':        'Venues',
   'nav.partners':      'Partners',
@@ -31,15 +31,15 @@ const en = {
   'layout.l3': 'L3 – Rail + Panel',
 
   // ── Appointments — List ─────────────────────────────────────────────────────
-  'appointments.title':        'Appointments',
-  'appointments.new':          '+ New Appointment',
+  'appointments.title':        'Events',
+  'appointments.new':          '+ New Event',
   'appointments.filter.current':  'Upcoming',
   'appointments.filter.past':     'Past',
   'appointments.filter.all':      'All',
   'appointments.calendar':        'Calendar',
-  'appointments.empty':           'No appointments found.',
+  'appointments.empty':           'No events found.',
   'appointments.loading':         'Loading…',
-  'appointments.backToList':      '← Appointment List',
+  'appointments.backToList':      '← Event List',
 
   // ── Appointments — Detail views ─────────────────────────────────────────────
   'appointments.view.details':      'Details',
@@ -51,15 +51,15 @@ const en = {
   'appointments.panel.filter.current':  'Upcoming',
   'appointments.panel.filter.past':     'Past',
   'appointments.panel.filter.all':      'All',
-  'appointments.panel.empty':           'No appointments.',
+  'appointments.panel.empty':           'No events.',
   'appointments.panel.noDate':          'No date',
 
   // ── Appointments — Table / Detail ──────────────────────────────────────────
-  'appointments.search':              'Search appointments…',
+  'appointments.search':              'Search events…',
   'appointments.noResults':           'No results',
-  'appointments.emptyState':          'No appointments yet. Start with "+ New Appointment".',
-  'appointments.notFound':            'Appointment not found',
-  'appointments.backToList.link':     'Back to appointments',
+  'appointments.emptyState':          'No events yet. Start with "+ New Event".',
+  'appointments.notFound':            'Event not found',
+  'appointments.backToList.link':     'Back to events',
 
   'table.date':         'Date',
   'table.type':         'Type',
