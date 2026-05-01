@@ -2262,6 +2262,7 @@ export const CAN_SEE_KONTAKT_PROFIL: TenantRole[] = ['admin', 'tourmanagement', 
 /** Navigation: diese Tabs werden je Rolle angezeigt */
 export const NAV_VISIBLE: Record<string, TenantRole[]> = {
   desk:         ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
+  advancing:    ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'],
   appointments: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest'],
   contacts:     ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'],
   venues:       ['admin', 'agency'],

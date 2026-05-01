@@ -1109,7 +1109,7 @@ export default function TerminePage() {
           {listView === 'calendar' && (
             <KalenderView
               termine={filteredTermine}
-              onSelectTermin={id => router.push(`/appointments/${id}/details`)}
+              onSelectTermin={id => router.push(`/advancing/${id}/details`)}
             />
           )}
 
@@ -1123,7 +1123,7 @@ export default function TerminePage() {
               ) : tableRows.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => router.push(`/appointments/${item.id}/details`)}
+                  onClick={() => router.push(`/advancing/${item.id}/details`)}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
                   {/* Date column */}
@@ -1229,7 +1229,7 @@ export default function TerminePage() {
                     </tr>
                   )
                   return filtered.map(termin => (
-                  <tr key={termin.id} className="clickable" onClick={() => router.push(`/appointments/${termin.id}/details`)}>
+                  <tr key={termin.id} className="clickable" onClick={() => router.push(`/advancing/${termin.id}/details`)}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.art

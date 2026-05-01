@@ -25,7 +25,7 @@ import { getEffectiveRole } from '@/lib/api-client'
 function ProTouringAppInner() {
   const router = useRouter()
 
-  const VALID_TABS = ['desk','appointments','contacts','venues','partners','hotels','vehicles','templates','equipment','settings','feedback']
+  const VALID_TABS = ['desk','advancing','appointments','contacts','venues','partners','hotels','vehicles','templates','equipment','settings','feedback']
 
   const STORAGE_TAB = 'pt_tab'
   const STORAGE_SUB = 'pt_sub'

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import {
   HomeIcon,
   CalendarDaysIcon,
+  ClipboardDocumentCheckIcon,
   UsersIcon,
   MusicalNoteIcon,
   BuildingOfficeIcon,
@@ -50,6 +51,7 @@ import type { TermineDetailView, TermineListFilter, TermineListView } from './Te
 
 const RAIL_NAV = [
   { id: 'desk',         name: 'Schreibtisch', icon: HomeIcon },
+  { id: 'advancing',    name: 'Vorbereitung', icon: ClipboardDocumentCheckIcon },
   { id: 'appointments', name: 'Termine',       icon: CalendarDaysIcon },
   { id: 'contacts',     name: 'Kontakte',      icon: UsersIcon },
   { id: 'venues',       name: 'Venues',        icon: MusicalNoteIcon },
@@ -65,7 +67,7 @@ const MODULE_NAV = [
 // ─── Context panel definitions ────────────────────────────────────────────────
 
 // Sections that show a context panel
-const HAS_PANEL = ['appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
+const HAS_PANEL = ['advancing', 'appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
 
 type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
 
@@ -159,6 +161,14 @@ export function L3Layout({
     const v = m?.[1] as TermineDetailView | undefined
     return (['details','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
   })
+
+  // ── Advancing state ────────────────────────────────────────────────────────
+  const [advancingView, setAdvancingView] = useState<TermineDetailView>(() => {
+    if (typeof window === 'undefined') return 'details'
+    const m = window.location.pathname.match(/\/advancing\/\d+\/(.+)/)
+    const v = m?.[1] as TermineDetailView | undefined
+    return (['details','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
+  })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
 
@@ -181,31 +191,45 @@ export function L3Layout({
       const v = (e as CustomEvent<{ view: TermineListView }>).detail?.view
       if (v) setTermineListView(v)
     }
-    window.addEventListener('termine-view-changed',   onViewChanged)
-    window.addEventListener('termine-go-to-list',     onGoToList)
-    window.addEventListener('termine-set-view',       onSetView)
-    window.addEventListener('termine-filter-changed', onFilter)
-    window.addEventListener('termine-listview-changed', onListView)
+    // Advancing events
+    const onAdvancingView = (e: Event) => {
+      const v = (e as CustomEvent<{ view: TermineDetailView }>).detail?.view
+      if (v) setAdvancingView(v)
+    }
+    const onAdvancingSetView = (e: Event) => {
+      const v = (e as CustomEvent<{ view: TermineDetailView }>).detail?.view
+      if (v) setAdvancingView(v)
+    }
+
+    window.addEventListener('termine-view-changed',    onViewChanged)
+    window.addEventListener('termine-go-to-list',      onGoToList)
+    window.addEventListener('termine-set-view',        onSetView)
+    window.addEventListener('termine-filter-changed',  onFilter)
+    window.addEventListener('termine-listview-changed',onListView)
+    window.addEventListener('advancing-view-changed',  onAdvancingView)
+    window.addEventListener('advancing-set-view',      onAdvancingSetView)
     return () => {
-      window.removeEventListener('termine-view-changed',   onViewChanged)
-      window.removeEventListener('termine-go-to-list',     onGoToList)
-      window.removeEventListener('termine-set-view',       onSetView)
-      window.removeEventListener('termine-filter-changed', onFilter)
-      window.removeEventListener('termine-listview-changed', onListView)
+      window.removeEventListener('termine-view-changed',    onViewChanged)
+      window.removeEventListener('termine-go-to-list',      onGoToList)
+      window.removeEventListener('termine-set-view',        onSetView)
+      window.removeEventListener('termine-filter-changed',  onFilter)
+      window.removeEventListener('termine-listview-changed',onListView)
+      window.removeEventListener('advancing-view-changed',  onAdvancingView)
+      window.removeEventListener('advancing-set-view',      onAdvancingSetView)
     }
   }, [])
 
   // ── Termine list laden ────────────────────────────────────────────────────
   useEffect(() => {
-    if (activeTab !== 'appointments') return
+    if (activeTab !== 'appointments' && activeTab !== 'advancing') return
     getTermine().then(setTermineList).catch(() => {})
   }, [activeTab])
 
-  // Aktiven Termin aus URL lesen (z.B. /appointments/42/details)
+  // Aktiven Termin aus URL lesen (appointments oder advancing)
   useEffect(() => {
-    const match = window.location.pathname.match(/\/appointments\/(\d+)/)
+    const match = window.location.pathname.match(/\/(?:appointments|advancing)\/(\d+)/)
     setActiveTerminId(match ? parseInt(match[1], 10) : null)
-  }, [activeTab, termineInDetail])
+  }, [activeTab, termineInDetail, advancingView])
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
@@ -257,6 +281,12 @@ export function L3Layout({
   }
 
   const handleNav = (id: string) => {
+    // Advancing hat eine eigene Next.js-Route
+    if (id === 'advancing') {
+      const lastId = localStorage.getItem('pt_advancing_last_id')
+      window.location.href = lastId ? `/advancing/${lastId}/details` : '/advancing'
+      return
+    }
     let defaultSub: string | undefined
     if (id === 'settings') defaultSub = 'profil'
     else if (id === 'contacts') defaultSub = 'overview'
@@ -303,6 +333,61 @@ export function L3Layout({
   )
 
   const renderPanelContent = () => {
+    // ── Advancing ─────────────────────────────────────────────────────────────
+    if (activeTab === 'advancing') {
+      const today = new Date().toISOString().slice(0, 10)
+      const filtered = termineList
+        .filter(item => item.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date))
+      const past = termineList
+        .filter(item => item.date < today)
+        .sort((a, b) => b.date.localeCompare(a.date))
+      const allSorted = [...filtered, ...past]
+
+      return (
+        <div className="flex flex-col h-full">
+          <div className="flex-1 overflow-y-auto py-1">
+            {allSorted.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
+            ) : allSorted.map(item => {
+              const isActive = item.id === activeTerminId
+              const dateStr = new Date(item.date).toLocaleDateString('de-DE', {
+                day: '2-digit', month: '2-digit', year: '2-digit'
+              })
+              const label = item.title && !item.showTitleAsHeader
+                ? item.title
+                : item.venueName || item.city || '–'
+              const isPast = item.date < today
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTerminId(item.id)
+                    localStorage.setItem('pt_advancing_last_id', String(item.id))
+                    router.push(`/advancing/${item.id}/details`)
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
+                    isActive
+                      ? 'border-blue-500 bg-gray-700'
+                      : 'border-transparent hover:bg-gray-800'
+                  }`}
+                >
+                  <p className={`text-[11px] leading-none mb-0.5 ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
+                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : isPast ? 'text-gray-500' : 'text-gray-300'}`}>
+                    {label}
+                  </p>
+                  {item.city && item.venueName && (
+                    <p className="text-[10px] text-gray-500 truncate">{item.city}</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )
+    }
+
     // ── Termine ──────────────────────────────────────────────────────────────
     if (activeTab === 'appointments') {
       const today = new Date().toISOString().slice(0, 10)
@@ -492,9 +577,10 @@ export function L3Layout({
 
   // Breadcrumb — translated
   const TAB_LABEL_KEYS: Record<string, string> = {
-    desk: t('nav.desk'), appointments: t('nav.appointments'), contacts: t('nav.contacts'),
-    venues: t('nav.venues'), partners: t('nav.partners'), hotels: t('nav.hotels'),
-    vehicles: t('nav.vehicles'), equipment: t('nav.equipment'), settings: t('nav.settings'),
+    desk: t('nav.desk'), advancing: t('nav.advancing'), appointments: t('nav.appointments'),
+    contacts: t('nav.contacts'), venues: t('nav.venues'), partners: t('nav.partners'),
+    hotels: t('nav.hotels'), vehicles: t('nav.vehicles'), equipment: t('nav.equipment'),
+    settings: t('nav.settings'),
   }
   const SUB_LABEL_MAP: Record<string, string> = {
     overview:     t('contacts.sub.overview'),
@@ -755,33 +841,39 @@ export function L3Layout({
             </button>
           )}
 
-          {/* Left: Termine detail tabs — or empty */}
+          {/* Left: Detail-Tabs — Advancing (immer) oder Appointments (wenn in Detail) */}
           <div className="flex-1 flex items-center min-w-0">
-            {activeTab === 'appointments' && termineInDetail && (
-              <div className="flex items-center gap-0.5">
-                {([
-                  { id: 'details',       label: t('appointments.view.details') },
-                  { id: 'travelparty',   label: t('appointments.view.travelparty') },
-                  ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
-                  { id: 'guestlist',     label: t('appointments.view.guestlist') },
-                ] as { id: string; label: string }[]).map(v => (
-                  <button
-                    key={v.id}
-                    onClick={() => {
-                      setTermineView(v.id as TermineDetailView)
-                      window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
-                    }}
-                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      termineView === v.id
-                        ? 'bg-gray-100 text-gray-900 font-medium'
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                    }`}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {(activeTab === 'advancing' || (activeTab === 'appointments' && termineInDetail)) && (() => {
+              const isAdvancing = activeTab === 'advancing'
+              const currentView = isAdvancing ? advancingView : termineView
+              const eventName = isAdvancing ? 'advancing-set-view' : 'termine-set-view'
+              const setView = isAdvancing ? setAdvancingView : setTermineView
+              return (
+                <div className="flex items-center gap-0.5">
+                  {([
+                    { id: 'details',       label: t('appointments.view.details') },
+                    { id: 'travelparty',   label: t('appointments.view.travelparty') },
+                    ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
+                    { id: 'guestlist',     label: t('appointments.view.guestlist') },
+                  ] as { id: string; label: string }[]).map(v => (
+                    <button
+                      key={v.id}
+                      onClick={() => {
+                        setView(v.id as TermineDetailView)
+                        window.dispatchEvent(new CustomEvent(eventName, { detail: { view: v.id } }))
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                        currentView === v.id
+                          ? 'bg-gray-100 text-gray-900 font-medium'
+                          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Right: Preview Banner */}
