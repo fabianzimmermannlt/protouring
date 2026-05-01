@@ -17,6 +17,7 @@ import FeedbackPage from './modules/feedback/FeedbackPage'
 import EquipmentModule from './modules/equipment/EquipmentModule'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 import { LayoutProvider, useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { LanguageProvider } from '@/app/lib/i18n/LanguageContext'
 import { L2Layout } from '@/app/components/shared/Navigation/L2Layout'
 import { L3Layout } from '@/app/components/shared/Navigation/L3Layout'
 import { getEffectiveRole } from '@/lib/api-client'
@@ -215,8 +216,10 @@ function ProTouringAppInner() {
 
 export default function ProTouringApp() {
   return (
-    <LayoutProvider>
-      <ProTouringAppInner />
-    </LayoutProvider>
+    <LanguageProvider>
+      <LayoutProvider>
+        <ProTouringAppInner />
+      </LayoutProvider>
+    </LanguageProvider>
   )
 }

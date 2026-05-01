@@ -42,6 +42,7 @@ import {
 } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
+import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import type { TermineDetailView, TermineListFilter, TermineListView } from './TermineSubNavigation'
 
@@ -80,32 +81,21 @@ const EQUIPMENT_SUBS: SubItem[] = [
   { id: 'eigentuemer', name: 'Eigentümer' },
   { id: 'carnets',     name: 'Carnets' },
 ]
-const SETTINGS_KONTO: SubItem[] = [
-  { id: 'profil',         name: 'Mein Profil' },
-  { id: 'appearance',     name: 'Darstellung' },
-  { id: 'notifications',  name: 'Benachrichtigungen' },
-  { id: 'erste-schritte', name: 'Erste Schritte' },
+// Settings sub-items: names resolved via t() in component
+const SETTINGS_KONTO_IDS = [
+  { id: 'profil',         tKey: 'settings.sub.profil' as const },
+  { id: 'appearance',     tKey: 'settings.sub.appearance' as const },
+  { id: 'notifications',  tKey: 'settings.sub.notifications' as const },
+  { id: 'erste-schritte', tKey: 'settings.sub.ersteSchritte' as const },
 ]
-const SETTINGS_WORKSPACE: SubItem[] = [
-  { id: 'artist',      name: 'Artist',         adminOnly: true },
-  { id: 'permissions', name: 'Berechtigungen', editorOnly: true },
-  { id: 'contacts',    name: 'Kontakte',        editorOnly: true },
-  { id: 'guestlist',   name: 'Gästeliste',      editorOnly: true },
-  { id: 'daysheet',    name: 'Daysheet',        editorOnly: true },
-  { id: 'vorlagen',    name: 'Vorlagen',        editorOnly: true },
+const SETTINGS_WORKSPACE_IDS = [
+  { id: 'artist',      tKey: 'settings.sub.artist' as const,      adminOnly: true },
+  { id: 'permissions', tKey: 'settings.sub.permissions' as const, editorOnly: true },
+  { id: 'contacts',    tKey: 'settings.sub.contacts' as const,    editorOnly: true },
+  { id: 'guestlist',   tKey: 'settings.sub.guestlist' as const,   editorOnly: true },
+  { id: 'daysheet',    tKey: 'settings.sub.daysheet' as const,    editorOnly: true },
+  { id: 'vorlagen',    tKey: 'settings.sub.vorlagen' as const,    editorOnly: true },
 ]
-
-// Tab labels for breadcrumb
-const TAB_LABELS: Record<string, string> = {
-  desk: 'Schreibtisch', appointments: 'Termine', contacts: 'Kontakte',
-  venues: 'Venues', partners: 'Partner', hotels: 'Hotels',
-  vehicles: 'Fahrzeuge', equipment: 'Equipment', settings: 'Einstellungen',
-}
-
-const SUB_LABELS: Record<string, string> = {}
-;[...CONTACTS_SUBS, ...EQUIPMENT_SUBS, ...SETTINGS_KONTO, ...SETTINGS_WORKSPACE].forEach(
-  s => { SUB_LABELS[s.id] = s.name }
-)
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -128,6 +118,8 @@ export function L3Layout({
 }: L3LayoutProps) {
   const router = useRouter()
   const { layout, setLayout } = useLayout()
+  const t = useT()
+  const { language, setLanguage } = useLanguage()
 
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -318,10 +310,10 @@ export function L3Layout({
 
       // Detail-View: Termin-Liste oben + View-Tabs darunter
       const detailViews = [
-        { id: 'details',       label: 'Details' },
-        { id: 'travelparty',   label: 'Reisegruppe' },
-        ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-        { id: 'guestlist',     label: 'Gästeliste' },
+        { id: 'details',       label: t('appointments.view.details') },
+        { id: 'travelparty',   label: t('appointments.view.travelparty') },
+        ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
+        { id: 'guestlist',     label: t('appointments.view.guestlist') },
       ]
 
       return (
@@ -329,7 +321,11 @@ export function L3Layout({
           {/* Filter-Tabs kompakt */}
           <div className="flex gap-0.5 px-2 py-2 border-b border-gray-700 flex-shrink-0">
             {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => {
-              const labels = { aktuell: 'Aktuell', vergangen: 'Vergangen', alle: 'Alle' }
+              const labels = {
+                aktuell:   t('appointments.panel.filter.current'),
+                vergangen: t('appointments.panel.filter.past'),
+                alle:      t('appointments.panel.filter.all'),
+              }
               return (
                 <button
                   key={f}
@@ -354,7 +350,7 @@ export function L3Layout({
           {/* Terminliste scrollbar */}
           <div className="flex-1 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <p className="px-3 py-4 text-xs text-gray-600 text-center">Keine Termine</p>
+              <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : filtered.map(t => {
               const isActive = t.id === activeTerminId
               const dateStr = new Date(t.date).toLocaleDateString('de-DE', {
@@ -416,10 +412,15 @@ export function L3Layout({
 
     // ── Kontakte ─────────────────────────────────────────────────────────────
     if (activeTab === 'contacts') {
+      const contactsSubs = [
+        { id: 'overview',     label: t('contacts.sub.overview') },
+        { id: 'crew-booking', label: t('contacts.sub.crewBooking'), editorOnly: true },
+        { id: 'conditions',   label: t('contacts.sub.conditions'),  editorOnly: true },
+      ].filter(s => !('editorOnly' in s) || isEditor)
       return (
         <div className="space-y-0.5 px-2">
-          {filterSubs(CONTACTS_SUBS).map(s =>
-            subBtn(s.id, s.name, activeSubTab === s.id, () => onSubTabChange?.(s.id))
+          {contactsSubs.map(s =>
+            subBtn(s.id, s.label, activeSubTab === s.id, () => onSubTabChange?.(s.id))
           )}
         </div>
       )
@@ -427,10 +428,17 @@ export function L3Layout({
 
     // ── Equipment ────────────────────────────────────────────────────────────
     if (activeTab === 'equipment') {
+      const equipSubs = [
+        { id: 'items',       label: t('equipment.sub.items') },
+        { id: 'materials',   label: t('equipment.sub.materials') },
+        { id: 'categories',  label: t('equipment.sub.categories') },
+        { id: 'eigentuemer', label: t('equipment.sub.eigentuemer') },
+        { id: 'carnets',     label: t('equipment.sub.carnets') },
+      ]
       return (
         <div className="space-y-0.5 px-2">
-          {EQUIPMENT_SUBS.map(s =>
-            subBtn(s.id, s.name, activeSubTab === s.id, () => onSubTabChange?.(s.id))
+          {equipSubs.map(s =>
+            subBtn(s.id, s.label, activeSubTab === s.id, () => onSubTabChange?.(s.id))
           )}
         </div>
       )
@@ -438,26 +446,30 @@ export function L3Layout({
 
     // ── Einstellungen ────────────────────────────────────────────────────────
     if (activeTab === 'settings') {
-      const kontoItems = filterSubs(SETTINGS_KONTO)
-      const wsItems    = filterSubs(SETTINGS_WORKSPACE)
+      const kontoItems = SETTINGS_KONTO_IDS
+      const wsItems    = SETTINGS_WORKSPACE_IDS.filter(s => {
+        if (s.adminOnly) return role === 'admin'
+        if (s.editorOnly) return isEditor
+        return true
+      })
       return (
         <div className="px-2">
           {kontoItems.length > 0 && (
             <>
-              {panelSectionLabel('Konto')}
+              {panelSectionLabel(t('settings.konto'))}
               <div className="space-y-0.5">
                 {kontoItems.map(s =>
-                  subBtn(s.id, s.name, activeSubTab === s.id, () => onSubTabChange?.(s.id))
+                  subBtn(s.id, t(s.tKey), activeSubTab === s.id, () => onSubTabChange?.(s.id))
                 )}
               </div>
             </>
           )}
           {wsItems.length > 0 && (
             <>
-              {panelSectionLabel('Workspace')}
+              {panelSectionLabel(t('settings.workspace'))}
               <div className="space-y-0.5">
                 {wsItems.map(s =>
-                  subBtn(s.id, s.name, activeSubTab === s.id, () => onSubTabChange?.(s.id))
+                  subBtn(s.id, t(s.tKey), activeSubTab === s.id, () => onSubTabChange?.(s.id))
                 )}
               </div>
             </>
@@ -466,19 +478,39 @@ export function L3Layout({
       )
     }
 
-    // ── Alle anderen Sektionen mit Placeholder ───────────────────────────────
-    return (
-      <div className="px-4 py-6 text-center">
-        <p className="text-sm text-gray-500">{TAB_LABELS[activeTab] ?? activeTab}</p>
-        <p className="text-xs text-gray-600 mt-1">Liste folgt</p>
-      </div>
-    )
+    return null
   }
 
-  // Breadcrumb
+  // Breadcrumb — translated
+  const TAB_LABEL_KEYS: Record<string, string> = {
+    desk: t('nav.desk'), appointments: t('nav.appointments'), contacts: t('nav.contacts'),
+    venues: t('nav.venues'), partners: t('nav.partners'), hotels: t('nav.hotels'),
+    vehicles: t('nav.vehicles'), equipment: t('nav.equipment'), settings: t('nav.settings'),
+  }
+  const SUB_LABEL_MAP: Record<string, string> = {
+    overview:     t('contacts.sub.overview'),
+    'crew-booking': t('contacts.sub.crewBooking'),
+    conditions:   t('contacts.sub.conditions'),
+    items:        t('equipment.sub.items'),
+    materials:    t('equipment.sub.materials'),
+    categories:   t('equipment.sub.categories'),
+    eigentuemer:  t('equipment.sub.eigentuemer'),
+    carnets:      t('equipment.sub.carnets'),
+    profil:            t('settings.sub.profil'),
+    appearance:        t('settings.sub.appearance'),
+    notifications:     t('settings.sub.notifications'),
+    'erste-schritte':  t('settings.sub.ersteSchritte'),
+    artist:            t('settings.sub.artist'),
+    permissions:       t('settings.sub.permissions'),
+    contacts:          t('settings.sub.contacts'),
+    guestlist:         t('settings.sub.guestlist'),
+    daysheet:          t('settings.sub.daysheet'),
+    vorlagen:          t('settings.sub.vorlagen'),
+  }
+
   const breadcrumb = [
-    TAB_LABELS[activeTab] ?? activeTab,
-    activeSubTab ? (SUB_LABELS[activeSubTab] ?? activeSubTab) : null,
+    TAB_LABEL_KEYS[activeTab] ?? activeTab,
+    activeSubTab ? (SUB_LABEL_MAP[activeSubTab] ?? activeSubTab) : null,
   ].filter(Boolean)
 
   const hasPanelForSection = HAS_PANEL.includes(activeTab)
@@ -518,11 +550,24 @@ export function L3Layout({
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <UserCircleIcon className="w-4 h-4 text-gray-400" />
-                Mein Profil
+                {t('user.myProfile')}
               </button>
 
+              {/* Language switcher */}
               <div className="border-t border-gray-100 my-1" />
-              <p className="px-4 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">Layout</p>
+              <p className="px-4 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">{t('user.language')}</p>
+              {(['de', 'en'] as const).map(lang => (
+                <button key={lang}
+                  onClick={() => { setLanguage(lang) }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between gap-2"
+                >
+                  <span>{lang === 'de' ? '🇩🇪 Deutsch' : '🇺🇸 English'}</span>
+                  {language === lang && <CheckIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                </button>
+              ))}
+
+              <div className="border-t border-gray-100 my-1" />
+              <p className="px-4 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">{t('user.layout')}</p>
               {(['L1', 'L2', 'L3'] as const).map(m => (
                 <button key={m}
                   onClick={() => { setShowUserMenu(false); setLayout(m) }}
@@ -530,7 +575,7 @@ export function L3Layout({
                 >
                   <span className="flex items-center gap-2">
                     <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
-                    {m === 'L1' ? 'L1 – Classic' : m === 'L2' ? 'L2 – Sidebar' : 'L3 – Rail + Panel'}
+                    {t(`layout.${m.toLowerCase() as 'l1' | 'l2' | 'l3'}`)}
                   </span>
                   {layout === m && <CheckIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
                 </button>
@@ -543,25 +588,25 @@ export function L3Layout({
                     onClick={() => { setShowUserMenu(false); router.push('/artists') }}
                     className="w-full text-left px-4 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 uppercase tracking-wider flex items-center justify-between"
                   >
-                    Artists <span className="normal-case text-gray-300 font-normal">Übersicht</span>
+                    {t('user.artists')} <span className="normal-case text-gray-300 font-normal">{t('user.artistsOverview')}</span>
                   </button>
-                  {allTenantsState.map(t => (
+                  {allTenantsState.map(tenant => (
                     <button
-                      key={t.id}
-                      onClick={() => activeTenantSlug === t.slug ? setShowUserMenu(false) : handleSwitchTenant(t)}
+                      key={tenant.id}
+                      onClick={() => activeTenantSlug === tenant.slug ? setShowUserMenu(false) : handleSwitchTenant(tenant)}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between gap-2"
                     >
-                      <span className="truncate">{t.name}</span>
-                      {activeTenantSlug === t.slug && <CheckIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                      <span className="truncate">{tenant.name}</span>
+                      {activeTenantSlug === tenant.slug && <CheckIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
                     </button>
                   ))}
-                  {allTenantsState.some(t => t.role === 'admin') && (
+                  {allTenantsState.some(tenant => tenant.role === 'admin') && (
                     <button
                       onClick={() => { setShowUserMenu(false); router.push('/artists?new=1') }}
                       className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 flex items-center gap-2"
                     >
                       <PlusIcon className="w-4 h-4" />
-                      Neuer Artist
+                      {t('user.newArtist')}
                     </button>
                   )}
                 </>
@@ -575,7 +620,7 @@ export function L3Layout({
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
                     <ChatBubbleLeftRightIcon className="w-4 h-4 text-gray-400" />
-                    Feedback
+                    {t('nav.feedback')}
                   </button>
                 </>
               )}
@@ -586,7 +631,7 @@ export function L3Layout({
                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
               >
                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                Abmelden
+                {t('user.logout')}
               </button>
             </div>
           )}
@@ -608,7 +653,7 @@ export function L3Layout({
                 }`}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                <span className="text-[9px] leading-tight text-center">{item.name}</span>
+                <span className="text-[9px] leading-tight text-center">{t(`nav.${item.id}` as any)}</span>
               </button>
             )
           })}
@@ -623,7 +668,7 @@ export function L3Layout({
                   <button
                     key={item.id}
                     onClick={() => handleNav(item.id)}
-                    title={item.name}
+                    title={t(`nav.${item.id}` as any)}
                     className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
                       isActive
                         ? 'bg-blue-600 text-white'
@@ -631,7 +676,7 @@ export function L3Layout({
                     }`}
                   >
                     <item.icon className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-[9px] leading-tight text-center">{item.name}</span>
+                    <span className="text-[9px] leading-tight text-center">{t(`nav.${item.id}` as any)}</span>
                   </button>
                 )
               })}
@@ -651,7 +696,7 @@ export function L3Layout({
             }`}
           >
             <Cog6ToothIcon className="w-5 h-5" />
-            <span className="text-[9px] leading-tight">Einstellungen</span>
+            <span className="text-[9px] leading-tight">{t('nav.settings')}</span>
           </button>
         </div>
       </aside>
@@ -664,7 +709,7 @@ export function L3Layout({
           <div className="flex items-center justify-between px-3 py-3 border-b border-gray-700">
             <div>
               <p className="text-sm font-semibold text-white">
-                {TAB_LABELS[activeTab] ?? activeTab}
+                {TAB_LABEL_KEYS[activeTab] ?? activeTab}
               </p>
               {artistName && (
                 <p className="text-[10px] text-gray-400 mt-0.5 truncate">{artistName}</p>
@@ -695,7 +740,7 @@ export function L3Layout({
             <button
               onClick={togglePanel}
               className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
-              title="Panel öffnen"
+              title={t('panel.openPanel')}
             >
               <ChevronRightIcon className="w-4 h-4" />
             </button>
@@ -717,10 +762,10 @@ export function L3Layout({
           {activeTab === 'appointments' && termineInDetail && (
             <div className="flex items-center gap-0.5">
               {([
-                { id: 'details',       label: 'Details' },
-                { id: 'travelparty',   label: 'Reisegruppe' },
-                ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-                { id: 'guestlist',     label: 'Gästeliste' },
+                { id: 'details',       label: t('appointments.view.details') },
+                { id: 'travelparty',   label: t('appointments.view.travelparty') },
+                ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
+                { id: 'guestlist',     label: t('appointments.view.guestlist') },
               ] as { id: string; label: string }[]).map(v => (
                 <button
                   key={v.id}

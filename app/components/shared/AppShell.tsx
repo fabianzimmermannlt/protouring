@@ -1,6 +1,7 @@
 'use client'
 
 import { LayoutProvider, useLayout } from './Navigation/LayoutContext'
+import { LanguageProvider } from '@/app/lib/i18n/LanguageContext'
 import { L2Layout } from './Navigation/L2Layout'
 import { L3Layout } from './Navigation/L3Layout'
 import { Navigation } from './Navigation'
@@ -110,8 +111,10 @@ function AppShellInner({ children, activeTab, onTabChange, activeSubTab = '', on
 
 export function AppShell(props: AppShellProps) {
   return (
-    <LayoutProvider>
-      <AppShellInner {...props} />
-    </LayoutProvider>
+    <LanguageProvider>
+      <LayoutProvider>
+        <AppShellInner {...props} />
+      </LayoutProvider>
+    </LanguageProvider>
   )
 }
