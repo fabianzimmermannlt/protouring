@@ -130,15 +130,12 @@ export default function AdvancingDetailPage() {
   const termin = sortedTermine.find(t => t.id === terminId) ?? null
 
   if (!termin) {
+    // Ungültige ID (z.B. nach Tenant-Wechsel) → localStorage bereinigen + zu /advancing
+    localStorage.removeItem('pt_advancing_last_id')
+    router.replace('/advancing')
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="inline mb-2 text-gray-400" size={24} />
-          <p className="text-gray-500">Termin nicht gefunden</p>
-          <button onClick={() => router.push('/?tab=advancing')} className="mt-3 text-blue-600 text-sm hover:underline">
-            Zurück
-          </button>
-        </div>
+        <Loader2 className="animate-spin text-gray-400" size={24} />
       </div>
     )
   }
