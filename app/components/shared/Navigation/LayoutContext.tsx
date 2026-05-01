@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { getEffectiveRole } from '@/lib/api-client'
+import { getCurrentUser } from '@/lib/api-client'
 
 export type LayoutMode = 'L1' | 'L2' | 'L3'
 
@@ -18,18 +18,17 @@ const LayoutContext = createContext<LayoutContextValue>({
 })
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
-  const [layout, setLayoutState] = useState<LayoutMode>('L1')
+  const [layout, setLayoutState] = useState<LayoutMode>('L3')
 
   useEffect(() => {
-    const role = getEffectiveRole()
-    if (role !== 'admin') return
+    const isSuperadmin = Boolean((getCurrentUser() as any)?.isSuperadmin)
+    if (!isSuperadmin) { setLayoutState('L3'); return }
     const stored = localStorage.getItem(STORAGE_KEY) as LayoutMode | null
-    if (stored === 'L2' || stored === 'L3') setLayoutState(stored)
+    if (stored === 'L1' || stored === 'L2' || stored === 'L3') setLayoutState(stored)
   }, [])
 
   const setLayout = (mode: LayoutMode) => {
-    const role = getEffectiveRole()
-    if (role !== 'admin') return
+    if (!Boolean((getCurrentUser() as any)?.isSuperadmin)) return
     localStorage.setItem(STORAGE_KEY, mode)
     setLayoutState(mode)
   }
