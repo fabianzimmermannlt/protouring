@@ -51,6 +51,11 @@ export default function AppointmentDetailPage() {
   const currentTenant = getCurrentTenant()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
 
+  // Im L3-Layout zeigt das Context Panel die Terminliste — Datumzeile im Hauptfenster weglassen
+  const isL3 = typeof window !== 'undefined'
+    && localStorage.getItem('protouring_layout') === 'L3'
+    && effectiveRole === 'admin'
+
   // Auth check
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -154,11 +159,13 @@ export default function AppointmentDetailPage() {
         </div>
       )}
 
-      <TerminDatumzeile
-        termin={termin}
-        termine={sortedTermine}
-        onNavigate={id => router.push(`/appointments/${id}/${view}`)}
-      />
+      {!isL3 && (
+        <TerminDatumzeile
+          termin={termin}
+          termine={sortedTermine}
+          onNavigate={id => router.push(`/appointments/${id}/${view}`)}
+        />
+      )}
 
       {view === 'travelparty' ? (
         <ReisegruppeView terminId={termin.id} isAdmin={isEditor} />
