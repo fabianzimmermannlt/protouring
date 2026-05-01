@@ -14,12 +14,12 @@ import ReisegruppeView from '@/app/modules/termine/ReisegruppeView'
 import AdvanceSheetView from '@/app/modules/termine/AdvanceSheetView'
 import GaestelisteView from '@/app/modules/termine/GaestelisteView'
 import TerminModal from '@/app/modules/termine/TerminModal'
-import { TerminDetail } from '@/app/modules/termine/TermineModule'
+import { TerminDetail, TerminDetail2 } from '@/app/modules/termine/TermineModule'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 const ADVANCING_LAST_KEY = 'pt_advancing_last_id'
-const VALID_VIEWS = ['details', 'travelparty', 'advance-sheet', 'guestlist'] as const
+const VALID_VIEWS = ['details', 'details2', 'travelparty', 'advance-sheet', 'guestlist'] as const
 type DetailView = typeof VALID_VIEWS[number]
 
 export default function AdvancingDetailPage() {
@@ -180,6 +180,15 @@ export default function AdvancingDetailPage() {
             />
           )}
         </>
+      ) : view === 'details2' ? (
+        <TerminDetail2
+          termin={termin}
+          termine={sortedTermine}
+          isAdmin={isEditor}
+          canSeeFiles={canSeeFiles}
+          onUpdated={handleUpdated}
+          onDeleted={handleDeleted}
+        />
       ) : (
         <TerminDetail
           termin={termin}

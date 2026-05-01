@@ -815,6 +815,172 @@ export function TerminDetail({
 }
 
 // ============================================================
+// TerminDetail2 – Row-based layout experiment
+// ============================================================
+
+export function TerminDetail2({
+  termin,
+  termine,
+  isAdmin,
+  canSeeFiles,
+  onUpdated,
+  onDeleted,
+}: {
+  termin: Termin
+  termine: Termin[]
+  isAdmin: boolean
+  canSeeFiles: boolean
+  onUpdated: (t: Termin) => void
+  onDeleted: () => void
+}) {
+  const [modalOpen, setModalOpen] = useState(false)
+  const [abreiseRefreshKey, setAbreiseRefreshKey] = useState(0)
+  const [anreiseRefreshKey, setAnreiseRefreshKey] = useState(0)
+
+  const currentUser = getCurrentUser()
+  const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
+
+  const ONE_DAY_MS = 86400000
+  const idx = termine.findIndex(item => item.id === termin.id)
+  const prevTermin = idx > 0 ? termine[idx - 1] : null
+  const nextTermin = idx < termine.length - 1 ? termine[idx + 1] : null
+  const prevTerminCity: string | undefined =
+    prevTermin?.date && termin.date &&
+    new Date(termin.date).getTime() - new Date(prevTermin.date).getTime() === ONE_DAY_MS
+      ? (prevTermin.city || undefined) : undefined
+  const nextTerminCity: string | undefined =
+    nextTermin?.date && termin.date &&
+    new Date(nextTermin.date).getTime() - new Date(termin.date).getTime() === ONE_DAY_MS
+      ? (nextTermin.city || undefined) : undefined
+
+  const SectionLabel = ({ label }: { label: string }) => (
+    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-0.5">
+      {label}
+    </div>
+  )
+
+  return (
+    <div className="min-h-0 flex flex-col gap-6">
+
+      {/* Zeile 1: Event */}
+      <section>
+        <SectionLabel label="Event" />
+        <div className="grid grid-cols-3 gap-4">
+          <VeranstaltungCard
+            key={termin.id}
+            termin={termin}
+            isAdmin={isAdmin}
+            onEditClick={() => setModalOpen(true)}
+          />
+          <SpielstaetteCard
+            key={`venue-${termin.id}`}
+            termin={termin}
+            isAdmin={isAdmin}
+            onUpdated={onUpdated}
+          />
+          <PartnerCard
+            key={`partner-${termin.id}`}
+            termin={termin}
+            isAdmin={isAdmin}
+            onUpdated={onUpdated}
+          />
+        </div>
+      </section>
+
+      {/* Zeile 2: Logistik */}
+      <section>
+        <SectionLabel label="Logistik" />
+        <div className="grid grid-cols-3 gap-4">
+          {/* Anreise + Abreise gestapelt */}
+          <div className="flex flex-col gap-4">
+            <AnreiseCard
+              terminId={termin.id}
+              legType="anreise"
+              isAdmin={isAdmin}
+              terminDate={termin.date}
+              terminCity={termin.city || ''}
+              prevTerminCity={prevTerminCity}
+              refreshKey={anreiseRefreshKey}
+              onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
+            />
+            <AnreiseCard
+              terminId={termin.id}
+              legType="abreise"
+              isAdmin={isAdmin}
+              terminDate={termin.date}
+              terminCity={termin.city || ''}
+              nextTerminCity={nextTerminCity}
+              refreshKey={abreiseRefreshKey}
+              onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
+            />
+          </div>
+          <HotelCard
+            terminId={termin.id}
+            isAdmin={isAdmin}
+            terminDate={termin.date}
+          />
+          <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+        </div>
+      </section>
+
+      {/* Zeile 3: Produktion */}
+      <section>
+        <SectionLabel label="Produktion" />
+        <div className="grid grid-cols-3 gap-4">
+          <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
+          <CateringCard terminId={termin.id} isAdmin={isAdmin} />
+          <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
+        </div>
+      </section>
+
+      {/* Zeile 4: Organisation */}
+      <section>
+        <SectionLabel label="Organisation" />
+        <div className="grid grid-cols-3 gap-4">
+          <ToDoCard terminId={termin.id} />
+          <SonstigesCard terminId={termin.id} isAdmin={isAdmin} />
+          <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
+            <ContentBoard
+              entityType="termin_private"
+              entityId={`${termin.id}_${currentUserId}`}
+              title=""
+              isAdmin={true}
+              singleItem
+              fixedTitle="Private Notiz"
+              showTitleField={false}
+              modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+              hideEmptyButton
+              allowDelete={false}
+              className="flex-1"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Zeile 5: Kommunikation */}
+      <section>
+        <SectionLabel label="Kommunikation" />
+        <div className="grid grid-cols-3 gap-4">
+          {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
+          <div className={canSeeFiles ? 'col-span-2' : 'col-span-3'}>
+            <TerminChatCard terminId={termin.id} />
+          </div>
+        </div>
+      </section>
+
+      {modalOpen && (
+        <TerminModal
+          termin={termin}
+          onClose={() => setModalOpen(false)}
+          onSaved={updated => { onUpdated(updated); setModalOpen(false) }}
+          onDeleted={() => { onDeleted(); setModalOpen(false) }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ============================================================
 // Main component
 // ============================================================
 

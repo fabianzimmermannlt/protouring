@@ -30,7 +30,7 @@ import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
 import { SubNavigation } from './SubNavigation'
 import { ContactsSubNavigation } from './ContactsSubNavigation'
-import { TermineSubNavigation, TermineListSubNavigation, type TermineListFilter, type TermineListView } from './TermineSubNavigation'
+import { TermineSubNavigation, TermineListSubNavigation, type TermineDetailView, type TermineListFilter, type TermineListView } from './TermineSubNavigation'
 import { EquipmentSubNavigation } from './EquipmentSubNavigation'
 
 export interface NavigationItem {
@@ -93,12 +93,12 @@ export function Navigation({
     if (typeof window === 'undefined') return false
     return window.location.pathname.startsWith('/appointments/')
   })
-  const [termineView, setTermineView] = useState<'details' | 'travelparty' | 'advance-sheet' | 'guestlist'>(() => {
+  const [termineView, setTermineView] = useState<TermineDetailView>(() => {
     if (typeof window === 'undefined') return 'details'
     const parts = window.location.pathname.split('/')
     const view = parts[3]
-    const validViews = ['details', 'travelparty', 'advance-sheet', 'guestlist']
-    return (validViews.includes(view) ? view : 'details') as 'details' | 'travelparty' | 'advance-sheet' | 'guestlist'
+    const validViews: TermineDetailView[] = ['details', 'details2', 'travelparty', 'advance-sheet', 'guestlist']
+    return (validViews.includes(view as TermineDetailView) ? view : 'details') as TermineDetailView
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>(() => {
     if (typeof window === 'undefined') return 'aktuell'
