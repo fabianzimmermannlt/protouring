@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronRight, ChevronDown, Loader2, ExternalLink, Download, FileIcon, Pencil } from 'lucide-react'
-import { getVenue, updateVenue, getAuthToken, getCurrentTenant, type Venue, type VenueFormData } from '@/lib/api-client'
+import { useState, useEffect, useCallback } from 'react'
+import { ChevronRight, ChevronDown, Loader2, ExternalLink, Download, FileIcon, Pencil, X, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { getVenue, getAuthToken, getCurrentTenant, type Venue } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
 
 // ─── API ──────────────────────────────────────────────────────
@@ -75,6 +76,102 @@ function AuthImage({ fileId, alt, className }: { fileId: string; alt: string; cl
   return <img src={src} alt={alt} className={className} />
 }
 
+// ─── Lightbox ────────────────────────────────────────────────
+
+function Lightbox({ fileIds, initialIndex, onClose }: {
+  fileIds: string[]
+  initialIndex: number
+  onClose: () => void
+}) {
+  const [index, setIndex] = useState(initialIndex)
+  const [src, setSrc] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const go = useCallback((dir: number) => {
+    setLoading(true)
+    setSrc(null)
+    setIndex(i => (i + dir + fileIds.length) % fileIds.length)
+  }, [fileIds.length])
+
+  useEffect(() => {
+    let url: string
+    setLoading(true)
+    fetch(`${API_BASE}/api/files/download/${fileIds[index]}`, { headers: authHeaders() })
+      .then(r => r.blob())
+      .then(blob => { url = URL.createObjectURL(blob); setSrc(url); setLoading(false) })
+      .catch(() => setLoading(false))
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [index, fileIds])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft')  go(-1)
+      if (e.key === 'ArrowRight') go(1)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [go, onClose])
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.92)' }}
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+      >
+        <X size={24} />
+      </button>
+
+      {/* Counter */}
+      {fileIds.length > 1 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/50 text-sm">
+          {index + 1} / {fileIds.length}
+        </div>
+      )}
+
+      {/* Prev */}
+      {fileIds.length > 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); go(-1) }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-2"
+        >
+          <ChevronLeft size={32} />
+        </button>
+      )}
+
+      {/* Image */}
+      <div className="flex items-center justify-center w-full h-full p-16" onClick={e => e.stopPropagation()}>
+        {loading || !src ? (
+          <Loader2 size={32} className="animate-spin text-white/40" />
+        ) : (
+          <img
+            src={src}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded shadow-2xl"
+            style={{ maxHeight: 'calc(100vh - 8rem)' }}
+          />
+        )}
+      </div>
+
+      {/* Next */}
+      {fileIds.length > 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); go(1) }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-2"
+        >
+          <ChevronRightIcon size={32} />
+        </button>
+      )}
+    </div>,
+    document.body
+  )
+}
+
 // ─── Accordion ───────────────────────────────────────────────
 
 function Accordion({ title, children, defaultOpen = false, onEdit, isAdmin }: {
@@ -134,6 +231,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin?: boolean; onEdit?: () => void }) {
   const [files, setFiles] = useState<VenueFile[]>([])
   const [loading, setLoading] = useState(true)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   useEffect(() => {
     fetchVenueFiles(venueId).then(setFiles).finally(() => setLoading(false))
@@ -160,25 +258,28 @@ function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin
             <div className="mb-3">
               <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-1">Fotos</div>
               <div className="grid grid-cols-4 gap-2">
-                {images.map(f => (
+                {images.map((f, i) => (
                   <button
                     key={f.id}
-                    onClick={() => {
-                      fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
-                        .then(r => r.blob())
-                        .then(blob => window.open(URL.createObjectURL(blob), '_blank'))
-                    }}
+                    onClick={() => setLightboxIndex(i)}
                     title={f.originalName}
-                    className="focus:outline-none"
+                    className="focus:outline-none rounded overflow-hidden"
                   >
                     <AuthImage
                       fileId={f.id}
                       alt={f.originalName}
-                      className="w-full aspect-square object-cover rounded border border-gray-200 hover:opacity-80 transition-opacity"
+                      className="w-full aspect-square object-cover hover:opacity-80 transition-opacity"
                     />
                   </button>
                 ))}
               </div>
+              {lightboxIndex !== null && (
+                <Lightbox
+                  fileIds={images.map(f => f.id)}
+                  initialIndex={lightboxIndex}
+                  onClose={() => setLightboxIndex(null)}
+                />
+              )}
             </div>
           )}
           {docs.length > 0 && (
