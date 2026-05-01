@@ -891,39 +891,41 @@ export function TerminDetail2({
       <section>
         <SectionLabel label="Logistik" />
         <div className="grid grid-cols-3 gap-4">
-          {/* Anreise + Abreise gestapelt */}
-          <div className="flex flex-col gap-4">
-            <AnreiseCard
-              terminId={termin.id}
-              legType="anreise"
-              isAdmin={isAdmin}
-              terminDate={termin.date}
-              terminCity={termin.city || ''}
-              prevTerminCity={prevTerminCity}
-              refreshKey={anreiseRefreshKey}
-              onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
-            />
-            <AnreiseCard
-              terminId={termin.id}
-              legType="abreise"
-              isAdmin={isAdmin}
-              terminDate={termin.date}
-              terminCity={termin.city || ''}
-              nextTerminCity={nextTerminCity}
-              refreshKey={abreiseRefreshKey}
-              onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
-            />
-          </div>
+          <AnreiseCard
+            terminId={termin.id}
+            legType="anreise"
+            isAdmin={isAdmin}
+            terminDate={termin.date}
+            terminCity={termin.city || ''}
+            prevTerminCity={prevTerminCity}
+            refreshKey={anreiseRefreshKey}
+            onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
+          />
           <HotelCard
             terminId={termin.id}
             isAdmin={isAdmin}
             terminDate={termin.date}
           />
-          <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+          <AnreiseCard
+            terminId={termin.id}
+            legType="abreise"
+            isAdmin={isAdmin}
+            terminDate={termin.date}
+            terminCity={termin.city || ''}
+            nextTerminCity={nextTerminCity}
+            refreshKey={abreiseRefreshKey}
+            onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
+          />
         </div>
       </section>
 
-      {/* Zeile 3: Produktion */}
+      {/* Zeile 3: Lokale Ansprechpartner */}
+      <section>
+        <SectionLabel label="Lokale Ansprechpartner" />
+        <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+      </section>
+
+      {/* Zeile 4: Produktion */}
       <section>
         <SectionLabel label="Produktion" />
         <div className="grid grid-cols-3 gap-4">
@@ -933,7 +935,7 @@ export function TerminDetail2({
         </div>
       </section>
 
-      {/* Zeile 4: Organisation */}
+      {/* Zeile 5: Organisation */}
       <section>
         <SectionLabel label="Organisation" />
         <div className="grid grid-cols-3 gap-4">
@@ -957,7 +959,7 @@ export function TerminDetail2({
         </div>
       </section>
 
-      {/* Zeile 5: Kommunikation */}
+      {/* Zeile 6: Kommunikation */}
       <section>
         <SectionLabel label="Kommunikation" />
         <div className="grid grid-cols-3 gap-4">
