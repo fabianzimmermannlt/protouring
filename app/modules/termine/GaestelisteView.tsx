@@ -560,8 +560,49 @@ export default function GaestelisteView({ terminId }: Props) {
   const isDirect = canAddDirect(role, listSettings)
   const pendingCount = entries.filter(e => e.status === 'pending').length
   const approvedCount = entries.filter(e => e.status === 'approved').length
-  const totalTickets = entries.filter(e => e.status !== 'rejected').reduce((s, e) => s + passTotal(e.passes), 0)
+  const activeEntries = entries.filter(e => e.status !== 'rejected')
+  const totalTickets = activeEntries.reduce((s, e) => s + passTotal(e.passes), 0)
   const isMobile = useIsMobile()
+
+  // ── Limit-Warnungen ───────────────────────────────────────────
+  const totalLimit = listSettings.total_limit ?? null
+  const perInviterLimit = listSettings.per_inviter_limit ?? null
+
+  const totalLimitExceeded = totalLimit !== null && totalTickets > totalLimit
+
+  const ticketsByInviter = useMemo(() => {
+    const map: Record<string, number> = {}
+    activeEntries.forEach(e => {
+      const key = e.invited_by_text
+        || [e.inviter_first_name, e.inviter_last_name].filter(Boolean).join(' ')
+        || '—'
+      map[key] = (map[key] ?? 0) + passTotal(e.passes)
+    })
+    return map
+  }, [activeEntries])
+
+  const inviterOverLimit = perInviterLimit
+    ? Object.entries(ticketsByInviter).filter(([, count]) => count > perInviterLimit)
+    : []
+
+  const limitWarnings = (
+    (totalLimitExceeded || inviterOverLimit.length > 0) && (
+      <div className="flex flex-col gap-1.5 mb-3">
+        {totalLimitExceeded && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <span className="font-semibold">⚠ Gesamtlimit überschritten:</span>
+            {totalTickets} / {totalLimit} Tickets vergeben
+          </div>
+        )}
+        {inviterOverLimit.map(([name, count]) => (
+          <div key={name} className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+            <span className="font-semibold">⚠ Pro-Einlader-Limit überschritten:</span>
+            {name} — {count} / {perInviterLimit} Tickets
+          </div>
+        ))}
+      </div>
+    )
+  )
 
   if (listsLoading) return <div className="p-8 text-center text-gray-400 text-sm">Laden...</div>
 
@@ -663,6 +704,9 @@ export default function GaestelisteView({ terminId }: Props) {
 
           {/* Row 2: List tabs */}
           <div className="mb-3">{listTabs}</div>
+
+          {/* Limit-Warnungen */}
+          {limitWarnings}
 
           {/* Search */}
           <input
@@ -826,6 +870,9 @@ export default function GaestelisteView({ terminId }: Props) {
               </button>
             </div>
           </div>
+
+          {/* Limit-Warnungen */}
+          {limitWarnings}
 
           {/* Suche */}
           <div className="flex items-center gap-4 mb-3 flex-wrap">
