@@ -129,7 +129,7 @@ export function L2Layout({
   children,
 }: L2LayoutProps) {
   const router = useRouter()
-  const { setLayout } = useLayout()
+  const { layout, setLayout } = useLayout()
 
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -474,13 +474,19 @@ export function L2Layout({
                     Mein Profil
                   </button>
                   <div className="border-t border-gray-100 my-1" />
-                  <button
-                    onClick={() => { setShowUserMenu(false); setLayout('L1') }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
-                    Layout: zurück zu L1
-                  </button>
+                  <p className="px-4 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">Layout</p>
+                  {(['L1', 'L2', 'L3'] as const).map(m => (
+                    <button key={m}
+                      onClick={() => { setShowUserMenu(false); setLayout(m) }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between gap-2"
+                    >
+                      <span className="flex items-center gap-2">
+                        <ViewColumnsIcon className="w-4 h-4 text-gray-400" />
+                        {m === 'L1' ? 'L1 – Classic' : m === 'L2' ? 'L2 – Sidebar' : 'L3 – Rail + Panel'}
+                      </span>
+                      {layout === m && <CheckIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                    </button>
+                  ))}
                   {allTenantsState.length > 0 && (
                     <>
                       <div className="border-t border-gray-100 my-1" />
