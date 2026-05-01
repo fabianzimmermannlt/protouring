@@ -263,6 +263,11 @@ export async function getVenues(): Promise<Venue[]> {
   return res.venues;
 }
 
+export async function getVenue(id: string): Promise<Venue> {
+  const res = await request<{ venue: Venue }>(`/api/venues/${id}`);
+  return res.venue;
+}
+
 export async function createVenue(data: VenueFormData): Promise<Venue> {
   const res = await request<{ venue: Venue }>('/api/venues', { method: 'POST', body: data });
   return res.venue;

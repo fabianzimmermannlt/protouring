@@ -22,6 +22,7 @@ import ToDoCard from './ToDoCard'
 import CateringCard from './CateringCard'
 import AdvancingCard from './AdvancingCard'
 import SonstigesCard from './SonstigesCard'
+import VenueInfoSection from './VenueInfoSection'
 import {
   getTermine,
   createTermin,
@@ -877,6 +878,13 @@ export function TerminDetail2({
         <SectionLabel label="Lokale Ansprechpartner" />
         <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
       </section>
+
+      {/* Zeile 3: Venue-Daten */}
+      {termin.venueId && (
+        <section>
+          <VenueInfoSection venueId={termin.venueId} venueName={termin.venueName} />
+        </section>
+      )}
 
       {/* Zeile 4: Organisation */}
       <section>
