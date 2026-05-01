@@ -149,15 +149,24 @@ export function L3Layout({
       .join('') || currentUser?.email?.[0]?.toUpperCase() || '?'
 
   // ── Termine state ──────────────────────────────────────────────────────────
-  const [termineInDetail, setTermineInDetail] = useState(false)
-  const [termineView, setTermineView] = useState<TermineDetailView>('details')
+  // Sofort aus URL ableiten — kein Event-Race-Condition
+  const [termineInDetail, setTermineInDetail] = useState(() =>
+    typeof window !== 'undefined' && /\/appointments\/\d+/.test(window.location.pathname)
+  )
+  const [termineView, setTermineView] = useState<TermineDetailView>(() => {
+    if (typeof window === 'undefined') return 'details'
+    const m = window.location.pathname.match(/\/appointments\/\d+\/(.+)/)
+    const v = m?.[1] as TermineDetailView | undefined
+    return (['details','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
+  })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
 
   useEffect(() => {
     const onViewChanged = (e: Event) => {
       const d = (e as CustomEvent<{ inDetail: boolean; view?: TermineDetailView }>).detail
-      if (d.inDetail) { setTermineInDetail(true); if (d.view) setTermineView(d.view) }
+      if (d.inDetail !== undefined) setTermineInDetail(d.inDetail)
+      if (d.inDetail && d.view) setTermineView(d.view)
     }
     const onGoToList = () => { setTermineInDetail(false); setTermineView('details') }
     const onSetView  = (e: Event) => {
