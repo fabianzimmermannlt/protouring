@@ -746,47 +746,37 @@ export function L3Layout({
             </button>
           )}
 
-          {/* Left: Breadcrumb */}
-          <nav className="flex-1 flex items-center gap-1.5 text-sm min-w-0">
-            {breadcrumb.map((crumb, i) => (
-              <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-gray-300">/</span>}
-                <span className={i === breadcrumb.length - 1 ? 'font-medium text-gray-900' : 'text-gray-400'}>
-                  {crumb}
-                </span>
-              </span>
-            ))}
-          </nav>
-
-          {/* Center: Termine detail view tabs */}
-          {activeTab === 'appointments' && termineInDetail && (
-            <div className="flex items-center gap-0.5">
-              {([
-                { id: 'details',       label: t('appointments.view.details') },
-                { id: 'travelparty',   label: t('appointments.view.travelparty') },
-                ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
-                { id: 'guestlist',     label: t('appointments.view.guestlist') },
-              ] as { id: string; label: string }[]).map(v => (
-                <button
-                  key={v.id}
-                  onClick={() => {
-                    setTermineView(v.id as TermineDetailView)
-                    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
-                  }}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    termineView === v.id
-                      ? 'bg-gray-100 text-gray-900 font-medium'
-                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                  }`}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Left: Termine detail tabs — or empty */}
+          <div className="flex-1 flex items-center min-w-0">
+            {activeTab === 'appointments' && termineInDetail && (
+              <div className="flex items-center gap-0.5">
+                {([
+                  { id: 'details',       label: t('appointments.view.details') },
+                  { id: 'travelparty',   label: t('appointments.view.travelparty') },
+                  ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
+                  { id: 'guestlist',     label: t('appointments.view.guestlist') },
+                ] as { id: string; label: string }[]).map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      setTermineView(v.id as TermineDetailView)
+                      window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      termineView === v.id
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Right: Preview Banner */}
-          <div className="flex-1 flex items-center justify-end gap-3">
+          <div className="flex items-center gap-3">
             <PreviewBanner />
           </div>
         </header>
