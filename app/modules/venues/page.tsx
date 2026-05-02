@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Download, Upload, Save, X, Loader2, AlertCircle, Pencil } from 'lucide-react'
+import { Plus, Download, Upload, Save, X, Loader2, AlertCircle } from 'lucide-react'
 import {
   getVenues,
   createVenue,
@@ -325,8 +325,8 @@ export default function VenuesPage() {
         return isMobile ? (
           <div className="flex flex-col gap-2">
             {[...filtered].sort((a, b) => a.name.localeCompare(b.name, 'de')).map(item => (
-              <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
-                onClick={isEditor ? () => openEditModal(item) : undefined}>
+              <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 cursor-pointer"
+                onClick={() => window.location.href = `/venues/${item.id}`}>
                 <p className="text-sm font-semibold text-gray-900">{item.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{item.city}</p>
                 {item.capacity && parseInt(item.capacity) > 0 && <p className="text-xs text-gray-400 mt-0.5">Kapazität: {item.capacity}</p>}
@@ -335,7 +335,7 @@ export default function VenuesPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <VenueTable venues={filtered} canEdit={isEditor} onEdit={openEditModal} onDetail={id => window.location.href = `/venues/${id}`} />
+            <VenueTable venues={filtered} onDetail={id => window.location.href = `/venues/${id}`} />
           </div>
         )
       })()}
@@ -488,10 +488,8 @@ function TextareaField({
   )
 }
 
-function VenueTable({ venues, canEdit = false, onEdit, onDetail }: {
+function VenueTable({ venues, onDetail }: {
   venues: Venue[]
-  canEdit?: boolean
-  onEdit: (v: Venue) => void
   onDetail: (id: string) => void
 }) {
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
@@ -510,7 +508,6 @@ function VenueTable({ venues, canEdit = false, onEdit, onDetail }: {
               </span>
             </th>
           ))}
-          <th style={{ width: 40 }} />
         </tr>
       </thead>
       <tbody>
@@ -523,17 +520,6 @@ function VenueTable({ venues, canEdit = false, onEdit, onDetail }: {
             <td>{venue.state}</td>
             <td>{venue.country}</td>
             <td>{venue.capacity}</td>
-            <td onClick={e => e.stopPropagation()}>
-              {canEdit && (
-                <button
-                  onClick={() => onEdit(venue)}
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded"
-                  title="Venue bearbeiten"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </td>
           </tr>
         ))}
       </tbody>
