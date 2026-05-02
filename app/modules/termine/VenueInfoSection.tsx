@@ -505,8 +505,9 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
             ) : (
               <>
                 {venue.name && (
-                  <div className="py-1.5 border-b border-gray-50">
-                    <span className="text-sm font-semibold text-gray-800">{venue.name}</span>
+                  <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Name</span>
+                    <span className="text-gray-800 font-semibold">{venue.name}</span>
                   </div>
                 )}
                 <KV label="Straße" value={venue.street || undefined} />
