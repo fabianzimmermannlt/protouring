@@ -410,6 +410,7 @@ export default function VenueDetailPage() {
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'spielstaette' ? (
               <div className="space-y-2">
+                <IField label="Name *" value={inlineForm.name ?? ''} onChange={v => iF('name', v)} />
                 <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
                   <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
@@ -710,6 +711,24 @@ export default function VenueDetailPage() {
         </div>
 
       </div>
+
+      {/* Danger Zone */}
+      {isEditor && venue && (
+        <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+          <button
+            onClick={async () => {
+              if (!confirm(`Spielstätte "${venue.name}" wirklich löschen?`)) return
+              try {
+                await fetch(`${API_BASE}/api/venues/${venueId}`, { method: 'DELETE', headers: authHeaders() })
+                window.location.href = '/?tab=venues'
+              } catch { alert('Löschen fehlgeschlagen') }
+            }}
+            className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Spielstätte löschen
+          </button>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUploadModal && (
