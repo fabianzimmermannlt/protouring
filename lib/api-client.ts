@@ -981,6 +981,27 @@ export async function deletePartner(id: string): Promise<void> {
   await request(`/api/partners/${id}`, { method: 'DELETE' });
 }
 
+// ── Partner-Typen ─────────────────────────────────────────────────────────────
+export interface PartnerType {
+  id: number;
+  name: string;
+  sort_order: number;
+}
+
+export async function getPartnerTypes(): Promise<PartnerType[]> {
+  const data = await request('/api/partner-types') as { types: PartnerType[] };
+  return data.types;
+}
+
+export async function createPartnerType(name: string): Promise<PartnerType> {
+  const data = await request('/api/partner-types', { method: 'POST', body: JSON.stringify({ name }) }) as { type: PartnerType };
+  return data.type;
+}
+
+export async function deletePartnerType(id: number): Promise<void> {
+  await request(`/api/partner-types/${id}`, { method: 'DELETE' });
+}
+
 // ============================================
 // Termine API
 // ============================================

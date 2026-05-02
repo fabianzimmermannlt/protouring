@@ -56,6 +56,7 @@ const SETTINGS_WORKSPACE: SubItem[] = [
   { id: 'artist',      name: 'Artist',          adminOnly: true },
   { id: 'permissions', name: 'Berechtigungen',  editorOnly: true },
   { id: 'contacts',    name: 'Kontakte',         editorOnly: true },
+  { id: 'partners',    name: 'Partners',         adminOnly: true },
   { id: 'guestlist',   name: 'Gästeliste',       editorOnly: true },
   { id: 'daysheet',    name: 'Daysheet',         editorOnly: true },
   { id: 'vorlagen',    name: 'Vorlagen',         editorOnly: true },

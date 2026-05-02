@@ -1069,6 +1069,17 @@ async function initDatabase() {
     )
   `)
 
+  // Partner-Typen (pro Tenant, konfigurierbar)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS partner_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // Gegenstände (Cases, Flightcases, Dollies…)
   await db.run(`
     CREATE TABLE IF NOT EXISTS equipment_items (
@@ -5562,6 +5573,40 @@ app.delete('/api/equipment/categories/:id', authenticateToken, requireTenant, as
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     await db.run('DELETE FROM equipment_categories WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Partner-Typen ────────────────────────────────────────────────────────────
+
+// GET /api/partner-types
+app.get('/api/partner-types', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all('SELECT * FROM partner_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    res.json({ types: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/partner-types
+app.post('/api/partner-types', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { name, sort_order = 0 } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' })
+  try {
+    const result = await db.run(
+      'INSERT INTO partner_types (tenant_id, name, sort_order) VALUES (?, ?, ?)',
+      [req.tenant.id, name.trim(), sort_order]
+    )
+    const row = await db.get('SELECT * FROM partner_types WHERE id = ?', [result.lastID])
+    res.json({ type: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/partner-types/:id
+app.delete('/api/partner-types/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM partner_types WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

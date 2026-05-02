@@ -31,9 +31,11 @@ import {
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   getIcalToken, regenerateIcalToken, getIcalUrl,
+  getPartnerTypes, createPartnerType, deletePartnerType,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
+  type PartnerType,
 } from '@/lib/api-client'
 
 import { ProfileEditor, type ProfileData } from '@/app/components/shared/ProfileEditor'
@@ -521,6 +523,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             <div className="text-sm text-gray-400 mt-2">Bald verfügbar…</div>
           </div>
         )
+
+      case 'partners':
+        return <PartnerTypesSettings />
 
       case 'erste-schritte':
         return <ErsteSchritte />
@@ -1866,6 +1871,130 @@ function ErsteSchritte() {
           Nutze den Feedback-Button unten rechts (Desktop) oder im Mehr-Menü (Mobile). Wir freuen uns über jeden Hinweis.
         </p>
       </div>
+    </div>
+  )
+}
+
+// ── Partner-Typen Settings ────────────────────────────────────────────────────
+const DEFAULT_PARTNER_TYPES = [
+  'Booking', 'Promoter', 'Veranstalter', 'Label', 'Management', 'Verlag',
+  'Merchandise', 'Catering', 'Technik', 'Transport', 'Presse', 'Sonstiges',
+]
+
+function PartnerTypesSettings() {
+  const [types, setTypes] = useState<PartnerType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newName, setNewName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [seeded, setSeeded] = useState(false)
+
+  useEffect(() => {
+    getPartnerTypes()
+      .then(data => { setTypes(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  async function handleAdd(name: string) {
+    if (!name.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      const created = await createPartnerType(name.trim())
+      setTypes(prev => [...prev, created])
+      setNewName('')
+    } catch (e) {
+      setError((e as Error).message || 'Fehler beim Speichern')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('Diesen Partner-Typ wirklich löschen?')) return
+    try {
+      await deletePartnerType(id)
+      setTypes(prev => prev.filter(t => t.id !== id))
+    } catch { /* silent */ }
+  }
+
+  async function seedDefaults() {
+    setSaving(true)
+    const existing = types.map(t => t.name.toLowerCase())
+    for (const name of DEFAULT_PARTNER_TYPES) {
+      if (!existing.includes(name.toLowerCase())) {
+        try {
+          const created = await createPartnerType(name)
+          setTypes(prev => [...prev, created])
+        } catch { /* skip */ }
+      }
+    }
+    setSaving(false)
+    setSeeded(true)
+  }
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Partner-Typen</h3>
+        <p className="text-sm text-gray-500">
+          Definiere die Kategorien, die beim Anlegen eines Partners zur Auswahl stehen.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin" /> Lade…
+        </div>
+      ) : (
+        <>
+          {types.length === 0 && !seeded && (
+            <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center space-y-2">
+              <p className="text-sm text-gray-500">Noch keine Typen angelegt.</p>
+              <button onClick={seedDefaults} disabled={saving}
+                className="text-xs text-blue-600 hover:underline font-medium disabled:opacity-50">
+                Standard-Typen übernehmen
+              </button>
+            </div>
+          )}
+
+          {types.length > 0 && (
+            <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+              {types.map(t => (
+                <div key={t.id} className="flex items-center justify-between px-4 py-2.5 bg-white group hover:bg-gray-50">
+                  <span className="text-sm text-gray-800">{t.name}</span>
+                  <button onClick={() => handleDelete(t.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 p-0.5">
+                    <TrashIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              type="text" value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd(newName)}
+              placeholder="Neuer Typ…"
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <button onClick={() => handleAdd(newName)} disabled={saving || !newName.trim()}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlusIcon className="w-3.5 h-3.5" />}
+              Hinzufügen
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          {types.length > 0 && (
+            <button onClick={seedDefaults} disabled={saving}
+              className="text-xs text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50">
+              Standard-Typen ergänzen
+            </button>
+          )}
+        </>
+      )}
     </div>
   )
 }

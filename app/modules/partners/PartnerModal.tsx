@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Save, Trash2, Loader2 } from 'lucide-react'
 import {
   createPartner,
   updatePartner,
   deletePartner,
+  getPartnerTypes,
   type Partner,
   type PartnerFormData,
+  type PartnerType,
 } from '@/lib/api-client'
 
 const EMPTY: PartnerFormData = {
@@ -15,7 +17,7 @@ const EMPTY: PartnerFormData = {
   country: '', contactPerson: '', email: '', phone: '', taxId: '', billingAddress: '', notes: '',
 }
 
-const PARTNER_TYPES = [
+const FALLBACK_TYPES = [
   'Booking', 'Promoter', 'Veranstalter', 'Label', 'Management', 'Verlag',
   'Merchandise', 'Catering', 'Technik', 'Transport', 'Presse', 'Sonstiges',
 ]
@@ -29,6 +31,13 @@ interface PartnerModalProps {
 
 export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: PartnerModalProps) {
   const isEdit = !!partner
+
+  const [partnerTypes, setPartnerTypes] = useState<string[]>(FALLBACK_TYPES)
+  useEffect(() => {
+    getPartnerTypes()
+      .then(data => { if (data.length > 0) setPartnerTypes(data.map(t => t.name)) })
+      .catch(() => {})
+  }, [])
 
   const [form, setForm] = useState<PartnerFormData>(
     isEdit
@@ -115,7 +124,7 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
                 <label className="form-label">Art</label>
                 <select value={form.type} onChange={e => f('type', e.target.value)} className="form-select">
                   <option value="">– wählen –</option>
-                  {PARTNER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {partnerTypes.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
 
