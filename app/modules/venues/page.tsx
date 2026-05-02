@@ -52,6 +52,8 @@ const EMPTY_FORM: VenueFormData = {
   nightlinerParking: '',
   loadingPath: '',
   notes: '',
+  latitude: '',
+  longitude: '',
 }
 
 export default function VenuesPage() {
@@ -124,6 +126,8 @@ export default function VenuesPage() {
       nightlinerParking: venue.nightlinerParking,
       loadingPath: venue.loadingPath,
       notes: venue.notes,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
     })
     setIsModalOpen(true)
   }

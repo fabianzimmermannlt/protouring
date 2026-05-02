@@ -16,6 +16,7 @@ const EMPTY_FORM: VenueFormData = {
   capacity: '', capacitySeated: '', stageDimensions: '', clearanceHeight: '',
   merchandiseFee: '', merchandiseStand: '', wardrobe: '', showers: '', wifi: '',
   parking: '', nightlinerParking: '', loadingPath: '', notes: '',
+  latitude: '', longitude: '',
 }
 
 function venueToForm(v: Venue): VenueFormData {
@@ -30,6 +31,7 @@ function venueToForm(v: Venue): VenueFormData {
     wardrobe: v.wardrobe, showers: v.showers, wifi: v.wifi,
     parking: v.parking, nightlinerParking: v.nightlinerParking,
     loadingPath: v.loadingPath, notes: v.notes,
+    latitude: v.latitude, longitude: v.longitude,
   }
 }
 
@@ -137,6 +139,10 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
                 <Field label="Bundesland" value={form.state} onChange={v => f('state', v)} />
                 <Field label="Land" value={form.country} onChange={v => f('country', v)} />
                 <Field label="Website" value={form.website} onChange={v => f('website', v)} type="url" placeholder="https://..." />
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Latitude" value={form.latitude} onChange={v => f('latitude', v)} placeholder="48.137154" />
+                  <Field label="Longitude" value={form.longitude} onChange={v => f('longitude', v)} placeholder="11.576124" />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Kapazität" value={form.capacity} onChange={v => f('capacity', v)} placeholder="z.B. 5000" />
                   <Field label="Kapazität (bestuhlt)" value={form.capacitySeated} onChange={v => f('capacitySeated', v)} placeholder="z.B. 3000" />

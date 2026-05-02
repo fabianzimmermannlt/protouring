@@ -252,8 +252,21 @@ export interface Venue {
   nightlinerParking: string;
   loadingPath: string;
   notes: string;
+  latitude: string;
+  longitude: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface VenueContact {
+  id: string;
+  venueId: string;
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  notes: string;
+  createdAt?: string;
 }
 
 export type VenueFormData = Omit<Venue, 'id' | 'createdAt' | 'updatedAt'>;
@@ -280,6 +293,25 @@ export async function updateVenue(id: string, data: VenueFormData): Promise<Venu
 
 export async function deleteVenue(id: string): Promise<void> {
   await request(`/api/venues/${id}`, { method: 'DELETE' });
+}
+
+export async function getVenueContacts(venueId: string): Promise<VenueContact[]> {
+  const res = await request<{ contacts: VenueContact[] }>(`/api/venues/${venueId}/contacts`);
+  return res.contacts;
+}
+
+export async function createVenueContact(venueId: string, data: Omit<VenueContact, 'id' | 'venueId' | 'createdAt'>): Promise<VenueContact> {
+  const res = await request<{ contact: VenueContact }>(`/api/venues/${venueId}/contacts`, { method: 'POST', body: data });
+  return res.contact;
+}
+
+export async function updateVenueContact(venueId: string, contactId: string, data: Omit<VenueContact, 'id' | 'venueId' | 'createdAt'>): Promise<VenueContact> {
+  const res = await request<{ contact: VenueContact }>(`/api/venues/${venueId}/contacts/${contactId}`, { method: 'PUT', body: data });
+  return res.contact;
+}
+
+export async function deleteVenueContact(venueId: string, contactId: string): Promise<void> {
+  await request(`/api/venues/${venueId}/contacts/${contactId}`, { method: 'DELETE' });
 }
 
 // ============================================

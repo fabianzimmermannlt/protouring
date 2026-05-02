@@ -4,14 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/app/components/shared/AppShell'
 import {
-  ArrowLeft, Pencil, Upload, Trash2, X, AlertCircle,
-  File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight,
-  Image as ImageIcon, ExternalLink, Loader2,
+  ArrowLeft, Pencil, Upload, Trash2, X, AlertCircle, Plus, Save, Check,
+  File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
+  Image as ImageIcon, ExternalLink, Loader2, UserCircle, Phone, Mail,
 } from 'lucide-react'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 import {
   getAuthToken, getCurrentTenant, getCurrentUser, isAuthenticated,
-  isEditorRole, getEffectiveRole, type Venue,
+  isEditorRole, getEffectiveRole, type Venue, type VenueContact,
+  getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
 } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
@@ -119,6 +120,13 @@ export default function VenueDetailPage() {
   const [shows, setShows] = useState<Show[]>([])
   const [showsLoading, setShowsLoading] = useState(true)
 
+  const [venueContacts, setVenueContacts] = useState<VenueContact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(true)
+  const [addingContact, setAddingContact] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [contactForm, setContactForm] = useState({ name: '', role: '', phone: '', email: '', notes: '' })
+  const [savingContact, setSavingContact] = useState(false)
+
   // Lightbox — shared hook; photos werden via filesRef aktuell gehalten
   const [photos, setPhotos] = useState<FileItem[]>([])
   const lightbox = useLightbox(photos, API_BASE, authHeaders)
@@ -181,12 +189,22 @@ export default function VenueDetailPage() {
     }
   }, [venueId])
 
+  const loadContacts = useCallback(async () => {
+    try {
+      const contacts = await getVenueContacts(venueId)
+      setVenueContacts(contacts)
+    } catch { /* silent */ } finally {
+      setContactsLoading(false)
+    }
+  }, [venueId])
+
   useEffect(() => {
     if (!authChecked) return
     loadVenue()
     loadFiles()
     loadShows()
-  }, [authChecked, loadVenue, loadFiles, loadShows])
+    loadContacts()
+  }, [authChecked, loadVenue, loadFiles, loadShows, loadContacts])
 
   // ─── File helpers ─────────────────────────────────────────────────────────
   const docs = files.filter(f => !f.mimeType.startsWith('image/'))
@@ -250,6 +268,45 @@ export default function VenueDetailPage() {
     } catch { alert('Datei konnte nicht geöffnet werden') }
   }
 
+  // ─── Contact handlers ─────────────────────────────────────────────────────
+  function startAddContact() {
+    setContactForm({ name: '', role: '', phone: '', email: '', notes: '' })
+    setEditingContactId(null)
+    setAddingContact(true)
+  }
+
+  function startEditContact(c: VenueContact) {
+    setContactForm({ name: c.name, role: c.role, phone: c.phone, email: c.email, notes: c.notes })
+    setEditingContactId(c.id)
+    setAddingContact(false)
+  }
+
+  async function saveContact() {
+    if (!contactForm.name.trim()) return
+    setSavingContact(true)
+    try {
+      if (editingContactId) {
+        const updated = await updateVenueContact(venueId, editingContactId, contactForm)
+        setVenueContacts(prev => prev.map(c => c.id === editingContactId ? updated : c))
+      } else {
+        const created = await createVenueContact(venueId, contactForm)
+        setVenueContacts(prev => [...prev, created])
+      }
+      setAddingContact(false)
+      setEditingContactId(null)
+    } catch { /* silent */ } finally {
+      setSavingContact(false)
+    }
+  }
+
+  async function handleDeleteContact(id: string) {
+    if (!confirm('Ansprechpartner löschen?')) return
+    try {
+      await deleteVenueContact(venueId, id)
+      setVenueContacts(prev => prev.filter(c => c.id !== id))
+    } catch { /* silent */ }
+  }
+
   // Lightbox — openLightbox/closeLightbox/navigateLightbox via shared hook (lightbox.open / lightbox.close)
 
   // ─── Content ──────────────────────────────────────────────────────────────
@@ -260,6 +317,11 @@ export default function VenueDetailPage() {
     [venue?.postalCode, venue?.city].filter(Boolean).join(' '),
     venue?.state,
     venue?.country,
+  ].filter(Boolean).join(', ')
+
+  const arrivalAddress = [
+    venue?.arrivalStreet,
+    [venue?.arrivalPostalCode, venue?.arrivalCity].filter(Boolean).join(' '),
   ].filter(Boolean).join(', ')
 
   const content = (
@@ -295,10 +357,10 @@ export default function VenueDetailPage() {
       {/* Card Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* Venue Info */}
+        {/* Spielstätte */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Venue Info</span>
+            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Spielstätte</span>
             {isEditor && venue && (
               <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
                 <Pencil className="w-3.5 h-3.5" />
@@ -306,10 +368,9 @@ export default function VenueDetailPage() {
             )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
+            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
               <>
                 <KV label="Adresse" value={address || undefined} />
-                <KV label="Kapazität" value={[venue.capacity && `${venue.capacity} stehend`, venue.capacitySeated && `${venue.capacitySeated} bestuhlt`].filter(Boolean).join(' / ') || undefined} />
                 {venue.website && (
                   <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
                     <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Website</span>
@@ -318,15 +379,48 @@ export default function VenueDetailPage() {
                     </a>
                   </div>
                 )}
-                <KV label="WLAN" value={venue.wifi || undefined} />
-                <KV label="Garderoben" value={venue.wardrobe || undefined} />
-                <KV label="Duschen" value={venue.showers || undefined} />
-                <KV label="Anfahrt (Notiz)" value={venue.arrival || undefined} />
-                <KV label="Anfahrtsadresse" value={[venue.arrivalStreet, [venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ')].filter(Boolean).join(', ') || undefined} />
+                {(venue.latitude || venue.longitude) && (
+                  <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">GPS</span>
+                    <a
+                      href={`https://maps.google.com/?q=${venue.latitude},${venue.longitude}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      <Navigation className="w-3 h-3 shrink-0" />
+                      {venue.latitude}, {venue.longitude}
+                    </a>
+                  </div>
+                )}
+                {!address && !venue.website && !venue.latitude && (
+                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                )}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Backstage & Logistics */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />Backstage & Logistics</span>
+            {isEditor && venue && (
+              <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="pt-card-body">
+            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
+              <>
+                <KV label="Anfahrt" value={venue.arrival || undefined} />
+                <KV label="Anfahrtsadresse" value={arrivalAddress || undefined} />
                 <KV label="Parkplatz" value={venue.parking || undefined} />
                 <KV label="Nightliner" value={venue.nightlinerParking || undefined} />
                 <KV label="Ladeweg" value={venue.loadingPath || undefined} />
-                <KV label="Notizen" value={venue.notes || undefined} />
+                {!venue.arrival && !arrivalAddress && !venue.parking && !venue.nightlinerParking && !venue.loadingPath && (
+                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                )}
               </>
             ) : null}
           </div>
@@ -343,17 +437,94 @@ export default function VenueDetailPage() {
             )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
+            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
               <>
+                <KV label="Kapazität" value={[venue.capacity && `${venue.capacity} stehend`, venue.capacitySeated && `${venue.capacitySeated} bestuhlt`].filter(Boolean).join(' / ') || undefined} />
                 <KV label="Bühnenmaße" value={venue.stageDimensions || undefined} />
                 <KV label="Lichte Höhe" value={venue.clearanceHeight || undefined} />
+                <KV label="WLAN" value={venue.wifi || undefined} />
+                <KV label="Garderoben" value={venue.wardrobe || undefined} />
+                <KV label="Duschen" value={venue.showers || undefined} />
                 <KV label="Merchandise Fee" value={venue.merchandiseFee || undefined} />
                 <KV label="Merch-Stand" value={venue.merchandiseStand || undefined} />
-                {!venue.stageDimensions && !venue.clearanceHeight && !venue.merchandiseFee && !venue.merchandiseStand && (
+                <KV label="Notizen" value={venue.notes || undefined} />
+                {!venue.capacity && !venue.stageDimensions && !venue.clearanceHeight && !venue.wifi && !venue.wardrobe && !venue.showers && !venue.merchandiseFee && !venue.merchandiseStand && !venue.notes && (
                   <p className="text-sm text-gray-400 py-2">Keine technischen Daten hinterlegt.</p>
                 )}
               </>
             ) : null}
+          </div>
+        </div>
+
+        {/* Ansprechpartner */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><UserCircle className="w-3.5 h-3.5 inline mr-1" />Ansprechpartner</span>
+            {isEditor && (
+              <button onClick={startAddContact} className="text-gray-400 hover:text-blue-600 transition-colors" title="Hinzufügen">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="pt-card-body">
+            {contactsLoading ? (
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…</div>
+            ) : (
+              <>
+                {venueContacts.map(c => (
+                  editingContactId === c.id ? (
+                    <ContactForm key={c.id}
+                      form={contactForm} onChange={setContactForm}
+                      onSave={saveContact} onCancel={() => setEditingContactId(null)}
+                      saving={savingContact} />
+                  ) : (
+                    <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 group">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                          {c.role && <p className="text-xs text-gray-500">{c.role}</p>}
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                            {c.phone && (
+                              <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                <Phone className="w-2.5 h-2.5" />{c.phone}
+                              </a>
+                            )}
+                            {c.email && (
+                              <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                <Mail className="w-2.5 h-2.5" />{c.email}
+                              </a>
+                            )}
+                          </div>
+                          {c.notes && <p className="text-xs text-gray-400 mt-0.5">{c.notes}</p>}
+                        </div>
+                        {isEditor && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5">
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => handleDeleteContact(c.id)} className="text-gray-400 hover:text-red-600 p-0.5">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                ))}
+                {addingContact && (
+                  <ContactForm
+                    form={contactForm} onChange={setContactForm}
+                    onSave={saveContact} onCancel={() => setAddingContact(false)}
+                    saving={savingContact} />
+                )}
+                {venueContacts.length === 0 && !addingContact && (
+                  <div className="flex flex-col items-center justify-center h-16 text-gray-400">
+                    <UserCircle className="w-5 h-5 mb-1" />
+                    <span className="text-xs">Noch keine Ansprechpartner</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -535,6 +706,42 @@ function PhotoThumb({ file }: { file: FileItem }) {
   }, [file.id])
   if (!src) return <div className="w-full h-full bg-gray-200 animate-pulse" />
   return <img src={src} alt={file.originalName} className="w-full h-full object-cover" />
+}
+
+// ─── Contact Form (inline) ────────────────────────────────────────────────────
+function ContactForm({ form, onChange, onSave, onCancel, saving }: {
+  form: { name: string; role: string; phone: string; email: string; notes: string }
+  onChange: (f: any) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  const f = (key: string, value: string) => onChange((prev: any) => ({ ...prev, [key]: value }))
+  return (
+    <div className="py-2 border-b border-gray-100 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input value={form.name} onChange={e => f('name', e.target.value)} placeholder="Name *"
+          className="form-input text-xs py-1" />
+        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder="Funktion"
+          className="form-input text-xs py-1" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={form.phone} onChange={e => f('phone', e.target.value)} placeholder="Telefon"
+          className="form-input text-xs py-1" />
+        <input value={form.email} onChange={e => f('email', e.target.value)} placeholder="E-Mail"
+          className="form-input text-xs py-1" />
+      </div>
+      <input value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Notiz"
+        className="form-input text-xs py-1 w-full" />
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="btn btn-ghost text-xs py-1 px-2">Abbrechen</button>
+        <button onClick={onSave} disabled={saving || !form.name.trim()} className="btn btn-primary text-xs py-1 px-2 disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          Speichern
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ─── Doc Category Section ─────────────────────────────────────────────────────

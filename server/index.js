@@ -711,6 +711,9 @@ async function initDatabase() {
     // Material: neue Spalten
     `ALTER TABLE equipment_materials ADD COLUMN mat_id TEXT`,
     `ALTER TABLE equipment_materials ADD COLUMN owner_id INTEGER REFERENCES equipment_owners(id) ON DELETE SET NULL`,
+    // Venues: GPS-Koordinaten
+    `ALTER TABLE venues ADD COLUMN latitude TEXT`,
+    `ALTER TABLE venues ADD COLUMN longitude TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_materials.modell: NOT NULL Constraint entfernen (war produkt TEXT NOT NULL)
@@ -1237,6 +1240,22 @@ async function initDatabase() {
   `)
 
   // ── Ende Equipment-Modul ─────────────────────────────────────────────────────
+
+  // Venue-Ansprechpartner
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS venue_contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      venue_id INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT '',
+      role TEXT DEFAULT '',
+      phone TEXT DEFAULT '',
+      email TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_venue_contacts_venue ON venue_contacts(venue_id)`)
 
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
   const utSchema = await db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_tenants'")
@@ -2106,6 +2125,8 @@ const venueFromRow = (row) => ({
   nightlinerParking: row.nightliner_parking || '',
   loadingPath: row.loading_path || '',
   notes: row.notes || '',
+  latitude: row.latitude || '',
+  longitude: row.longitude || '',
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -2136,14 +2157,14 @@ app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (
         arrival, arrival_street, arrival_postal_code, arrival_city,
         capacity, capacity_seated, stage_dimensions, clearance_height,
         merchandise_fee, merchandise_stand, wardrobe, showers, wifi,
-        parking, nightliner_parking, loading_path, notes, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        parking, nightliner_parking, loading_path, notes, latitude, longitude, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       req.tenant.id, v.name, v.street, v.postalCode, v.city, v.state, v.country, v.website,
       v.arrival, v.arrivalStreet, v.arrivalPostalCode, v.arrivalCity,
       v.capacity, v.capacitySeated, v.stageDimensions, v.clearanceHeight,
       v.merchandiseFee, v.merchandiseStand, v.wardrobe, v.showers, v.wifi,
-      v.parking, v.nightlinerParking, v.loadingPath, v.notes, req.user.id
+      v.parking, v.nightlinerParking, v.loadingPath, v.notes, v.latitude, v.longitude, req.user.id
     ]);
 
     const row = await db.get('SELECT * FROM venues WHERE id = ?', [result.lastID]);
@@ -2174,6 +2195,7 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
         capacity = ?, capacity_seated = ?, stage_dimensions = ?, clearance_height = ?,
         merchandise_fee = ?, merchandise_stand = ?, wardrobe = ?, showers = ?, wifi = ?,
         parking = ?, nightliner_parking = ?, loading_path = ?, notes = ?,
+        latitude = ?, longitude = ?,
         updated_at = datetime('now')
       WHERE id = ? AND tenant_id = ?
     `, [
@@ -2182,6 +2204,7 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
       v.capacity, v.capacitySeated, v.stageDimensions, v.clearanceHeight,
       v.merchandiseFee, v.merchandiseStand, v.wardrobe, v.showers, v.wifi,
       v.parking, v.nightlinerParking, v.loadingPath, v.notes,
+      v.latitude, v.longitude,
       id, req.tenant.id
     ]);
 
@@ -7244,6 +7267,76 @@ app.delete('/api/carnets/:id/materials/:materialId', authenticateToken, requireT
     await db.run(
       'DELETE FROM carnet_materials WHERE carnet_id = ? AND material_id = ?',
       [req.params.id, req.params.materialId]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ============================================
+// VENUE CONTACTS
+// ============================================
+
+// GET /api/venues/:id/contacts
+app.get('/api/venues/:id/contacts', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      'SELECT * FROM venue_contacts WHERE venue_id = ? AND tenant_id = ? ORDER BY created_at ASC',
+      [req.params.id, req.tenant.id]
+    )
+    res.json({ contacts: rows.map(r => ({
+      id: String(r.id), venueId: String(r.venue_id),
+      name: r.name || '', role: r.role || '',
+      phone: r.phone || '', email: r.email || '', notes: r.notes || '',
+      createdAt: r.created_at,
+    })) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/venues/:id/contacts
+app.post('/api/venues/:id/contacts', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name, role, phone, email, notes } = req.body
+    if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' })
+    const result = await db.run(
+      `INSERT INTO venue_contacts (venue_id, tenant_id, name, role, phone, email, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.params.id, req.tenant.id, name, role || '', phone || '', email || '', notes || '']
+    )
+    const row = await db.get('SELECT * FROM venue_contacts WHERE id = ?', [result.lastID])
+    res.status(201).json({ contact: {
+      id: String(row.id), venueId: String(row.venue_id),
+      name: row.name, role: row.role || '', phone: row.phone || '',
+      email: row.email || '', notes: row.notes || '', createdAt: row.created_at,
+    }})
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/venues/:venueId/contacts/:contactId
+app.put('/api/venues/:venueId/contacts/:contactId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name, role, phone, email, notes } = req.body
+    await db.run(
+      `UPDATE venue_contacts SET name=?, role=?, phone=?, email=?, notes=?
+       WHERE id=? AND venue_id=? AND tenant_id=?`,
+      [name, role || '', phone || '', email || '', notes || '',
+       req.params.contactId, req.params.venueId, req.tenant.id]
+    )
+    const row = await db.get('SELECT * FROM venue_contacts WHERE id = ?', [req.params.contactId])
+    if (!row) return res.status(404).json({ error: 'Nicht gefunden' })
+    res.json({ contact: {
+      id: String(row.id), venueId: String(row.venue_id),
+      name: row.name, role: row.role || '', phone: row.phone || '',
+      email: row.email || '', notes: row.notes || '', createdAt: row.created_at,
+    }})
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/venues/:venueId/contacts/:contactId
+app.delete('/api/venues/:venueId/contacts/:contactId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run(
+      'DELETE FROM venue_contacts WHERE id = ? AND venue_id = ? AND tenant_id = ?',
+      [req.params.contactId, req.params.venueId, req.tenant.id]
     )
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
