@@ -114,6 +114,12 @@ export default function VenueDetailPage() {
   const [error, setError] = useState('')
   const [editModalOpen, setEditModalOpen] = useState(false)
 
+  type EditSection = 'spielstaette' | 'backstage' | 'technik'
+  const [editingSection, setEditingSection] = useState<EditSection | null>(null)
+  const [inlineForm, setInlineForm] = useState<Record<string, string>>({})
+  const [savingInline, setSavingInline] = useState(false)
+  const [inlineError, setInlineError] = useState('')
+
   const [files, setFiles] = useState<FileItem[]>([])
   const [filesLoading, setFilesLoading] = useState(true)
 
@@ -160,6 +166,7 @@ export default function VenueDetailPage() {
       if (!res.ok) throw new Error('Venue nicht gefunden')
       const data = await res.json()
       setVenue(data.venue)
+      setInlineForm(data.venue)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -307,6 +314,43 @@ export default function VenueDetailPage() {
     } catch { /* silent */ }
   }
 
+  // ─── Inline section edit ──────────────────────────────────────────────────
+  function startEditSection(section: EditSection) {
+    if (venue) setInlineForm({ ...venue })
+    setInlineError('')
+    setEditingSection(section)
+  }
+
+  function cancelEditSection() {
+    if (venue) setInlineForm({ ...venue })
+    setEditingSection(null)
+    setInlineError('')
+  }
+
+  async function saveInlineSection() {
+    if (!venue) return
+    setSavingInline(true)
+    setInlineError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/venues/${venueId}`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(inlineForm),
+      })
+      if (!res.ok) throw new Error('Speichern fehlgeschlagen')
+      const data = await res.json()
+      setVenue(data.venue)
+      setInlineForm({ ...data.venue })
+      setEditingSection(null)
+    } catch (e) {
+      setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
+    } finally {
+      setSavingInline(false)
+    }
+  }
+
+  const iF = (key: string, value: string) => setInlineForm(prev => ({ ...prev, [key]: value }))
+
   // Lightbox — openLightbox/closeLightbox/navigateLightbox via shared hook (lightbox.open / lightbox.close)
 
   // ─── Content ──────────────────────────────────────────────────────────────
@@ -361,14 +405,31 @@ export default function VenueDetailPage() {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Spielstätte</span>
-            {isEditor && venue && (
-              <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+            {isEditor && venue && editingSection !== 'spielstaette' && (
+              <button onClick={() => startEditSection('spielstaette')} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
+            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
+            : editingSection === 'spielstaette' ? (
+              <div className="space-y-2">
+                <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
+                <div className="grid grid-cols-[80px_1fr] gap-2">
+                  <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
+                  <IField label="Ort" value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                </div>
+                <IField label="Bundesland" value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
+                <IField label="Land" value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
+                <IField label="Website" value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Latitude" value={inlineForm.latitude ?? ''} onChange={v => iF('latitude', v)} placeholder="48.137154" />
+                  <IField label="Longitude" value={inlineForm.longitude ?? ''} onChange={v => iF('longitude', v)} placeholder="11.576124" />
+                </div>
+                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+              </div>
+            ) : venue ? (
               <>
                 <KV label="Adresse" value={address || undefined} />
                 {venue.website && (
@@ -382,13 +443,10 @@ export default function VenueDetailPage() {
                 {(venue.latitude || venue.longitude) && (
                   <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
                     <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">GPS</span>
-                    <a
-                      href={`https://maps.google.com/?q=${venue.latitude},${venue.longitude}`}
+                    <a href={`https://maps.google.com/?q=${venue.latitude},${venue.longitude}`}
                       target="_blank" rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                      <Navigation className="w-3 h-3 shrink-0" />
-                      {venue.latitude}, {venue.longitude}
+                      className="text-blue-600 hover:underline flex items-center gap-1">
+                      <Navigation className="w-3 h-3 shrink-0" />{venue.latitude}, {venue.longitude}
                     </a>
                   </div>
                 )}
@@ -404,14 +462,28 @@ export default function VenueDetailPage() {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />Backstage & Logistics</span>
-            {isEditor && venue && (
-              <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+            {isEditor && venue && editingSection !== 'backstage' && (
+              <button onClick={() => startEditSection('backstage')} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
+            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
+            : editingSection === 'backstage' ? (
+              <div className="space-y-2">
+                <IField label="Anfahrt (Notiz)" value={inlineForm.arrival ?? ''} onChange={v => iF('arrival', v)} />
+                <IField label="Anfahrt – Straße" value={inlineForm.arrivalStreet ?? ''} onChange={v => iF('arrivalStreet', v)} />
+                <div className="grid grid-cols-[80px_1fr] gap-2">
+                  <IField label="PLZ" value={inlineForm.arrivalPostalCode ?? ''} onChange={v => iF('arrivalPostalCode', v)} />
+                  <IField label="Ort" value={inlineForm.arrivalCity ?? ''} onChange={v => iF('arrivalCity', v)} />
+                </div>
+                <ITextarea label="Parkplatz" value={inlineForm.parking ?? ''} onChange={v => iF('parking', v)} />
+                <ITextarea label="Nightliner" value={inlineForm.nightlinerParking ?? ''} onChange={v => iF('nightlinerParking', v)} />
+                <ITextarea label="Ladeweg" value={inlineForm.loadingPath ?? ''} onChange={v => iF('loadingPath', v)} />
+                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+              </div>
+            ) : venue ? (
               <>
                 <KV label="Anfahrt" value={venue.arrival || undefined} />
                 <KV label="Anfahrtsadresse" value={arrivalAddress || undefined} />
@@ -430,14 +502,33 @@ export default function VenueDetailPage() {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />Technische Specs</span>
-            {isEditor && venue && (
-              <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+            {isEditor && venue && editingSection !== 'technik' && (
+              <button onClick={() => startEditSection('technik')} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div> : venue ? (
+            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
+            : editingSection === 'technik' ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Kapazität (stehend)" value={inlineForm.capacity ?? ''} onChange={v => iF('capacity', v)} placeholder="z.B. 5000" />
+                  <IField label="Kapazität (bestuhlt)" value={inlineForm.capacitySeated ?? ''} onChange={v => iF('capacitySeated', v)} placeholder="z.B. 3000" />
+                </div>
+                <div className="grid grid-cols-[2fr_1fr] gap-2">
+                  <IField label="Bühnenmaße" value={inlineForm.stageDimensions ?? ''} onChange={v => iF('stageDimensions', v)} placeholder="z.B. 12x8m" />
+                  <IField label="Lichte Höhe" value={inlineForm.clearanceHeight ?? ''} onChange={v => iF('clearanceHeight', v)} placeholder="z.B. 6m" />
+                </div>
+                <ITextarea label="WLAN" value={inlineForm.wifi ?? ''} onChange={v => iF('wifi', v)} placeholder="SSID / Passwort..." />
+                <ITextarea label="Garderoben" value={inlineForm.wardrobe ?? ''} onChange={v => iF('wardrobe', v)} />
+                <IField label="Duschen" value={inlineForm.showers ?? ''} onChange={v => iF('showers', v)} placeholder="z.B. 4 im Backstage" />
+                <IField label="Merchandise Fee" value={inlineForm.merchandiseFee ?? ''} onChange={v => iF('merchandiseFee', v)} placeholder="z.B. 15%" />
+                <ITextarea label="Merch-Stand" value={inlineForm.merchandiseStand ?? ''} onChange={v => iF('merchandiseStand', v)} />
+                <ITextarea label="Notizen" value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
+                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+              </div>
+            ) : venue ? (
               <>
                 <KV label="Kapazität" value={[venue.capacity && `${venue.capacity} stehend`, venue.capacitySeated && `${venue.capacitySeated} bestuhlt`].filter(Boolean).join(' / ') || undefined} />
                 <KV label="Bühnenmaße" value={venue.stageDimensions || undefined} />
@@ -706,6 +797,55 @@ function PhotoThumb({ file }: { file: FileItem }) {
   }, [file.id])
   if (!src) return <div className="w-full h-full bg-gray-200 animate-pulse" />
   return <img src={src} alt={file.originalName} className="w-full h-full object-cover" />
+}
+
+// ─── Inline Edit Helpers ──────────────────────────────────────────────────────
+function IField({ label, value, onChange, placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <input
+        type="text" value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white"
+      />
+    </div>
+  )
+}
+
+function ITextarea({ label, value, onChange, placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <textarea
+        value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} rows={2}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none"
+      />
+    </div>
+  )
+}
+
+function InlineSaveBar({ onSave, onCancel, saving, error }: {
+  onSave: () => void; onCancel: () => void; saving: boolean; error?: string
+}) {
+  return (
+    <div className="pt-2 border-t border-gray-100 mt-2">
+      {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onSave} disabled={saving}
+          className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          Speichern
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ─── Contact Form (inline) ────────────────────────────────────────────────────
