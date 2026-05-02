@@ -169,7 +169,7 @@ export function L3Layout({
     if (typeof window === 'undefined') return 'details2'
     const m = window.location.pathname.match(/\/advancing\/\d+\/(.+)/)
     const v = m?.[1] as TermineDetailView | undefined
-    const valid = ['details2','travel','schedule','catering','agreements','travelparty','advance-sheet','guestlist']
+    const valid = ['details2','travel','schedule','catering','hospitality','advancing','agreements','travelparty','advance-sheet','guestlist']
     return (valid.includes(v ?? '')) ? v! : 'details2'
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
@@ -933,11 +933,12 @@ export function L3Layout({
                 <div className="flex items-center gap-0.5">
                   {([
                     ...(!isAdvancing ? [{ id: 'details', label: t('appointments.view.details') }] : []),
-                    ...(isAdvancing ? [{ id: 'details2', label: 'Details' }] : []),
-                    ...(isAdvancing ? [{ id: 'travel', label: 'Travel' }] : []),
-                    ...(isAdvancing ? [{ id: 'schedule', label: 'Schedule' }] : []),
-                    ...(isAdvancing ? [{ id: 'catering', label: 'Catering' }] : []),
-                    ...(isAdvancing ? [{ id: 'agreements', label: 'Agreements' }] : []),
+                    ...(isAdvancing ? [{ id: 'details2',    label: 'Details' }] : []),
+                    ...(isAdvancing ? [{ id: 'travel',      label: 'Travel' }] : []),
+                    ...(isAdvancing ? [{ id: 'schedule',    label: 'Schedule' }] : []),
+                    ...(isAdvancing ? [{ id: 'hospitality', label: 'Hospitality' }] : []),
+                    ...(isAdvancing ? [{ id: 'advancing',   label: 'Advancing' }] : []),
+                    ...(isAdvancing ? [{ id: 'agreements',  label: 'Agreements' }] : []),
                     { id: 'travelparty',   label: t('appointments.view.travelparty') },
                     ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
                     { id: 'guestlist',     label: t('appointments.view.guestlist') },

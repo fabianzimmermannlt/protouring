@@ -16,6 +16,8 @@ import GaestelisteView from '@/app/modules/termine/GaestelisteView'
 import TravelView from '@/app/modules/termine/TravelView'
 import ScheduleView from '@/app/modules/termine/ScheduleView'
 import CateringView from '@/app/modules/termine/CateringView'
+import HospitalityView from '@/app/modules/termine/HospitalityView'
+import AdvancingView from '@/app/modules/termine/AdvancingView'
 import AgreementsView from '@/app/modules/termine/AgreementsView'
 import TerminModal from '@/app/modules/termine/TerminModal'
 import { TerminDetail, TerminDetail2 } from '@/app/modules/termine/TermineModule'
@@ -23,7 +25,7 @@ import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 const ADVANCING_LAST_KEY = 'pt_advancing_last_id'
-const VALID_VIEWS = ['details', 'details2', 'travel', 'schedule', 'catering', 'agreements', 'travelparty', 'advance-sheet', 'guestlist'] as const
+const VALID_VIEWS = ['details', 'details2', 'travel', 'schedule', 'catering', 'hospitality', 'advancing', 'agreements', 'travelparty', 'advance-sheet', 'guestlist'] as const
 type DetailView = typeof VALID_VIEWS[number]
 
 export default function AdvancingDetailPage() {
@@ -35,7 +37,7 @@ export default function AdvancingDetailPage() {
   // 'details' ist in Advancing deprecated — Details2 ist der Standard
   const rawView = params.view as string
   const view = (VALID_VIEWS.includes(rawView as DetailView)
-    ? rawView === 'details' ? 'details2' : rawView as DetailView
+    ? (rawView === 'details' || rawView === 'catering') ? (rawView === 'catering' ? 'hospitality' : 'details2') as DetailView : rawView as DetailView
     : 'details2')
 
   const [termine, setTermine] = useState<Termin[]>([])
@@ -54,6 +56,8 @@ export default function AdvancingDetailPage() {
       router.replace('/login')
     } else if (rawView === 'details') {
       router.replace(`/advancing/${terminId}/details2`)
+    } else if (rawView === 'catering') {
+      router.replace(`/advancing/${terminId}/hospitality`)
     } else {
       setAuthChecked(true)
     }
@@ -164,7 +168,11 @@ export default function AdvancingDetailPage() {
       ) : view === 'schedule' ? (
         <ScheduleView terminId={termin.id} isAdmin={isEditor} />
       ) : view === 'catering' ? (
-        <CateringView terminId={termin.id} isAdmin={isEditor} />
+        <HospitalityView terminId={termin.id} isAdmin={isEditor} />
+      ) : view === 'hospitality' ? (
+        <HospitalityView terminId={termin.id} isAdmin={isEditor} />
+      ) : view === 'advancing' ? (
+        <AdvancingView terminId={termin.id} isAdmin={isEditor} />
       ) : view === 'agreements' ? (
         <AgreementsView terminId={termin.id} isAdmin={isEditor} />
       ) : view === 'travelparty' ? (
