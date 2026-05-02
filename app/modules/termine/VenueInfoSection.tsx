@@ -1,13 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChevronRight, ChevronDown, Loader2, ExternalLink, FileIcon, Pencil } from 'lucide-react'
-import { getVenue, getAuthToken, getCurrentTenant, type Venue } from '@/lib/api-client'
-import VenueModal from '@/app/modules/venues/VenueModal'
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Loader2, Pencil, Save, Check, X, AlertCircle,
+  MapPin, Navigation, Ruler, UserCircle, FileIcon,
+  Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2,
+} from 'lucide-react'
+import {
+  getVenue, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
+  getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
+  type Venue, type VenueContact,
+} from '@/lib/api-client'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 
-// ─── API ──────────────────────────────────────────────────────
-
+// ─── API ───────────────────────────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
   typeof window !== 'undefined'
     ? `${window.location.protocol}//${window.location.hostname}:3002`
@@ -23,6 +29,7 @@ function authHeaders(): Record<string, string> {
   return h
 }
 
+// ─── Types ─────────────────────────────────────────────────────────────────────
 interface VenueFile {
   id: string
   category: string
@@ -31,18 +38,7 @@ interface VenueFile {
   size: number
 }
 
-async function fetchVenueFiles(venueId: string): Promise<VenueFile[]> {
-  const res = await fetch(`${API_BASE}/api/files/venue/${venueId}`, { headers: authHeaders() })
-  if (!res.ok) return []
-  return ((await res.json()).files ?? []).map((f: any) => ({
-    id: f.id,
-    category: f.category,
-    originalName: f.originalName || f.original_name,
-    mimeType: f.mimeType || f.mime_type,
-    size: f.size,
-  }))
-}
-
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 function formatSize(bytes: number) {
   if (!bytes) return ''
   const k = 1024
@@ -51,149 +47,570 @@ function formatSize(bytes: number) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${units[i]}`
 }
 
-// ─── AuthImage — fetches image blob with auth headers ─────────
+function fileIcon(mime: string): string {
+  if (mime?.startsWith('image/')) return '🖼️'
+  if (mime?.includes('pdf')) return '📄'
+  if (mime?.includes('word') || mime?.includes('document')) return '📝'
+  if (mime?.includes('excel') || mime?.includes('spreadsheet')) return '📊'
+  return '📎'
+}
 
+// ─── KV row ────────────────────────────────────────────────────────────────────
+function KV({ label, value }: { label: string; value?: string }) {
+  if (!value?.trim()) return null
+  return (
+    <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50 last:border-0">
+      <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{label}</span>
+      <span className="text-gray-800">{value}</span>
+    </div>
+  )
+}
+
+// ─── Inline Edit Helpers ───────────────────────────────────────────────────────
+function IField({ label, value, onChange, placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <input
+        type="text" value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white"
+      />
+    </div>
+  )
+}
+
+function ITextarea({ label, value, onChange, placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <textarea
+        value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} rows={2}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none"
+      />
+    </div>
+  )
+}
+
+function InlineSaveBar({ onSave, onCancel, saving, error }: {
+  onSave: () => void; onCancel: () => void; saving: boolean; error?: string
+}) {
+  return (
+    <div className="pt-2 border-t border-gray-100 mt-2">
+      {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onSave} disabled={saving}
+          className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          Speichern
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Contact Form (inline) ─────────────────────────────────────────────────────
+function ContactForm({ form, onChange, onSave, onCancel, saving }: {
+  form: { name: string; role: string; phone: string; email: string; notes: string }
+  onChange: (f: any) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+}) {
+  const f = (key: string, value: string) => onChange((prev: any) => ({ ...prev, [key]: value }))
+  return (
+    <div className="py-2 border-b border-gray-100 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input value={form.name} onChange={e => f('name', e.target.value)} placeholder="Name *"
+          className="form-input text-xs py-1" />
+        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder="Funktion"
+          className="form-input text-xs py-1" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={form.phone} onChange={e => f('phone', e.target.value)} placeholder="Telefon"
+          className="form-input text-xs py-1" />
+        <input value={form.email} onChange={e => f('email', e.target.value)} placeholder="E-Mail"
+          className="form-input text-xs py-1" />
+      </div>
+      <input value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Notiz"
+        className="form-input text-xs py-1 w-full" />
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="btn btn-ghost text-xs py-1 px-2">Abbrechen</button>
+        <button onClick={onSave} disabled={saving || !form.name.trim()} className="btn btn-primary text-xs py-1 px-2 disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          Speichern
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Auth Image (for photos) ───────────────────────────────────────────────────
 function AuthImage({ fileId, alt, className }: { fileId: string; alt: string; className?: string }) {
   const [src, setSrc] = useState<string | null>(null)
-
   useEffect(() => {
     let url: string
     fetch(`${API_BASE}/api/files/download/${fileId}`, { headers: authHeaders() })
       .then(r => r.blob())
-      .then(blob => {
-        url = URL.createObjectURL(blob)
-        setSrc(url)
-      })
+      .then(blob => { url = URL.createObjectURL(blob); setSrc(url) })
       .catch(() => {})
     return () => { if (url) URL.revokeObjectURL(url) }
   }, [fileId])
-
-  if (!src) return (
-    <div className={`${className} bg-gray-100 flex items-center justify-center`}>
-      <Loader2 size={14} className="animate-spin text-gray-300" />
-    </div>
-  )
+  if (!src) return <div className={`${className} bg-gray-100 flex items-center justify-center`}><Loader2 size={14} className="animate-spin text-gray-300" /></div>
   return <img src={src} alt={alt} className={className} />
 }
 
-// ─── Accordion ───────────────────────────────────────────────
-
-function Accordion({ title, children, defaultOpen = false, onEdit, isAdmin }: {
-  title: string
-  children: React.ReactNode
-  defaultOpen?: boolean
-  onEdit?: () => void
+// ─── Main Component ────────────────────────────────────────────────────────────
+interface VenueInfoSectionProps {
+  venueId: number | string
+  venueName?: string
   isAdmin?: boolean
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <div className="flex items-center bg-white hover:bg-gray-50 transition-colors">
-        <button
-          onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-2 px-4 py-3 flex-1 text-left"
-        >
-          {open
-            ? <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
-            : <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
-          }
-          <span className="text-sm font-medium text-gray-700">{title}</span>
-        </button>
-        {isAdmin && onEdit && (
-          <button
-            onClick={e => { e.stopPropagation(); onEdit() }}
-            className="p-2 mr-2 text-gray-300 hover:text-gray-600 transition-colors rounded"
-            title="Venue bearbeiten"
-          >
-            <Pencil size={12} />
-          </button>
-        )}
-      </div>
-      {open && (
-        <div className="px-4 pb-4 pt-1 bg-white border-t border-gray-100">
-          {children}
-        </div>
-      )}
-    </div>
-  )
 }
 
-// ─── Field row ───────────────────────────────────────────────
+type EditSection = 'spielstaette' | 'backstage' | 'technik'
 
-function Field({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null
-  return (
-    <div className="flex gap-3 py-1.5 border-b border-gray-50 last:border-0">
-      <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">{label}</span>
-      <span className="text-sm text-gray-700 flex-1">{value}</span>
-    </div>
-  )
-}
+export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueInfoSectionProps) {
+  const isEditor = isAdmin ?? isEditorRole(getEffectiveRole())
+  const id = String(venueId)
 
-// ─── Files accordion ─────────────────────────────────────────
-
-function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin?: boolean; onEdit?: () => void }) {
-  const [files, setFiles] = useState<VenueFile[]>([])
+  const [venue, setVenue] = useState<Venue | null>(null)
   const [loading, setLoading] = useState(true)
-  const [images, setImages] = useState<VenueFile[]>([])
+
+  // Inline edit
+  const [editingSection, setEditingSection] = useState<EditSection | null>(null)
+  const [inlineForm, setInlineForm] = useState<Record<string, string>>({})
+  const [savingInline, setSavingInline] = useState(false)
+  const [inlineError, setInlineError] = useState('')
+
+  // Contacts
+  const [venueContacts, setVenueContacts] = useState<VenueContact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(true)
+  const [addingContact, setAddingContact] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [contactForm, setContactForm] = useState({ name: '', role: '', phone: '', email: '', notes: '' })
+  const [savingContact, setSavingContact] = useState(false)
+
+  // Files
+  const [files, setFiles] = useState<VenueFile[]>([])
+  const [filesLoading, setFilesLoading] = useState(true)
+
+  // Photos for lightbox (derived from files)
+  const photos = files.filter(f => f.mimeType?.startsWith('image/'))
+  const docs = files.filter(f => !f.mimeType?.startsWith('image/'))
+  const lightbox = useLightbox(photos, API_BASE, authHeaders)
+
+  // ─── Load ──────────────────────────────────────────────────────────────────
+  const loadVenue = useCallback(async () => {
+    try {
+      const v = await getVenue(id)
+      setVenue(v)
+      setInlineForm({ ...(v as any) })
+    } catch { setVenue(null) }
+    finally { setLoading(false) }
+  }, [id])
+
+  const loadContacts = useCallback(async () => {
+    try {
+      const c = await getVenueContacts(id)
+      setVenueContacts(c)
+    } catch { /* silent */ }
+    finally { setContactsLoading(false) }
+  }, [id])
+
+  const loadFiles = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/files/venue/${id}`, { headers: authHeaders() })
+      if (!res.ok) return
+      const data = await res.json()
+      setFiles((data.files ?? []).map((f: any) => ({
+        id: f.id,
+        category: f.category,
+        originalName: f.originalName || f.original_name,
+        mimeType: f.mimeType || f.mime_type,
+        size: f.size,
+      })))
+    } catch { /* silent */ }
+    finally { setFilesLoading(false) }
+  }, [id])
 
   useEffect(() => {
-    fetchVenueFiles(venueId).then(f => {
-      setFiles(f)
-      setImages(f.filter(x => x.mimeType?.startsWith('image/')))
-    }).finally(() => setLoading(false))
-  }, [venueId])
+    loadVenue()
+    loadContacts()
+    loadFiles()
+  }, [loadVenue, loadContacts, loadFiles])
 
-  // Shared lightbox — identisch zu Venue-Page
-  const lightbox = useLightbox(images, API_BASE, authHeaders)
+  // ─── Inline edit handlers ──────────────────────────────────────────────────
+  function startEditSection(section: EditSection) {
+    if (venue) setInlineForm({ ...(venue as any) })
+    setInlineError('')
+    setEditingSection(section)
+  }
+  function cancelEditSection() {
+    if (venue) setInlineForm({ ...(venue as any) })
+    setEditingSection(null)
+    setInlineError('')
+  }
+  async function saveInlineSection() {
+    if (!venue) return
+    setSavingInline(true)
+    setInlineError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/venues/${id}`, {
+        method: 'PUT',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(inlineForm),
+      })
+      if (!res.ok) throw new Error('Speichern fehlgeschlagen')
+      const data = await res.json()
+      setVenue(data.venue)
+      setInlineForm({ ...(data.venue as any) })
+      setEditingSection(null)
+    } catch (e) {
+      setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
+    } finally {
+      setSavingInline(false)
+    }
+  }
+  const iF = (key: string, value: string) => setInlineForm(prev => ({ ...prev, [key]: value }))
 
-  const docs = files.filter(f => !f.mimeType?.startsWith('image/'))
+  // ─── Contact handlers ──────────────────────────────────────────────────────
+  function startAddContact() {
+    setContactForm({ name: '', role: '', phone: '', email: '', notes: '' })
+    setEditingContactId(null)
+    setAddingContact(true)
+  }
+  function startEditContact(c: VenueContact) {
+    setContactForm({ name: c.name, role: c.role, phone: c.phone, email: c.email, notes: c.notes })
+    setEditingContactId(c.id)
+    setAddingContact(false)
+  }
+  async function saveContact() {
+    if (!contactForm.name.trim()) return
+    setSavingContact(true)
+    try {
+      if (editingContactId) {
+        const updated = await updateVenueContact(id, editingContactId, contactForm)
+        setVenueContacts(prev => prev.map(c => c.id === editingContactId ? updated : c))
+      } else {
+        const created = await createVenueContact(id, contactForm)
+        setVenueContacts(prev => [...prev, created])
+      }
+      setAddingContact(false)
+      setEditingContactId(null)
+    } catch { /* silent */ }
+    finally { setSavingContact(false) }
+  }
+  async function handleDeleteContact(cid: string) {
+    if (!confirm('Ansprechpartner löschen?')) return
+    try {
+      await deleteVenueContact(id, cid)
+      setVenueContacts(prev => prev.filter(c => c.id !== cid))
+    } catch { /* silent */ }
+  }
 
-  const title = loading
-    ? 'Dateien & Dokumente'
-    : `Dateien & Dokumente${files.length > 0 ? ` (${files.length})` : ''}`
+  // ─── Computed ──────────────────────────────────────────────────────────────
+  const address = venue ? [
+    venue.street,
+    [venue.postalCode, venue.city].filter(Boolean).join(' '),
+    venue.state,
+    venue.country,
+  ].filter(Boolean).join(', ') : ''
+
+  const arrivalAddress = venue ? [
+    venue.arrivalStreet,
+    [venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' '),
+  ].filter(Boolean).join(', ') : ''
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+  if (loading) return (
+    <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
+      <Loader2 size={14} className="animate-spin" /> Venue-Daten werden geladen…
+    </div>
+  )
+  if (!venue) return (
+    <div className="text-sm text-gray-400 py-4">Venue-Daten nicht verfügbar</div>
+  )
 
   return (
     <>
-      <Accordion title={title} isAdmin={isAdmin} onEdit={onEdit}>
-        {loading ? (
-          <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-            <Loader2 size={13} className="animate-spin" /> Laden…
+      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-0.5 mb-3">
+        Venue: {venue.name || venueName}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Spielstätte */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Spielstätte</span>
+            {isEditor && editingSection !== 'spielstaette' && (
+              <button onClick={() => startEditSection('spielstaette')}
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        ) : files.length === 0 ? (
-          <p className="text-sm text-gray-400 py-2">Keine Dateien am Venue hinterlegt</p>
-        ) : (
-          <>
-            {images.length > 0 && (
-              <div className="mb-3">
-                <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-1">Fotos</div>
-                <div className="grid grid-cols-4 gap-2">
-                  {images.map((f, i) => (
-                    <button
-                      key={f.id}
-                      onClick={() => lightbox.open(i)}
-                      title={f.originalName}
-                      className="focus:outline-none rounded overflow-hidden"
-                    >
-                      <AuthImage
-                        fileId={f.id}
-                        alt={f.originalName}
-                        className="w-full aspect-square object-cover hover:opacity-80 transition-opacity"
-                      />
+          <div className="pt-card-body">
+            {editingSection === 'spielstaette' ? (
+              <div className="space-y-2">
+                <IField label="Name *" value={inlineForm.name ?? ''} onChange={v => iF('name', v)} />
+                <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
+                <div className="grid grid-cols-[80px_1fr] gap-2">
+                  <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
+                  <IField label="Ort" value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                </div>
+                <IField label="Bundesland" value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
+                <IField label="Land" value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
+                <IField label="Website" value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Latitude" value={inlineForm.latitude ?? ''} onChange={v => iF('latitude', v)} placeholder="48.137154" />
+                  <IField label="Longitude" value={inlineForm.longitude ?? ''} onChange={v => iF('longitude', v)} placeholder="11.576124" />
+                </div>
+                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+              </div>
+            ) : (
+              <>
+                <KV label="Adresse" value={address || undefined} />
+                {venue.website && (
+                  <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Website</span>
+                    <a href={venue.website} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1 truncate">
+                      <Globe className="w-3 h-3 shrink-0" />{venue.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  </div>
+                )}
+                {(venue.latitude || venue.longitude) && (
+                  <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">GPS</span>
+                    <a href={`https://maps.google.com/?q=${venue.latitude},${venue.longitude}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1">
+                      <Navigation className="w-3 h-3 shrink-0" />{venue.latitude}, {venue.longitude}
+                    </a>
+                  </div>
+                )}
+                {!address && !venue.website && !venue.latitude && (
+                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Backstage & Logistics */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />Backstage & Logistics</span>
+            {isEditor && editingSection !== 'backstage' && (
+              <button onClick={() => startEditSection('backstage')}
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="pt-card-body">
+            {editingSection === 'backstage' ? (
+              <div className="space-y-2">
+                <IField label="Anfahrt (Notiz)" value={inlineForm.arrival ?? ''} onChange={v => iF('arrival', v)} />
+                <IField label="Anfahrt – Straße" value={inlineForm.arrivalStreet ?? ''} onChange={v => iF('arrivalStreet', v)} />
+                <div className="grid grid-cols-[80px_1fr] gap-2">
+                  <IField label="PLZ" value={inlineForm.arrivalPostalCode ?? ''} onChange={v => iF('arrivalPostalCode', v)} />
+                  <IField label="Ort" value={inlineForm.arrivalCity ?? ''} onChange={v => iF('arrivalCity', v)} />
+                </div>
+                <ITextarea label="Parkplatz" value={inlineForm.parking ?? ''} onChange={v => iF('parking', v)} />
+                <ITextarea label="Nightliner" value={inlineForm.nightlinerParking ?? ''} onChange={v => iF('nightlinerParking', v)} />
+                <ITextarea label="Ladeweg" value={inlineForm.loadingPath ?? ''} onChange={v => iF('loadingPath', v)} />
+                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+              </div>
+            ) : (
+              <>
+                <KV label="Anfahrt" value={venue.arrival || undefined} />
+                <KV label="Anfahrtsadresse" value={arrivalAddress || undefined} />
+                <KV label="Parkplatz" value={venue.parking || undefined} />
+                <KV label="Nightliner" value={venue.nightlinerParking || undefined} />
+                <KV label="Ladeweg" value={venue.loadingPath || undefined} />
+                {!venue.arrival && !arrivalAddress && !venue.parking && !venue.nightlinerParking && !venue.loadingPath && (
+                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Technische Specs */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />Technische Specs</span>
+            {isEditor && editingSection !== 'technik' && (
+              <button onClick={() => startEditSection('technik')}
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="Bearbeiten">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="pt-card-body">
+            {editingSection === 'technik' ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Kapazität (stehend)" value={inlineForm.capacity ?? ''} onChange={v => iF('capacity', v)} placeholder="z.B. 5000" />
+                  <IField label="Kapazität (bestuhlt)" value={inlineForm.capacitySeated ?? ''} onChange={v => iF('capacitySeated', v)} placeholder="z.B. 3000" />
+                </div>
+                <div className="grid grid-cols-[2fr_1fr] gap-2">
+                  <IField label="Bühnenmaße" value={inlineForm.stageDimensions ?? ''} onChange={v => iF('stageDimensions', v)} placeholder="z.B. 12x8m" />
+                  <IField label="Lichte Höhe" value={inlineForm.clearanceHeight ?? ''} onChange={v => iF('clearanceHeight', v)} placeholder="z.B. 6m" />
+                </div>
+                <ITextarea label="WLAN" value={inlineForm.wifi ?? ''} onChange={v => iF('wifi', v)} placeholder="SSID / Passwort..." />
+                <ITextarea label="Garderoben" value={inlineForm.wardrobe ?? ''} onChange={v => iF('wardrobe', v)} />
+                <IField label="Duschen" value={inlineForm.showers ?? ''} onChange={v => iF('showers', v)} placeholder="z.B. 4 im Backstage" />
+                <IField label="Merchandise Fee" value={inlineForm.merchandiseFee ?? ''} onChange={v => iF('merchandiseFee', v)} placeholder="z.B. 15%" />
+                <ITextarea label="Merch-Stand" value={inlineForm.merchandiseStand ?? ''} onChange={v => iF('merchandiseStand', v)} />
+                <ITextarea label="Notizen" value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
+                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+              </div>
+            ) : (
+              <>
+                <KV label="Kapazität" value={[
+                  venue.capacity && `${venue.capacity} stehend`,
+                  venue.capacitySeated && `${venue.capacitySeated} bestuhlt`
+                ].filter(Boolean).join(' / ') || undefined} />
+                <KV label="Bühnenmaße" value={venue.stageDimensions || undefined} />
+                <KV label="Lichte Höhe" value={venue.clearanceHeight || undefined} />
+                <KV label="WLAN" value={venue.wifi || undefined} />
+                <KV label="Garderoben" value={venue.wardrobe || undefined} />
+                <KV label="Duschen" value={venue.showers || undefined} />
+                <KV label="Merchandise Fee" value={venue.merchandiseFee || undefined} />
+                <KV label="Merch-Stand" value={venue.merchandiseStand || undefined} />
+                <KV label="Notizen" value={venue.notes || undefined} />
+                {!venue.capacity && !venue.stageDimensions && !venue.clearanceHeight && !venue.wifi && !venue.wardrobe && !venue.showers && !venue.merchandiseFee && !venue.merchandiseStand && !venue.notes && (
+                  <p className="text-sm text-gray-400 py-2">Keine technischen Daten hinterlegt.</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Ansprechpartner */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><UserCircle className="w-3.5 h-3.5 inline mr-1" />Ansprechpartner</span>
+            {isEditor && (
+              <button onClick={startAddContact} className="text-gray-400 hover:text-blue-600 transition-colors" title="Hinzufügen">
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <div className="pt-card-body">
+            {contactsLoading ? (
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
+              </div>
+            ) : (
+              <>
+                {venueContacts.map(c => (
+                  editingContactId === c.id ? (
+                    <ContactForm key={c.id}
+                      form={contactForm} onChange={setContactForm}
+                      onSave={saveContact} onCancel={() => setEditingContactId(null)}
+                      saving={savingContact} />
+                  ) : (
+                    <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 group">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                          {c.role && <p className="text-xs text-gray-500">{c.role}</p>}
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                            {c.phone && (
+                              <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                <Phone className="w-2.5 h-2.5" />{c.phone}
+                              </a>
+                            )}
+                            {c.email && (
+                              <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                <Mail className="w-2.5 h-2.5" />{c.email}
+                              </a>
+                            )}
+                          </div>
+                          {c.notes && <p className="text-xs text-gray-400 mt-0.5">{c.notes}</p>}
+                        </div>
+                        {isEditor && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5">
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => handleDeleteContact(c.id)} className="text-gray-400 hover:text-red-600 p-0.5">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                ))}
+                {addingContact && (
+                  <ContactForm
+                    form={contactForm} onChange={setContactForm}
+                    onSave={saveContact} onCancel={() => setAddingContact(false)}
+                    saving={savingContact} />
+                )}
+                {venueContacts.length === 0 && !addingContact && (
+                  <div className="flex flex-col items-center justify-center h-16 text-gray-400">
+                    <UserCircle className="w-5 h-5 mb-1" />
+                    <span className="text-xs">Noch keine Ansprechpartner</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Fotos */}
+        {(filesLoading || photos.length > 0) && (
+          <div className="pt-card md:col-span-2">
+            <div className="pt-card-header">
+              <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />Fotos</span>
+            </div>
+            <div className="pt-card-body">
+              {filesLoading ? (
+                <div className="flex items-center justify-center h-16 text-xs text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {photos.map((photo, idx) => (
+                    <button key={photo.id} onClick={() => lightbox.open(idx)}
+                      className="focus:outline-none rounded overflow-hidden aspect-square">
+                      <AuthImage fileId={photo.id} alt={photo.originalName}
+                        className="w-full h-full object-cover hover:opacity-80 transition-opacity" />
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-            {docs.length > 0 && (
-              <div>
-                {images.length > 0 && (
-                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-2">Dokumente</div>
-                )}
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Dokumente */}
+        {(filesLoading || docs.length > 0) && (
+          <div className="pt-card">
+            <div className="pt-card-header">
+              <span className="pt-card-title"><FileIcon className="w-3.5 h-3.5 inline mr-1" />Dokumente</span>
+            </div>
+            <div className="pt-card-body">
+              {filesLoading ? (
+                <div className="flex items-center justify-center h-16 text-xs text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
+                </div>
+              ) : (
                 <div className="flex flex-col gap-1">
                   {docs.map(f => (
-                    <button
-                      key={f.id}
+                    <button key={f.id}
                       onClick={() => {
                         fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
                           .then(r => r.blob())
@@ -203,9 +620,8 @@ function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin
                             setTimeout(() => URL.revokeObjectURL(url), 60_000)
                           })
                       }}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left"
-                    >
-                      <FileIcon size={13} className="text-gray-400 flex-shrink-0" />
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left">
+                      <span className="text-base leading-none">{fileIcon(f.mimeType)}</span>
                       <span className="text-sm text-gray-700 flex-1 truncate group-hover:text-blue-600">{f.originalName}</span>
                       {f.category && f.category !== 'Allgemein' && (
                         <span className="text-xs text-gray-400 flex-shrink-0">{f.category}</span>
@@ -214,130 +630,14 @@ function FilesAccordion({ venueId, isAdmin, onEdit }: { venueId: string; isAdmin
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </Accordion>
-
-      {/* Lightbox — shared component, identisch zu Venue-Page */}
-      <Lightbox {...lightbox.props} />
-    </>
-  )
-}
-
-// ─── Main ─────────────────────────────────────────────────────
-
-interface VenueInfoSectionProps {
-  venueId: number | string
-  venueName?: string
-  isAdmin?: boolean
-}
-
-export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueInfoSectionProps) {
-  const [venue, setVenue] = useState<Venue | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [editOpen, setEditOpen] = useState(false)
-
-  const load = () => {
-    setLoading(true)
-    getVenue(String(venueId))
-      .then(setVenue)
-      .catch(() => setVenue(null))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [venueId])
-
-  const handleSaved = (updated: Venue) => {
-    setVenue(updated)
-    setEditOpen(false)
-  }
-
-  if (loading) return (
-    <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
-      <Loader2 size={14} className="animate-spin" /> Venue-Daten werden geladen…
-    </div>
-  )
-
-  if (!venue) return (
-    <div className="text-sm text-gray-400 py-4">Venue-Daten nicht verfügbar</div>
-  )
-
-  const hasArrival   = [venue.arrival, venue.arrivalStreet, venue.arrivalCity].some(Boolean)
-  const hasTech      = [venue.capacity, venue.capacitySeated, venue.stageDimensions, venue.clearanceHeight].some(Boolean)
-  const hasAmenities = [venue.wardrobe, venue.showers, venue.wifi, venue.parking, venue.nightlinerParking, venue.loadingPath, venue.merchandiseFee, venue.merchandiseStand].some(Boolean)
-
-  const openEdit = () => setEditOpen(true)
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-0.5 mb-1">
-        Venue: {venue.name || venueName}
-      </div>
-
-      <Accordion title="Adresse & Allgemein" defaultOpen={true} isAdmin={isAdmin} onEdit={openEdit}>
-        <Field label="Name"       value={venue.name} />
-        <Field label="Straße"     value={venue.street} />
-        <Field label="PLZ / Ort"  value={[venue.postalCode, venue.city].filter(Boolean).join(' ')} />
-        <Field label="Bundesland" value={venue.state} />
-        <Field label="Land"       value={venue.country} />
-        {venue.website && (
-          <div className="flex gap-3 py-1.5">
-            <span className="text-xs text-gray-400 w-36 flex-shrink-0 pt-0.5">Website</span>
-            <a href={venue.website} target="_blank" rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-              {venue.website} <ExternalLink size={11} />
-            </a>
+              )}
+            </div>
           </div>
         )}
-      </Accordion>
 
-      {hasArrival && (
-        <Accordion title="Anfahrt" isAdmin={isAdmin} onEdit={openEdit}>
-          <Field label="Beschreibung"    value={venue.arrival} />
-          <Field label="Straße"          value={venue.arrivalStreet} />
-          <Field label="PLZ / Ort"       value={[venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ')} />
-        </Accordion>
-      )}
+      </div>
 
-      {hasTech && (
-        <Accordion title="Bühne & Kapazität" isAdmin={isAdmin} onEdit={openEdit}>
-          <Field label="Kapazität stehend" value={venue.capacity} />
-          <Field label="Kapazität sitzend" value={venue.capacitySeated} />
-          <Field label="Bühnenmasse"       value={venue.stageDimensions} />
-          <Field label="Durchfahrtshöhe"   value={venue.clearanceHeight} />
-        </Accordion>
-      )}
-
-      {hasAmenities && (
-        <Accordion title="Ausstattung & Logistik" isAdmin={isAdmin} onEdit={openEdit}>
-          <Field label="Garderobe"         value={venue.wardrobe} />
-          <Field label="Duschen"           value={venue.showers} />
-          <Field label="WLAN"              value={venue.wifi} />
-          <Field label="Parkplätze"        value={venue.parking} />
-          <Field label="Nightliner Parken" value={venue.nightlinerParking} />
-          <Field label="Ladeweg"           value={venue.loadingPath} />
-          <Field label="Merch-Gebühr"      value={venue.merchandiseFee} />
-          <Field label="Merch-Stand"       value={venue.merchandiseStand} />
-        </Accordion>
-      )}
-
-      {venue.notes && (
-        <Accordion title="Notizen" isAdmin={isAdmin} onEdit={openEdit}>
-          <p className="text-sm text-gray-700 whitespace-pre-wrap mt-1">{venue.notes}</p>
-        </Accordion>
-      )}
-
-      <FilesAccordion venueId={String(venueId)} isAdmin={isAdmin} onEdit={openEdit} />
-
-      {editOpen && venue && (
-        <VenueModal
-          venue={venue}
-          onClose={() => setEditOpen(false)}
-          onSaved={handleSaved}
-        />
-      )}
-    </div>
+      <Lightbox {...lightbox.props} />
+    </>
   )
 }
