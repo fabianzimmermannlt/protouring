@@ -624,15 +624,10 @@ export default function VenueDetailPage() {
           <div className="pt-card-header">
             <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />Fotos</span>
             {isEditor && (
-              <div className="flex items-center gap-2">
-                <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Venue bearbeiten">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }}
-                  className="text-gray-400 hover:text-blue-600 transition-colors" title="Foto hochladen">
-                  <Upload className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }}
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="Foto hochladen">
+                <Upload className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
           <div className="pt-card-body">
@@ -667,15 +662,10 @@ export default function VenueDetailPage() {
           <div className="pt-card-header">
             <span className="pt-card-title"><File className="w-3.5 h-3.5 inline mr-1" />Dokumente</span>
             {isEditor && (
-              <div className="flex items-center gap-2">
-                <button onClick={() => setEditModalOpen(true)} className="text-gray-400 hover:text-blue-600 transition-colors" title="Venue bearbeiten">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }}
-                  className="text-gray-400 hover:text-blue-600 transition-colors" title="Dokument hochladen">
-                  <Upload className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }}
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="Dokument hochladen">
+                <Upload className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
           <div className="pt-card-body">
