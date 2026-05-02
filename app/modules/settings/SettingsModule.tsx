@@ -1877,8 +1877,8 @@ function ErsteSchritte() {
 
 // ── Partner-Typen Settings ────────────────────────────────────────────────────
 const DEFAULT_PARTNER_TYPES = [
-  'Booking', 'Promoter', 'Veranstalter', 'Label', 'Management', 'Verlag',
-  'Merchandise', 'Catering', 'Technik', 'Transport', 'Presse', 'Sonstiges',
+  'Booking', 'Promoter', 'Organizer', 'Label', 'Management', 'Publisher',
+  'Merchandise', 'Catering', 'Production', 'Transport', 'Press / PR', 'Other',
 ]
 
 function PartnerTypesSettings() {
