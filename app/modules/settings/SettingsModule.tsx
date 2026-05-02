@@ -31,7 +31,7 @@ import {
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   getIcalToken, regenerateIcalToken, getIcalUrl,
-  getPartnerTypes, createPartnerType, deletePartnerType,
+  getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
@@ -1876,18 +1876,13 @@ function ErsteSchritte() {
 }
 
 // ── Partner-Typen Settings ────────────────────────────────────────────────────
-const DEFAULT_PARTNER_TYPES = [
-  'Booking', 'Promoter', 'Organizer', 'Label', 'Management', 'Publisher',
-  'Merchandise', 'Catering', 'Production', 'Transport', 'Press / PR', 'Other',
-]
-
 function PartnerTypesSettings() {
   const [types, setTypes] = useState<PartnerType[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
-  const [seeded, setSeeded] = useState(false)
+  const [toggling, setToggling] = useState<number | null>(null)
 
   useEffect(() => {
     getPartnerTypes()
@@ -1895,19 +1890,26 @@ function PartnerTypesSettings() {
       .catch(() => setLoading(false))
   }, [])
 
-  async function handleAdd(name: string) {
-    if (!name.trim()) return
-    setSaving(true)
+  async function handleToggle(t: PartnerType) {
+    setToggling(t.id)
+    try {
+      const updated = await togglePartnerTypeVisible(t.id, t.visible === 0)
+      setTypes(prev => prev.map(x => x.id === updated.id ? updated : x))
+    } catch { /* silent */ }
+    finally { setToggling(null) }
+  }
+
+  async function handleAdd() {
+    if (!newName.trim()) return
+    setAdding(true)
     setError('')
     try {
-      const created = await createPartnerType(name.trim())
+      const created = await createPartnerType(newName.trim())
       setTypes(prev => [...prev, created])
       setNewName('')
     } catch (e) {
       setError((e as Error).message || 'Fehler beim Speichern')
-    } finally {
-      setSaving(false)
-    }
+    } finally { setAdding(false) }
   }
 
   async function handleDelete(id: number) {
@@ -1918,27 +1920,12 @@ function PartnerTypesSettings() {
     } catch { /* silent */ }
   }
 
-  async function seedDefaults() {
-    setSaving(true)
-    const existing = types.map(t => t.name.toLowerCase())
-    for (const name of DEFAULT_PARTNER_TYPES) {
-      if (!existing.includes(name.toLowerCase())) {
-        try {
-          const created = await createPartnerType(name)
-          setTypes(prev => [...prev, created])
-        } catch { /* skip */ }
-      }
-    }
-    setSaving(false)
-    setSeeded(true)
-  }
-
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="space-y-5 max-w-md">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Partner-Typen</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Partner Types</h3>
         <p className="text-sm text-gray-500">
-          Definiere die Kategorien, die beim Anlegen eines Partners zur Auswahl stehen.
+          Aktiviere die Typen, die beim Anlegen eines Partners zur Auswahl stehen sollen.
         </p>
       </div>
 
@@ -1948,51 +1935,41 @@ function PartnerTypesSettings() {
         </div>
       ) : (
         <>
-          {types.length === 0 && !seeded && (
-            <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center space-y-2">
-              <p className="text-sm text-gray-500">Noch keine Typen angelegt.</p>
-              <button onClick={seedDefaults} disabled={saving}
-                className="text-xs text-blue-600 hover:underline font-medium disabled:opacity-50">
-                Standard-Typen übernehmen
-              </button>
-            </div>
-          )}
+          <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+            {types.map(t => (
+              <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 bg-white group hover:bg-gray-50">
+                <input
+                  type="checkbox"
+                  checked={t.visible === 1}
+                  disabled={toggling === t.id}
+                  onChange={() => handleToggle(t)}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className={`flex-1 text-sm ${t.visible === 1 ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {t.name}
+                </span>
+                <button onClick={() => handleDelete(t.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 p-0.5 ml-auto">
+                  <TrashIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
 
-          {types.length > 0 && (
-            <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
-              {types.map(t => (
-                <div key={t.id} className="flex items-center justify-between px-4 py-2.5 bg-white group hover:bg-gray-50">
-                  <span className="text-sm text-gray-800">{t.name}</span>
-                  <button onClick={() => handleDelete(t.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600 p-0.5">
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-1">
             <input
               type="text" value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd(newName)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Neuer Typ…"
               className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            <button onClick={() => handleAdd(newName)} disabled={saving || !newName.trim()}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlusIcon className="w-3.5 h-3.5" />}
-              Hinzufügen
+            <button onClick={handleAdd} disabled={adding || !newName.trim()}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
+              {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlusIcon className="w-3.5 h-3.5" />}
+              Add
             </button>
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
-
-          {types.length > 0 && (
-            <button onClick={seedDefaults} disabled={saving}
-              className="text-xs text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50">
-              Standard-Typen ergänzen
-            </button>
-          )}
         </>
       )}
     </div>

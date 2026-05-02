@@ -35,7 +35,10 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
   const [partnerTypes, setPartnerTypes] = useState<string[]>(FALLBACK_TYPES)
   useEffect(() => {
     getPartnerTypes()
-      .then(data => { if (data.length > 0) setPartnerTypes(data.map(t => t.name)) })
+      .then(data => {
+        const visible = data.filter(t => t.visible === 1).map(t => t.name)
+        if (visible.length > 0) setPartnerTypes(visible)
+      })
       .catch(() => {})
   }, [])
 

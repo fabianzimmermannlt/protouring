@@ -1075,10 +1075,13 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
+      visible INTEGER DEFAULT 1,
       sort_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `)
+  // Migration: visible-Spalte nachrüsten falls Tabelle schon existiert
+  try { await db.run('ALTER TABLE partner_types ADD COLUMN visible INTEGER DEFAULT 1') } catch {}
 
   // Gegenstände (Cases, Flightcases, Dollies…)
   await db.run(`
@@ -5579,10 +5582,25 @@ app.delete('/api/equipment/categories/:id', authenticateToken, requireTenant, as
 
 // ── Partner-Typen ────────────────────────────────────────────────────────────
 
-// GET /api/partner-types
+const DEFAULT_PARTNER_TYPES = [
+  'Booking', 'Promoter', 'Organizer', 'Label', 'Management', 'Publisher',
+  'Merchandise', 'Catering', 'Production', 'Transport', 'Press / PR', 'Other',
+]
+
+// GET /api/partner-types  (auto-seeds defaults if empty)
 app.get('/api/partner-types', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const rows = await db.all('SELECT * FROM partner_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    let rows = await db.all('SELECT * FROM partner_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    // Auto-seed beim ersten Aufruf
+    if (rows.length === 0) {
+      for (let i = 0; i < DEFAULT_PARTNER_TYPES.length; i++) {
+        await db.run(
+          'INSERT INTO partner_types (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, ?)',
+          [req.tenant.id, DEFAULT_PARTNER_TYPES[i], i]
+        )
+      }
+      rows = await db.all('SELECT * FROM partner_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    }
     res.json({ types: rows })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -5594,10 +5612,21 @@ app.post('/api/partner-types', authenticateToken, requireTenant, async (req, res
   if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' })
   try {
     const result = await db.run(
-      'INSERT INTO partner_types (tenant_id, name, sort_order) VALUES (?, ?, ?)',
+      'INSERT INTO partner_types (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, ?)',
       [req.tenant.id, name.trim(), sort_order]
     )
     const row = await db.get('SELECT * FROM partner_types WHERE id = ?', [result.lastID])
+    res.json({ type: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PATCH /api/partner-types/:id/visible
+app.patch('/api/partner-types/:id/visible', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { visible } = req.body
+  try {
+    await db.run('UPDATE partner_types SET visible = ? WHERE id = ? AND tenant_id = ?', [visible ? 1 : 0, req.params.id, req.tenant.id])
+    const row = await db.get('SELECT * FROM partner_types WHERE id = ?', [req.params.id])
     res.json({ type: row })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
