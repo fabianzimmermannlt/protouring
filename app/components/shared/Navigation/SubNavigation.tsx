@@ -35,6 +35,7 @@ const platformSubItems: SubNavigationItemDef[] = [
   { id: 'daysheet',       name: 'DAYSHEET',            description: 'Tagespläne & Routinen',        allowedRoles: EDITOR_ROLES },
   { id: 'vorlagen',       name: 'VORLAGEN',            description: 'Dokumentenvorlagen',           allowedRoles: EDITOR_ROLES },
   { id: 'artist',         name: 'ARTIST',              description: 'Artist-Informationen',         allowedRoles: ['admin'] },
+  { id: 'partners',       name: 'PARTNERS',            description: 'Partner-Typen verwalten',      allowedRoles: ['admin'] },
   { id: 'erste-schritte', name: 'ERSTE SCHRITTE',      description: 'Hilfe & Übersicht' },
 ]
 
@@ -48,6 +49,7 @@ const SHORT_LABEL: Record<string, string> = {
   daysheet: 'Daysheet',
   vorlagen: 'Vorlagen',
   artist: 'Artist',
+  partners: 'Partners',
   'erste-schritte': 'Hilfe',
 }
 
