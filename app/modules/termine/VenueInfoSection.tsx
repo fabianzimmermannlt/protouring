@@ -504,7 +504,11 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
               </div>
             ) : (
               <>
-                <KV label="Name" value={venue.name || undefined} />
+                {venue.name && (
+                  <div className="py-1.5 border-b border-gray-50">
+                    <span className="text-sm font-semibold text-gray-800">{venue.name}</span>
+                  </div>
+                )}
                 <KV label="Straße" value={venue.street || undefined} />
                 <KV label="PLZ / Ort" value={[venue.postalCode, venue.city].filter(Boolean).join(' ') || undefined} />
                 <KV label="Bundesland" value={venue.state || undefined} />
