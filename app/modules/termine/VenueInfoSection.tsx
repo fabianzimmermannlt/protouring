@@ -7,9 +7,9 @@ import {
   Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2,
 } from 'lucide-react'
 import {
-  getVenue, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
+  getVenue, getVenues, updateTermin, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
   getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
-  type Venue, type VenueContact,
+  type Venue, type VenueContact, type Termin,
 } from '@/lib/api-client'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 
@@ -168,19 +168,28 @@ function AuthImage({ fileId, alt, className }: { fileId: string; alt: string; cl
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 interface VenueInfoSectionProps {
-  venueId: number | string
+  venueId?: number | string | null
   venueName?: string
   isAdmin?: boolean
+  // Optionale Termin-Verlinkung
+  termin?: Termin
+  onTerminUpdated?: (t: Termin) => void
 }
 
 type EditSection = 'spielstaette' | 'backstage' | 'technik'
 
-export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueInfoSectionProps) {
+export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, onTerminUpdated }: VenueInfoSectionProps) {
   const isEditor = isAdmin ?? isEditorRole(getEffectiveRole())
-  const id = String(venueId)
+  const id = venueId ? String(venueId) : ''
 
   const [venue, setVenue] = useState<Venue | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!venueId)
+
+  // Venue-Verlinkung
+  const [allVenues, setAllVenues] = useState<Venue[]>([])
+  const [selecting, setSelecting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [linkSaving, setLinkSaving] = useState(false)
 
   // Inline edit
   const [editingSection, setEditingSection] = useState<EditSection | null>(null)
@@ -207,6 +216,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueI
 
   // ─── Load ──────────────────────────────────────────────────────────────────
   const loadVenue = useCallback(async () => {
+    if (!id) { setLoading(false); return }
     try {
       const v = await getVenue(id)
       setVenue(v)
@@ -214,6 +224,11 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueI
     } catch { setVenue(null) }
     finally { setLoading(false) }
   }, [id])
+
+  // Alle Venues laden wenn Verlinkung aktiv ist
+  useEffect(() => {
+    if (termin) getVenues().then(setAllVenues).catch(() => {})
+  }, [termin])
 
   const loadContacts = useCallback(async () => {
     try {
@@ -240,10 +255,40 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueI
   }, [id])
 
   useEffect(() => {
-    loadVenue()
-    loadContacts()
-    loadFiles()
-  }, [loadVenue, loadContacts, loadFiles])
+    if (id) {
+      loadVenue()
+      loadContacts()
+      loadFiles()
+    }
+  }, [id, loadVenue, loadContacts, loadFiles])
+
+  // ─── Venue linking ─────────────────────────────────────────────────────────
+  const filteredVenues = allVenues.filter(v =>
+    v.name.toLowerCase().includes(search.toLowerCase()) ||
+    v.city.toLowerCase().includes(search.toLowerCase())
+  )
+
+  async function linkVenue(v: Venue | null) {
+    if (!termin || !onTerminUpdated) return
+    setLinkSaving(true)
+    try {
+      const updated = await updateTermin(termin.id, {
+        date: termin.date,
+        title: termin.title,
+        art: termin.art || '',
+        art_sub: termin.artSub || '',
+        status_booking: termin.statusBooking || 'Idee',
+        status_public: termin.statusPublic || 'nicht öffentlich',
+        show_title_as_header: termin.showTitleAsHeader || false,
+        city: v ? v.city : termin.city,
+        venue_id: v ? Number(v.id) : null,
+      })
+      onTerminUpdated(updated)
+      setSelecting(false)
+      setSearch('')
+    } catch { /* silent */ }
+    finally { setLinkSaving(false) }
+  }
 
   // ─── Inline edit handlers ──────────────────────────────────────────────────
   function startEditSection(section: EditSection) {
@@ -333,15 +378,98 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin }: VenueI
       <Loader2 size={14} className="animate-spin" /> Venue-Daten werden geladen…
     </div>
   )
-  if (!venue) return (
-    <div className="text-sm text-gray-400 py-4">Venue-Daten nicht verfügbar</div>
-  )
+
+  // Kein Venue verknüpft → Selektor oder Leerstate
+  if (!venue || !id) {
+    if (!termin) return <div className="text-sm text-gray-400 py-4">Kein Venue verknüpft</div>
+    return (
+      <div className="pt-card">
+        <div className="px-5 py-4">
+          {selecting ? (
+            <div className="space-y-2">
+              <input type="text" autoFocus placeholder="Venue suchen…"
+                value={search} onChange={e => setSearch(e.target.value)}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+                {filteredVenues.length === 0
+                  ? <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Venues gefunden</div>
+                  : filteredVenues.map(v => (
+                    <button key={v.id} onClick={() => linkVenue(v)} disabled={linkSaving}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">
+                      <div className="font-medium text-gray-800">{v.name}</div>
+                      {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+                    </button>
+                  ))
+                }
+              </div>
+              <button onClick={() => { setSelecting(false); setSearch('') }}
+                className="text-xs text-gray-400 hover:text-gray-600">Abbrechen</button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <MapPin className="w-6 h-6 text-gray-300" />
+              <p className="text-sm text-gray-400">Kein Venue verknüpft</p>
+              {isEditor && (
+                <button onClick={() => setSelecting(true)}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                  <Plus className="w-3.5 h-3.5" /> Venue verknüpfen
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Venue verknüpft → normaler Tile-View mit Ändern-Option im Header
+  const canLink = !!termin && !!onTerminUpdated && isEditor
 
   return (
     <>
-      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-0.5 mb-3">
-        Venue: {venue.name || venueName}
+      <div className="flex items-center justify-between px-0.5 mb-3">
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Venue: {venue.name || venueName}
+        </span>
+        {canLink && !selecting && (
+          <button onClick={() => setSelecting(true)}
+            className="text-xs text-gray-400 hover:text-blue-600 transition-colors">
+            Ändern
+          </button>
+        )}
+        {canLink && selecting && (
+          <button onClick={() => { setSelecting(false); setSearch('') }}
+            className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
+        )}
       </div>
+
+      {/* Venue-Selektor wenn aktiv */}
+      {selecting && (
+        <div className="mb-4 p-3 bg-white border border-gray-200 rounded-lg space-y-2">
+          <input type="text" autoFocus placeholder="Venue suchen…"
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+            {termin?.venueId && (
+              <button onClick={() => linkVenue(null)} disabled={linkSaving}
+                className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+                Venue-Verknüpfung entfernen
+              </button>
+            )}
+            {filteredVenues.length === 0
+              ? <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Venues gefunden</div>
+              : filteredVenues.map(v => (
+                <button key={v.id} onClick={() => linkVenue(v)} disabled={linkSaving}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin?.venueId ? 'bg-blue-50 font-medium' : ''}`}>
+                  <div className="font-medium text-gray-800">{v.name}</div>
+                  {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+                </button>
+              ))
+            }
+          </div>
+          {linkSaving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

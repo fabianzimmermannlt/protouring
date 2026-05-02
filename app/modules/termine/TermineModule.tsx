@@ -994,19 +994,17 @@ export function TerminDetail2({
       {/* Venue-Bereich: Verlinkung + Details + Lokale Ansprechpartner */}
       <section>
         <SectionLabel label="Venue" />
-        <SpielstaetteCard
-          key={`venue-${termin.id}`}
-          termin={termin}
+        <VenueInfoSection
+          venueId={termin.venueId ?? null}
+          venueName={termin.venueName}
           isAdmin={isAdmin}
-          onUpdated={onUpdated}
+          termin={termin}
+          onTerminUpdated={onUpdated}
         />
         {termin.venueId && (
-          <div className="mt-4 flex flex-col gap-4">
-            <VenueInfoSection venueId={termin.venueId} venueName={termin.venueName} isAdmin={isAdmin} />
-            <div>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-0.5">Lokale Ansprechpartner</div>
-              <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
-            </div>
+          <div className="mt-4">
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-0.5">Lokale Ansprechpartner</div>
+            <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
           </div>
         )}
       </section>
