@@ -144,6 +144,7 @@ const en = {
   'settings.sub.artist':             'Artist',
   'settings.sub.permissions':        'Permissions',
   'settings.sub.contacts':           'Contacts',
+  'settings.sub.partners':           'Partners',
   'settings.sub.guestlist':          'Guest List',
   'settings.sub.daysheet':           'Day Sheet',
   'settings.sub.vorlagen':           'Templates',
