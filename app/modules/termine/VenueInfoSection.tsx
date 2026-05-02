@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Loader2, Pencil, Save, Check, X, AlertCircle,
   MapPin, Navigation, Ruler, UserCircle, FileIcon,
-  Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2,
+  Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2, Upload,
 } from 'lucide-react'
 import {
   getVenue, getVenues, updateTermin, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
@@ -208,6 +208,11 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
   // Files
   const [files, setFiles] = useState<VenueFile[]>([])
   const [filesLoading, setFilesLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [docCategory, setDocCategory] = useState('Sonstiges')
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const docInputRef = useRef<HTMLInputElement>(null)
 
   // Photos for lightbox (derived from files)
   const photos = files.filter(f => f.mimeType?.startsWith('image/'))
@@ -261,6 +266,27 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
       loadFiles()
     }
   }, [id, loadVenue, loadContacts, loadFiles])
+
+  // ─── Upload ────────────────────────────────────────────────────────────────
+  async function handleUpload(fileList: FileList | null, category: string) {
+    if (!fileList || fileList.length === 0 || !id) return
+    setUploadError('')
+    setUploading(true)
+    try {
+      const form = new FormData()
+      Array.from(fileList).forEach(f => form.append('files', f))
+      const res = await fetch(
+        `${API_BASE}/api/files/venue/${id}?category=${encodeURIComponent(category)}`,
+        { method: 'POST', headers: authHeaders(), body: form }
+      )
+      if (!res.ok) throw new Error('Upload fehlgeschlagen')
+      await loadFiles()
+    } catch (e) {
+      setUploadError((e as Error).message || 'Upload fehlgeschlagen')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   // ─── Venue linking ─────────────────────────────────────────────────────────
   const filteredVenues = allVenues.filter(v =>
@@ -707,69 +733,102 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
         </div>
 
         {/* Fotos */}
-        {(filesLoading || photos.length > 0) && (
-          <div className="pt-card md:col-span-2">
-            <div className="pt-card-header">
-              <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />Fotos</span>
-            </div>
-            <div className="pt-card-body">
-              {filesLoading ? (
-                <div className="flex items-center justify-center h-16 text-xs text-gray-400">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                  {photos.map((photo, idx) => (
-                    <button key={photo.id} onClick={() => lightbox.open(idx)}
-                      className="focus:outline-none rounded overflow-hidden aspect-square">
-                      <AuthImage fileId={photo.id} alt={photo.originalName}
-                        className="w-full h-full object-cover hover:opacity-80 transition-opacity" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+        <div className="pt-card md:col-span-2">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />Fotos</span>
+            {isEditor && (
+              <button onClick={() => photoInputRef.current?.click()} disabled={uploading}
+                className="text-gray-400 hover:text-blue-600 transition-colors" title="Fotos hochladen">
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            <input ref={photoInputRef} type="file" multiple accept="image/*" className="hidden"
+              onChange={e => handleUpload(e.target.files, 'Fotos')} />
           </div>
-        )}
+          <div className="pt-card-body">
+            {filesLoading ? (
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
+              </div>
+            ) : photos.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                {photos.map((photo, idx) => (
+                  <button key={photo.id} onClick={() => lightbox.open(idx)}
+                    className="focus:outline-none rounded overflow-hidden aspect-square">
+                    <AuthImage fileId={photo.id} alt={photo.originalName}
+                      className="w-full h-full object-cover hover:opacity-80 transition-opacity" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button onClick={() => photoInputRef.current?.click()} disabled={!isEditor || uploading}
+                className="w-full flex flex-col items-center justify-center gap-1.5 py-6 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors text-gray-400 hover:text-blue-500 disabled:pointer-events-none">
+                <ImageIcon className="w-5 h-5" />
+                <span className="text-xs">{isEditor ? 'Fotos hochladen' : 'Keine Fotos vorhanden'}</span>
+              </button>
+            )}
+            {uploadError && <p className="text-xs text-red-600 mt-2">{uploadError}</p>}
+          </div>
+        </div>
 
         {/* Dokumente */}
-        {(filesLoading || docs.length > 0) && (
-          <div className="pt-card">
-            <div className="pt-card-header">
-              <span className="pt-card-title"><FileIcon className="w-3.5 h-3.5 inline mr-1" />Dokumente</span>
-            </div>
-            <div className="pt-card-body">
-              {filesLoading ? (
-                <div className="flex items-center justify-center h-16 text-xs text-gray-400">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {docs.map(f => (
-                    <button key={f.id}
-                      onClick={() => {
-                        fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
-                          .then(r => r.blob())
-                          .then(blob => {
-                            const url = URL.createObjectURL(blob)
-                            window.open(url, '_blank')
-                            setTimeout(() => URL.revokeObjectURL(url), 60_000)
-                          })
-                      }}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left">
-                      <span className="text-base leading-none">{fileIcon(f.mimeType)}</span>
-                      <span className="text-sm text-gray-700 flex-1 truncate group-hover:text-blue-600">{f.originalName}</span>
-                      {f.category && f.category !== 'Allgemein' && (
-                        <span className="text-xs text-gray-400 flex-shrink-0">{f.category}</span>
-                      )}
-                      <span className="text-xs text-gray-400 flex-shrink-0">{formatSize(f.size)}</span>
-                    </button>
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><FileIcon className="w-3.5 h-3.5 inline mr-1" />Dokumente</span>
+            {isEditor && (
+              <div className="flex items-center gap-1.5">
+                <select value={docCategory} onChange={e => setDocCategory(e.target.value)}
+                  className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:outline-none focus:border-blue-400">
+                  {['Stage Plan','Groundplan / Hallenplan','Rigging Plot','Technische Daten','Anfahrt & Parken','Verträge','Sonstiges'].map(c => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
-                </div>
-              )}
-            </div>
+                </select>
+                <button onClick={() => docInputRef.current?.click()} disabled={uploading}
+                  className="text-gray-400 hover:text-blue-600 transition-colors" title="Dokument hochladen">
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            )}
+            <input ref={docInputRef} type="file" multiple className="hidden"
+              onChange={e => handleUpload(e.target.files, docCategory)} />
           </div>
-        )}
+          <div className="pt-card-body">
+            {filesLoading ? (
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…
+              </div>
+            ) : docs.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {docs.map(f => (
+                  <button key={f.id}
+                    onClick={() => {
+                      fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
+                        .then(r => r.blob())
+                        .then(blob => {
+                          const url = URL.createObjectURL(blob)
+                          window.open(url, '_blank')
+                          setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                        })
+                    }}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left">
+                    <span className="text-base leading-none">{fileIcon(f.mimeType)}</span>
+                    <span className="text-sm text-gray-700 flex-1 truncate group-hover:text-blue-600">{f.originalName}</span>
+                    {f.category && f.category !== 'Allgemein' && (
+                      <span className="text-xs text-gray-400 flex-shrink-0">{f.category}</span>
+                    )}
+                    <span className="text-xs text-gray-400 flex-shrink-0">{formatSize(f.size)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button onClick={() => docInputRef.current?.click()} disabled={!isEditor || uploading}
+                className="w-full flex flex-col items-center justify-center gap-1.5 py-6 rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors text-gray-400 hover:text-blue-500 disabled:pointer-events-none">
+                <FileIcon className="w-5 h-5" />
+                <span className="text-xs">{isEditor ? 'Dokumente hochladen' : 'Keine Dokumente vorhanden'}</span>
+              </button>
+            )}
+          </div>
+        </div>
 
       </div>
 
