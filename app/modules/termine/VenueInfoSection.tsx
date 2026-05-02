@@ -429,7 +429,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
     <>
       <div className="flex items-center justify-between px-0.5 mb-3">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-          Venue: {venue.name || venueName}
+          Venue
         </span>
         {canLink && !selecting && (
           <button onClick={() => setSelecting(true)}

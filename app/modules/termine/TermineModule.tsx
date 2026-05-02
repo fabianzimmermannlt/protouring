@@ -993,7 +993,6 @@ export function TerminDetail2({
 
       {/* Venue-Bereich: Verlinkung + Details + Lokale Ansprechpartner */}
       <section>
-        <SectionLabel label="Venue" />
         <VenueInfoSection
           venueId={termin.venueId ?? null}
           venueName={termin.venueName}
