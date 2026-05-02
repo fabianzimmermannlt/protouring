@@ -962,7 +962,7 @@ export function TerminDetail2({
   return (
     <div className="min-h-0 flex flex-col gap-6">
 
-      {/* Zeile 1: Event */}
+      {/* Zeile 1: Event + Schnellzugriff */}
       <section>
         <SectionLabel label="Event" />
         <div className="grid grid-cols-3 gap-4">
@@ -972,40 +972,7 @@ export function TerminDetail2({
             isAdmin={isAdmin}
             onUpdated={onUpdated}
           />
-          <SpielstaetteCard
-            key={`venue-${termin.id}`}
-            termin={termin}
-            isAdmin={isAdmin}
-            onUpdated={onUpdated}
-          />
-          <PartnerCard
-            key={`partner-${termin.id}`}
-            termin={termin}
-            isAdmin={isAdmin}
-            onUpdated={onUpdated}
-          />
-        </div>
-      </section>
-
-      {/* Zeile 2: Lokale Ansprechpartner */}
-      <section>
-        <SectionLabel label="Lokale Ansprechpartner" />
-        <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
-      </section>
-
-      {/* Zeile 3: Venue-Daten */}
-      {termin.venueId && (
-        <section>
-          <VenueInfoSection venueId={termin.venueId} venueName={termin.venueName} isAdmin={isAdmin} />
-        </section>
-      )}
-
-      {/* Zeile 4: Organisation */}
-      <section>
-        <SectionLabel label="Organisation" />
-        <div className="grid grid-cols-3 gap-4">
           <ToDoCard terminId={termin.id} />
-          <SonstigesCard terminId={termin.id} isAdmin={isAdmin} />
           <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
             <ContentBoard
               entityType="termin_private"
@@ -1024,7 +991,40 @@ export function TerminDetail2({
         </div>
       </section>
 
-      {/* Zeile 6: Kommunikation */}
+      {/* Venue-Bereich: Verlinkung + Details + Lokale Ansprechpartner */}
+      <section>
+        <SectionLabel label="Venue" />
+        <SpielstaetteCard
+          key={`venue-${termin.id}`}
+          termin={termin}
+          isAdmin={isAdmin}
+          onUpdated={onUpdated}
+        />
+        {termin.venueId && (
+          <div className="mt-4 flex flex-col gap-4">
+            <VenueInfoSection venueId={termin.venueId} venueName={termin.venueName} isAdmin={isAdmin} />
+            <div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-0.5">Lokale Ansprechpartner</div>
+              <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Partner */}
+      <section>
+        <SectionLabel label="Partner" />
+        <div className="grid grid-cols-3 gap-4">
+          <PartnerCard
+            key={`partner-${termin.id}`}
+            termin={termin}
+            isAdmin={isAdmin}
+            onUpdated={onUpdated}
+          />
+        </div>
+      </section>
+
+      {/* Kommunikation */}
       <section>
         <SectionLabel label="Kommunikation" />
         <div className="grid grid-cols-3 gap-4">
