@@ -30,6 +30,7 @@ import {
   setAllTenants,
   getMyTenants,
   getTermine,
+  getVenues,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -40,6 +41,7 @@ import {
   CAN_SEE_KALENDER,
   type TenantRole,
   type Termin,
+  type Venue,
 } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
@@ -219,6 +221,26 @@ export function L3Layout({
       window.removeEventListener('advancing-set-view',      onAdvancingSetView)
     }
   }, [])
+
+  // ── Venues list ───────────────────────────────────────────────────────────
+  const [venuesList, setVenuesList] = useState<Venue[]>([])
+  const [venuesSearch, setVenuesSearch] = useState('')
+  const [activeVenueId, setActiveVenueId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/venues\/([^/]+)/)
+    return m?.[1] ?? null
+  })
+
+  useEffect(() => {
+    if (activeTab !== 'venues') return
+    getVenues().then(v => setVenuesList(v)).catch(() => {})
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'venues') return
+    const m = window.location.pathname.match(/\/venues\/([^/]+)/)
+    setActiveVenueId(m?.[1] ?? null)
+  }, [activeTab])
 
   // ── Termine list laden ────────────────────────────────────────────────────
   useEffect(() => {
@@ -569,6 +591,60 @@ export function L3Layout({
               </div>
             </>
           )}
+        </div>
+      )
+    }
+
+    // ── Venues ───────────────────────────────────────────────────────────────
+    if (activeTab === 'venues') {
+      const q = venuesSearch.toLowerCase()
+      const filtered = venuesList
+        .filter(v => !q || v.name?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q))
+        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
+
+      return (
+        <div className="flex flex-col h-full">
+          {/* Suche */}
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            <input
+              type="text"
+              value={venuesSearch}
+              onChange={e => setVenuesSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          {/* Liste */}
+          <div className="flex-1 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-gray-600 text-center">
+                {venuesList.length === 0 ? 'Keine Venues' : 'Keine Treffer'}
+              </p>
+            ) : filtered.map(v => {
+              const isActive = String(v.id) === activeVenueId
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setActiveVenueId(String(v.id))
+                    router.push(`/venues/${v.id}`)
+                  }}
+                  className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
+                    isActive
+                      ? 'border-blue-500 bg-gray-700'
+                      : 'border-transparent hover:bg-gray-800'
+                  }`}
+                >
+                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>
+                    {v.name}
+                  </p>
+                  {v.city && (
+                    <p className="text-[10px] text-gray-500 truncate mt-0.5">{v.city}{v.country ? `, ${v.country}` : ''}</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )
     }
