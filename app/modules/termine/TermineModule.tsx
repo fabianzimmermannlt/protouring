@@ -134,57 +134,152 @@ export function formatDateTable(dateStr: string) {
 // Veranstaltung-Card (detail view, editable)
 // ============================================================
 
-function VeranstaltungCard({ termin, isAdmin, onEditClick }: {
+function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
   termin: Termin
   isAdmin: boolean
-  onEditClick: () => void
+  onUpdated: (t: Termin) => void
 }) {
   const t = useT()
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState<TerminFormData>(terminToFormData(termin))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!editing) setForm(terminToFormData(termin))
+  }, [termin, editing])
+
+  const startEdit = () => { setForm(terminToFormData(termin)); setEditing(true) }
+  const cancelEdit = () => { setForm(terminToFormData(termin)); setEditing(false); setError('') }
+  const f = (key: keyof TerminFormData, value: string | boolean | null) =>
+    setForm(prev => ({ ...prev, [key]: value }))
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const updated = await updateTermin(termin.id, form)
+      onUpdated(updated)
+      setEditing(false)
+      setError('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const iCls = "w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('appointments.card.event')}</span>
-        {isAdmin && (
-          <button onClick={onEditClick} className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors">
+        {isAdmin && !editing && (
+          <button onClick={startEdit} className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors">
             <Edit2 size={12} />
           </button>
         )}
+        {editing && (
+          <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+        )}
       </div>
+
+      {error && (
+        <div className="mx-5 mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs flex items-center gap-2">
+          <AlertCircle size={12} /> {error}
+          <button onClick={() => setError('')} className="ml-auto"><X size={12} /></button>
+        </div>
+      )}
+
       <div className="px-5 py-4">
-        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
-          <dt className="text-gray-400 font-medium whitespace-nowrap">{t('appointments.card.date')}</dt>
-          <dd className="text-gray-800">{formatDateLong(termin.date)}</dd>
-          <dt className="text-gray-400 font-medium">{t('appointments.card.title')}</dt>
-          <dd className="text-gray-800 font-semibold">{termin.title}</dd>
-          {(termin.art || termin.artSub) && (
-            <>
-              <dt className="text-gray-400 font-medium">{t('appointments.card.type')}</dt>
-              <dd className="text-gray-800">
-                {termin.art}{termin.artSub && <span className="text-gray-400 ml-1">· {termin.artSub}</span>}
-              </dd>
-            </>
-          )}
-          {termin.statusBooking && (
-            <>
-              <dt className="text-gray-400 font-medium">{t('appointments.card.statusBooking')}</dt>
-              <dd>
-                <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>
-                  {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
-                </span>
-              </dd>
-            </>
-          )}
-          {termin.statusPublic && (
-            <>
-              <dt className="text-gray-400 font-medium">{t('appointments.card.statusPublic')}</dt>
-              <dd>
-                <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>
-                  {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
-                </span>
-              </dd>
-            </>
-          )}
-        </dl>
+        {editing ? (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.date')}</label>
+              <input type="date" className={iCls} value={form.date} onChange={e => f('date', e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.title')}</label>
+              <input type="text" className={iCls} value={form.title} onChange={e => f('title', e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.type')}</label>
+                <select className={iCls} value={form.art || ''} onChange={e => f('art', e.target.value)}>
+                  <option value="">—</option>
+                  {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1">Sub-Typ</label>
+                <select className={iCls} value={form.art_sub || ''} onChange={e => f('art_sub', e.target.value)}>
+                  <option value="">—</option>
+                  {TERMIN_ART_SUB.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.statusBooking')}</label>
+                <select className={iCls} value={form.status_booking || ''} onChange={e => f('status_booking', e.target.value)}>
+                  {TERMIN_STATUS_BOOKING.map(s => <option key={s} value={s}>{STATUS_BOOKING_TKEY[s] ? t(STATUS_BOOKING_TKEY[s]) : s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.statusPublic')}</label>
+                <select className={iCls} value={form.status_public || ''} onChange={e => f('status_public', e.target.value)}>
+                  {TERMIN_STATUS_PUBLIC.map(s => <option key={s} value={s}>{STATUS_PUBLIC_TKEY[s] ? t(STATUS_PUBLIC_TKEY[s]) : s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+              <button onClick={save} disabled={saving}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-medium disabled:opacity-50 transition-colors">
+                {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                Speichern
+              </button>
+              <button onClick={cancelEdit} disabled={saving}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
+            <dt className="text-gray-400 font-medium whitespace-nowrap">{t('appointments.card.date')}</dt>
+            <dd className="text-gray-800">{formatDateLong(termin.date)}</dd>
+            <dt className="text-gray-400 font-medium">{t('appointments.card.title')}</dt>
+            <dd className="text-gray-800 font-semibold">{termin.title}</dd>
+            {(termin.art || termin.artSub) && (
+              <>
+                <dt className="text-gray-400 font-medium">{t('appointments.card.type')}</dt>
+                <dd className="text-gray-800">
+                  {termin.art}{termin.artSub && <span className="text-gray-400 ml-1">· {termin.artSub}</span>}
+                </dd>
+              </>
+            )}
+            {termin.statusBooking && (
+              <>
+                <dt className="text-gray-400 font-medium">{t('appointments.card.statusBooking')}</dt>
+                <dd>
+                  <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>
+                    {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
+                  </span>
+                </dd>
+              </>
+            )}
+            {termin.statusPublic && (
+              <>
+                <dt className="text-gray-400 font-medium">{t('appointments.card.statusPublic')}</dt>
+                <dd>
+                  <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>
+                    {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
+                  </span>
+                </dd>
+              </>
+            )}
+          </dl>
+        )}
       </div>
     </div>
   )
@@ -724,7 +819,7 @@ export function TerminDetail({
             key={termin.id}
             termin={termin}
             isAdmin={isAdmin}
-            onEditClick={() => setModalOpen(true)}
+            onUpdated={onUpdated}
           />
           <SpielstaetteCard
             key={`venue-${termin.id}`}
@@ -803,6 +898,14 @@ export function TerminDetail({
 
       </div>
 
+      {isAdmin && (
+        <div className="pt-4 border-t border-gray-200 mt-2">
+          <button onClick={() => setModalOpen(true)} className="btn btn-danger text-xs">
+            Termin löschen
+          </button>
+        </div>
+      )}
+
       {modalOpen && (
         <TerminModal
           termin={termin}
@@ -834,7 +937,18 @@ export function TerminDetail2({
   onUpdated: (t: Termin) => void
   onDeleted: () => void
 }) {
-  const [modalOpen, setModalOpen] = useState(false)
+  const [deletingTermin, setDeletingTermin] = useState(false)
+
+  const handleDeleteTermin = async () => {
+    if (!window.confirm('Termin wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return
+    setDeletingTermin(true)
+    try {
+      await deleteTermin(termin.id)
+      onDeleted()
+    } catch {
+      setDeletingTermin(false)
+    }
+  }
 
   const currentUser = getCurrentUser()
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
@@ -856,7 +970,7 @@ export function TerminDetail2({
             key={termin.id}
             termin={termin}
             isAdmin={isAdmin}
-            onEditClick={() => setModalOpen(true)}
+            onUpdated={onUpdated}
           />
           <SpielstaetteCard
             key={`venue-${termin.id}`}
@@ -921,13 +1035,13 @@ export function TerminDetail2({
         </div>
       </section>
 
-      {modalOpen && (
-        <TerminModal
-          termin={termin}
-          onClose={() => setModalOpen(false)}
-          onSaved={updated => { onUpdated(updated); setModalOpen(false) }}
-          onDeleted={() => { onDeleted(); setModalOpen(false) }}
-        />
+      {isAdmin && (
+        <div className="pt-4 border-t border-gray-200 mt-2">
+          <button onClick={handleDeleteTermin} disabled={deletingTermin} className="btn btn-danger text-xs">
+            {deletingTermin ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
+            Termin löschen
+          </button>
+        </div>
       )}
     </div>
   )
