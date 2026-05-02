@@ -504,7 +504,10 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
               </div>
             ) : (
               <>
-                <KV label="Adresse" value={address || undefined} />
+                <KV label="Straße" value={venue.street || undefined} />
+                <KV label="PLZ / Ort" value={[venue.postalCode, venue.city].filter(Boolean).join(' ') || undefined} />
+                <KV label="Bundesland" value={venue.state || undefined} />
+                <KV label="Land" value={venue.country || undefined} />
                 {venue.website && (
                   <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
                     <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Website</span>
@@ -524,7 +527,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                     </a>
                   </div>
                 )}
-                {!address && !venue.website && !venue.latitude && (
+                {!venue.street && !venue.city && !venue.postalCode && !venue.state && !venue.country && !venue.website && !venue.latitude && !venue.longitude && (
                   <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
                 )}
               </>
@@ -560,11 +563,12 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
             ) : (
               <>
                 <KV label="Anfahrt" value={venue.arrival || undefined} />
-                <KV label="Anfahrtsadresse" value={arrivalAddress || undefined} />
+                <KV label="Anfahrt – Straße" value={venue.arrivalStreet || undefined} />
+                <KV label="Anfahrt – PLZ / Ort" value={[venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ') || undefined} />
                 <KV label="Parkplatz" value={venue.parking || undefined} />
                 <KV label="Nightliner" value={venue.nightlinerParking || undefined} />
                 <KV label="Ladeweg" value={venue.loadingPath || undefined} />
-                {!venue.arrival && !arrivalAddress && !venue.parking && !venue.nightlinerParking && !venue.loadingPath && (
+                {!venue.arrival && !venue.arrivalStreet && !venue.arrivalPostalCode && !venue.arrivalCity && !venue.parking && !venue.nightlinerParking && !venue.loadingPath && (
                   <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
                 )}
               </>
@@ -604,10 +608,8 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
               </div>
             ) : (
               <>
-                <KV label="Kapazität" value={[
-                  venue.capacity && `${venue.capacity} stehend`,
-                  venue.capacitySeated && `${venue.capacitySeated} bestuhlt`
-                ].filter(Boolean).join(' / ') || undefined} />
+                <KV label="Kapazität stehend" value={venue.capacity ? String(venue.capacity) : undefined} />
+                <KV label="Kapazität bestuhlt" value={venue.capacitySeated ? String(venue.capacitySeated) : undefined} />
                 <KV label="Bühnenmaße" value={venue.stageDimensions || undefined} />
                 <KV label="Lichte Höhe" value={venue.clearanceHeight || undefined} />
                 <KV label="WLAN" value={venue.wifi || undefined} />
@@ -616,7 +618,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                 <KV label="Merchandise Fee" value={venue.merchandiseFee || undefined} />
                 <KV label="Merch-Stand" value={venue.merchandiseStand || undefined} />
                 <KV label="Notizen" value={venue.notes || undefined} />
-                {!venue.capacity && !venue.stageDimensions && !venue.clearanceHeight && !venue.wifi && !venue.wardrobe && !venue.showers && !venue.merchandiseFee && !venue.merchandiseStand && !venue.notes && (
+                {!venue.capacity && !venue.capacitySeated && !venue.stageDimensions && !venue.clearanceHeight && !venue.wifi && !venue.wardrobe && !venue.showers && !venue.merchandiseFee && !venue.merchandiseStand && !venue.notes && (
                   <p className="text-sm text-gray-400 py-2">Keine technischen Daten hinterlegt.</p>
                 )}
               </>
