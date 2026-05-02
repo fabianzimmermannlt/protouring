@@ -385,11 +385,6 @@ export default function VenueDetailPage() {
               </>
           }
         </div>
-        {isEditor && venue && (
-          <button onClick={() => setEditModalOpen(true)} className="btn btn-ghost">
-            <Pencil className="w-4 h-4" /> Bearbeiten
-          </button>
-        )}
       </div>
 
       {error && (
