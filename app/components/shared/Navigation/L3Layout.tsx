@@ -22,7 +22,7 @@ import {
   WrenchScrewdriverIcon,
   ViewColumnsIcon,
   XMarkIcon,
-  EllipsisVerticalIcon,
+  EllipsisHorizontalIcon,
 } from '@heroicons/react/24/outline'
 import {
   getCurrentUser,
@@ -232,6 +232,7 @@ export function L3Layout({
   const [venueInlineNew, setVenueInlineNew] = useState(false)
   const [venueNewName, setVenueNewName] = useState('')
   const [venueCreating, setVenueCreating] = useState(false)
+  const [venueMenuOpenId, setVenueMenuOpenId] = useState<string | null>(null)
   const [activeVenueId, setActiveVenueId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/venues\/([^/]+)/)
@@ -686,13 +687,14 @@ export function L3Layout({
           )}
 
           {/* Liste */}
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="flex-1 overflow-y-auto py-1" onClick={() => setVenueMenuOpenId(null)}>
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">
                 {venuesList.length === 0 ? 'Keine Venues' : 'Keine Treffer'}
               </p>
             ) : filtered.map(v => {
               const isActive = String(v.id) === activeVenueId
+              const menuOpen = venueMenuOpenId === String(v.id)
               return (
                 <div
                   key={v.id}
@@ -704,6 +706,7 @@ export function L3Layout({
                 >
                   <button
                     onClick={() => {
+                      setVenueMenuOpenId(null)
                       setActiveVenueId(String(v.id))
                       router.push(`/venues/${v.id}`)
                     }}
@@ -716,25 +719,47 @@ export function L3Layout({
                       <p className="text-[10px] text-gray-500 truncate mt-0.5">{v.city}{v.country ? `, ${v.country}` : ''}</p>
                     )}
                   </button>
+
                   {isEditor && (
-                    <button
-                      onClick={async e => {
-                        e.stopPropagation()
-                        if (!confirm(`Venue „${v.name}" wirklich löschen?`)) return
-                        try {
-                          await deleteVenue(String(v.id))
-                          setVenuesList(prev => prev.filter(x => x.id !== v.id))
-                          if (activeVenueId === String(v.id)) {
-                            setActiveVenueId(null)
-                            router.push('/venues')
-                          }
-                        } catch { /* silent */ }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 pr-2 text-gray-500 hover:text-red-400"
-                      title="Löschen"
-                    >
-                      <EllipsisVerticalIcon className="w-4 h-4" />
-                    </button>
+                    <div className="relative flex-shrink-0 pr-1">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          setVenueMenuOpenId(menuOpen ? null : String(v.id))
+                        }}
+                        className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${
+                          menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                        title="Optionen"
+                      >
+                        <EllipsisHorizontalIcon className="w-4 h-4" />
+                      </button>
+
+                      {menuOpen && (
+                        <div
+                          className="absolute right-0 top-full mt-0.5 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={async () => {
+                              setVenueMenuOpenId(null)
+                              if (!confirm(`Venue „${v.name}" wirklich löschen?`)) return
+                              try {
+                                await deleteVenue(String(v.id))
+                                setVenuesList(prev => prev.filter(x => x.id !== v.id))
+                                if (activeVenueId === String(v.id)) {
+                                  setActiveVenueId(null)
+                                  router.push('/venues')
+                                }
+                              } catch { /* silent */ }
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                          >
+                            Venue löschen
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )
