@@ -40,8 +40,8 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
   useEffect(() => {
     getPartnerTypes()
       .then(data => {
-        const visible = data.filter(t => t.visible === 1).map(t => t.name)
-        if (visible.length > 0) setPartnerTypes(visible)
+        const visible = data.filter(t => t.visible !== 0 && t.visible !== false as any).map(t => t.name)
+        setPartnerTypes(visible.length > 0 ? visible : data.map(t => t.name))
       })
       .catch(() => {})
   }, [])
