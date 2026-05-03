@@ -31,6 +31,7 @@ import {
   getMyTenants,
   getTermine,
   getVenues,
+  createVenue,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -226,6 +227,9 @@ export function L3Layout({
   // ── Venues list ───────────────────────────────────────────────────────────
   const [venuesList, setVenuesList] = useState<Venue[]>([])
   const [venuesSearch, setVenuesSearch] = useState('')
+  const [venueInlineNew, setVenueInlineNew] = useState(false)
+  const [venueNewName, setVenueNewName] = useState('')
+  const [venueCreating, setVenueCreating] = useState(false)
   const [activeVenueId, setActiveVenueId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/venues\/([^/]+)/)
@@ -603,18 +607,82 @@ export function L3Layout({
         .filter(v => !q || v.name?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q))
         .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
 
+      const handleCreateVenue = async () => {
+        if (!venueNewName.trim() || venueCreating) return
+        setVenueCreating(true)
+        try {
+          const created = await createVenue({
+            name: venueNewName.trim(), street: '', postalCode: '', city: '', state: '',
+            country: '', website: '', arrival: '', arrivalStreet: '', arrivalPostalCode: '',
+            arrivalCity: '', capacity: '', capacitySeated: '', stageDimensions: '',
+            clearanceHeight: '', merchandiseFee: '', merchandiseStand: '', wardrobe: '',
+            showers: '', wifi: '', parking: '', nightlinerParking: '', loadingPath: '',
+            notes: '', latitude: '', longitude: '',
+          })
+          setVenuesList(prev => [...prev, created])
+          setActiveVenueId(String(created.id))
+          setVenueInlineNew(false)
+          setVenueNewName('')
+          router.push(`/venues/${created.id}`)
+        } catch { /* silent */ }
+        finally { setVenueCreating(false) }
+      }
+
       return (
         <div className="flex flex-col h-full">
-          {/* Suche */}
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+          {/* Suche + Neu-Button */}
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
             <input
               type="text"
               value={venuesSearch}
               onChange={e => setVenuesSearch(e.target.value)}
               placeholder="Suchen…"
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {isEditor && (
+              <button
+                onClick={() => { setVenueInlineNew(true); setVenueNewName('') }}
+                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                title="Neue Venue"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
+
+          {/* Inline-Anlegen */}
+          {venueInlineNew && (
+            <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+              <input
+                autoFocus
+                type="text"
+                value={venueNewName}
+                onChange={e => setVenueNewName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleCreateVenue()
+                  if (e.key === 'Escape') { setVenueInlineNew(false); setVenueNewName('') }
+                }}
+                placeholder="Name der Venue…"
+                className="w-full px-2.5 py-1.5 bg-gray-900 border border-blue-500 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none"
+              />
+              <div className="flex gap-1.5 mt-1.5">
+                <button
+                  onClick={handleCreateVenue}
+                  disabled={!venueNewName.trim() || venueCreating}
+                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors"
+                >
+                  {venueCreating ? '…' : 'Anlegen'}
+                </button>
+                <button
+                  onClick={() => { setVenueInlineNew(false); setVenueNewName('') }}
+                  className="px-2 py-1 text-xs text-gray-400 hover:text-white"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Liste */}
           <div className="flex-1 overflow-y-auto py-1">
             {filtered.length === 0 ? (
@@ -924,8 +992,35 @@ export function L3Layout({
             </button>
           )}
 
-          {/* Left: Detail-Tabs — Advancing (immer) oder Appointments (wenn in Detail) */}
+          {/* Left: Detail-Tabs — Advancing, Appointments oder Venues */}
           <div className="flex-1 flex items-center min-w-0">
+            {activeTab === 'venues' && (
+              <div className="flex items-center gap-0.5">
+                {[
+                  { id: 'overview', label: 'Übersicht' },
+                  ...(activeVenueId ? [{ id: 'details', label: 'Details' }] : []),
+                ].map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      if (v.id === 'overview') {
+                        setActiveVenueId(null)
+                        router.push('/venues')
+                      } else {
+                        router.push(`/venues/${activeVenueId}`)
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      (v.id === 'overview' && !activeVenueId) || (v.id === 'details' && !!activeVenueId)
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {(activeTab === 'advancing' || (activeTab === 'appointments' && termineInDetail)) && (() => {
               const isAdvancing = activeTab === 'advancing'
               const currentView = isAdvancing ? advancingView : termineView
