@@ -34,6 +34,12 @@ import {
   getVenues,
   createVenue,
   deleteVenue,
+  getPartners,
+  deletePartner,
+  getHotels,
+  deleteHotel,
+  getVehicles,
+  deleteVehicle,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -45,6 +51,9 @@ import {
   type TenantRole,
   type Termin,
   type Venue,
+  type Partner,
+  type Hotel,
+  type Vehicle,
 } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
@@ -225,6 +234,36 @@ export function L3Layout({
       window.removeEventListener('advancing-set-view',      onAdvancingSetView)
     }
   }, [])
+
+  // ── Partners list ─────────────────────────────────────────────────────────
+  const [partnersList, setPartnersList] = useState<Partner[]>([])
+  const [partnersSearch, setPartnersSearch] = useState('')
+  const [partnerMenuOpenId, setPartnerMenuOpenId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab !== 'partners') return
+    getPartners().then(setPartnersList).catch(() => {})
+  }, [activeTab])
+
+  // ── Hotels list ───────────────────────────────────────────────────────────
+  const [hotelsList, setHotelsList] = useState<Hotel[]>([])
+  const [hotelsSearch, setHotelsSearch] = useState('')
+  const [hotelMenuOpenId, setHotelMenuOpenId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab !== 'hotels') return
+    getHotels().then(setHotelsList).catch(() => {})
+  }, [activeTab])
+
+  // ── Vehicles list ─────────────────────────────────────────────────────────
+  const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([])
+  const [vehiclesSearch, setVehiclesSearch] = useState('')
+  const [vehicleMenuOpenId, setVehicleMenuOpenId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab !== 'vehicles') return
+    getVehicles().then(setVehiclesList).catch(() => {})
+  }, [activeTab])
 
   // ── Venues list ───────────────────────────────────────────────────────────
   const [venuesList, setVenuesList] = useState<Venue[]>([])
@@ -764,6 +803,201 @@ export function L3Layout({
                 </div>
               )
             })}
+          </div>
+        </div>
+      )
+    }
+
+    // ── Partner ──────────────────────────────────────────────────────────────
+    if (activeTab === 'partners') {
+      const q = partnersSearch.toLowerCase()
+      const filtered = partnersList
+        .filter(p => !q || p.companyName?.toLowerCase().includes(q) || p.type?.toLowerCase().includes(q) || p.city?.toLowerCase().includes(q))
+        .sort((a, b) => (a.companyName ?? '').localeCompare(b.companyName ?? '', 'de'))
+
+      return (
+        <div className="flex flex-col h-full">
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            <input
+              type="text" value={partnersSearch} onChange={e => setPartnersSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto py-1" onClick={() => setPartnerMenuOpenId(null)}>
+            {filtered.length === 0
+              ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{partnersList.length === 0 ? 'Keine Partner' : 'Keine Treffer'}</p>
+              : filtered.map(p => {
+                const menuOpen = partnerMenuOpenId === p.id
+                return (
+                  <div key={p.id} className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors">
+                    <div className="flex-1 px-3 py-2 min-w-0">
+                      <p className="text-xs leading-snug truncate text-gray-300">{p.companyName}</p>
+                      {(p.type || p.city) && (
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">{[p.type, p.city].filter(Boolean).join(' · ')}</p>
+                      )}
+                    </div>
+                    {isEditor && (
+                      <div className="relative flex-shrink-0 pr-1">
+                        <button
+                          onClick={e => { e.stopPropagation(); setPartnerMenuOpenId(menuOpen ? null : p.id) }}
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        >
+                          <EllipsisHorizontalIcon className="w-4 h-4" />
+                        </button>
+                        {menuOpen && (
+                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={async () => {
+                                setPartnerMenuOpenId(null)
+                                if (!confirm(`Partner „${p.companyName}" wirklich löschen?`)) return
+                                try {
+                                  await deletePartner(p.id)
+                                  setPartnersList(prev => prev.filter(x => x.id !== p.id))
+                                } catch { /* silent */ }
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                            >
+                              Partner löschen
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            }
+          </div>
+        </div>
+      )
+    }
+
+    // ── Hotels ───────────────────────────────────────────────────────────────
+    if (activeTab === 'hotels') {
+      const q = hotelsSearch.toLowerCase()
+      const filtered = hotelsList
+        .filter(h => !q || h.name?.toLowerCase().includes(q) || h.city?.toLowerCase().includes(q))
+        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
+
+      return (
+        <div className="flex flex-col h-full">
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            <input
+              type="text" value={hotelsSearch} onChange={e => setHotelsSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto py-1" onClick={() => setHotelMenuOpenId(null)}>
+            {filtered.length === 0
+              ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{hotelsList.length === 0 ? 'Keine Hotels' : 'Keine Treffer'}</p>
+              : filtered.map(h => {
+                const menuOpen = hotelMenuOpenId === h.id
+                return (
+                  <div key={h.id} className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors">
+                    <div className="flex-1 px-3 py-2 min-w-0">
+                      <p className="text-xs leading-snug truncate text-gray-300">{h.name}</p>
+                      {(h.city || h.country) && (
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">{[h.city, h.country].filter(Boolean).join(', ')}</p>
+                      )}
+                    </div>
+                    {isEditor && (
+                      <div className="relative flex-shrink-0 pr-1">
+                        <button
+                          onClick={e => { e.stopPropagation(); setHotelMenuOpenId(menuOpen ? null : h.id) }}
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        >
+                          <EllipsisHorizontalIcon className="w-4 h-4" />
+                        </button>
+                        {menuOpen && (
+                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={async () => {
+                                setHotelMenuOpenId(null)
+                                if (!confirm(`Hotel „${h.name}" wirklich löschen?`)) return
+                                try {
+                                  await deleteHotel(h.id)
+                                  setHotelsList(prev => prev.filter(x => x.id !== h.id))
+                                } catch { /* silent */ }
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                            >
+                              Hotel löschen
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            }
+          </div>
+        </div>
+      )
+    }
+
+    // ── Fahrzeuge ─────────────────────────────────────────────────────────────
+    if (activeTab === 'vehicles') {
+      const q = vehiclesSearch.toLowerCase()
+      const filtered = vehiclesList
+        .filter(v => !q || v.designation?.toLowerCase().includes(q) || v.vehicleType?.toLowerCase().includes(q) || v.licensePlate?.toLowerCase().includes(q))
+        .sort((a, b) => (a.designation ?? '').localeCompare(b.designation ?? '', 'de'))
+
+      return (
+        <div className="flex flex-col h-full">
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            <input
+              type="text" value={vehiclesSearch} onChange={e => setVehiclesSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto py-1" onClick={() => setVehicleMenuOpenId(null)}>
+            {filtered.length === 0
+              ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{vehiclesList.length === 0 ? 'Keine Fahrzeuge' : 'Keine Treffer'}</p>
+              : filtered.map(v => {
+                const menuOpen = vehicleMenuOpenId === v.id
+                return (
+                  <div key={v.id} className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors">
+                    <div className="flex-1 px-3 py-2 min-w-0">
+                      <p className="text-xs leading-snug truncate text-gray-300">{v.designation || v.vehicleType || '–'}</p>
+                      {(v.vehicleType || v.licensePlate) && (
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">{[v.vehicleType, v.licensePlate].filter(Boolean).join(' · ')}</p>
+                      )}
+                    </div>
+                    {isEditor && (
+                      <div className="relative flex-shrink-0 pr-1">
+                        <button
+                          onClick={e => { e.stopPropagation(); setVehicleMenuOpenId(menuOpen ? null : v.id) }}
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        >
+                          <EllipsisHorizontalIcon className="w-4 h-4" />
+                        </button>
+                        {menuOpen && (
+                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={async () => {
+                                setVehicleMenuOpenId(null)
+                                if (!confirm(`Fahrzeug „${v.designation || v.vehicleType}" wirklich löschen?`)) return
+                                try {
+                                  await deleteVehicle(v.id)
+                                  setVehiclesList(prev => prev.filter(x => x.id !== v.id))
+                                } catch { /* silent */ }
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                            >
+                              Fahrzeug löschen
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            }
           </div>
         </div>
       )
