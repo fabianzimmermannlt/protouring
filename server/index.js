@@ -2557,6 +2557,14 @@ app.get('/api/hotels', authenticateToken, requireTenant, async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to get hotels' }); }
 });
 
+app.get('/api/hotels/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT * FROM hotels WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!row) return res.status(404).json({ error: 'Hotel not found' });
+    res.json({ hotel: hotelFromRow(row) });
+  } catch (e) { res.status(500).json({ error: 'Failed to get hotel' }); }
+});
+
 app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const h = req.body;
@@ -2613,6 +2621,14 @@ const vehicleFromRow = (r) => ({
   trailerDimensions: r.trailer_dimensions||'', trailerLicensePlate: r.trailer_license_plate||'',
   seats: r.seats||'', sleepingPlaces: r.sleeping_places||'', notes: r.notes||'',
   createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+app.get('/api/vehicles/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT * FROM vehicles WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!row) return res.status(404).json({ error: 'Vehicle not found' });
+    res.json({ vehicle: vehicleFromRow(row) });
+  } catch (e) { res.status(500).json({ error: 'Failed to get vehicle' }); }
 });
 
 app.get('/api/vehicles', authenticateToken, requireTenant, async (req, res) => {
@@ -2676,6 +2692,14 @@ const partnerFromRow = (r) => ({
   email: r.email||'', phone: r.phone||'', taxId: r.tax_id||'',
   billingAddress: r.billing_address||'', notes: r.notes||'',
   createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+app.get('/api/partners/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT * FROM partners WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!row) return res.status(404).json({ error: 'Partner not found' });
+    res.json({ partner: partnerFromRow(row) });
+  } catch (e) { res.status(500).json({ error: 'Failed to get partner' }); }
 });
 
 app.get('/api/partners', authenticateToken, requireTenant, async (req, res) => {

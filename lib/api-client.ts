@@ -912,6 +912,10 @@ export async function getHotels(): Promise<Hotel[]> {
   const res = await request<{ hotels: Hotel[] }>('/api/hotels');
   return res.hotels;
 }
+export async function getHotel(id: string): Promise<Hotel> {
+  const res = await request<{ hotel: Hotel }>(`/api/hotels/${id}`);
+  return res.hotel;
+}
 export async function createHotel(data: HotelFormData): Promise<Hotel> {
   const res = await request<{ hotel: Hotel }>('/api/hotels', { method: 'POST', body: data });
   return res.hotel;
@@ -941,6 +945,10 @@ export async function getVehicles(): Promise<Vehicle[]> {
   const res = await request<{ vehicles: Vehicle[] }>('/api/vehicles');
   return res.vehicles;
 }
+export async function getVehicle(id: string): Promise<Vehicle> {
+  const res = await request<{ vehicle: Vehicle }>(`/api/vehicles/${id}`);
+  return res.vehicle;
+}
 export async function createVehicle(data: VehicleFormData): Promise<Vehicle> {
   const res = await request<{ vehicle: Vehicle }>('/api/vehicles', { method: 'POST', body: data });
   return res.vehicle;
@@ -968,6 +976,10 @@ export type PartnerFormData = Omit<Partner, 'id' | 'createdAt' | 'updatedAt'>;
 export async function getPartners(): Promise<Partner[]> {
   const res = await request<{ partners: Partner[] }>('/api/partners');
   return res.partners;
+}
+export async function getPartner(id: string): Promise<Partner> {
+  const res = await request<{ partner: Partner }>(`/api/partners/${id}`);
+  return res.partner;
 }
 export async function createPartner(data: PartnerFormData): Promise<Partner> {
   const res = await request<{ partner: Partner }>('/api/partners', { method: 'POST', body: data });

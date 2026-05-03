@@ -842,7 +842,7 @@ export function L3Layout({
                 return (
                   <div key={p.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
                     <button
-                      onClick={() => { setActivePartnerId(p.id); window.dispatchEvent(new CustomEvent('partner-sidebar-select', { detail: p })) }}
+                      onClick={() => { setActivePartnerId(p.id); router.push(`/partners/${p.id}`) }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
                       <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{p.companyName}</p>
@@ -906,7 +906,7 @@ export function L3Layout({
                 return (
                   <div key={h.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
                     <button
-                      onClick={() => { setActiveHotelId(h.id); window.dispatchEvent(new CustomEvent('hotel-sidebar-select', { detail: h })) }}
+                      onClick={() => { setActiveHotelId(h.id); router.push(`/hotels/${h.id}`) }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
                       <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{h.name}</p>
@@ -970,7 +970,7 @@ export function L3Layout({
                 return (
                   <div key={v.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
                     <button
-                      onClick={() => { setActiveVehicleId(v.id); window.dispatchEvent(new CustomEvent('vehicle-sidebar-select', { detail: v })) }}
+                      onClick={() => { setActiveVehicleId(v.id); router.push(`/vehicles/${v.id}`) }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
                       <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{v.designation || v.vehicleType || '–'}</p>
@@ -1320,7 +1320,10 @@ export function L3Layout({
                     ...(activeId ? [{ id: 'details', label: 'Details' }] : []),
                   ].map(tab => (
                     <button key={tab.id}
-                      onClick={() => { if (tab.id === 'overview') clearActive() }}
+                      onClick={() => {
+                        if (tab.id === 'overview') { clearActive(); router.push(`/${activeTab}`) }
+                        else if (tab.id === 'details' && activeId) { router.push(`/${activeTab}/${activeId}`) }
+                      }}
                       className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                         (tab.id === 'overview' && !activeId) || (tab.id === 'details' && !!activeId)
                           ? 'bg-gray-100 text-gray-900 font-medium'
