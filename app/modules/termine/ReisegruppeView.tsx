@@ -7,9 +7,9 @@ import {
   getTravelParty,
   updateTravelPartyMember,
   deleteTravelPartyMember,
-  getArtistMembers,
+  excludeArtistMemberFromTermin,
+  restoreArtistMemberToTermin,
   type TravelPartyMember,
-  type ArtistMember,
 } from '@/lib/api-client'
 import ReisegruppePicker from './ReisegruppePicker'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -76,45 +76,56 @@ function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }
 
 const EMPTY = <span className="text-gray-400">–</span>
 
-function BandBlock({ isMobile }: { isMobile: boolean }) {
-  const [bandMembers, setBandMembers] = useState<ArtistMember[]>([])
+function BandBlock({
+  members, isMobile, isAdmin, terminId,
+  onExclude, onRestore,
+}: {
+  members: TravelPartyMember[]
+  isMobile: boolean
+  isAdmin: boolean
+  terminId: number
+  onExclude: (m: TravelPartyMember) => void
+  onRestore: (m: TravelPartyMember) => void
+}) {
+  const active = members.filter(m => !m.excluded)
+  const excluded = members.filter(m => m.excluded)
 
-  useEffect(() => {
-    getArtistMembers()
-      .then(all => setBandMembers(all.filter(m => m.always_in_travelparty)))
-      .catch(() => setBandMembers([]))
-  }, [])
-
-  if (bandMembers.length === 0) return null
+  if (members.length === 0) return null
 
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Band</span>
-        <span className="text-xs text-gray-300">{bandMembers.length} {bandMembers.length === 1 ? 'Mitglied' : 'Mitglieder'}</span>
+        <span className="text-xs text-gray-300">{active.length} {active.length === 1 ? 'Mitglied' : 'Mitglieder'} dabei</span>
+        {excluded.length > 0 && (
+          <span className="text-xs text-orange-400">{excluded.length} abwesend</span>
+        )}
       </div>
       {isMobile ? (
         <div className="flex flex-col gap-2">
-          {bandMembers.map(m => (
-            <div key={m.id} className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-start gap-3">
+          {members.map(m => (
+            <div key={m.id} className={`border rounded-xl px-4 py-3 flex items-start gap-3 ${m.excluded ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-blue-50 border-blue-100'}`}>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-900 text-sm">{m.first_name} {m.last_name}</div>
-                {m.roles.length > 0 && (
-                  <div className="text-xs text-gray-500 mt-0.5">{m.roles.join(' · ')}</div>
-                )}
-                <div className="flex flex-wrap gap-3 mt-1.5">
-                  {m.email && (
-                    <a href={`mailto:${m.email}`} className="flex items-center gap-1 text-xs text-blue-600">
-                      <Mail size={11} /> {m.email}
-                    </a>
-                  )}
-                  {m.phone && (
-                    <a href={`tel:${m.phone}`} className="flex items-center gap-1 text-xs text-blue-600">
-                      <Phone size={11} /> {m.phone}
-                    </a>
-                  )}
+                <div className={`font-semibold text-sm ${m.excluded ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                  {m.firstName} {m.lastName}
                 </div>
+                {(m.role1 || m.function1) && (
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {[m.role1 || m.function1, m.role2 || m.function2, m.role3 || m.function3].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+                {!m.excluded && (
+                  <div className="flex flex-wrap gap-3 mt-1.5">
+                    {m.email && <a href={`mailto:${m.email}`} className="flex items-center gap-1 text-xs text-blue-600"><Mail size={11} /> {m.email}</a>}
+                    {m.phone && <a href={`tel:${m.phone}`} className="flex items-center gap-1 text-xs text-blue-600"><Phone size={11} /> {m.phone}</a>}
+                  </div>
+                )}
               </div>
+              {isAdmin && (
+                m.excluded
+                  ? <button onClick={() => onRestore(m)} className="text-xs text-blue-600 hover:underline flex-shrink-0 mt-0.5">Wieder dabei</button>
+                  : <button onClick={() => onExclude(m)} className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"><Trash2 size={15} /></button>
+              )}
             </div>
           ))}
         </div>
@@ -122,22 +133,29 @@ function BandBlock({ isMobile }: { isMobile: boolean }) {
         <div className="data-table-wrapper">
           <table className="data-table data-table--compact">
             <tbody>
-              {bandMembers.map(m => (
-                <tr key={m.id} className="bg-blue-50/40">
+              {members.map(m => (
+                <tr key={m.id} className={m.excluded ? 'opacity-40' : 'bg-blue-50/40'}>
                   <td style={{ width: '2.5rem' }}>
-                    <span className="pt-travel-avail pt-travel-avail--available" title="immer dabei">✓</span>
+                    {m.excluded
+                      ? <span className="pt-travel-avail pt-travel-avail--unavailable" title="abwesend bei diesem Termin">✗</span>
+                      : <span className="pt-travel-avail pt-travel-avail--available" title="immer dabei">✓</span>
+                    }
                   </td>
-                  <td className="font-medium">{m.last_name || <span className="text-gray-400">–</span>}</td>
-                  <td>{m.first_name || <span className="text-gray-400">–</span>}</td>
-                  <td>{m.roles[0] || <span className="text-gray-400">–</span>}</td>
-                  <td>{m.roles[1] || <span className="text-gray-400">–</span>}</td>
-                  <td>{m.roles[2] || <span className="text-gray-400">–</span>}</td>
+                  <td className={`font-medium ${m.excluded ? 'line-through text-gray-400' : ''}`}>{m.lastName || <span className="text-gray-400">–</span>}</td>
+                  <td className={m.excluded ? 'text-gray-400' : ''}>{m.firstName || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.role1 || m.function1 || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.role2 || m.function2 || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.role3 || m.function3 || <span className="text-gray-400">–</span>}</td>
                   <td>{m.email ? <a href={`mailto:${m.email}`}>{m.email}</a> : <span className="text-gray-400">–</span>}</td>
                   <td>{m.phone ? <a href={`tel:${m.phone}`}>{m.phone}</a> : <span className="text-gray-400">–</span>}</td>
-                  <td />
-                  <td />
-                  <td />
-                  <td />
+                  <td /><td /><td />
+                  <td>
+                    {isAdmin && (
+                      m.excluded
+                        ? <button onClick={() => onRestore(m)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Wieder dabei</button>
+                        : <button onClick={() => onExclude(m)} className="pt-travel-action-btn pt-travel-action-btn--danger" title="Für diesen Termin entfernen"><Trash2 size={13} /></button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -166,13 +184,16 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
       .finally(() => setLoading(false))
   }, [terminId])
 
+  const bandMembers = members.filter(m => m.isArtistMember)
+  const crewMembers = members.filter(m => !m.isArtistMember)
+
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir('asc') }
   }
 
   const sortedMembers = useMemo(() => {
-    return [...members].sort((a, b) => {
+    return members.filter(m => !m.isArtistMember).sort((a, b) => {
       let cmp = 0
       if (sortKey === 'availabilityStatus') {
         cmp = (AVAIL_ORDER[a.availabilityStatus ?? 'unknown'] ?? 2) - (AVAIL_ORDER[b.availabilityStatus ?? 'unknown'] ?? 2)
@@ -213,6 +234,17 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
     setMembers(prev => prev.filter(x => x.id !== m.id))
   }
 
+  const handleExcludeArtist = async (m: TravelPartyMember) => {
+    if (!confirm(`${m.firstName} ${m.lastName} für diesen Termin als abwesend markieren?`)) return
+    await excludeArtistMemberFromTermin(m.terminId, m.id)
+    setMembers(prev => prev.map(x => x.id === m.id ? { ...x, excluded: true } : x))
+  }
+
+  const handleRestoreArtist = async (m: TravelPartyMember) => {
+    await restoreArtistMemberToTermin(m.terminId, m.id)
+    setMembers(prev => prev.map(x => x.id === m.id ? { ...x, excluded: false } : x))
+  }
+
   const updateRole = async (m: TravelPartyMember, field: 'role1' | 'role2' | 'role3', value: string) => {
     setSavingId(m.id)
     try {
@@ -237,7 +269,14 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
 
   return (
     <div>
-      <BandBlock isMobile={isMobile} />
+      <BandBlock
+        members={bandMembers}
+        isMobile={isMobile}
+        isAdmin={isAdmin}
+        terminId={terminId}
+        onExclude={handleExcludeArtist}
+        onRestore={handleRestoreArtist}
+      />
       <div className="pt-travel-header">
         {isAdmin ? (
           <div className="flex gap-2">
@@ -247,11 +286,11 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
           </div>
         ) : <div />}
         <div className="pt-travel-count">
-          <strong>{members.length}</strong> {members.length === 1 ? 'Person' : 'Personen'} in der Crew
+          <strong>{crewMembers.length}</strong> {crewMembers.length === 1 ? 'Person' : 'Personen'} in der Crew
         </div>
       </div>
 
-      {members.length === 0 ? (
+      {crewMembers.length === 0 ? (
         <div className="data-table-wrapper">
           <div className="pt-travel-empty">
             Noch niemand in der Crew. Mit „+ Hinzufügen" Kontakte auswählen.

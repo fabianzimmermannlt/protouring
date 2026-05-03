@@ -1442,6 +1442,26 @@ async function initDatabase() {
     )
   `)
 
+  // Artist Members per Termin (Auto-Sync + Soft-Delete)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS termin_artist_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      artist_member_id INTEGER NOT NULL REFERENCES artist_members(id) ON DELETE CASCADE,
+      excluded INTEGER NOT NULL DEFAULT 0,
+      role1 TEXT NOT NULL DEFAULT '',
+      role2 TEXT NOT NULL DEFAULT '',
+      role3 TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(termin_id, artist_member_id)
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_termin ON termin_artist_members(termin_id)`)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_artist ON termin_artist_members(artist_member_id)`)
+
   console.log('✅ Database initialized');
 }
 
@@ -3536,7 +3556,29 @@ app.delete('/api/termine/:terminId/contacts/:id', authenticateToken, requireTena
 // GET all members for a termin – enriched with contact data + availability
 app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const rows = await db.all(`
+    const { terminId } = req.params;
+    const tenantId = req.tenant.id;
+
+    // Auto-sync: artist members with always_in_travelparty=1 not yet in termin_artist_members
+    const missingArtists = await db.all(`
+      SELECT am.* FROM artist_members am
+      WHERE am.tenant_id = ? AND am.always_in_travelparty = 1
+        AND am.id NOT IN (
+          SELECT artist_member_id FROM termin_artist_members
+          WHERE termin_id = ? AND tenant_id = ?
+        )
+    `, [tenantId, terminId, tenantId]);
+    for (const am of missingArtists) {
+      const roles = JSON.parse(am.roles || '[]');
+      await db.run(
+        `INSERT OR IGNORE INTO termin_artist_members (termin_id, tenant_id, artist_member_id, role1, role2, role3, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [terminId, tenantId, am.id, roles[0] || '', roles[1] || '', roles[2] || '', am.sort_order]
+      );
+    }
+
+    // Crew members (contacts)
+    const crewRows = await db.all(`
       SELECT
         tp.id, tp.termin_id, tp.tenant_id, tp.contact_id,
         tp.role1, tp.role2, tp.role3, tp.specification, tp.sort_order,
@@ -3544,15 +3586,47 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
         c.postal_code, c.residence,
         c.function1, c.function2, c.function3,
         c.user_id, c.contact_type,
-        av.status AS availability_status
+        av.status AS availability_status,
+        0 AS is_artist_member,
+        0 AS excluded,
+        NULL AS artist_member_id
       FROM termin_travel_party tp
       JOIN contacts c ON c.id = tp.contact_id
       LEFT JOIN termin_availability av
         ON av.termin_id = tp.termin_id AND av.user_id = c.user_id
       WHERE tp.termin_id = ? AND tp.tenant_id = ?
       ORDER BY tp.sort_order ASC, tp.id ASC
-    `, [req.params.terminId, req.tenant.id]);
-    res.json({ members: rows });
+    `, [terminId, tenantId]);
+
+    // Artist members (including excluded, so frontend can show restore option)
+    const artistRows = await db.all(`
+      SELECT
+        tam.id, tam.termin_id, tam.tenant_id,
+        NULL AS contact_id,
+        tam.role1, tam.role2, tam.role3,
+        '' AS specification, tam.sort_order,
+        am.first_name, am.last_name, am.email, am.phone,
+        '' AS mobile, '' AS postal_code, '' AS residence,
+        am.roles AS _roles_json,
+        NULL AS user_id, 'artist_member' AS contact_type,
+        'available' AS availability_status,
+        1 AS is_artist_member,
+        tam.excluded,
+        am.id AS artist_member_id
+      FROM termin_artist_members tam
+      JOIN artist_members am ON am.id = tam.artist_member_id
+      WHERE tam.termin_id = ? AND tam.tenant_id = ?
+      ORDER BY tam.sort_order ASC, am.last_name COLLATE NOCASE ASC
+    `, [terminId, tenantId]);
+
+    // Parse roles for artist rows → function1/2/3
+    const parsedArtistRows = artistRows.map(r => {
+      const roles = JSON.parse(r._roles_json || '[]');
+      const { _roles_json, ...rest } = r;
+      return { ...rest, function1: roles[0] || '', function2: roles[1] || '', function3: roles[2] || '' };
+    });
+
+    res.json({ members: [...parsedArtistRows, ...crewRows] });
   } catch (err) {
     console.error('travel-party GET failed', err);
     res.status(500).json({ error: 'Failed to load travel party' });
@@ -3615,7 +3689,27 @@ app.post('/api/termine/:terminId/travel-party', authenticateToken, requireTenant
 
 app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const { role1 = '', role2 = '', role3 = '', specification = '', sort_order } = req.body;
+    const { role1 = '', role2 = '', role3 = '', specification = '', sort_order, is_artist_member } = req.body;
+    if (is_artist_member) {
+      // Update termin_artist_members
+      await db.run(
+        `UPDATE termin_artist_members
+         SET role1=?, role2=?, role3=?, sort_order=COALESCE(?,sort_order), updated_at=CURRENT_TIMESTAMP
+         WHERE id=? AND tenant_id=?`,
+        [role1, role2, role3, sort_order ?? null, req.params.id, req.tenant.id]
+      );
+      const tam = await db.get(`
+        SELECT tam.*, am.first_name, am.last_name, am.email, am.phone, am.roles AS _roles_json,
+               1 AS is_artist_member, am.id AS artist_member_id
+        FROM termin_artist_members tam
+        JOIN artist_members am ON am.id = tam.artist_member_id
+        WHERE tam.id = ?
+      `, [req.params.id]);
+      if (!tam) return res.status(404).json({ error: 'Not found' });
+      const roles = JSON.parse(tam._roles_json || '[]');
+      const { _roles_json, ...rest } = tam;
+      return res.json({ member: { ...rest, contact_type: 'artist_member', function1: roles[0]||'', function2: roles[1]||'', function3: roles[2]||'', availability_status: 'available', excluded: tam.excluded } });
+    }
     await db.run(
       `UPDATE termin_travel_party
        SET role1=?, role2=?, role3=?, specification=?,
@@ -3627,7 +3721,8 @@ app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTen
       SELECT tp.*, c.first_name, c.last_name, c.email, c.phone, c.mobile,
              c.postal_code, c.residence, c.function1, c.function2, c.function3,
              c.user_id, c.contact_type,
-             av.status AS availability_status
+             av.status AS availability_status,
+             0 AS is_artist_member, 0 AS excluded, NULL AS artist_member_id
       FROM termin_travel_party tp
       JOIN contacts c ON c.id = tp.contact_id
       LEFT JOIN termin_availability av ON av.termin_id = tp.termin_id AND av.user_id = c.user_id
@@ -3637,6 +3732,32 @@ app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTen
   } catch (err) {
     console.error('travel-party PUT failed', err);
     res.status(500).json({ error: 'Failed to update member' });
+  }
+});
+
+// Soft-delete artist member from termin (set excluded=1)
+app.delete('/api/termine/:terminId/travel-party/artist/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run(
+      'UPDATE termin_artist_members SET excluded=1, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [req.params.id, req.tenant.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to exclude artist member' });
+  }
+});
+
+// Restore excluded artist member for termin
+app.post('/api/termine/:terminId/travel-party/artist/:id/restore', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run(
+      'UPDATE termin_artist_members SET excluded=0, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [req.params.id, req.tenant.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to restore artist member' });
   }
 });
 

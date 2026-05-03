@@ -1273,14 +1273,14 @@ export interface TravelPartyMember {
   id: number;
   terminId: number;
   tenantId: number;
-  contactId: number;
+  contactId: number | null;
   // termin-specific
   role1: string;
   role2: string;
   role3: string;
   specification: string;
   sortOrder: number;
-  // live from contact
+  // live from contact / artist member
   firstName: string;
   lastName: string;
   email: string;
@@ -1292,8 +1292,12 @@ export interface TravelPartyMember {
   function2: string;
   function3: string;
   userId: number | null;
-  contactType: 'crew' | 'guest';
+  contactType: 'crew' | 'guest' | 'artist_member';
   availabilityStatus: AvailabilityStatus;
+  // artist member specific
+  isArtistMember?: boolean;
+  artistMemberId?: number;
+  excluded?: boolean;
 }
 
 export interface TravelPartyPickerContact {
@@ -1319,7 +1323,7 @@ function memberFromRow(r: Record<string, unknown>): TravelPartyMember {
     id: r.id as number,
     terminId: r.termin_id as number,
     tenantId: r.tenant_id as number,
-    contactId: r.contact_id as number,
+    contactId: (r.contact_id as number) ?? null,
     role1: (r.role1 as string) ?? '',
     role2: (r.role2 as string) ?? '',
     role3: (r.role3 as string) ?? '',
@@ -1336,8 +1340,11 @@ function memberFromRow(r: Record<string, unknown>): TravelPartyMember {
     function2: (r.function2 as string) ?? '',
     function3: (r.function3 as string) ?? '',
     userId: (r.user_id as number) ?? null,
-    contactType: ((r.contact_type as string) ?? 'crew') as 'crew' | 'guest',
+    contactType: ((r.contact_type as string) ?? 'crew') as 'crew' | 'guest' | 'artist_member',
     availabilityStatus: (r.availability_status as AvailabilityStatus) ?? null,
+    isArtistMember: Boolean(r.is_artist_member),
+    artistMemberId: (r.artist_member_id as number) ?? undefined,
+    excluded: Boolean(r.excluded),
   };
 }
 
@@ -1439,7 +1446,7 @@ export async function addTravelPartyMember(
 export async function updateTravelPartyMember(
   terminId: number,
   id: number,
-  data: { role1?: string; role2?: string; role3?: string; specification?: string; sortOrder?: number }
+  data: { role1?: string; role2?: string; role3?: string; specification?: string; sortOrder?: number; isArtistMember?: boolean }
 ): Promise<TravelPartyMember> {
   const res = await request<{ member: Record<string, unknown> }>(`/api/termine/${terminId}/travel-party/${id}`, {
     method: 'PUT',
@@ -1449,6 +1456,7 @@ export async function updateTravelPartyMember(
       role3: data.role3 ?? '',
       specification: data.specification ?? '',
       sort_order: data.sortOrder,
+      is_artist_member: data.isArtistMember ? 1 : 0,
     },
   });
   return memberFromRow(res.member);
@@ -1456,6 +1464,14 @@ export async function updateTravelPartyMember(
 
 export async function deleteTravelPartyMember(terminId: number, id: number): Promise<void> {
   await request(`/api/termine/${terminId}/travel-party/${id}`, { method: 'DELETE' });
+}
+
+export async function excludeArtistMemberFromTermin(terminId: number, tamId: number): Promise<void> {
+  await request(`/api/termine/${terminId}/travel-party/artist/${tamId}`, { method: 'DELETE' });
+}
+
+export async function restoreArtistMemberToTermin(terminId: number, tamId: number): Promise<void> {
+  await request(`/api/termine/${terminId}/travel-party/artist/${tamId}/restore`, { method: 'POST' });
 }
 
 export async function removeTravelPartyMemberByContact(terminId: number, contactId: number): Promise<void> {
