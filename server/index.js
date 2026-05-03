@@ -5734,7 +5734,7 @@ app.delete('/api/artist-members/:id', authenticateToken, requireTenant, async (r
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-/ ── Equipment: Gegenstände (Items) ───────────────────────────────────────────
+// ── Equipment: Gegenstände (Items) ───────────────────────────────────────────
 
 // Hilfsfunktion: nächste Case-ID für Tenant ermitteln
 async function getNextCaseId(tenantId) {
