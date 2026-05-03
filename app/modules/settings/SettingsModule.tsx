@@ -2216,4 +2216,3 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
     </div>
   )
 }
-}
