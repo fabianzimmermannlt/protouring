@@ -18,7 +18,7 @@ const HOTEL_COLS: [string, keyof Hotel][] = [
   ['Website', 'website'],
 ]
 
-function HotelTable({ hotels, canEdit = false, onEdit }: { hotels: Hotel[]; canEdit?: boolean; onEdit: (h: Hotel) => void }) {
+function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) => void }) {
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     hotels as unknown as Record<string, unknown>[],
     'name'
@@ -43,7 +43,7 @@ function HotelTable({ hotels, canEdit = false, onEdit }: { hotels: Hotel[]; canE
       </thead>
       <tbody>
         {(sorted as unknown as Hotel[]).map((hotel) => (
-          <tr key={hotel.id} className={canEdit ? 'clickable' : ''} onClick={canEdit ? () => onEdit(hotel) : undefined}>
+          <tr key={hotel.id} className="clickable" onClick={() => onEdit(hotel)}>
             <td className="font-medium">{hotel.name}</td>
             <td>{hotel.street}</td>
             <td>{hotel.postalCode}</td>
@@ -202,8 +202,8 @@ export default function HotelsPage() {
       ) : isMobile ? (
         <div className="flex flex-col gap-2">
           {[...filtered].sort((a, b) => a.name.localeCompare(b.name, 'de')).map(item => (
-            <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
-              onClick={isEditor ? () => openEditHotelModal(item) : undefined}>
+            <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 cursor-pointer"
+              onClick={() => window.location.href = `/hotels/${item.id}`}>
               <p className="text-sm font-semibold text-gray-900">{item.name}</p>
               {item.city && <p className="text-xs text-gray-500 mt-0.5">{item.city}</p>}
               {item.website && <p className="text-xs text-gray-400 mt-0.5">{item.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</p>}
@@ -212,7 +212,7 @@ export default function HotelsPage() {
         </div>
       ) : (
         <div className="data-table-wrapper">
-          <HotelTable hotels={filtered} canEdit={isEditor} onEdit={openEditHotelModal} />
+          <HotelTable hotels={filtered} onEdit={h => window.location.href = `/hotels/${h.id}`} />
         </div>
       )}
 

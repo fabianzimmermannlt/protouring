@@ -184,8 +184,8 @@ export default function VehiclesPage() {
       ) : isMobile ? (
         <div className="flex flex-col gap-2">
           {[...filteredVehicles].sort((a, b) => a.designation.localeCompare(b.designation, 'de')).map(item => (
-            <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
-              onClick={isEditor ? () => openEditVehicleModal(item) : undefined}>
+            <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 cursor-pointer"
+              onClick={() => window.location.href = `/vehicles/${item.id}`}>
               <p className="text-sm font-semibold text-gray-900">{item.designation}</p>
               {item.vehicleType && <p className="text-xs text-gray-500 mt-0.5">{item.vehicleType}</p>}
               {item.licensePlate && <p className="text-xs text-gray-400 mt-0.5">{item.licensePlate}</p>}
@@ -194,7 +194,7 @@ export default function VehiclesPage() {
         </div>
       ) : (
         <div className="data-table-wrapper">
-          <VehicleTable vehicles={filteredVehicles} canEdit={isEditor} onEdit={openEditVehicleModal} />
+          <VehicleTable vehicles={filteredVehicles} onEdit={v => window.location.href = `/vehicles/${v.id}`} />
         </div>
       )}
 
@@ -219,7 +219,7 @@ export default function VehiclesPage() {
   )
 }
 
-function VehicleTable({ vehicles, canEdit = false, onEdit }: { vehicles: Vehicle[]; canEdit?: boolean; onEdit: (v: Vehicle) => void }) {
+function VehicleTable({ vehicles, onEdit }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void }) {
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     vehicles as unknown as Record<string, unknown>[],
     'designation'
@@ -240,7 +240,7 @@ function VehicleTable({ vehicles, canEdit = false, onEdit }: { vehicles: Vehicle
       </thead>
       <tbody>
         {(sorted as unknown as Vehicle[]).map((vehicle) => (
-          <tr key={vehicle.id} className={canEdit ? 'clickable' : ''} onClick={canEdit ? () => onEdit(vehicle) : undefined}>
+          <tr key={vehicle.id} className="clickable" onClick={() => onEdit(vehicle)}>
             <td className="font-medium">{vehicle.designation}</td>
             <td>{vehicle.vehicleType}</td>
             <td>{vehicle.driver}</td>

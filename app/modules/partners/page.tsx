@@ -268,8 +268,8 @@ export default function PartnersPage() {
         return isMobile ? (
           <div className="flex flex-col gap-2">
             {[...filtered].sort((a, b) => a.companyName.localeCompare(b.companyName, 'de')).map(item => (
-              <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3"
-                onClick={isEditor ? () => openEditPartnerModal(item) : undefined}>
+              <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 cursor-pointer"
+                onClick={() => window.location.href = `/partners/${item.id}`}>
                 <p className="text-sm font-semibold text-gray-900">{item.companyName}</p>
                 {item.type && <p className="text-xs text-gray-500 mt-0.5">{item.type}</p>}
                 {item.city && <p className="text-xs text-gray-400 mt-0.5">{item.city}</p>}
@@ -278,7 +278,7 @@ export default function PartnersPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <PartnerTable partners={filtered} canEdit={isEditor} onEdit={openEditPartnerModal} />
+            <PartnerTable partners={filtered} onEdit={p => window.location.href = `/partners/${p.id}`} />
           </div>
         )
       })()}
@@ -503,7 +503,7 @@ export default function PartnersPage() {
   )
 }
 
-function PartnerTable({ partners, canEdit = false, onEdit }: { partners: Partner[]; canEdit?: boolean; onEdit: (p: Partner) => void }) {
+function PartnerTable({ partners, onEdit }: { partners: Partner[]; onEdit: (p: Partner) => void }) {
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     partners as unknown as Record<string, unknown>[],
     'companyName'
@@ -524,7 +524,7 @@ function PartnerTable({ partners, canEdit = false, onEdit }: { partners: Partner
       </thead>
       <tbody>
         {(sorted as unknown as Partner[]).map((partner) => (
-          <tr key={partner.id} className={canEdit ? 'clickable' : ''} onClick={canEdit ? () => onEdit(partner) : undefined}>
+          <tr key={partner.id} className="clickable" onClick={() => onEdit(partner)}>
             <td className="font-medium">{partner.companyName}</td>
             <td>{partner.street}</td>
             <td>{partner.postalCode}</td>
