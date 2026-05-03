@@ -7,7 +7,7 @@ import {
   Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2, Upload,
 } from 'lucide-react'
 import {
-  getVenue, getVenues, updateTermin, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
+  getVenue, getVenues, createVenue, updateTermin, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
   getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
   type Venue, type VenueContact, type Termin,
 } from '@/lib/api-client'
@@ -115,6 +115,46 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: {
   )
 }
 
+// ─── New Venue Inline Form ────────────────────────────────────────────────────
+function NewVenueInlineForm({ form, onChange, onSave, onCancel, saving, error }: {
+  form: { name: string; city: string; postalCode: string; country: string }
+  onChange: (f: { name: string; city: string; postalCode: string; country: string }) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+  error: string
+}) {
+  const s = (key: string, value: string) => onChange({ ...form, [key]: value })
+  return (
+    <div className="space-y-2 p-2 bg-gray-50 rounded-lg border border-blue-200">
+      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Neues Venue</p>
+      <input autoFocus type="text" placeholder="Name *" value={form.name}
+        onChange={e => s('name', e.target.value)}
+        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
+      <div className="grid grid-cols-[72px_1fr] gap-1.5">
+        <input type="text" placeholder="PLZ" value={form.postalCode}
+          onChange={e => s('postalCode', e.target.value)}
+          className="px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
+        <input type="text" placeholder="Stadt" value={form.city}
+          onChange={e => s('city', e.target.value)}
+          className="px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
+      </div>
+      <input type="text" placeholder="Land" value={form.country}
+        onChange={e => s('country', e.target.value)}
+        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2 justify-end pt-1">
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onSave} disabled={saving || !form.name.trim()}
+          className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+          Anlegen & verknüpfen
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Contact Form (inline) ─────────────────────────────────────────────────────
 function ContactForm({ form, onChange, onSave, onCancel, saving }: {
   form: { name: string; role: string; phone: string; email: string; notes: string }
@@ -190,6 +230,12 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
   const [selecting, setSelecting] = useState(false)
   const [search, setSearch] = useState('')
   const [linkSaving, setLinkSaving] = useState(false)
+
+  // Inline Venue-Erstellung
+  const [creatingNew, setCreatingNew] = useState(false)
+  const [newVenueForm, setNewVenueForm] = useState({ name: '', city: '', postalCode: '', country: '' })
+  const [savingNew, setSavingNew] = useState(false)
+  const [newVenueError, setNewVenueError] = useState('')
 
   // Inline edit
   const [editingSection, setEditingSection] = useState<EditSection | null>(null)
@@ -316,6 +362,45 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
     finally { setLinkSaving(false) }
   }
 
+  async function createAndLink() {
+    if (!newVenueForm.name.trim()) { setNewVenueError('Name ist erforderlich'); return }
+    setSavingNew(true)
+    setNewVenueError('')
+    try {
+      const created = await createVenue({
+        name: newVenueForm.name.trim(),
+        city: newVenueForm.city.trim(),
+        postalCode: newVenueForm.postalCode.trim(),
+        country: newVenueForm.country.trim(),
+        street: '', state: '', website: '', latitude: '', longitude: '',
+        arrival: '', arrivalStreet: '', arrivalPostalCode: '', arrivalCity: '',
+        parking: '', nightlinerParking: '', loadingPath: '',
+        capacity: '', capacitySeated: '', stageDimensions: '', clearanceHeight: '',
+        wifi: '', wardrobe: '', showers: '', merchandiseFee: '', merchandiseStand: '', notes: '',
+      })
+      setAllVenues(prev => [...prev, created])
+      await linkVenue(created)
+      setCreatingNew(false)
+      setNewVenueForm({ name: '', city: '', postalCode: '', country: '' })
+    } catch (e) {
+      setNewVenueError((e as Error).message || 'Erstellen fehlgeschlagen')
+    } finally {
+      setSavingNew(false)
+    }
+  }
+
+  function startCreatingNew() {
+    setCreatingNew(true)
+    setNewVenueForm({ name: search, city: '', postalCode: '', country: '' })
+    setNewVenueError('')
+  }
+
+  function cancelCreatingNew() {
+    setCreatingNew(false)
+    setNewVenueForm({ name: '', city: '', postalCode: '', country: '' })
+    setNewVenueError('')
+  }
+
   // ─── Inline edit handlers ──────────────────────────────────────────────────
   function startEditSection(section: EditSection) {
     if (venue) setInlineForm({ ...(venue as any) })
@@ -413,23 +498,43 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
         <div className="px-5 py-4">
           {selecting ? (
             <div className="space-y-2">
-              <input type="text" autoFocus placeholder="Venue suchen…"
-                value={search} onChange={e => setSearch(e.target.value)}
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
-                {filteredVenues.length === 0
-                  ? <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Venues gefunden</div>
-                  : filteredVenues.map(v => (
-                    <button key={v.id} onClick={() => linkVenue(v)} disabled={linkSaving}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">
-                      <div className="font-medium text-gray-800">{v.name}</div>
-                      {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+              {!creatingNew && (
+                <input type="text" autoFocus placeholder="Venue suchen…"
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              )}
+              {creatingNew ? (
+                <NewVenueInlineForm
+                  form={newVenueForm} onChange={setNewVenueForm}
+                  onSave={createAndLink} onCancel={cancelCreatingNew}
+                  saving={savingNew} error={newVenueError} />
+              ) : (
+                <div className="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                  <div className="max-h-52 overflow-y-auto divide-y divide-gray-100">
+                    {filteredVenues.length === 0
+                      ? <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Venues gefunden</div>
+                      : filteredVenues.map(v => (
+                        <button key={v.id} onClick={() => linkVenue(v)} disabled={linkSaving}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors">
+                          <div className="font-medium text-gray-800">{v.name}</div>
+                          {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+                        </button>
+                      ))
+                    }
+                  </div>
+                  {isEditor && (
+                    <button onClick={startCreatingNew}
+                      className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1.5">
+                      <Plus size={11} />
+                      {search.trim() ? `„${search.trim()}" als neues Venue anlegen` : 'Neues Venue anlegen'}
                     </button>
-                  ))
-                }
-              </div>
-              <button onClick={() => { setSelecting(false); setSearch('') }}
-                className="text-xs text-gray-400 hover:text-gray-600">Abbrechen</button>
+                  )}
+                </div>
+              )}
+              {!creatingNew && (
+                <button onClick={() => { setSelecting(false); setSearch(''); setCreatingNew(false) }}
+                  className="text-xs text-gray-400 hover:text-gray-600">Abbrechen</button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-4">
@@ -464,7 +569,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
           </button>
         )}
         {canLink && selecting && (
-          <button onClick={() => { setSelecting(false); setSearch('') }}
+          <button onClick={() => { setSelecting(false); setSearch(''); setCreatingNew(false) }}
             className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
         )}
       </div>
@@ -472,28 +577,48 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
       {/* Venue-Selektor wenn aktiv */}
       {selecting && (
         <div className="mb-4 p-3 bg-white border border-gray-200 rounded-lg space-y-2">
-          <input type="text" autoFocus placeholder="Venue suchen…"
-            value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-          <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
-            {termin?.venueId && (
-              <button onClick={() => linkVenue(null)} disabled={linkSaving}
-                className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
-                Venue-Verknüpfung entfernen
-              </button>
-            )}
-            {filteredVenues.length === 0
-              ? <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Venues gefunden</div>
-              : filteredVenues.map(v => (
-                <button key={v.id} onClick={() => linkVenue(v)} disabled={linkSaving}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin?.venueId ? 'bg-blue-50 font-medium' : ''}`}>
-                  <div className="font-medium text-gray-800">{v.name}</div>
-                  {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+          {!creatingNew && (
+            <input type="text" autoFocus placeholder="Venue suchen…"
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          )}
+          {creatingNew ? (
+            <NewVenueInlineForm
+              form={newVenueForm} onChange={setNewVenueForm}
+              onSave={createAndLink} onCancel={cancelCreatingNew}
+              saving={savingNew} error={newVenueError} />
+          ) : (
+            <div className="rounded-lg border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+              <div className="max-h-52 overflow-y-auto divide-y divide-gray-100">
+                {termin?.venueId && (
+                  <button onClick={() => linkVenue(null)} disabled={linkSaving}
+                    className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+                    Venue-Verknüpfung entfernen
+                  </button>
+                )}
+                {filteredVenues.length === 0
+                  ? <div className="px-3 py-3 text-xs text-gray-400 text-center">Keine Venues gefunden</div>
+                  : filteredVenues.map(v => (
+                    <button key={v.id} onClick={() => linkVenue(v)} disabled={linkSaving}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin?.venueId ? 'bg-blue-50 font-medium' : ''}`}>
+                      <div className="font-medium text-gray-800">{v.name}</div>
+                      {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+                    </button>
+                  ))
+                }
+              </div>
+              {isEditor && (
+                <button onClick={startCreatingNew}
+                  className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1.5">
+                  <Plus size={11} />
+                  {search.trim() ? `„${search.trim()}" als neues Venue anlegen` : 'Neues Venue anlegen'}
                 </button>
-              ))
-            }
-          </div>
-          {linkSaving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
+              )}
+            </div>
+          )}
+          {!creatingNew && linkSaving && (
+            <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>
+          )}
         </div>
       )}
 
