@@ -32,10 +32,11 @@ import {
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   getIcalToken, regenerateIcalToken, getIcalUrl,
   getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
+  getArtistMembers, createArtistMember, updateArtistMember, deleteArtistMember,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
-  type PartnerType,
+  type PartnerType, type ArtistMember, type ArtistMemberFormData,
 } from '@/lib/api-client'
 
 import { ProfileEditor, type ProfileData } from '@/app/components/shared/ProfileEditor'
@@ -433,6 +434,11 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Band-Mitglieder */}
+            <div className="mt-8 border-t pt-6">
+              <ArtistMembersSettings />
             </div>
           </div>
         )
@@ -1974,4 +1980,240 @@ function PartnerTypesSettings() {
       )}
     </div>
   )
+}
+
+// ─── Artist Members Settings ──────────────────────────────────────────────────
+const COMMON_ROLES = ['Gesang', 'Gitarre', 'Bass', 'Schlagzeug', 'Keyboard', 'Trompete', 'Saxofon', 'Posaune', 'Geige', 'DJ', 'Tourmanager', 'Artist Management', 'Backliner', 'Monitor Engineer', 'FOH Engineer']
+
+function ArtistMembersSettings() {
+  const [members, setMembers] = useState<ArtistMember[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<number | null>(null)   // id or -1 for new
+  const [form, setForm] = useState<ArtistMemberFormData>({
+    first_name: '', last_name: '', roles: [], email: '', phone: '', notes: '', always_in_travelparty: true, sort_order: 0,
+  })
+  const [roleInput, setRoleInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getArtistMembers().then(setMembers).catch(() => {}).finally(() => setLoading(false))
+  }, [])
+
+  function startNew() {
+    setForm({ first_name: '', last_name: '', roles: [], email: '', phone: '', notes: '', always_in_travelparty: true, sort_order: members.length })
+    setRoleInput('')
+    setError('')
+    setEditing(-1)
+  }
+
+  function startEdit(m: ArtistMember) {
+    setForm({ first_name: m.first_name, last_name: m.last_name, roles: [...m.roles], email: m.email, phone: m.phone, notes: m.notes, always_in_travelparty: m.always_in_travelparty, sort_order: m.sort_order })
+    setRoleInput('')
+    setError('')
+    setEditing(m.id)
+  }
+
+  function addRole(role: string) {
+    const r = role.trim()
+    if (!r || form.roles.includes(r)) return
+    setForm(f => ({ ...f, roles: [...f.roles, r] }))
+    setRoleInput('')
+  }
+
+  function removeRole(role: string) {
+    setForm(f => ({ ...f, roles: f.roles.filter(r => r !== role) }))
+  }
+
+  async function save() {
+    if (!form.first_name.trim() && !form.last_name.trim()) { setError('Name erforderlich'); return }
+    setSaving(true); setError('')
+    try {
+      if (editing === -1) {
+        const created = await createArtistMember(form)
+        setMembers(prev => [...prev, created])
+      } else if (editing !== null) {
+        const updated = await updateArtistMember(editing, form)
+        setMembers(prev => prev.map(m => m.id === editing ? updated : m))
+      }
+      setEditing(null)
+    } catch (e) { setError((e as Error).message || 'Fehler') }
+    finally { setSaving(false) }
+  }
+
+  async function remove(id: number, name: string) {
+    if (!confirm(`„${name}" wirklich löschen?`)) return
+    try {
+      await deleteArtistMember(id)
+      setMembers(prev => prev.filter(m => m.id !== id))
+      if (editing === id) setEditing(null)
+    } catch { /* silent */ }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <UsersIcon className="w-5 h-5" /> Band-Mitglieder
+        </h3>
+        {editing === null && (
+          <button onClick={startNew} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+            <UserPlusIcon className="w-4 h-4" /> Hinzufügen
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Lade…</div>
+      ) : (
+        <div className="space-y-2">
+          {/* Existing members */}
+          {members.map(m => (
+            editing === m.id ? (
+              <MemberForm key={m.id} form={form} setForm={setForm} roleInput={roleInput} setRoleInput={setRoleInput}
+                onAddRole={addRole} onRemoveRole={removeRole} onSave={save} onCancel={() => setEditing(null)}
+                saving={saving} error={error} />
+            ) : (
+              <div key={m.id} className="flex items-start justify-between gap-3 p-3 bg-white border border-gray-200 rounded-lg group">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-900">{m.first_name} {m.last_name}</span>
+                    {m.always_in_travelparty && (
+                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">immer dabei</span>
+                    )}
+                  </div>
+                  {m.roles.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {m.roles.map(r => (
+                        <span key={r} className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{r}</span>
+                      ))}
+                    </div>
+                  )}
+                  {(m.email || m.phone) && (
+                    <p className="text-xs text-gray-400 mt-1">{[m.email, m.phone].filter(Boolean).join(' · ')}</p>
+                  )}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button onClick={() => startEdit(m)} className="p-1 text-gray-400 hover:text-blue-600">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                  <button onClick={() => remove(m.id, `${m.first_name} ${m.last_name}`)} className="p-1 text-gray-400 hover:text-red-600">
+                    <TrashIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )
+          ))}
+
+          {/* New member form */}
+          {editing === -1 && (
+            <MemberForm form={form} setForm={setForm} roleInput={roleInput} setRoleInput={setRoleInput}
+              onAddRole={addRole} onRemoveRole={removeRole} onSave={save} onCancel={() => setEditing(null)}
+              saving={saving} error={error} isNew />
+          )}
+
+          {members.length === 0 && editing === null && (
+            <p className="text-sm text-gray-400 py-2">Noch keine Band-Mitglieder erfasst.</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemoveRole, onSave, onCancel, saving, error, isNew }: {
+  form: ArtistMemberFormData
+  setForm: (f: ArtistMemberFormData) => void
+  roleInput: string
+  setRoleInput: (v: string) => void
+  onAddRole: (r: string) => void
+  onRemoveRole: (r: string) => void
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+  error: string
+  isNew?: boolean
+}) {
+  const f = (key: keyof ArtistMemberFormData, val: any) => setForm({ ...form, [key]: val })
+  return (
+    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">{isNew ? 'Neues Mitglied' : 'Bearbeiten'}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Vorname</label>
+          <input autoFocus type="text" value={form.first_name} onChange={e => f('first_name', e.target.value)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Nachname</label>
+          <input type="text" value={form.last_name} onChange={e => f('last_name', e.target.value)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+      </div>
+
+      {/* Rollen */}
+      <div>
+        <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">Rollen / Funktionen</label>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {form.roles.map(r => (
+            <span key={r} className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+              {r}
+              <button onClick={() => onRemoveRole(r)} className="hover:text-red-600 leading-none">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          <input type="text" value={roleInput} onChange={e => setRoleInput(e.target.value)}
+            placeholder="Rolle eingeben…"
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAddRole(roleInput) } }}
+            className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <button onClick={() => onAddRole(roleInput)} className="px-2 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded border border-gray-300">+</button>
+        </div>
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {COMMON_ROLES.filter(r => !form.roles.includes(r)).map(r => (
+            <button key={r} onClick={() => onAddRole(r)}
+              className="text-[11px] text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 px-1.5 py-0.5 rounded-full transition-colors">
+              + {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">E-Mail</label>
+          <input type="email" value={form.email} onChange={e => f('email', e.target.value)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Telefon</label>
+          <input type="tel" value={form.phone} onChange={e => f('phone', e.target.value)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Notizen</label>
+        <textarea value={form.notes} onChange={e => f('notes', e.target.value)} rows={2}
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
+      </div>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" checked={form.always_in_travelparty} onChange={e => f('always_in_travelparty', e.target.checked)}
+          className="rounded border-gray-300" />
+        <span className="text-sm text-gray-700">Immer in der Reisegruppe</span>
+      </label>
+
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">Abbrechen</button>
+        <button onClick={onSave} disabled={saving}
+          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          Speichern
+        </button>
+      </div>
+    </div>
+  )
+}
 }

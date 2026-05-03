@@ -7,7 +7,9 @@ import {
   getTravelParty,
   updateTravelPartyMember,
   deleteTravelPartyMember,
+  getArtistMembers,
   type TravelPartyMember,
+  type ArtistMember,
 } from '@/lib/api-client'
 import ReisegruppePicker from './ReisegruppePicker'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -73,6 +75,78 @@ function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }
 }
 
 const EMPTY = <span className="text-gray-400">–</span>
+
+function BandBlock({ isMobile }: { isMobile: boolean }) {
+  const [bandMembers, setBandMembers] = useState<ArtistMember[]>([])
+
+  useEffect(() => {
+    getArtistMembers()
+      .then(all => setBandMembers(all.filter(m => m.always_in_travelparty)))
+      .catch(() => setBandMembers([]))
+  }, [])
+
+  if (bandMembers.length === 0) return null
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Band</span>
+        <span className="text-xs text-gray-300">{bandMembers.length} {bandMembers.length === 1 ? 'Mitglied' : 'Mitglieder'}</span>
+      </div>
+      {isMobile ? (
+        <div className="flex flex-col gap-2">
+          {bandMembers.map(m => (
+            <div key={m.id} className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-900 text-sm">{m.first_name} {m.last_name}</div>
+                {m.roles.length > 0 && (
+                  <div className="text-xs text-gray-500 mt-0.5">{m.roles.join(' · ')}</div>
+                )}
+                <div className="flex flex-wrap gap-3 mt-1.5">
+                  {m.email && (
+                    <a href={`mailto:${m.email}`} className="flex items-center gap-1 text-xs text-blue-600">
+                      <Mail size={11} /> {m.email}
+                    </a>
+                  )}
+                  {m.phone && (
+                    <a href={`tel:${m.phone}`} className="flex items-center gap-1 text-xs text-blue-600">
+                      <Phone size={11} /> {m.phone}
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="data-table-wrapper">
+          <table className="data-table data-table--compact">
+            <tbody>
+              {bandMembers.map(m => (
+                <tr key={m.id} className="bg-blue-50/40">
+                  <td style={{ width: '2.5rem' }}>
+                    <span className="pt-travel-avail pt-travel-avail--available" title="immer dabei">✓</span>
+                  </td>
+                  <td className="font-medium">{m.last_name || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.first_name || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.roles[0] || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.roles[1] || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.roles[2] || <span className="text-gray-400">–</span>}</td>
+                  <td>{m.email ? <a href={`mailto:${m.email}`}>{m.email}</a> : <span className="text-gray-400">–</span>}</td>
+                  <td>{m.phone ? <a href={`tel:${m.phone}`}>{m.phone}</a> : <span className="text-gray-400">–</span>}</td>
+                  <td />
+                  <td />
+                  <td />
+                  <td />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ReisegruppeView({ terminId, isAdmin }: { terminId: number; isAdmin: boolean }) {
   const [members, setMembers] = useState<TravelPartyMember[]>([])
@@ -163,6 +237,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
 
   return (
     <div>
+      <BandBlock isMobile={isMobile} />
       <div className="pt-travel-header">
         {isAdmin ? (
           <div className="flex gap-2">
@@ -172,14 +247,14 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
           </div>
         ) : <div />}
         <div className="pt-travel-count">
-          <strong>{members.length}</strong> {members.length === 1 ? 'Person' : 'Personen'} in der Reisegruppe
+          <strong>{members.length}</strong> {members.length === 1 ? 'Person' : 'Personen'} in der Crew
         </div>
       </div>
 
       {members.length === 0 ? (
         <div className="data-table-wrapper">
           <div className="pt-travel-empty">
-            Noch niemand in der Reisegruppe. Mit „+ Hinzufügen" Kontakte auswählen.
+            Noch niemand in der Crew. Mit „+ Hinzufügen" Kontakte auswählen.
           </div>
         </div>
       ) : isMobile ? (

@@ -1021,6 +1021,46 @@ export async function deletePartnerType(id: number): Promise<void> {
 }
 
 // ============================================
+// Artist Members API
+// ============================================
+
+export interface ArtistMember {
+  id: number;
+  tenant_id: number;
+  first_name: string;
+  last_name: string;
+  roles: string[];
+  email: string;
+  phone: string;
+  notes: string;
+  always_in_travelparty: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type ArtistMemberFormData = Omit<ArtistMember, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>;
+
+export async function getArtistMembers(): Promise<ArtistMember[]> {
+  const data = await request<{ members: ArtistMember[] }>('/api/artist-members');
+  return data.members;
+}
+
+export async function createArtistMember(data: ArtistMemberFormData): Promise<ArtistMember> {
+  const res = await request<{ member: ArtistMember }>('/api/artist-members', { method: 'POST', body: data });
+  return res.member;
+}
+
+export async function updateArtistMember(id: number, data: ArtistMemberFormData): Promise<ArtistMember> {
+  const res = await request<{ member: ArtistMember }>(`/api/artist-members/${id}`, { method: 'PUT', body: data });
+  return res.member;
+}
+
+export async function deleteArtistMember(id: number): Promise<void> {
+  await request(`/api/artist-members/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
 // Termine API
 // ============================================
 

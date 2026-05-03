@@ -1424,6 +1424,24 @@ async function initDatabase() {
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_guest_list_entries_list ON guest_list_entries(guest_list_id)`)
 
+  // Artist Members (Bandmitglieder)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS artist_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      first_name TEXT NOT NULL DEFAULT '',
+      last_name TEXT NOT NULL DEFAULT '',
+      roles TEXT NOT NULL DEFAULT '[]',
+      email TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      always_in_travelparty INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   console.log('✅ Database initialized');
 }
 
@@ -5673,7 +5691,50 @@ app.delete('/api/partner-types/:id', authenticateToken, requireTenant, async (re
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-// ── Equipment: Gegenstände (Items) ───────────────────────────────────────────
+/// ── Artist Members ────────────────────────────────────────────────────────────
+
+app.get('/api/artist-members', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all('SELECT * FROM artist_members WHERE tenant_id = ? ORDER BY sort_order, last_name, first_name', [req.tenant.id])
+    res.json({ members: rows.map(r => ({ ...r, roles: JSON.parse(r.roles || '[]'), always_in_travelparty: !!r.always_in_travelparty })) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/artist-members', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { first_name = '', last_name = '', roles = [], email = '', phone = '', notes = '', always_in_travelparty = true, sort_order = 0 } = req.body
+  try {
+    const r = await db.run(
+      'INSERT INTO artist_members (tenant_id, first_name, last_name, roles, email, phone, notes, always_in_travelparty, sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
+      [req.tenant.id, first_name, last_name, JSON.stringify(roles), email, phone, notes, always_in_travelparty ? 1 : 0, sort_order]
+    )
+    const row = await db.get('SELECT * FROM artist_members WHERE id = ?', [r.lastID])
+    res.json({ member: { ...row, roles: JSON.parse(row.roles || '[]'), always_in_travelparty: !!row.always_in_travelparty } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.put('/api/artist-members/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { first_name, last_name, roles, email, phone, notes, always_in_travelparty, sort_order } = req.body
+  try {
+    await db.run(
+      'UPDATE artist_members SET first_name=?, last_name=?, roles=?, email=?, phone=?, notes=?, always_in_travelparty=?, sort_order=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [first_name, last_name, JSON.stringify(roles || []), email, phone, notes, always_in_travelparty ? 1 : 0, sort_order ?? 0, req.params.id, req.tenant.id]
+    )
+    const row = await db.get('SELECT * FROM artist_members WHERE id = ?', [req.params.id])
+    res.json({ member: { ...row, roles: JSON.parse(row.roles || '[]'), always_in_travelparty: !!row.always_in_travelparty } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.delete('/api/artist-members/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM artist_members WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+/ ── Equipment: Gegenstände (Items) ───────────────────────────────────────────
 
 // Hilfsfunktion: nächste Case-ID für Tenant ermitteln
 async function getNextCaseId(tenantId) {
