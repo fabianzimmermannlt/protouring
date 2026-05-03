@@ -54,7 +54,6 @@ export default function AppointmentDetailPage() {
   // Im L3-Layout zeigt das Context Panel die Terminliste — Datumzeile im Hauptfenster weglassen
   const isL3 = typeof window !== 'undefined'
     && localStorage.getItem('protouring_layout') === 'L3'
-    && effectiveRole === 'admin'
 
   // Auth check
   useEffect(() => {

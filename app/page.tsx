@@ -96,8 +96,8 @@ function ProTouringAppInner() {
   const currentTenant = getCurrentTenant()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const role = getEffectiveRole()
-  const useL2 = layout === 'L2' && role === 'admin'
-  const useL3 = layout === 'L3' && role === 'admin'
+  const useL2 = layout === 'L2'
+  const useL3 = layout === 'L3'
 
   const handleSubTabChange = (subId: string) => {
     setActiveSubTab(subId)
