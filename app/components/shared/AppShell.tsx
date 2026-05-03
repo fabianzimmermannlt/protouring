@@ -23,8 +23,8 @@ function AppShellInner({ children, activeTab, onTabChange, activeSubTab = '', on
   const currentUser = getCurrentUser()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
 
-  const useL2 = layout === 'L2' && role === 'admin'
-  const useL3 = layout === 'L3' && role === 'admin'
+  const useL2 = layout === 'L2'
+  const useL3 = layout === 'L3'
 
   const handleSubTabChange = onSubTabChange ?? (() => {})
 
