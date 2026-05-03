@@ -22,6 +22,7 @@ import {
   WrenchScrewdriverIcon,
   ViewColumnsIcon,
   XMarkIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline'
 import {
   getCurrentUser,
@@ -32,6 +33,7 @@ import {
   getTermine,
   getVenues,
   createVenue,
+  deleteVenue,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -692,25 +694,49 @@ export function L3Layout({
             ) : filtered.map(v => {
               const isActive = String(v.id) === activeVenueId
               return (
-                <button
+                <div
                   key={v.id}
-                  onClick={() => {
-                    setActiveVenueId(String(v.id))
-                    router.push(`/venues/${v.id}`)
-                  }}
-                  className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
+                  className={`group relative flex items-center border-l-2 transition-colors ${
                     isActive
                       ? 'border-blue-500 bg-gray-700'
                       : 'border-transparent hover:bg-gray-800'
                   }`}
                 >
-                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>
-                    {v.name}
-                  </p>
-                  {v.city && (
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5">{v.city}{v.country ? `, ${v.country}` : ''}</p>
+                  <button
+                    onClick={() => {
+                      setActiveVenueId(String(v.id))
+                      router.push(`/venues/${v.id}`)
+                    }}
+                    className="flex-1 text-left px-3 py-2 min-w-0"
+                  >
+                    <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>
+                      {v.name}
+                    </p>
+                    {v.city && (
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{v.city}{v.country ? `, ${v.country}` : ''}</p>
+                    )}
+                  </button>
+                  {isEditor && (
+                    <button
+                      onClick={async e => {
+                        e.stopPropagation()
+                        if (!confirm(`Venue „${v.name}" wirklich löschen?`)) return
+                        try {
+                          await deleteVenue(String(v.id))
+                          setVenuesList(prev => prev.filter(x => x.id !== v.id))
+                          if (activeVenueId === String(v.id)) {
+                            setActiveVenueId(null)
+                            router.push('/venues')
+                          }
+                        } catch { /* silent */ }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 pr-2 text-gray-500 hover:text-red-400"
+                      title="Löschen"
+                    >
+                      <EllipsisVerticalIcon className="w-4 h-4" />
+                    </button>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
