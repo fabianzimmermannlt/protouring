@@ -5583,22 +5583,31 @@ app.delete('/api/equipment/categories/:id', authenticateToken, requireTenant, as
 // ── Partner-Typen ────────────────────────────────────────────────────────────
 
 const DEFAULT_PARTNER_TYPES = [
-  'Booking', 'Promoter', 'Organizer', 'Label', 'Management', 'Publisher',
-  'Merchandise', 'Catering', 'Production', 'Transport', 'Press / PR', 'Other',
+  'Autovermietung', 'Backline-Firma', 'Booking', 'Booking Agentur', 'Brand',
+  'Catering', 'Catering-Firma', 'Endorser', 'Label', 'Management',
+  'Marketing', 'Medien-/Videoproduktion', 'Merchandise', 'Merchandise-Dienstleister',
+  'Organizer', 'Press / PR', 'Production', 'Promoter', 'Publisher', 'Reisebüro',
+  'Sicherheits-Firma', 'Studio', 'Support-Band', 'Technik-Lieferant',
+  'Ticketing-Dienstleister', 'Transport', 'Trucking-Firma', 'Zulieferer Sonstiges', 'Other',
 ]
 
-// GET /api/partner-types  (auto-seeds defaults if empty)
+// GET /api/partner-types  (seeds fehlende Defaults nach)
 app.get('/api/partner-types', authenticateToken, requireTenant, async (req, res) => {
   try {
     let rows = await db.all('SELECT * FROM partner_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
-    // Auto-seed beim ersten Aufruf
-    if (rows.length === 0) {
-      for (let i = 0; i < DEFAULT_PARTNER_TYPES.length; i++) {
+    // Fehlende Defaults immer nachsäen
+    const existingNames = rows.map(r => r.name.toLowerCase())
+    let seeded = false
+    for (let i = 0; i < DEFAULT_PARTNER_TYPES.length; i++) {
+      if (!existingNames.includes(DEFAULT_PARTNER_TYPES[i].toLowerCase())) {
         await db.run(
           'INSERT INTO partner_types (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, ?)',
-          [req.tenant.id, DEFAULT_PARTNER_TYPES[i], i]
+          [req.tenant.id, DEFAULT_PARTNER_TYPES[i], 1000 + i]
         )
+        seeded = true
       }
+    }
+    if (seeded) {
       rows = await db.all('SELECT * FROM partner_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
     }
     res.json({ types: rows })

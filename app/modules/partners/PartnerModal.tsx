@@ -18,8 +18,12 @@ const EMPTY: PartnerFormData = {
 }
 
 const FALLBACK_TYPES = [
-  'Booking', 'Promoter', 'Organizer', 'Label', 'Management', 'Publisher',
-  'Merchandise', 'Catering', 'Production', 'Transport', 'Press / PR', 'Other',
+  'Autovermietung', 'Backline-Firma', 'Booking', 'Booking Agentur', 'Brand',
+  'Catering', 'Catering-Firma', 'Endorser', 'Label', 'Management',
+  'Marketing', 'Medien-/Videoproduktion', 'Merchandise', 'Merchandise-Dienstleister',
+  'Organizer', 'Press / PR', 'Production', 'Promoter', 'Publisher', 'Reisebüro',
+  'Sicherheits-Firma', 'Studio', 'Support-Band', 'Technik-Lieferant',
+  'Ticketing-Dienstleister', 'Transport', 'Trucking-Firma', 'Zulieferer Sonstiges', 'Other',
 ]
 
 interface PartnerModalProps {
