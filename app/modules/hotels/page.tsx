@@ -85,6 +85,18 @@ export default function HotelsPage() {
   const openNewHotelModal = () => { setEditingHotel(null); setIsModalOpen(true) }
   const openEditHotelModal = (hotel: Hotel) => { setEditingHotel(hotel); setIsModalOpen(true) }
 
+  // Sidebar events
+  useEffect(() => {
+    const onCreate = () => openNewHotelModal()
+    const onSelect = (e: Event) => { const h = (e as CustomEvent<Hotel>).detail; if (h) openEditHotelModal(h) }
+    window.addEventListener('hotel-sidebar-create', onCreate)
+    window.addEventListener('hotel-sidebar-select', onSelect)
+    return () => {
+      window.removeEventListener('hotel-sidebar-create', onCreate)
+      window.removeEventListener('hotel-sidebar-select', onSelect)
+    }
+  }, [])
+
   const exportToCSV = () => {
     if (hotels.length === 0) { alert('Keine Hotels zum Exportieren vorhanden.'); return }
     const headers = ['Name', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Website']

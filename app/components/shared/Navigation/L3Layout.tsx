@@ -239,6 +239,7 @@ export function L3Layout({
   const [partnersList, setPartnersList] = useState<Partner[]>([])
   const [partnersSearch, setPartnersSearch] = useState('')
   const [partnerMenuOpenId, setPartnerMenuOpenId] = useState<string | null>(null)
+  const [activePartnerId, setActivePartnerId] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeTab !== 'partners') return
@@ -249,6 +250,7 @@ export function L3Layout({
   const [hotelsList, setHotelsList] = useState<Hotel[]>([])
   const [hotelsSearch, setHotelsSearch] = useState('')
   const [hotelMenuOpenId, setHotelMenuOpenId] = useState<string | null>(null)
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeTab !== 'hotels') return
@@ -259,6 +261,7 @@ export function L3Layout({
   const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([])
   const [vehiclesSearch, setVehiclesSearch] = useState('')
   const [vehicleMenuOpenId, setVehicleMenuOpenId] = useState<string | null>(null)
+  const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeTab !== 'vehicles') return
@@ -817,47 +820,46 @@ export function L3Layout({
 
       return (
         <div className="flex flex-col h-full">
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
             <input
               type="text" value={partnersSearch} onChange={e => setPartnersSearch(e.target.value)}
               placeholder="Suchen…"
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {isEditor && (
+              <button onClick={() => window.dispatchEvent(new CustomEvent('partner-sidebar-create'))}
+                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Neuer Partner">
+                <PlusIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto py-1" onClick={() => setPartnerMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{partnersList.length === 0 ? 'Keine Partner' : 'Keine Treffer'}</p>
               : filtered.map(p => {
+                const isActive = activePartnerId === p.id
                 const menuOpen = partnerMenuOpenId === p.id
                 return (
-                  <div key={p.id} className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors">
-                    <div className="flex-1 px-3 py-2 min-w-0">
-                      <p className="text-xs leading-snug truncate text-gray-300">{p.companyName}</p>
+                  <div key={p.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
+                    <button
+                      onClick={() => { setActivePartnerId(p.id); window.dispatchEvent(new CustomEvent('partner-sidebar-select', { detail: p })) }}
+                      className="flex-1 text-left px-3 py-2 min-w-0"
+                    >
+                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{p.companyName}</p>
                       {(p.type || p.city) && (
                         <p className="text-[10px] text-gray-500 truncate mt-0.5">{[p.type, p.city].filter(Boolean).join(' · ')}</p>
                       )}
-                    </div>
+                    </button>
                     {isEditor && (
                       <div className="relative flex-shrink-0 pr-1">
-                        <button
-                          onClick={e => { e.stopPropagation(); setPartnerMenuOpenId(menuOpen ? null : p.id) }}
-                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                        >
+                        <button onClick={e => { e.stopPropagation(); setPartnerMenuOpenId(menuOpen ? null : p.id) }}
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <EllipsisHorizontalIcon className="w-4 h-4" />
                         </button>
                         {menuOpen && (
                           <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={async () => {
-                                setPartnerMenuOpenId(null)
-                                if (!confirm(`Partner „${p.companyName}" wirklich löschen?`)) return
-                                try {
-                                  await deletePartner(p.id)
-                                  setPartnersList(prev => prev.filter(x => x.id !== p.id))
-                                } catch { /* silent */ }
-                              }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
-                            >
+                            <button onClick={async () => { setPartnerMenuOpenId(null); if (!confirm(`Partner „${p.companyName}" wirklich löschen?`)) return; try { await deletePartner(p.id); setPartnersList(prev => prev.filter(x => x.id !== p.id)); if (activePartnerId === p.id) setActivePartnerId(null) } catch { /* silent */ } }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors">
                               Partner löschen
                             </button>
                           </div>
@@ -882,47 +884,46 @@ export function L3Layout({
 
       return (
         <div className="flex flex-col h-full">
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
             <input
               type="text" value={hotelsSearch} onChange={e => setHotelsSearch(e.target.value)}
               placeholder="Suchen…"
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {isEditor && (
+              <button onClick={() => window.dispatchEvent(new CustomEvent('hotel-sidebar-create'))}
+                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Neues Hotel">
+                <PlusIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto py-1" onClick={() => setHotelMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{hotelsList.length === 0 ? 'Keine Hotels' : 'Keine Treffer'}</p>
               : filtered.map(h => {
+                const isActive = activeHotelId === h.id
                 const menuOpen = hotelMenuOpenId === h.id
                 return (
-                  <div key={h.id} className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors">
-                    <div className="flex-1 px-3 py-2 min-w-0">
-                      <p className="text-xs leading-snug truncate text-gray-300">{h.name}</p>
+                  <div key={h.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
+                    <button
+                      onClick={() => { setActiveHotelId(h.id); window.dispatchEvent(new CustomEvent('hotel-sidebar-select', { detail: h })) }}
+                      className="flex-1 text-left px-3 py-2 min-w-0"
+                    >
+                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{h.name}</p>
                       {(h.city || h.country) && (
                         <p className="text-[10px] text-gray-500 truncate mt-0.5">{[h.city, h.country].filter(Boolean).join(', ')}</p>
                       )}
-                    </div>
+                    </button>
                     {isEditor && (
                       <div className="relative flex-shrink-0 pr-1">
-                        <button
-                          onClick={e => { e.stopPropagation(); setHotelMenuOpenId(menuOpen ? null : h.id) }}
-                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                        >
+                        <button onClick={e => { e.stopPropagation(); setHotelMenuOpenId(menuOpen ? null : h.id) }}
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <EllipsisHorizontalIcon className="w-4 h-4" />
                         </button>
                         {menuOpen && (
                           <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={async () => {
-                                setHotelMenuOpenId(null)
-                                if (!confirm(`Hotel „${h.name}" wirklich löschen?`)) return
-                                try {
-                                  await deleteHotel(h.id)
-                                  setHotelsList(prev => prev.filter(x => x.id !== h.id))
-                                } catch { /* silent */ }
-                              }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
-                            >
+                            <button onClick={async () => { setHotelMenuOpenId(null); if (!confirm(`Hotel „${h.name}" wirklich löschen?`)) return; try { await deleteHotel(h.id); setHotelsList(prev => prev.filter(x => x.id !== h.id)); if (activeHotelId === h.id) setActiveHotelId(null) } catch { /* silent */ } }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors">
                               Hotel löschen
                             </button>
                           </div>
@@ -947,47 +948,46 @@ export function L3Layout({
 
       return (
         <div className="flex flex-col h-full">
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
             <input
               type="text" value={vehiclesSearch} onChange={e => setVehiclesSearch(e.target.value)}
               placeholder="Suchen…"
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            {isEditor && (
+              <button onClick={() => window.dispatchEvent(new CustomEvent('vehicle-sidebar-create'))}
+                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Neues Fahrzeug">
+                <PlusIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto py-1" onClick={() => setVehicleMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{vehiclesList.length === 0 ? 'Keine Fahrzeuge' : 'Keine Treffer'}</p>
               : filtered.map(v => {
+                const isActive = activeVehicleId === v.id
                 const menuOpen = vehicleMenuOpenId === v.id
                 return (
-                  <div key={v.id} className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors">
-                    <div className="flex-1 px-3 py-2 min-w-0">
-                      <p className="text-xs leading-snug truncate text-gray-300">{v.designation || v.vehicleType || '–'}</p>
+                  <div key={v.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
+                    <button
+                      onClick={() => { setActiveVehicleId(v.id); window.dispatchEvent(new CustomEvent('vehicle-sidebar-select', { detail: v })) }}
+                      className="flex-1 text-left px-3 py-2 min-w-0"
+                    >
+                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{v.designation || v.vehicleType || '–'}</p>
                       {(v.vehicleType || v.licensePlate) && (
                         <p className="text-[10px] text-gray-500 truncate mt-0.5">{[v.vehicleType, v.licensePlate].filter(Boolean).join(' · ')}</p>
                       )}
-                    </div>
+                    </button>
                     {isEditor && (
                       <div className="relative flex-shrink-0 pr-1">
-                        <button
-                          onClick={e => { e.stopPropagation(); setVehicleMenuOpenId(menuOpen ? null : v.id) }}
-                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                        >
+                        <button onClick={e => { e.stopPropagation(); setVehicleMenuOpenId(menuOpen ? null : v.id) }}
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <EllipsisHorizontalIcon className="w-4 h-4" />
                         </button>
                         {menuOpen && (
                           <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={async () => {
-                                setVehicleMenuOpenId(null)
-                                if (!confirm(`Fahrzeug „${v.designation || v.vehicleType}" wirklich löschen?`)) return
-                                try {
-                                  await deleteVehicle(v.id)
-                                  setVehiclesList(prev => prev.filter(x => x.id !== v.id))
-                                } catch { /* silent */ }
-                              }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
-                            >
+                            <button onClick={async () => { setVehicleMenuOpenId(null); if (!confirm(`Fahrzeug „${v.designation || v.vehicleType}" wirklich löschen?`)) return; try { await deleteVehicle(v.id); setVehiclesList(prev => prev.filter(x => x.id !== v.id)); if (activeVehicleId === v.id) setActiveVehicleId(null) } catch { /* silent */ } }}
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors">
                               Fahrzeug löschen
                             </button>
                           </div>
@@ -1306,6 +1306,33 @@ export function L3Layout({
                 ))}
               </div>
             )}
+            {(['partners', 'hotels', 'vehicles'] as const).includes(activeTab as any) && (() => {
+              const activeId = activeTab === 'partners' ? activePartnerId : activeTab === 'hotels' ? activeHotelId : activeVehicleId
+              const clearActive = () => {
+                if (activeTab === 'partners') setActivePartnerId(null)
+                else if (activeTab === 'hotels') setActiveHotelId(null)
+                else setActiveVehicleId(null)
+              }
+              return (
+                <div className="flex items-center gap-0.5">
+                  {[
+                    { id: 'overview', label: 'Übersicht' },
+                    ...(activeId ? [{ id: 'details', label: 'Details' }] : []),
+                  ].map(tab => (
+                    <button key={tab.id}
+                      onClick={() => { if (tab.id === 'overview') clearActive() }}
+                      className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                        (tab.id === 'overview' && !activeId) || (tab.id === 'details' && !!activeId)
+                          ? 'bg-gray-100 text-gray-900 font-medium'
+                          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
             {(activeTab === 'advancing' || (activeTab === 'appointments' && termineInDetail)) && (() => {
               const isAdvancing = activeTab === 'advancing'
               const currentView = isAdvancing ? advancingView : termineView

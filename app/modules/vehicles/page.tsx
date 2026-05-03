@@ -34,6 +34,18 @@ export default function VehiclesPage() {
   const openNewVehicleModal = () => { setEditingVehicle(null); setIsModalOpen(true) }
   const openEditVehicleModal = (vehicle: Vehicle) => { setEditingVehicle(vehicle); setIsModalOpen(true) }
 
+  // Sidebar events
+  useEffect(() => {
+    const onCreate = () => openNewVehicleModal()
+    const onSelect = (e: Event) => { const v = (e as CustomEvent<Vehicle>).detail; if (v) openEditVehicleModal(v) }
+    window.addEventListener('vehicle-sidebar-create', onCreate)
+    window.addEventListener('vehicle-sidebar-select', onSelect)
+    return () => {
+      window.removeEventListener('vehicle-sidebar-create', onCreate)
+      window.removeEventListener('vehicle-sidebar-select', onSelect)
+    }
+  }, [])
+
   // CSV Export
   const exportToCSV = () => {
     if (vehicles.length === 0) {

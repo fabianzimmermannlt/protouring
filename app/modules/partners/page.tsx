@@ -69,6 +69,21 @@ export default function PartnersPage() {
     getPartners().then(setPartners).catch(() => {})
   }, [])
 
+  // Sidebar events
+  useEffect(() => {
+    const onCreate = () => { setEditingPartner(null); setFormData({ type: '', companyName: '', street: '', postalCode: '', city: '', state: '', country: '', contactPerson: '', email: '', phone: '', taxId: '', billingAddress: '', notes: '' }); setIsModalOpen(true) }
+    const onSelect = (e: Event) => {
+      const p = (e as CustomEvent<Partner>).detail
+      if (p) openEditPartnerModal(p)
+    }
+    window.addEventListener('partner-sidebar-create', onCreate)
+    window.addEventListener('partner-sidebar-select', onSelect)
+    return () => {
+      window.removeEventListener('partner-sidebar-create', onCreate)
+      window.removeEventListener('partner-sidebar-select', onSelect)
+    }
+  }, [])
+
   const savePartner = async () => {
     if (!formData.companyName.trim()) return
     try {
