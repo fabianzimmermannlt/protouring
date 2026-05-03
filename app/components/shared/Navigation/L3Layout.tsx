@@ -55,7 +55,7 @@ import {
   type Hotel,
   type Vehicle,
 } from '@/lib/api-client'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
@@ -134,6 +134,7 @@ export function L3Layout({
   children,
 }: L3LayoutProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { layout, setLayout } = useLayout()
   const t = useT()
   const { language, setLanguage } = useLanguage()
@@ -267,6 +268,16 @@ export function L3Layout({
     if (activeTab !== 'vehicles') return
     getVehicles().then(setVehiclesList).catch(() => {})
   }, [activeTab])
+
+  // ── Sync active ID from URL ───────────────────────────────────────────────
+  useEffect(() => {
+    const partnerMatch = pathname.match(/^\/partners\/(.+)$/)
+    if (partnerMatch) { setActivePartnerId(partnerMatch[1]); return }
+    const hotelMatch = pathname.match(/^\/hotels\/(.+)$/)
+    if (hotelMatch) { setActiveHotelId(hotelMatch[1]); return }
+    const vehicleMatch = pathname.match(/^\/vehicles\/(.+)$/)
+    if (vehicleMatch) { setActiveVehicleId(vehicleMatch[1]); return }
+  }, [pathname])
 
   // ── Venues list ───────────────────────────────────────────────────────────
   const [venuesList, setVenuesList] = useState<Venue[]>([])
