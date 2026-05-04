@@ -278,17 +278,10 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
     )
   }
 
+  const totalActive = crewMembers.length + bandMembers.length
+
   return (
     <div>
-      <BandBlock
-        members={bandMembers}
-        excludedMembers={excludedBandMembers}
-        isMobile={isMobile}
-        isAdmin={isAdmin}
-        terminId={terminId}
-        onExclude={handleExcludeArtist}
-        onRestore={handleRestoreArtist}
-      />
       <div className="pt-travel-header">
         {isAdmin ? (
           <div className="flex gap-2">
@@ -298,7 +291,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
           </div>
         ) : <div />}
         <div className="pt-travel-count">
-          <strong>{crewMembers.length}</strong> {crewMembers.length === 1 ? 'Person' : 'Personen'} in der Crew
+          <strong>{totalActive}</strong> {totalActive === 1 ? 'Person' : 'Personen'} in der Reisegruppe
         </div>
       </div>
 
@@ -471,6 +464,16 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
           </table>
         </div>
       )}
+
+      <BandBlock
+        members={bandMembers}
+        excludedMembers={excludedBandMembers}
+        isMobile={isMobile}
+        isAdmin={isAdmin}
+        terminId={terminId}
+        onExclude={handleExcludeArtist}
+        onRestore={handleRestoreArtist}
+      />
 
       {pickerOpen && (
         <ReisegruppePicker
