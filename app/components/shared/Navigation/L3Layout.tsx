@@ -1487,10 +1487,22 @@ export function L3Layout({
 
               // "Übersicht"-Tab immer anzeigen
               const overviewActive = !termineInDetail
-              const detailTabs: { id: string; label: string }[] = termineInDetail ? [
-                { id: isAdvancing ? 'details2' : 'details', label: 'Details' },
-                ...(isAdvancing ? [{ id: 'briefing', label: 'Briefing' }] : []),
-              ] : []
+              const detailTabs: { id: string; label: string }[] = termineInDetail
+                ? isAdvancing
+                  ? [
+                      { id: 'details2',    label: 'Details' },
+                      { id: 'travel',      label: 'Travel' },
+                      { id: 'schedule',    label: 'Schedule' },
+                      { id: 'hospitality', label: 'Hospitality' },
+                      { id: 'advancing',   label: 'Advancing' },
+                      { id: 'agreements',  label: 'Agreements' },
+                      { id: 'travelparty', label: 'Reisegruppe' },
+                      { id: 'briefing',    label: 'Briefing' },
+                    ]
+                  : [
+                      { id: 'details', label: 'Details' },
+                    ]
+                : []
 
               return (
                 <div className="flex items-center gap-0.5">
