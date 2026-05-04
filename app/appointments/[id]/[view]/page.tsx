@@ -142,6 +142,7 @@ export default function AppointmentDetailPage() {
 
   const handleUpdated = (updated: Termin) => {
     setTermine(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t))
+    window.dispatchEvent(new CustomEvent('termin-list-changed'))
   }
 
   const handleDeleted = () => {

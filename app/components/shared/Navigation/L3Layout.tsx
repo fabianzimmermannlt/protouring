@@ -332,6 +332,13 @@ export function L3Layout({
     getTermine().then(setTermineList).catch(() => {})
   }, [activeTab])
 
+  // Reload termineList wenn ein Termin erstellt/geändert wurde
+  useEffect(() => {
+    const handler = () => { getTermine().then(setTermineList).catch(() => {}) }
+    window.addEventListener('termin-list-changed', handler)
+    return () => window.removeEventListener('termin-list-changed', handler)
+  }, [])
+
   // Aktiven Termin aus URL lesen (appointments oder advancing)
   useEffect(() => {
     const match = window.location.pathname.match(/\/(?:appointments|advancing)\/(\d+)/)
@@ -461,9 +468,8 @@ export function L3Layout({
               const dateStr = new Date(item.date).toLocaleDateString('de-DE', {
                 day: '2-digit', month: '2-digit', year: '2-digit'
               })
-              const label = item.title && !item.showTitleAsHeader
-                ? item.title
-                : item.venueName || item.city || '–'
+              const locationLabel = item.venueName || item.city
+              const label = item.showTitleAsHeader ? item.title : (locationLabel || item.title || '–')
               const isPast = item.date < today
 
               return (
@@ -557,9 +563,8 @@ export function L3Layout({
               const dateStr = new Date(t.date).toLocaleDateString('de-DE', {
                 day: '2-digit', month: '2-digit', year: '2-digit'
               })
-              const label = t.title && !t.showTitleAsHeader
-                ? t.title
-                : t.venueName || t.city || '–'
+              const locationLabel2 = t.venueName || t.city
+              const label = t.showTitleAsHeader ? t.title : (locationLabel2 || t.title || '–')
 
               return (
                 <button

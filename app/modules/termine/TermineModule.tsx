@@ -1542,6 +1542,7 @@ export default function TerminePage() {
             } else {
               setTermine(prev => [...prev, saved])
             }
+            window.dispatchEvent(new CustomEvent('termin-list-changed'))
           }}
           onDeleted={id => {
             setTermine(prev => prev.filter(t => t.id !== id))
