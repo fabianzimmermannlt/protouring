@@ -310,6 +310,10 @@ function terminToFormData(t: Termin): TerminFormData {
     show_title_as_header: t.showTitleAsHeader || false,
     city: t.city,
     venue_id: t.venueId ?? null,
+    partner_id: t.partnerId ?? null,
+    announcement: t.announcement,
+    capacity: t.capacity ?? null,
+    notes: t.notes,
   }
 }
 

@@ -354,6 +354,10 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
         show_title_as_header: termin.showTitleAsHeader || false,
         city: v ? v.city : termin.city,
         venue_id: v ? Number(v.id) : null,
+        partner_id: termin.partnerId ?? null,
+        announcement: termin.announcement,
+        capacity: termin.capacity ?? null,
+        notes: termin.notes,
       })
       onTerminUpdated(updated)
       setSelecting(false)
