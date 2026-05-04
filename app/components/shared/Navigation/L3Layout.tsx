@@ -40,6 +40,8 @@ import {
   deleteHotel,
   getVehicles,
   deleteVehicle,
+  getContacts,
+  deleteContact,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -54,6 +56,7 @@ import {
   type Partner,
   type Hotel,
   type Vehicle,
+  type Contact,
 } from '@/lib/api-client'
 import { useRouter, usePathname } from 'next/navigation'
 import { useLayout } from './LayoutContext'
@@ -81,7 +84,7 @@ const MODULE_NAV = [
 // ─── Context panel definitions ────────────────────────────────────────────────
 
 // Sections that show a context panel
-const HAS_PANEL = ['advancing', 'appointments', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
+const HAS_PANEL = ['advancing', 'appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
 
 type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
 
@@ -302,6 +305,26 @@ export function L3Layout({
     const m = window.location.pathname.match(/\/venues\/([^/]+)/)
     setActiveVenueId(m?.[1] ?? null)
   }, [activeTab])
+
+  // ── Contacts list ─────────────────────────────────────────────────────────
+  const [contactsList, setContactsList] = useState<Contact[]>([])
+  const [contactsSearch, setContactsSearch] = useState('')
+  const [contactsMenuOpenId, setContactsMenuOpenId] = useState<string | null>(null)
+  const [contactsPlusOpen, setContactsPlusOpen] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'contacts') return
+    getContacts().then(setContactsList).catch(() => {})
+  }, [activeTab])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const contact = (e as CustomEvent).detail?.contact as Contact | undefined
+      if (contact) setContactsList(prev => [...prev, contact])
+    }
+    window.addEventListener('contact-created', handler)
+    return () => window.removeEventListener('contact-created', handler)
+  }, [])
 
   // ── Termine list laden ────────────────────────────────────────────────────
   useEffect(() => {
@@ -584,6 +607,120 @@ export function L3Layout({
               ))}
             </div>
           )}
+        </div>
+      )
+    }
+
+    // ── Kontakte ─────────────────────────────────────────────────────────────
+    if (activeTab === 'contacts') {
+      const q = contactsSearch.toLowerCase()
+      const filtered = contactsList
+        .filter(c => !q || `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) || (c.function1 || '').toLowerCase().includes(q))
+        .sort((a, b) => (a.lastName ?? '').localeCompare(b.lastName ?? '', 'de') || (a.firstName ?? '').localeCompare(b.firstName ?? '', 'de'))
+
+      return (
+        <div className="flex flex-col h-full" onClick={() => { setContactsMenuOpenId(null); setContactsPlusOpen(false) }}>
+          {/* Suche + Plus */}
+          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
+            <input
+              type="text"
+              value={contactsSearch}
+              onChange={e => setContactsSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {isEditor && (
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={e => { e.stopPropagation(); setContactsPlusOpen(o => !o) }}
+                  className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                  title="Kontakt hinzufügen"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                </button>
+                {contactsPlusOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => { setContactsPlusOpen(false); window.dispatchEvent(new CustomEvent('contact-sidebar-invite')) }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                    >
+                      + Einladen
+                    </button>
+                    <button
+                      onClick={() => { setContactsPlusOpen(false); window.dispatchEvent(new CustomEvent('contact-sidebar-create')) }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                    >
+                      + Manuell anlegen
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Liste */}
+          <div className="flex-1 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-gray-600 text-center">
+                {contactsList.length === 0 ? 'Keine Kontakte' : 'Keine Treffer'}
+              </p>
+            ) : filtered.map(c => {
+              const cid = String(c.id)
+              const menuOpen = contactsMenuOpenId === cid
+              const fn = [c.function1, c.function2, c.function3].filter(Boolean).join(' · ')
+              return (
+                <div
+                  key={c.id}
+                  className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors"
+                >
+                  <button
+                    onClick={() => setContactsMenuOpenId(null)}
+                    className="flex-1 text-left px-3 py-2 min-w-0"
+                  >
+                    <p className="text-xs leading-snug truncate text-gray-300 font-medium">
+                      {c.lastName}{c.firstName ? `, ${c.firstName}` : ''}
+                    </p>
+                    {fn && <p className="text-[10px] text-gray-500 truncate mt-0.5">{fn}</p>}
+                  </button>
+
+                  {isEditor && (
+                    <div className="relative flex-shrink-0 pr-1">
+                      <button
+                        onClick={e => { e.stopPropagation(); setContactsMenuOpenId(menuOpen ? null : cid) }}
+                        className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        title="Optionen"
+                      >
+                        <EllipsisHorizontalIcon className="w-4 h-4" />
+                      </button>
+                      {menuOpen && (
+                        <div
+                          className="absolute right-0 top-full mt-0.5 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={async () => {
+                              setContactsMenuOpenId(null)
+                              if (!confirm(`${c.firstName} ${c.lastName} wirklich löschen?`)) return
+                              try {
+                                await deleteContact(String(c.id))
+                                setContactsList(prev => prev.filter(x => x.id !== c.id))
+                              } catch { /* silent */ }
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                          >
+                            Kontakt löschen
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )
     }

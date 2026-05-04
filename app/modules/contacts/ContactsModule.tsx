@@ -120,6 +120,17 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     loadContacts()
   }, [])
 
+  useEffect(() => {
+    const onInvite = () => openAddModal()
+    const onCreate = () => setShowGastModal(true)
+    window.addEventListener('contact-sidebar-invite', onInvite)
+    window.addEventListener('contact-sidebar-create', onCreate)
+    return () => {
+      window.removeEventListener('contact-sidebar-invite', onInvite)
+      window.removeEventListener('contact-sidebar-create', onCreate)
+    }
+  }, [])
+
   const loadContacts = async () => {
     try {
       setLoading(true)
@@ -299,8 +310,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       if (created.id) {
         const updated = await updateContact(created.id, profileToContact(profileData))
         setContacts(prev => [...prev, updated])
+        window.dispatchEvent(new CustomEvent('contact-created', { detail: { contact: updated } }))
       } else {
         setContacts(prev => [...prev, created])
+        window.dispatchEvent(new CustomEvent('contact-created', { detail: { contact: created } }))
       }
       setShowGastModal(false)
     } catch (e) {
