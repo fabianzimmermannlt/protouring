@@ -1495,9 +1495,9 @@ export function L3Layout({
                 ...(isAdvancing ? [{ id: 'hospitality', label: 'Hospitality' }] : []),
                 ...(isAdvancing ? [{ id: 'advancing',   label: 'Advancing' }] : []),
                 ...(isAdvancing ? [{ id: 'agreements',  label: 'Agreements' }] : []),
-                { id: 'travelparty',   label: t('appointments.view.travelparty') },
-                ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
-                { id: 'guestlist',     label: t('appointments.view.guestlist') },
+                ...(isAdvancing ? [{ id: 'travelparty', label: t('appointments.view.travelparty') }] : []),
+                ...(isAdvancing && isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
+                ...(isAdvancing ? [{ id: 'guestlist',   label: t('appointments.view.guestlist') }] : []),
               ] : []
 
               return (
