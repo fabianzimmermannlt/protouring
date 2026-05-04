@@ -598,27 +598,6 @@ export function L3Layout({
             })}
           </div>
 
-          {/* Detail-View-Tabs — nur wenn Termin offen */}
-          {termineInDetail && (
-            <div className="border-t border-gray-700 py-1 flex-shrink-0">
-              {detailViews.map(v => (
-                <button
-                  key={v.id}
-                  onClick={() => {
-                    setTermineView(v.id as TermineDetailView)
-                    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                    termineView === v.id
-                      ? 'text-white font-medium bg-gray-700'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                  }`}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )
     }
@@ -1500,25 +1479,45 @@ export function L3Layout({
                 ))}
               </div>
             )}
-            {(activeTab === 'advancing' || (activeTab === 'appointments' && termineInDetail)) && (() => {
+            {(activeTab === 'advancing' || activeTab === 'appointments') && (() => {
               const isAdvancing = activeTab === 'advancing'
               const currentView = isAdvancing ? advancingView : termineView
               const eventName = isAdvancing ? 'advancing-set-view' : 'termine-set-view'
               const setView = isAdvancing ? setAdvancingView : setTermineView
+
+              // "Übersicht"-Tab immer anzeigen
+              const overviewActive = !termineInDetail
+              const detailTabs: { id: string; label: string }[] = termineInDetail ? [
+                ...(!isAdvancing ? [{ id: 'details', label: t('appointments.view.details') }] : []),
+                ...(isAdvancing ? [{ id: 'details2',    label: 'Details' }] : []),
+                ...(isAdvancing ? [{ id: 'travel',      label: 'Travel' }] : []),
+                ...(isAdvancing ? [{ id: 'schedule',    label: 'Schedule' }] : []),
+                ...(isAdvancing ? [{ id: 'hospitality', label: 'Hospitality' }] : []),
+                ...(isAdvancing ? [{ id: 'advancing',   label: 'Advancing' }] : []),
+                ...(isAdvancing ? [{ id: 'agreements',  label: 'Agreements' }] : []),
+                { id: 'travelparty',   label: t('appointments.view.travelparty') },
+                ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
+                { id: 'guestlist',     label: t('appointments.view.guestlist') },
+              ] : []
+
               return (
                 <div className="flex items-center gap-0.5">
-                  {([
-                    ...(!isAdvancing ? [{ id: 'details', label: t('appointments.view.details') }] : []),
-                    ...(isAdvancing ? [{ id: 'details2',    label: 'Details' }] : []),
-                    ...(isAdvancing ? [{ id: 'travel',      label: 'Travel' }] : []),
-                    ...(isAdvancing ? [{ id: 'schedule',    label: 'Schedule' }] : []),
-                    ...(isAdvancing ? [{ id: 'hospitality', label: 'Hospitality' }] : []),
-                    ...(isAdvancing ? [{ id: 'advancing',   label: 'Advancing' }] : []),
-                    ...(isAdvancing ? [{ id: 'agreements',  label: 'Agreements' }] : []),
-                    { id: 'travelparty',   label: t('appointments.view.travelparty') },
-                    ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
-                    { id: 'guestlist',     label: t('appointments.view.guestlist') },
-                  ] as { id: string; label: string }[]).map(v => (
+                  {/* Übersicht — führt zurück zur Liste */}
+                  <button
+                    onClick={() => {
+                      setTermineInDetail(false)
+                      window.dispatchEvent(new CustomEvent(isAdvancing ? 'advancing-go-to-list' : 'termine-go-to-list'))
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      overviewActive
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    Übersicht
+                  </button>
+                  {/* Detail-Tabs — nur wenn Event offen */}
+                  {detailTabs.map(v => (
                     <button
                       key={v.id}
                       onClick={() => {
