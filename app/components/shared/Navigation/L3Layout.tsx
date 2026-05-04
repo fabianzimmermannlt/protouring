@@ -1488,16 +1488,7 @@ export function L3Layout({
               // "Übersicht"-Tab immer anzeigen
               const overviewActive = !termineInDetail
               const detailTabs: { id: string; label: string }[] = termineInDetail ? [
-                ...(!isAdvancing ? [{ id: 'details', label: t('appointments.view.details') }] : []),
-                ...(isAdvancing ? [{ id: 'details2',    label: 'Details' }] : []),
-                ...(isAdvancing ? [{ id: 'travel',      label: 'Travel' }] : []),
-                ...(isAdvancing ? [{ id: 'schedule',    label: 'Schedule' }] : []),
-                ...(isAdvancing ? [{ id: 'hospitality', label: 'Hospitality' }] : []),
-                ...(isAdvancing ? [{ id: 'advancing',   label: 'Advancing' }] : []),
-                ...(isAdvancing ? [{ id: 'agreements',  label: 'Agreements' }] : []),
-                ...(isAdvancing ? [{ id: 'travelparty', label: t('appointments.view.travelparty') }] : []),
-                ...(isAdvancing && isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
-                ...(isAdvancing ? [{ id: 'guestlist',   label: t('appointments.view.guestlist') }] : []),
+                { id: isAdvancing ? 'details2' : 'details', label: 'Details' },
               ] : []
 
               return (
