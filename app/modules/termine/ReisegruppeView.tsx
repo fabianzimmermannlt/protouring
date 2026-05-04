@@ -147,8 +147,8 @@ function BandBlock({
 
   return (
     <div className="mb-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Band</span>
+      <div className="flex items-center gap-2 mb-2 mt-6">
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Artist</span>
         {excluded.length > 0 && <span className="text-xs text-orange-400">{excluded.length} abwesend</span>}
       </div>
       {isMobile ? (
