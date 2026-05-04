@@ -112,6 +112,7 @@ const SETTINGS_WORKSPACE_IDS = [
   { id: 'permissions', tKey: 'settings.sub.permissions' as const, editorOnly: true },
   { id: 'contacts',    tKey: 'settings.sub.contacts' as const,    editorOnly: true },
   { id: 'partners',    tKey: 'settings.sub.partners' as const,    adminOnly: true },
+  { id: 'gewerke',     tKey: 'settings.sub.gewerke' as const,     editorOnly: true },
   { id: 'guestlist',   tKey: 'settings.sub.guestlist' as const,   editorOnly: true },
   { id: 'daysheet',    tKey: 'settings.sub.daysheet' as const,    editorOnly: true },
   { id: 'vorlagen',    tKey: 'settings.sub.vorlagen' as const,    editorOnly: true },

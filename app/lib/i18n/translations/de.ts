@@ -145,6 +145,7 @@ const de = {
   'settings.sub.permissions':        'Berechtigungen',
   'settings.sub.contacts':           'Kontakte',
   'settings.sub.partners':           'Partners',
+  'settings.sub.gewerke':            'Gewerke',
   'settings.sub.guestlist':          'Gästeliste',
   'settings.sub.daysheet':           'Daysheet',
   'settings.sub.vorlagen':           'Vorlagen',
