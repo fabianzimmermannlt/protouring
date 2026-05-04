@@ -71,7 +71,7 @@ export default function RecentChatMessages({ currentUserId, hideHeader }: Props)
   useEffect(() => { load() }, [load])
 
   const openTermin = (entityId: string) => {
-    window.location.href = `/appointments/${entityId}/details`
+    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: parseInt(entityId, 10), view: 'details' } }))
   }
 
   return (

@@ -75,7 +75,8 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
     setActiveNavItem('aktuell')
     if (nextTerminId) {
       // Direkt zur Detail-URL navigieren — kein Event-Timing-Problem
-      router.push(`/appointments/${nextTerminId}/details?from=aktuell`)
+      window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: nextTerminId, view: 'details' } }))
+      onTabChange('appointments')
     } else {
       onTabChange('appointments')
     }

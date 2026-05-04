@@ -49,8 +49,9 @@ function ProTouringAppInner() {
     if (terminId && !tUrl) {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
-        window.location.href = `/appointments/${id}/details`
-        return
+        // SPA: kein Route-Wechsel
+        history.replaceState(null, '', `/?tab=appointments&id=${id}&view=details`)
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details' } })), 50)
       }
     }
 
@@ -71,7 +72,9 @@ function ProTouringAppInner() {
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent<{ terminId: number }>).detail?.terminId
-      if (id) router.push(`/appointments/${id}/details`)
+      if (id) {
+        window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details' } }))
+      }
     }
     window.addEventListener('navigate-to-termin', handler)
     return () => window.removeEventListener('navigate-to-termin', handler)
@@ -122,7 +125,7 @@ function ProTouringAppInner() {
   const content = (
     <>
       {activeTab === 'desk' && <DeskModule />}
-      {activeTab === 'appointments' && <TerminePage />}
+      {(activeTab === 'appointments' || activeTab === 'advancing') && <TerminePage />}
       {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
       {activeTab === 'venues' && <VenuesPage />}
       {activeTab === 'partners' && <PartnersPage />}

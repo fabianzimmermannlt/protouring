@@ -680,7 +680,7 @@ export default function VenueDetailPage() {
                 {shows.map(show => (
                   <div key={show.id}
                     className="flex items-center justify-between py-1.5 px-1 rounded hover:bg-gray-50 cursor-pointer group"
-                    onClick={() => window.location.href = `/appointments/${show.id}/details`}>
+                    onClick={() => window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: show.id, view: 'details' } }))}>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">{show.title || show.city || '—'}</p>
                       <p className="text-xs text-gray-400">{fmtDate(show.date)}</p>

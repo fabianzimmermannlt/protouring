@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
@@ -23,6 +23,16 @@ import CateringCard from './CateringCard'
 import AdvancingCard from './AdvancingCard'
 import SonstigesCard from './SonstigesCard'
 import VenueInfoSection from './VenueInfoSection'
+import ReisegruppeView from './ReisegruppeView'
+import AdvanceSheetView from './AdvanceSheetView'
+import GaestelisteView from './GaestelisteView'
+import TravelView from './TravelView'
+import ScheduleView from './ScheduleView'
+import HospitalityView from './HospitalityView'
+import AdvancingView from './AdvancingView'
+import AgreementsView from './AgreementsView'
+import TerminDetailMobile from './TerminDetailMobile'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getTermine,
   createTermin,
@@ -1050,11 +1060,84 @@ export function TerminDetail2({
 
 export default function TerminePage() {
   const router = useRouter()
+  const { layout } = useLayout()
+  const isL3 = layout === 'L3'
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+
+  // ── Inline-Detail-State (SPA-Navigation ohne Route-Wechsel) ──────────────
+  const [selectedTerminId, setSelectedTerminId] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null
+    const id = new URLSearchParams(window.location.search).get('id')
+    return id ? parseInt(id, 10) : null
+  })
+  const [selectedView, setSelectedView] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'details'
+    return new URLSearchParams(window.location.search).get('view') || 'details'
+  })
+  const selectedTerminIdRef = useRef(selectedTerminId)
+  useEffect(() => { selectedTerminIdRef.current = selectedTerminId }, [selectedTerminId])
+
+  const getTab = () =>
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('tab') || 'appointments'
+      : 'appointments'
+
+  const selectTermin = useCallback((id: number, view?: string) => {
+    const tab = getTab()
+    const defaultView = tab === 'advancing' ? 'details2' : 'details'
+    const v = view || defaultView
+    setSelectedTerminId(id)
+    setSelectedView(v)
+    history.pushState(null, '', `/?tab=${tab}&id=${id}&view=${v}`)
+    window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: true, view: v } }))
+    window.dispatchEvent(new CustomEvent('advancing-view-changed', { detail: { view: v } }))
+  }, [])
+
+  useEffect(() => {
+    const onSelect = (e: Event) => {
+      const { id, view } = (e as CustomEvent<{ id: number; view?: string }>).detail
+      selectTermin(id, view)
+    }
+    const onGoBack = () => {
+      setSelectedTerminId(null)
+      history.pushState(null, '', `/?tab=${getTab()}`)
+      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
+    }
+    const onSetView = (e: Event) => {
+      const v = (e as CustomEvent<{ view: string }>).detail?.view
+      if (!v) return
+      setSelectedView(v)
+      const id = selectedTerminIdRef.current
+      if (id) history.pushState(null, '', `/?tab=${getTab()}&id=${id}&view=${v}`)
+    }
+    const onPopState = () => {
+      const p = new URLSearchParams(window.location.search)
+      const id = p.get('id')
+      const view = p.get('view') || 'details'
+      const newId = id ? parseInt(id, 10) : null
+      setSelectedTerminId(newId)
+      setSelectedView(view)
+      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: !!newId, view } }))
+    }
+    window.addEventListener('select-termin', onSelect)
+    window.addEventListener('termine-go-to-list', onGoBack)
+    window.addEventListener('advancing-go-to-list', onGoBack)
+    window.addEventListener('termine-set-view', onSetView)
+    window.addEventListener('advancing-set-view', onSetView)
+    window.addEventListener('popstate', onPopState)
+    return () => {
+      window.removeEventListener('select-termin', onSelect)
+      window.removeEventListener('termine-go-to-list', onGoBack)
+      window.removeEventListener('advancing-go-to-list', onGoBack)
+      window.removeEventListener('termine-set-view', onSetView)
+      window.removeEventListener('advancing-set-view', onSetView)
+      window.removeEventListener('popstate', onPopState)
+    }
+  }, [selectTermin])
 
   // Filter + View (synced with Navigation SubMenu)
   const [termineFilter, setTermineFilter] = useState<'aktuell' | 'vergangen' | 'alle'>(() => {
@@ -1064,11 +1147,12 @@ export default function TerminePage() {
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  // Notify Navigation: we are in list mode
+  // Notify Navigation: we are in list mode (only when no termin selected)
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('termine-view-changed', {
-      detail: { inDetail: false }
-    }))
+    if (!selectedTerminId) {
+      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -1254,7 +1338,76 @@ export default function TerminePage() {
   )
 
   // ============================================================
-  // Render
+  // Inline Detail View (SPA – kein Route-Wechsel)
+  // ============================================================
+
+  const selectedTermin = selectedTerminId ? sortedTermine.find(t => t.id === selectedTerminId) ?? null : null
+
+  if (selectedTermin) {
+    const tab = getTab()
+    const onUpdated = (updated: Termin) => {
+      setTermine(prev => prev.map(t => t.id === updated.id ? { ...t, ...updated } : t))
+      window.dispatchEvent(new CustomEvent('termin-list-changed'))
+    }
+    const onDeleted = () => {
+      setTermine(prev => prev.filter(t => t.id !== selectedTermin.id))
+      setSelectedTerminId(null)
+      history.pushState(null, '', `/?tab=${tab}`)
+      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
+      window.dispatchEvent(new CustomEvent('termin-list-changed'))
+    }
+    const isAdvancingTab = tab === 'advancing'
+
+    return (
+      <div className="module-content">
+        {!isL3 && (
+          <TerminDatumzeile
+            termin={selectedTermin}
+            termine={sortedTermine}
+            onNavigate={id => selectTermin(id, selectedView)}
+          />
+        )}
+        {selectedView === 'travelparty' ? (
+          <ReisegruppeView terminId={selectedTermin.id} isAdmin={isEditor} />
+        ) : selectedView === 'advance-sheet' ? (
+          <AdvanceSheetView terminId={selectedTermin.id} />
+        ) : selectedView === 'guestlist' ? (
+          <GaestelisteView key={selectedTermin.id} terminId={selectedTermin.id} />
+        ) : selectedView === 'travel' ? (
+          <TravelView termin={selectedTermin} termine={sortedTermine} isAdmin={isAdmin} />
+        ) : selectedView === 'schedule' ? (
+          <ScheduleView terminId={selectedTermin.id} isAdmin={isAdmin} />
+        ) : selectedView === 'hospitality' || selectedView === 'catering' ? (
+          <HospitalityView terminId={selectedTermin.id} isAdmin={isAdmin} />
+        ) : selectedView === 'advancing' ? (
+          <AdvancingView terminId={selectedTermin.id} isAdmin={isAdmin} />
+        ) : selectedView === 'agreements' ? (
+          <AgreementsView terminId={selectedTermin.id} isAdmin={isAdmin} />
+        ) : isAdvancingTab || selectedView === 'details2' ? (
+          isMobile ? (
+            <TerminDetailMobile termin={selectedTermin} termine={sortedTermine} isAdmin={isEditor} canSeeFiles={canSeeFiles}
+              onUpdated={onUpdated} onDeleted={onDeleted}
+              onEditClick={() => {}} />
+          ) : (
+            <TerminDetail2 termin={selectedTermin} termine={sortedTermine} isAdmin={isAdmin} canSeeFiles={canSeeFiles}
+              onUpdated={onUpdated} onDeleted={onDeleted} />
+          )
+        ) : (
+          isMobile ? (
+            <TerminDetailMobile termin={selectedTermin} termine={sortedTermine} isAdmin={isEditor} canSeeFiles={canSeeFiles}
+              onUpdated={onUpdated} onDeleted={onDeleted}
+              onEditClick={() => {}} />
+          ) : (
+            <TerminDetail termin={selectedTermin} termine={sortedTermine} isAdmin={isAdmin} canSeeFiles={canSeeFiles}
+              onUpdated={onUpdated} onDeleted={onDeleted} />
+          )
+        )}
+      </div>
+    )
+  }
+
+  // ============================================================
+  // Render (List View)
   // ============================================================
 
   return (
@@ -1339,7 +1492,7 @@ export default function TerminePage() {
           {listView === 'calendar' && (
             <KalenderView
               termine={filteredTermine}
-              onSelectTermin={id => router.push(`/advancing/${id}/details`)}
+              onSelectTermin={id => selectTermin(id)}
             />
           )}
 
@@ -1353,7 +1506,7 @@ export default function TerminePage() {
               ) : tableRows.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => router.push(`/advancing/${item.id}/details`)}
+                  onClick={() => selectTermin(item.id)}
                   className="w-full bg-white rounded-xl border border-gray-200 px-4 py-3 text-left flex items-center gap-3 active:bg-gray-50 transition-colors"
                 >
                   {/* Date column */}
@@ -1459,7 +1612,7 @@ export default function TerminePage() {
                     </tr>
                   )
                   return filtered.map(termin => (
-                  <tr key={termin.id} className="clickable" onClick={() => router.push(`/advancing/${termin.id}/details`)}>
+                  <tr key={termin.id} className="clickable" onClick={() => selectTermin(termin.id)}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.art

@@ -395,10 +395,16 @@ export function L3Layout({
   }
 
   const handleNav = (id: string) => {
-    // Advancing hat eine eigene Next.js-Route
+    // Advancing: SPA-Navigation ohne Route-Wechsel
     if (id === 'advancing') {
+      onTabChange('advancing')
       const lastId = localStorage.getItem('pt_advancing_last_id')
-      window.location.href = lastId ? `/advancing/${lastId}/details2` : '/advancing'
+      if (lastId) {
+        const numId = parseInt(lastId, 10)
+        history.pushState(null, '', `/?tab=advancing&id=${lastId}&view=details2`)
+        window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: numId, view: 'details2' } }))
+      }
+      setShowUserMenu(false)
       return
     }
     let defaultSub: string | undefined
@@ -478,7 +484,8 @@ export function L3Layout({
                   onClick={() => {
                     setActiveTerminId(item.id)
                     localStorage.setItem('pt_advancing_last_id', String(item.id))
-                    router.push(`/advancing/${item.id}/details2`)
+                    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
+                    localStorage.setItem('pt_advancing_last_id', String(item.id))
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
                     isActive
@@ -571,7 +578,7 @@ export function L3Layout({
                   key={t.id}
                   onClick={() => {
                     setActiveTerminId(t.id)
-                    router.push(`/appointments/${t.id}/details`)
+                    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: t.id, view: 'details' } }))
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
                     isActive
