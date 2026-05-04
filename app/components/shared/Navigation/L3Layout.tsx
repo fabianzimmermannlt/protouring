@@ -81,7 +81,7 @@ const MODULE_NAV = [
 // ─── Context panel definitions ────────────────────────────────────────────────
 
 // Sections that show a context panel
-const HAS_PANEL = ['advancing', 'appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
+const HAS_PANEL = ['advancing', 'appointments', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
 
 type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
 
@@ -583,22 +583,6 @@ export function L3Layout({
                 </button>
               ))}
             </div>
-          )}
-        </div>
-      )
-    }
-
-    // ── Kontakte ─────────────────────────────────────────────────────────────
-    if (activeTab === 'contacts') {
-      const contactsSubs = [
-        { id: 'overview',     label: t('contacts.sub.overview') },
-        { id: 'crew-booking', label: t('contacts.sub.crewBooking'), editorOnly: true },
-        { id: 'conditions',   label: t('contacts.sub.conditions'),  editorOnly: true },
-      ].filter(s => !('editorOnly' in s) || isEditor)
-      return (
-        <div className="space-y-0.5 px-2">
-          {contactsSubs.map(s =>
-            subBtn(s.id, s.label, activeSubTab === s.id, () => onSubTabChange?.(s.id))
           )}
         </div>
       )
@@ -1347,6 +1331,26 @@ export function L3Layout({
                 </div>
               )
             })()}
+            {activeTab === 'contacts' && (
+              <div className="flex items-center gap-0.5">
+                {[
+                  { id: 'overview',     label: t('contacts.sub.overview') },
+                  ...(isEditor ? [{ id: 'crew-booking', label: t('contacts.sub.crewBooking') }] : []),
+                  ...(isEditor ? [{ id: 'conditions',   label: t('contacts.sub.conditions') }] : []),
+                ].map(tab => (
+                  <button key={tab.id}
+                    onClick={() => onSubTabChange?.(tab.id)}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      activeSubTab === tab.id
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {(activeTab === 'advancing' || (activeTab === 'appointments' && termineInDetail)) && (() => {
               const isAdvancing = activeTab === 'advancing'
               const currentView = isAdvancing ? advancingView : termineView

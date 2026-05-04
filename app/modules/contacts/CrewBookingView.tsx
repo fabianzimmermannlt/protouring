@@ -290,7 +290,10 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   {crewMembers.map((c, ci) => (
                     <React.Fragment key={c.id}>
                       <th style={{ width: 40, height: 30, padding: '0 4px', textAlign: 'center', fontWeight: 500, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined }}>Verf</th>
-                      <th style={{ width: 84, height: 30, padding: '0 8px', textAlign: 'center', fontWeight: 600, fontSize: 11, color: '#374151', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderRight: '1px solid #e0e7ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.firstName} {c.lastName}</th>
+                      <th style={{ width: 84, minHeight: 30, padding: '2px 8px', textAlign: 'center', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderRight: '1px solid #e0e7ff', overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 600, fontSize: 11, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.firstName} {c.lastName}</div>
+                        {c.specification && <div style={{ fontWeight: 400, fontSize: 10, color: '#818cf8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.specification}</div>}
+                      </th>
                     </React.Fragment>
                   ))}
                 </tr>
