@@ -36,6 +36,7 @@ const platformSubItems: SubNavigationItemDef[] = [
   { id: 'vorlagen',       name: 'VORLAGEN',            description: 'Dokumentenvorlagen',           allowedRoles: EDITOR_ROLES },
   { id: 'artist',         name: 'ARTIST',              description: 'Artist-Informationen',         allowedRoles: ['admin'] },
   { id: 'partners',       name: 'PARTNERS',            description: 'Partner-Typen verwalten',      allowedRoles: ['admin'] },
+  { id: 'gewerke',        name: 'GEWERKE',             description: 'Crew-Gewerke & Briefings',     allowedRoles: EDITOR_ROLES },
   { id: 'erste-schritte', name: 'ERSTE SCHRITTE',      description: 'Hilfe & Übersicht' },
 ]
 
@@ -50,6 +51,7 @@ const SHORT_LABEL: Record<string, string> = {
   vorlagen: 'Vorlagen',
   artist: 'Artist',
   partners: 'Partners',
+  gewerke: 'Gewerke',
   'erste-schritte': 'Hilfe',
 }
 

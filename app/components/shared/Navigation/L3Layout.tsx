@@ -186,7 +186,7 @@ export function L3Layout({
     if (typeof window === 'undefined') return 'details2'
     const m = window.location.pathname.match(/\/advancing\/\d+\/(.+)/)
     const v = m?.[1] as TermineDetailView | undefined
-    const valid = ['details2','travel','schedule','catering','hospitality','advancing','agreements','travelparty','advance-sheet','guestlist']
+    const valid = ['details2','travel','schedule','catering','hospitality','advancing','agreements','travelparty','advance-sheet','guestlist','briefing']
     return (valid.includes(v ?? '')) ? v! : 'details2'
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
@@ -1489,6 +1489,7 @@ export function L3Layout({
               const overviewActive = !termineInDetail
               const detailTabs: { id: string; label: string }[] = termineInDetail ? [
                 { id: isAdvancing ? 'details2' : 'details', label: 'Details' },
+                ...(isAdvancing ? [{ id: 'briefing', label: 'Briefing' }] : []),
               ] : []
 
               return (

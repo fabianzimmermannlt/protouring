@@ -30,6 +30,7 @@ import TravelView from './TravelView'
 import ScheduleView from './ScheduleView'
 import HospitalityView from './HospitalityView'
 import AdvancingView from './AdvancingView'
+import BriefingView from './BriefingView'
 import AgreementsView from './AgreementsView'
 import TerminDetailMobile from './TerminDetailMobile'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
@@ -1385,6 +1386,8 @@ export default function TerminePage() {
           <HospitalityView terminId={selectedTermin.id} isAdmin={isAdmin} />
         ) : selectedView === 'advancing' ? (
           <AdvancingView terminId={selectedTermin.id} isAdmin={isAdmin} />
+        ) : selectedView === 'briefing' ? (
+          <BriefingView terminId={selectedTermin.id} isAdmin={isAdmin} />
         ) : selectedView === 'agreements' ? (
           <AgreementsView terminId={selectedTermin.id} isAdmin={isAdmin} />
         ) : isAdvancingTab || selectedView === 'details2' ? (

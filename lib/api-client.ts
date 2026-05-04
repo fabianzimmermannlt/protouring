@@ -2978,3 +2978,113 @@ export async function addCarnetMaterial(carnetId: number, materialId: number, an
 export async function removeCarnetMaterial(carnetId: number, materialId: number): Promise<void> {
   await request(`/api/carnets/${carnetId}/materials/${materialId}`, { method: 'DELETE' })
 }
+
+// ============================================
+// CREW BRIEFING – GEWERKE
+// ============================================
+
+export interface Gewerk {
+  id: number
+  tenant_id: number
+  name: string
+  color: string
+  can_write: 0 | 1
+  sort_order: number
+  created_at: string
+  funktionen: string[]
+}
+
+export interface BriefingSection {
+  id: number
+  tenant_id: number
+  briefing_id: number
+  title: string
+  content: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface BriefingFile {
+  id: number
+  original_name: string
+  stored_name: string
+  mime_type: string
+  size: number
+  created_at: string
+  uploaded_by_name: string | null
+}
+
+export interface CrewBriefing {
+  id: number
+  tenant_id: number
+  termin_id: number
+  gewerk_id: number
+  created_at: string
+  updated_at: string
+  sections: BriefingSection[]
+  files: BriefingFile[]
+}
+
+export interface BriefingItem {
+  gewerk: Gewerk
+  briefing: CrewBriefing | null
+}
+
+// Gewerk-Einstellungen
+export async function getGewerke(): Promise<Gewerk[]> {
+  const data = await request<{ gewerke: Gewerk[] }>('/api/settings/gewerke')
+  return data.gewerke
+}
+
+export async function createGewerk(data: { name: string; color?: string; can_write?: boolean; sort_order?: number; funktionen?: string[] }): Promise<Gewerk> {
+  const res = await request<{ gewerk: Gewerk }>('/api/settings/gewerke', { method: 'POST', body: data })
+  return res.gewerk
+}
+
+export async function updateGewerk(id: number, data: { name?: string; color?: string; can_write?: boolean; sort_order?: number; funktionen?: string[] }): Promise<Gewerk> {
+  const res = await request<{ gewerk: Gewerk }>(`/api/settings/gewerke/${id}`, { method: 'PUT', body: data })
+  return res.gewerk
+}
+
+export async function deleteGewerk(id: number): Promise<void> {
+  await request<{ ok: boolean }>(`/api/settings/gewerke/${id}`, { method: 'DELETE' })
+}
+
+// Briefings pro Termin
+export async function getBriefings(terminId: number): Promise<BriefingItem[]> {
+  const data = await request<{ items: BriefingItem[] }>(`/api/termine/${terminId}/briefings`)
+  return data.items
+}
+
+export async function addBriefingSection(
+  terminId: number,
+  gewerkId: number,
+  data: { title?: string; content?: string; sort_order?: number }
+): Promise<{ section: BriefingSection; briefingId: number }> {
+  return request<{ section: BriefingSection; briefingId: number }>(
+    `/api/termine/${terminId}/briefings/${gewerkId}/sections`,
+    { method: 'POST', body: data }
+  )
+}
+
+export async function updateBriefingSection(
+  terminId: number,
+  gewerkId: number,
+  sectionId: number,
+  data: { title?: string; content?: string; sort_order?: number }
+): Promise<BriefingSection> {
+  const res = await request<{ section: BriefingSection }>(
+    `/api/termine/${terminId}/briefings/${gewerkId}/sections/${sectionId}`,
+    { method: 'PUT', body: data }
+  )
+  return res.section
+}
+
+export async function deleteBriefingSection(terminId: number, gewerkId: number, sectionId: number): Promise<void> {
+  await request<{ ok: boolean }>(`/api/termine/${terminId}/briefings/${gewerkId}/sections/${sectionId}`, { method: 'DELETE' })
+}
+
+export async function reorderBriefingSections(terminId: number, gewerkId: number, order: { id: number; sort_order: number }[]): Promise<void> {
+  await request<{ ok: boolean }>(`/api/termine/${terminId}/briefings/${gewerkId}/sections/reorder`, { method: 'PUT', body: { order } })
+}

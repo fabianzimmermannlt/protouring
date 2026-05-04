@@ -1462,6 +1462,62 @@ async function initDatabase() {
   await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_termin ON termin_artist_members(termin_id)`)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_artist ON termin_artist_members(artist_member_id)`)
 
+  // ── Crew Briefing ────────────────────────────────────────────────────────────
+
+  // Gewerke (Gruppen von Crew-Mitgliedern per Funktion)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS gewerke (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      color TEXT DEFAULT '#6366f1',
+      can_write INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_gewerke_tenant ON gewerke(tenant_id)`)
+
+  // Zuordnung Funktion → Gewerk (M:N, Funktion kann in mehreren Gewerken sein)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS gewerk_funktionen (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      gewerk_id INTEGER NOT NULL REFERENCES gewerke(id) ON DELETE CASCADE,
+      funktion_name TEXT NOT NULL,
+      UNIQUE(gewerk_id, funktion_name)
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_gewerk_funktionen_gewerk ON gewerk_funktionen(gewerk_id)`)
+
+  // Ein Briefing pro Termin + Gewerk
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS crew_briefings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+      gewerk_id INTEGER NOT NULL REFERENCES gewerke(id) ON DELETE CASCADE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(termin_id, gewerk_id)
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_crew_briefings_termin ON crew_briefings(termin_id)`)
+
+  // Text-Blöcke innerhalb eines Briefings
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS crew_briefing_sections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      briefing_id INTEGER NOT NULL REFERENCES crew_briefings(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_briefing_sections_briefing ON crew_briefing_sections(briefing_id)`)
+
   console.log('✅ Database initialized');
 }
 
@@ -7629,6 +7685,238 @@ app.delete('/api/venues/:venueId/contacts/:contactId', authenticateToken, requir
       'DELETE FROM venue_contacts WHERE id = ? AND venue_id = ? AND tenant_id = ?',
       [req.params.contactId, req.params.venueId, req.tenant.id]
     )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ============================================
+// CREW BRIEFING – GEWERK SETTINGS
+// ============================================
+
+// Helper: Ist der User ein Editor (Rollen 1-3)?
+function isEditor(role) {
+  return ['admin', 'agency', 'tourmanagement'].includes(role)
+}
+
+// Helper: Ermittle die Gewerke eines Users anhand seiner Funktion
+async function getUserGewerke(tenantId, userId) {
+  // Kontakt des Users in diesem Tenant finden
+  const contact = await db.get(
+    'SELECT function1, function2, function3 FROM contacts WHERE tenant_id = ? AND user_id = ?',
+    [tenantId, userId]
+  )
+  if (!contact) return []
+  const fns = [contact.function1, contact.function2, contact.function3].filter(Boolean)
+  if (fns.length === 0) return []
+  const placeholders = fns.map(() => '?').join(',')
+  return db.all(
+    `SELECT DISTINCT g.* FROM gewerke g
+     JOIN gewerk_funktionen gf ON gf.gewerk_id = g.id
+     WHERE g.tenant_id = ? AND gf.funktion_name IN (${placeholders})`,
+    [tenantId, ...fns]
+  )
+}
+
+// GET /api/settings/gewerke
+app.get('/api/settings/gewerke', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const gewerke = await db.all(
+      'SELECT * FROM gewerke WHERE tenant_id = ? ORDER BY sort_order, name',
+      [req.tenant.id]
+    )
+    // Funktionen zu jedem Gewerk laden
+    for (const g of gewerke) {
+      const fns = await db.all('SELECT funktion_name FROM gewerk_funktionen WHERE gewerk_id = ?', [g.id])
+      g.funktionen = fns.map(f => f.funktion_name)
+    }
+    res.json({ gewerke })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/settings/gewerke
+app.post('/api/settings/gewerke', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  const { name, color = '#6366f1', can_write = 0, sort_order = 0, funktionen = [] } = req.body
+  if (!name) return res.status(400).json({ error: 'Name fehlt' })
+  try {
+    const result = await db.run(
+      'INSERT INTO gewerke (tenant_id, name, color, can_write, sort_order) VALUES (?,?,?,?,?)',
+      [req.tenant.id, name, color, can_write ? 1 : 0, sort_order]
+    )
+    const gewerk_id = result.lastID
+    for (const fn of funktionen) {
+      await db.run('INSERT OR IGNORE INTO gewerk_funktionen (gewerk_id, funktion_name) VALUES (?,?)', [gewerk_id, fn])
+    }
+    const g = await db.get('SELECT * FROM gewerke WHERE id = ?', [gewerk_id])
+    g.funktionen = funktionen
+    res.json({ gewerk: g })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/settings/gewerke/:id
+app.put('/api/settings/gewerke/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  const { name, color, can_write, sort_order, funktionen } = req.body
+  try {
+    const g = await db.get('SELECT * FROM gewerke WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    if (!g) return res.status(404).json({ error: 'Nicht gefunden' })
+    await db.run(
+      `UPDATE gewerke SET name=?, color=?, can_write=?, sort_order=? WHERE id=?`,
+      [name ?? g.name, color ?? g.color, can_write !== undefined ? (can_write ? 1 : 0) : g.can_write, sort_order ?? g.sort_order, g.id]
+    )
+    if (Array.isArray(funktionen)) {
+      await db.run('DELETE FROM gewerk_funktionen WHERE gewerk_id = ?', [g.id])
+      for (const fn of funktionen) {
+        await db.run('INSERT OR IGNORE INTO gewerk_funktionen (gewerk_id, funktion_name) VALUES (?,?)', [g.id, fn])
+      }
+    }
+    const updated = await db.get('SELECT * FROM gewerke WHERE id = ?', [g.id])
+    const fns = await db.all('SELECT funktion_name FROM gewerk_funktionen WHERE gewerk_id = ?', [g.id])
+    updated.funktionen = fns.map(f => f.funktion_name)
+    res.json({ gewerk: updated })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/settings/gewerke/:id
+app.delete('/api/settings/gewerke/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const g = await db.get('SELECT id FROM gewerke WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    if (!g) return res.status(404).json({ error: 'Nicht gefunden' })
+    await db.run('DELETE FROM gewerke WHERE id = ?', [g.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ============================================
+// CREW BRIEFING – BRIEFINGS PRO TERMIN
+// ============================================
+
+// GET /api/termine/:terminId/briefings
+// Gibt alle Gewerke zurück die der User sehen darf, mit Briefing-Daten wenn vorhanden
+app.get('/api/termine/:terminId/briefings', authenticateToken, requireTenant, async (req, res) => {
+  const terminId = parseInt(req.params.terminId)
+  try {
+    let visibleGewerke
+    if (isEditor(req.tenant.role)) {
+      // Admins/Editors sehen alle Gewerke des Tenants
+      visibleGewerke = await db.all(
+        'SELECT * FROM gewerke WHERE tenant_id = ? ORDER BY sort_order, name',
+        [req.tenant.id]
+      )
+    } else {
+      // Crew sieht nur Gewerke wo ihre Funktion drin ist
+      visibleGewerke = await getUserGewerke(req.tenant.id, req.user.id)
+    }
+
+    const result = []
+    for (const gewerk of visibleGewerke) {
+      const fns = await db.all('SELECT funktion_name FROM gewerk_funktionen WHERE gewerk_id = ?', [gewerk.id])
+      gewerk.funktionen = fns.map(f => f.funktion_name)
+
+      // Briefing + Sections laden (falls vorhanden)
+      const briefing = await db.get(
+        'SELECT * FROM crew_briefings WHERE termin_id = ? AND gewerk_id = ?',
+        [terminId, gewerk.id]
+      )
+      if (briefing) {
+        briefing.sections = await db.all(
+          'SELECT * FROM crew_briefing_sections WHERE briefing_id = ? ORDER BY sort_order, id',
+          [briefing.id]
+        )
+        // Dateien via files-Tabelle
+        briefing.files = await db.all(
+          `SELECT f.*, u.first_name || ' ' || u.last_name AS uploaded_by_name
+           FROM files f LEFT JOIN users u ON u.id = f.uploaded_by
+           WHERE f.entity_type = 'crew_briefing' AND f.entity_id = ? AND f.tenant_id = ?
+           ORDER BY f.created_at`,
+          [briefing.id, req.tenant.id]
+        )
+      }
+      result.push({ gewerk, briefing: briefing || null })
+    }
+    res.json({ items: result })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/termine/:terminId/briefings/:gewerkId/sections
+app.post('/api/termine/:terminId/briefings/:gewerkId/sections', authenticateToken, requireTenant, async (req, res) => {
+  const terminId = parseInt(req.params.terminId)
+  const gewerkId = parseInt(req.params.gewerkId)
+  const { title = '', content = '', sort_order = 0 } = req.body
+  try {
+    // Schreibrecht prüfen
+    const gewerk = await db.get('SELECT * FROM gewerke WHERE id = ? AND tenant_id = ?', [gewerkId, req.tenant.id])
+    if (!gewerk) return res.status(404).json({ error: 'Gewerk nicht gefunden' })
+    if (!isEditor(req.tenant.role)) {
+      if (!gewerk.can_write) return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+      const myGewerke = await getUserGewerke(req.tenant.id, req.user.id)
+      if (!myGewerke.find(g => g.id === gewerkId)) return res.status(403).json({ error: 'Kein Zugriff auf dieses Gewerk' })
+    }
+    // Briefing anlegen falls nicht vorhanden
+    let briefing = await db.get('SELECT * FROM crew_briefings WHERE termin_id = ? AND gewerk_id = ?', [terminId, gewerkId])
+    if (!briefing) {
+      const r = await db.run(
+        'INSERT INTO crew_briefings (tenant_id, termin_id, gewerk_id) VALUES (?,?,?)',
+        [req.tenant.id, terminId, gewerkId]
+      )
+      briefing = await db.get('SELECT * FROM crew_briefings WHERE id = ?', [r.lastID])
+    }
+    const r2 = await db.run(
+      'INSERT INTO crew_briefing_sections (tenant_id, briefing_id, title, content, sort_order) VALUES (?,?,?,?,?)',
+      [req.tenant.id, briefing.id, title, content, sort_order]
+    )
+    const section = await db.get('SELECT * FROM crew_briefing_sections WHERE id = ?', [r2.lastID])
+    res.json({ section, briefingId: briefing.id })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/termine/:terminId/briefings/:gewerkId/sections/:sectionId
+app.put('/api/termine/:terminId/briefings/:gewerkId/sections/:sectionId', authenticateToken, requireTenant, async (req, res) => {
+  const gewerkId = parseInt(req.params.gewerkId)
+  const sectionId = parseInt(req.params.sectionId)
+  const { title, content, sort_order } = req.body
+  try {
+    const gewerk = await db.get('SELECT * FROM gewerke WHERE id = ? AND tenant_id = ?', [gewerkId, req.tenant.id])
+    if (!gewerk) return res.status(404).json({ error: 'Gewerk nicht gefunden' })
+    if (!isEditor(req.tenant.role)) {
+      if (!gewerk.can_write) return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+      const myGewerke = await getUserGewerke(req.tenant.id, req.user.id)
+      if (!myGewerke.find(g => g.id === gewerkId)) return res.status(403).json({ error: 'Kein Zugriff' })
+    }
+    const s = await db.get('SELECT * FROM crew_briefing_sections WHERE id = ? AND tenant_id = ?', [sectionId, req.tenant.id])
+    if (!s) return res.status(404).json({ error: 'Section nicht gefunden' })
+    await db.run(
+      `UPDATE crew_briefing_sections SET title=?, content=?, sort_order=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+      [title ?? s.title, content ?? s.content, sort_order ?? s.sort_order, sectionId]
+    )
+    const updated = await db.get('SELECT * FROM crew_briefing_sections WHERE id = ?', [sectionId])
+    res.json({ section: updated })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/termine/:terminId/briefings/:gewerkId/sections/:sectionId
+app.delete('/api/termine/:terminId/briefings/:gewerkId/sections/:sectionId', authenticateToken, requireTenant, async (req, res) => {
+  const gewerkId = parseInt(req.params.gewerkId)
+  const sectionId = parseInt(req.params.sectionId)
+  try {
+    const gewerk = await db.get('SELECT * FROM gewerke WHERE id = ? AND tenant_id = ?', [gewerkId, req.tenant.id])
+    if (!gewerk) return res.status(404).json({ error: 'Gewerk nicht gefunden' })
+    if (!isEditor(req.tenant.role)) {
+      if (!gewerk.can_write) return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+      const myGewerke = await getUserGewerke(req.tenant.id, req.user.id)
+      if (!myGewerke.find(g => g.id === gewerkId)) return res.status(403).json({ error: 'Kein Zugriff' })
+    }
+    await db.run('DELETE FROM crew_briefing_sections WHERE id = ? AND tenant_id = ?', [sectionId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/termine/:terminId/briefings/:gewerkId/sections/reorder
+app.put('/api/termine/:terminId/briefings/:gewerkId/sections/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  const { order } = req.body // Array von { id, sort_order }
+  try {
+    for (const item of order) {
+      await db.run('UPDATE crew_briefing_sections SET sort_order=? WHERE id=? AND tenant_id=?',
+        [item.sort_order, item.id, req.tenant.id])
+    }
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

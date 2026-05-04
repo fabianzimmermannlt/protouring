@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { Loader2 } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
+import GewerkSettings from './GewerkSettings'
 import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
@@ -532,6 +533,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'partners':
         return <PartnerTypesSettings />
+
+      case 'gewerke':
+        return <GewerkSettings />
 
       case 'erste-schritte':
         return <ErsteSchritte />
