@@ -1415,9 +1415,21 @@ function pickerContactFromRow(r: Record<string, unknown>): TravelPartyPickerCont
   };
 }
 
+async function fetchTravelPartyFull(terminId: number): Promise<{ members: TravelPartyMember[], excludedBandMembers: TravelPartyMember[] }> {
+  const res = await request<{ members: Record<string, unknown>[]; excludedBandMembers?: Record<string, unknown>[] }>(`/api/termine/${terminId}/travel-party`);
+  return {
+    members: res.members.map(memberFromRow),
+    excludedBandMembers: (res.excludedBandMembers ?? []).map(memberFromRow),
+  };
+}
+
 export async function getTravelParty(terminId: number): Promise<TravelPartyMember[]> {
-  const res = await request<{ members: Record<string, unknown>[] }>(`/api/termine/${terminId}/travel-party`);
-  return res.members.map(memberFromRow);
+  const { members } = await fetchTravelPartyFull(terminId);
+  return members;
+}
+
+export async function getTravelPartyWithExcluded(terminId: number): Promise<{ members: TravelPartyMember[], excludedBandMembers: TravelPartyMember[] }> {
+  return fetchTravelPartyFull(terminId);
 }
 
 export async function getTravelPartyPicker(terminId: number): Promise<TravelPartyPickerContact[]> {

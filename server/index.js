@@ -3626,7 +3626,9 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
       return { ...rest, function1: roles[0] || '', function2: roles[1] || '', function3: roles[2] || '' };
     });
 
-    res.json({ members: [...parsedArtistRows, ...crewRows] });
+    const activeArtistRows = parsedArtistRows.filter(r => !r.excluded)
+    const excludedArtistRows = parsedArtistRows.filter(r => r.excluded)
+    res.json({ members: [...activeArtistRows, ...crewRows], excludedBandMembers: excludedArtistRows });
   } catch (err) {
     console.error('travel-party GET failed', err);
     res.status(500).json({ error: 'Failed to load travel party' });
