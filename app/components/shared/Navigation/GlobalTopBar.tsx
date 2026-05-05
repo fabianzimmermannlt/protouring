@@ -36,6 +36,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
   const [loading, setLoading]     = useState(false)
   const [open, setOpen]           = useState(false)
   const [focused, setFocused]     = useState<number>(-1)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   const inputRef      = useRef<HTMLInputElement>(null)
   const dropdownRef   = useRef<HTMLDivElement>(null)
@@ -53,14 +54,17 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
   const runSearch = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setResults([]); setOpen(false); return }
     setLoading(true)
+    setSearchError(null)
     try {
       const data = await searchGlobal(q)
       setResults(data)
       updateDropdownPos()
       setOpen(true)
       setFocused(-1)
-    } catch {
+    } catch (err) {
       setResults([])
+      setSearchError(err instanceof Error ? err.message : 'Fehler')
+      setOpen(true)
     } finally {
       setLoading(false)
     }
@@ -219,7 +223,10 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
             ref={dropdownRef}
             className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
           >
-            <p className="px-3 py-4 text-xs text-gray-400 text-center">Keine Treffer für „{query}"</p>
+            {searchError
+              ? <p className="px-3 py-4 text-xs text-red-500 text-center">Fehler: {searchError}</p>
+              : <p className="px-3 py-4 text-xs text-gray-400 text-center">Keine Treffer für „{query}"</p>
+            }
           </div>
         )}
       </div>
