@@ -1408,6 +1408,25 @@ export default function TerminePage() {
               onUpdated={onUpdated} onDeleted={onDeleted} />
           )
         )}
+      {isModalOpen && (
+        <TerminModal
+          termin={editingTermin}
+          onClose={closeModal}
+          onSaved={saved => {
+            if (editingTermin) {
+              setTermine(prev => prev.map(t => t.id === saved.id ? { ...t, ...saved } : t))
+            } else {
+              setTermine(prev => [...prev, saved])
+            }
+            window.dispatchEvent(new CustomEvent('termin-list-changed'))
+          }}
+          onDeleted={id => {
+            setTermine(prev => prev.filter(t => t.id !== id))
+            closeModal()
+          }}
+          allowAddAnother
+        />
+      )}
       </div>
     )
   }
