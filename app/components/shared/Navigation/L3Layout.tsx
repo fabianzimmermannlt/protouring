@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, ReactNode, ChangeEvent } from 'react'
 import {
   HomeIcon,
   CalendarDaysIcon,
@@ -58,6 +58,7 @@ import {
   type Vehicle,
   type Contact,
 } from '@/lib/api-client'
+import { parseCSV, col } from '@/lib/csvParser'
 import { useRouter, usePathname } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
@@ -292,6 +293,8 @@ export function L3Layout({
   const [venueNewName, setVenueNewName] = useState('')
   const [venueCreating, setVenueCreating] = useState(false)
   const [venueMenuOpenId, setVenueMenuOpenId] = useState<string | null>(null)
+  const [venuesCsvMenuOpen, setVenuesCsvMenuOpen] = useState(false)
+  const venuesCsvInputRef = useRef<HTMLInputElement>(null)
   const [activeVenueId, setActiveVenueId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/venues\/([^/]+)/)
@@ -308,6 +311,18 @@ export function L3Layout({
     const m = window.location.pathname.match(/\/venues\/([^/]+)/)
     setActiveVenueId(m?.[1] ?? null)
   }, [activeTab])
+
+  // Auto-select last / first venue when navigating to venues with no selection
+  useEffect(() => {
+    if (activeTab !== 'venues') return
+    if (venuesList.length === 0) return
+    if (activeVenueId) return
+    const lastId = localStorage.getItem('pt_venues_last_id')
+    const sorted = [...venuesList].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
+    const target = (lastId && venuesList.find(v => String(v.id) === lastId)) ? lastId : String(sorted[0].id)
+    setActiveVenueId(target)
+    router.push(`/venues/${target}`)
+  }, [activeTab, venuesList, activeVenueId])
 
   // ── Contacts list ─────────────────────────────────────────────────────────
   const [contactsList, setContactsList] = useState<Contact[]>([])
@@ -374,6 +389,7 @@ export function L3Layout({
     const handler = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node))
         setShowUserMenu(false)
+      setVenuesCsvMenuOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -432,6 +448,56 @@ export function L3Layout({
       if (s.editorOnly) return isEditor
       return true
     })
+
+  // ── Venues CSV ────────────────────────────────────────────────────────────
+
+  const exportVenuesCsv = () => {
+    const headers = ['Name', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Kapazität']
+    const rows = venuesList.map(v =>
+      [v.name, v.street, v.postalCode, v.city, v.state, v.country, v.capacity]
+        .map(val => `"${(val || '').replace(/"/g, '""')}"`)
+        .join(';')
+    )
+    const csv = [headers.join(';'), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `venues_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    setVenuesCsvMenuOpen(false)
+  }
+
+  const importVenuesCsv = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCSV(text).slice(1)
+      let count = 0
+      for (const row of rows) {
+        if (!col(row, 0)) continue
+        try {
+          const created = await createVenue({
+            name: col(row, 0), street: col(row, 1), postalCode: col(row, 2),
+            city: col(row, 3), state: col(row, 4), country: col(row, 5), capacity: col(row, 6),
+            website: '', arrival: '', arrivalStreet: '', arrivalPostalCode: '', arrivalCity: '',
+            capacitySeated: '', stageDimensions: '', clearanceHeight: '', merchandiseFee: '',
+            merchandiseStand: '', wardrobe: '', showers: '', wifi: '', parking: '',
+            nightlinerParking: '', loadingPath: '', notes: '', latitude: '', longitude: '',
+          })
+          setVenuesList(prev => [...prev, created])
+          count++
+        } catch { /* skip */ }
+      }
+      if (count > 0) alert(`${count} Venue(s) importiert.`)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+    setVenuesCsvMenuOpen(false)
+  }
 
   // ── Context panel content ──────────────────────────────────────────────────
 
@@ -910,6 +976,7 @@ export function L3Layout({
                     onClick={() => {
                       setVenueMenuOpenId(null)
                       setActiveVenueId(String(v.id))
+                      localStorage.setItem('pt_venues_last_id', String(v.id))
                       router.push(`/venues/${v.id}`)
                     }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
@@ -1398,7 +1465,7 @@ export function L3Layout({
 
           {/* Panel header */}
           <div className="flex items-center justify-between px-3 py-3 border-b border-gray-700">
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-white">
                 {TAB_LABEL_KEYS[activeTab] ?? activeTab}
               </p>
@@ -1406,12 +1473,49 @@ export function L3Layout({
                 <p className="text-[10px] text-gray-400 mt-0.5 truncate">{artistName}</p>
               )}
             </div>
-            <button
-              onClick={togglePanel}
-              className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors flex-shrink-0"
-            >
-              <ChevronLeftIcon className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {/* CSV Menu — nur für Venues + Editor */}
+              {activeTab === 'venues' && isEditor && (
+                <div className="relative">
+                  <button
+                    onClick={() => setVenuesCsvMenuOpen(o => !o)}
+                    className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors"
+                    title="CSV Import / Export"
+                  >
+                    <EllipsisHorizontalIcon className="w-4 h-4" />
+                  </button>
+                  {venuesCsvMenuOpen && (
+                    <div
+                      className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={exportVenuesCsv}
+                        className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                      >
+                        CSV exportieren
+                      </button>
+                      <label className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors cursor-pointer block">
+                        CSV importieren
+                        <input
+                          ref={venuesCsvInputRef}
+                          type="file"
+                          accept=".csv"
+                          className="hidden"
+                          onChange={importVenuesCsv}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={togglePanel}
+                className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+              >
+                <ChevronLeftIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Panel content */}
@@ -1439,32 +1543,10 @@ export function L3Layout({
 
           {/* Left: Detail-Tabs — Advancing, Appointments oder Venues */}
           <div className="flex-1 flex items-center min-w-0">
-            {activeTab === 'venues' && (
-              <div className="flex items-center gap-0.5">
-                {[
-                  { id: 'overview', label: 'Übersicht' },
-                  ...(activeVenueId ? [{ id: 'details', label: 'Details' }] : []),
-                ].map(v => (
-                  <button
-                    key={v.id}
-                    onClick={() => {
-                      if (v.id === 'overview') {
-                        setActiveVenueId(null)
-                        router.push('/venues')
-                      } else {
-                        router.push(`/venues/${activeVenueId}`)
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      (v.id === 'overview' && !activeVenueId) || (v.id === 'details' && !!activeVenueId)
-                        ? 'bg-gray-100 text-gray-900 font-medium'
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                    }`}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
+            {activeTab === 'venues' && activeVenueId && (
+              <p className="text-sm font-medium text-gray-700 truncate">
+                {venuesList.find(v => String(v.id) === activeVenueId)?.name ?? ''}
+              </p>
             )}
             {(['partners', 'hotels', 'vehicles'] as const).includes(activeTab as any) && (() => {
               const activeId = activeTab === 'partners' ? activePartnerId : activeTab === 'hotels' ? activeHotelId : activeVehicleId
