@@ -441,6 +441,25 @@ export function L3Layout({
     getTermine().then(setTermineList).catch(() => {})
   }, [activeTab])
 
+  // Auto-select last / first termin when navigating to events with no selection
+  useEffect(() => {
+    if (activeTab !== 'events') return
+    if (termineList.length === 0) return
+    if (activeTerminId) return
+    const lastId = localStorage.getItem('pt_events_last_id')
+    const today = new Date().toISOString().slice(0, 10)
+    const sorted = [
+      ...termineList.filter(t => t.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
+      ...termineList.filter(t => t.date < today).sort((a, b) => b.date.localeCompare(a.date)),
+    ]
+    const target = (lastId && termineList.find(t => t.id === parseInt(lastId, 10)))
+      ? parseInt(lastId, 10)
+      : sorted[0].id
+    setActiveTerminId(target)
+    localStorage.setItem('pt_events_last_id', String(target))
+    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: target, view: 'details2' } }))
+  }, [activeTab, termineList, activeTerminId])
+
   // Reload termineList wenn ein Termin erstellt/geändert wurde
   useEffect(() => {
     const handler = () => { getTermine().then(setTermineList).catch(() => {}) }
