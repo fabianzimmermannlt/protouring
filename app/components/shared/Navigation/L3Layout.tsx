@@ -284,13 +284,6 @@ export function L3Layout({
     getPartners().then(setPartnersList).catch(() => {})
   }, [activeTab])
 
-  // Refresh partners list when a partner is created/updated
-  useEffect(() => {
-    const handler = () => getPartners().then(setPartnersList).catch(() => {})
-    window.addEventListener('partner-list-refresh', handler)
-    return () => window.removeEventListener('partner-list-refresh', handler)
-  }, [])
-
   // Auto-select last / first partner when navigating to partners with no selection
   useEffect(() => {
     if (activeTab !== 'partners') return
@@ -319,13 +312,6 @@ export function L3Layout({
     getHotels().then(setHotelsList).catch(() => {})
   }, [activeTab])
 
-  // Refresh hotels list when a hotel is created/updated
-  useEffect(() => {
-    const handler = () => getHotels().then(setHotelsList).catch(() => {})
-    window.addEventListener('hotel-list-refresh', handler)
-    return () => window.removeEventListener('hotel-list-refresh', handler)
-  }, [])
-
   // Auto-select last / first hotel when navigating to hotels with no selection
   useEffect(() => {
     if (activeTab !== 'hotels') return
@@ -353,13 +339,6 @@ export function L3Layout({
     if (activeTab !== 'vehicles') return
     getVehicles().then(setVehiclesList).catch(() => {})
   }, [activeTab])
-
-  // Refresh vehicles list when a vehicle is created/updated
-  useEffect(() => {
-    const handler = () => getVehicles().then(setVehiclesList).catch(() => {})
-    window.addEventListener('vehicle-list-refresh', handler)
-    return () => window.removeEventListener('vehicle-list-refresh', handler)
-  }, [])
 
   // Auto-select last / first vehicle when navigating to vehicles with no selection
   useEffect(() => {
