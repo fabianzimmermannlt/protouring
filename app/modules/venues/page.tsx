@@ -13,6 +13,7 @@ import {
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
+import { VenueDetailContent } from '@/app/venues/[id]/page'
 
 const VENUE_COLS: [string, keyof Venue][] = [
   ['Name', 'name'],
@@ -40,6 +41,22 @@ export default function VenuesPage() {
   const [error, setError] = useState<string | null>(null)
   const [authError, setAuthError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+
+  // SPA: selected venue via event (L3 sidebar) or URL
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/venues\/([^/]+)/)
+    return m?.[1] ?? null
+  })
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) setSelectedVenueId(id)
+    }
+    window.addEventListener('select-venue', handler)
+    return () => window.removeEventListener('select-venue', handler)
+  }, [])
 
   const loadVenues = useCallback(async () => {
     if (!isAuthenticated()) {
@@ -119,6 +136,11 @@ export default function VenuesPage() {
         </div>
       </div>
     )
+  }
+
+  // Desktop (L3): render venue detail inline, no route change
+  if (!isMobile && selectedVenueId) {
+    return <VenueDetailContent venueId={selectedVenueId} />
   }
 
   return (

@@ -97,12 +97,9 @@ function KV({ label, value }: { label: string; value?: string }) {
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function VenueDetailPage() {
-  const params = useParams()
-  const router = useRouter()
+// ─── Embedded Detail Component (used by SPA) ─────────────────────────────────
+export function VenueDetailContent({ venueId }: { venueId: string }) {
   const isMobile = useIsMobile()
-  const venueId = String(params.id)
 
   const [authChecked, setAuthChecked] = useState(false)
   const isEditor = isEditorRole(getEffectiveRole())
@@ -145,19 +142,8 @@ export default function VenueDetailPage() {
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ─── Auth ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.replace('/login')
-    } else {
-      setAuthChecked(true)
-    }
-  }, [router])
-
-  // ─── Navigation tab change ────────────────────────────────────────────────
-  function handleTabChange(tab: string) {
-    window.location.href = `/?tab=${tab}`
-  }
+  // ─── Auth (embedded: always authenticated) ───────────────────────────────
+  useEffect(() => { setAuthChecked(true) }, [])
 
   // ─── Load data ────────────────────────────────────────────────────────────
   const loadVenue = useCallback(async () => {
@@ -354,8 +340,6 @@ export default function VenueDetailPage() {
   // Lightbox — openLightbox/closeLightbox/navigateLightbox via shared hook (lightbox.open / lightbox.close)
 
   // ─── Content ──────────────────────────────────────────────────────────────
-  if (!authChecked) return null
-
   const content = (
     <div className="module-content">
 
@@ -766,9 +750,27 @@ export default function VenueDetailPage() {
     </div>
   )
 
+  if (!authChecked) return null
+  return content
+}
+
+// ─── Standalone Page (direct URL access / mobile / L1 / L2) ──────────────────
+export default function VenueDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const venueId = String(params.id)
+
+  useEffect(() => {
+    if (!isAuthenticated()) router.replace('/login')
+  }, [router])
+
+  function handleTabChange(tab: string) {
+    window.location.href = `/?tab=${tab}`
+  }
+
   return (
     <AppShell activeTab="venues" onTabChange={handleTabChange}>
-      {content}
+      <VenueDetailContent venueId={venueId} />
     </AppShell>
   )
 }

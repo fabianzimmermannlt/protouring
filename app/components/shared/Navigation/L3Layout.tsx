@@ -321,7 +321,8 @@ export function L3Layout({
     const sorted = [...venuesList].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
     const target = (lastId && venuesList.find(v => String(v.id) === lastId)) ? lastId : String(sorted[0].id)
     setActiveVenueId(target)
-    router.push(`/venues/${target}`)
+    history.pushState(null, '', `/venues/${target}`)
+    window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: target } }))
   }, [activeTab, venuesList, activeVenueId])
 
   // ── Contacts list ─────────────────────────────────────────────────────────
@@ -975,9 +976,11 @@ export function L3Layout({
                   <button
                     onClick={() => {
                       setVenueMenuOpenId(null)
-                      setActiveVenueId(String(v.id))
-                      localStorage.setItem('pt_venues_last_id', String(v.id))
-                      router.push(`/venues/${v.id}`)
+                      const id = String(v.id)
+                      setActiveVenueId(id)
+                      localStorage.setItem('pt_venues_last_id', id)
+                      history.pushState(null, '', `/venues/${id}`)
+                      window.dispatchEvent(new CustomEvent('select-venue', { detail: { id } }))
                     }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
                   >
