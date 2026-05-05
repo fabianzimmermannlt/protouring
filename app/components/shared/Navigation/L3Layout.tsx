@@ -529,7 +529,7 @@ export function L3Layout({
   const handleCreateNewTermin = async () => {
     const today = new Date().toISOString().slice(0, 10)
     try {
-      const newTermin = await createTermin({ date: today, title: '' })
+      const newTermin = await createTermin({ date: today, title: 'Neues Event' })
       setTermineList(prev => [newTermin, ...prev])
       setActiveTerminId(newTermin.id)
       localStorage.setItem('pt_events_last_id', String(newTermin.id))
