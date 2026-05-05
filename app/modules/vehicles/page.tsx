@@ -7,6 +7,7 @@ import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
+import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
 
 const VEHICLE_COLS: [string, keyof Vehicle][] = [
   ['Bezeichnung', 'designation'],
@@ -27,8 +28,35 @@ export default function VehiclesPage() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/vehicles\/([^/]+)/)
+    return m?.[1] ?? null
+  })
+
   useEffect(() => {
     getVehicles().then(setVehicles).catch(() => {})
+  }, [])
+
+  // SPA: select-vehicle event
+  useEffect(() => {
+    const selectHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) setSelectedVehicleId(id)
+    }
+    const deleteHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) {
+        setVehicles(prev => prev.filter(v => v.id !== id))
+        setSelectedVehicleId(null)
+      }
+    }
+    window.addEventListener('select-vehicle', selectHandler)
+    window.addEventListener('vehicle-deleted', deleteHandler)
+    return () => {
+      window.removeEventListener('select-vehicle', selectHandler)
+      window.removeEventListener('vehicle-deleted', deleteHandler)
+    }
   }, [])
 
   const openNewVehicleModal = () => { setEditingVehicle(null); setIsModalOpen(true) }
@@ -129,6 +157,11 @@ export default function VehiclesPage() {
     `${v.designation} ${v.vehicleType} ${v.driver} ${v.licensePlate}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  // Desktop SPA: show detail inline
+  if (!isMobile && selectedVehicleId) {
+    return <VehicleDetailContent vehicleId={selectedVehicleId} />
+  }
+
   return (
     <div className="module-content">
       {/* Header — nur 1-3 */}
@@ -194,7 +227,10 @@ export default function VehiclesPage() {
         </div>
       ) : (
         <div className="data-table-wrapper">
-          <VehicleTable vehicles={filteredVehicles} onEdit={v => window.location.href = `/vehicles/${v.id}`} />
+          <VehicleTable vehicles={filteredVehicles} onEdit={v => {
+            history.pushState(null, '', `/vehicles/${v.id}`)
+            window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: v.id } }))
+          }} />
         </div>
       )}
 

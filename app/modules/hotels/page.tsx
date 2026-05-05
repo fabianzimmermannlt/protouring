@@ -7,6 +7,7 @@ import HotelFormModal from './HotelFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
+import { HotelDetailContent } from '@/app/modules/hotels/HotelDetail'
 
 const HOTEL_COLS: [string, keyof Hotel][] = [
   ['Name', 'name'],
@@ -78,8 +79,35 @@ export default function HotelsPage() {
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
+  const [selectedHotelId, setSelectedHotelId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/hotels\/([^/]+)/)
+    return m?.[1] ?? null
+  })
+
   useEffect(() => {
     getHotels().then(setHotels).catch(() => {})
+  }, [])
+
+  // SPA: select-hotel event
+  useEffect(() => {
+    const selectHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) setSelectedHotelId(id)
+    }
+    const deleteHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) {
+        setHotels(prev => prev.filter(h => h.id !== id))
+        setSelectedHotelId(null)
+      }
+    }
+    window.addEventListener('select-hotel', selectHandler)
+    window.addEventListener('hotel-deleted', deleteHandler)
+    return () => {
+      window.removeEventListener('select-hotel', selectHandler)
+      window.removeEventListener('hotel-deleted', deleteHandler)
+    }
   }, [])
 
   const openNewHotelModal = () => { setEditingHotel(null); setIsModalOpen(true) }
@@ -153,6 +181,11 @@ export default function HotelsPage() {
     `${h.name} ${h.city} ${h.state} ${h.country} ${h.website}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  // Desktop SPA: show detail inline
+  if (!isMobile && selectedHotelId) {
+    return <HotelDetailContent hotelId={selectedHotelId} />
+  }
+
   return (
     <div className="module-content">
       {isMobile ? (
@@ -212,7 +245,10 @@ export default function HotelsPage() {
         </div>
       ) : (
         <div className="data-table-wrapper">
-          <HotelTable hotels={filtered} onEdit={h => window.location.href = `/hotels/${h.id}`} />
+          <HotelTable hotels={filtered} onEdit={h => {
+          history.pushState(null, '', `/hotels/${h.id}`)
+          window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: h.id } }))
+        }} />
         </div>
       )}
 

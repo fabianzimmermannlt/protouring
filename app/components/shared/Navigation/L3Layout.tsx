@@ -892,10 +892,13 @@ export function L3Layout({
             notes: '', latitude: '', longitude: '',
           })
           setVenuesList(prev => [...prev, created])
-          setActiveVenueId(String(created.id))
+          const newId = String(created.id)
+          setActiveVenueId(newId)
           setVenueInlineNew(false)
           setVenueNewName('')
-          router.push(`/venues/${created.id}`)
+          localStorage.setItem('pt_venues_last_id', newId)
+          history.pushState(null, '', `/venues/${newId}`)
+          window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: newId } }))
         } catch { /* silent */ }
         finally { setVenueCreating(false) }
       }
@@ -1021,7 +1024,7 @@ export function L3Layout({
                                 setVenuesList(prev => prev.filter(x => x.id !== v.id))
                                 if (activeVenueId === String(v.id)) {
                                   setActiveVenueId(null)
-                                  router.push('/venues')
+                                  history.pushState(null, '', '/?tab=venues')
                                 }
                               } catch { /* silent */ }
                             }}
@@ -1072,7 +1075,12 @@ export function L3Layout({
                 return (
                   <div key={p.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
                     <button
-                      onClick={() => { setActivePartnerId(p.id); router.push(`/partners/${p.id}`) }}
+                      onClick={() => {
+                        setActivePartnerId(p.id)
+                        localStorage.setItem('pt_partners_last_id', p.id)
+                        history.pushState(null, '', `/partners/${p.id}`)
+                        window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: p.id } }))
+                      }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
                       <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{p.companyName}</p>
@@ -1136,7 +1144,12 @@ export function L3Layout({
                 return (
                   <div key={h.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
                     <button
-                      onClick={() => { setActiveHotelId(h.id); router.push(`/hotels/${h.id}`) }}
+                      onClick={() => {
+                        setActiveHotelId(h.id)
+                        localStorage.setItem('pt_hotels_last_id', h.id)
+                        history.pushState(null, '', `/hotels/${h.id}`)
+                        window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: h.id } }))
+                      }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
                       <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{h.name}</p>
@@ -1200,7 +1213,12 @@ export function L3Layout({
                 return (
                   <div key={v.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
                     <button
-                      onClick={() => { setActiveVehicleId(v.id); router.push(`/vehicles/${v.id}`) }}
+                      onClick={() => {
+                        setActiveVehicleId(v.id)
+                        localStorage.setItem('pt_vehicles_last_id', v.id)
+                        history.pushState(null, '', `/vehicles/${v.id}`)
+                        window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: v.id } }))
+                      }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
                       <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{v.designation || v.vehicleType || '–'}</p>

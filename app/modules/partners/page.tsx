@@ -6,6 +6,7 @@ import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole,
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
+import { PartnerDetailContent } from '@/app/modules/partners/PartnerDetail'
 
 const PARTNER_COLS: [string, keyof Partner][] = [
   ['Firmenname', 'companyName'],
@@ -25,6 +26,12 @@ export default function PartnersPage() {
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/partners\/([^/]+)/)
+    return m?.[1] ?? null
+  })
   const [formData, setFormData] = useState<PartnerFormData>({
     type: '',
     companyName: '',
@@ -67,6 +74,27 @@ export default function PartnersPage() {
 
   useEffect(() => {
     getPartners().then(setPartners).catch(() => {})
+  }, [])
+
+  // SPA: select-partner event
+  useEffect(() => {
+    const selectHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) setSelectedPartnerId(id)
+    }
+    const deleteHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) {
+        setPartners(prev => prev.filter(p => p.id !== id))
+        setSelectedPartnerId(null)
+      }
+    }
+    window.addEventListener('select-partner', selectHandler)
+    window.addEventListener('partner-deleted', deleteHandler)
+    return () => {
+      window.removeEventListener('select-partner', selectHandler)
+      window.removeEventListener('partner-deleted', deleteHandler)
+    }
   }, [])
 
   // Sidebar events
@@ -208,6 +236,11 @@ export default function PartnersPage() {
     event.target.value = ''
   }
 
+  // Desktop SPA: show detail inline
+  if (!isMobile && selectedPartnerId) {
+    return <PartnerDetailContent partnerId={selectedPartnerId} />
+  }
+
   return (
     <div className="module-content">
       {/* Action Buttons — nur 1-3 */}
@@ -278,7 +311,10 @@ export default function PartnersPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <PartnerTable partners={filtered} onEdit={p => window.location.href = `/partners/${p.id}`} />
+            <PartnerTable partners={filtered} onEdit={p => {
+              history.pushState(null, '', `/partners/${p.id}`)
+              window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: p.id } }))
+            }} />
           </div>
         )
       })()}
