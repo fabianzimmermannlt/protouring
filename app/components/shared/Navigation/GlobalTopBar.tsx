@@ -37,9 +37,17 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
   const [open, setOpen]           = useState(false)
   const [focused, setFocused]     = useState<number>(-1)
 
-  const inputRef    = useRef<HTMLInputElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inputRef      = useRef<HTMLInputElement>(null)
+  const dropdownRef   = useRef<HTMLDivElement>(null)
+  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  // Position berechnen wenn Dropdown öffnet (fixed positioning wegen overflow-hidden parent)
+  const updateDropdownPos = useCallback(() => {
+    if (!inputRef.current) return
+    const rect = inputRef.current.getBoundingClientRect()
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+  }, [])
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const runSearch = useCallback(async (q: string) => {
@@ -48,6 +56,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
     try {
       const data = await searchGlobal(q)
       setResults(data)
+      updateDropdownPos()
       setOpen(true)
       setFocused(-1)
     } catch {
@@ -157,7 +166,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            onFocus={e => { if (results.length > 0) setOpen(true); e.target.style.borderColor = '#f5c518' }}
+            onFocus={e => { if (results.length > 0) { updateDropdownPos(); setOpen(true) } e.target.style.borderColor = '#f5c518' }}
             onBlur={e => { e.target.style.borderColor = 'transparent' }}
             placeholder="Suchen… (⌘K)"
             className="w-full h-7 text-gray-100 text-xs rounded-md pl-8 pr-7 outline-none border transition-colors"
@@ -175,10 +184,11 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
         </form>
 
         {/* Dropdown */}
-        {open && results.length > 0 && (
+        {open && results.length > 0 && dropdownPos && (
           <div
             ref={dropdownRef}
-            className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[100] max-h-80 overflow-y-auto"
+            className="fixed bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[9999] max-h-80 overflow-y-auto"
+            style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
           >
             {results.map((r, i) => (
               <button
@@ -205,10 +215,11 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
           </div>
         )}
 
-        {open && results.length === 0 && query.length >= 2 && !loading && (
+        {open && results.length === 0 && query.length >= 2 && !loading && dropdownPos && (
           <div
             ref={dropdownRef}
-            className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-[100]"
+            className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
+            style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
           >
             <p className="px-3 py-4 text-xs text-gray-400 text-center">Keine Treffer für „{query}"</p>
           </div>
