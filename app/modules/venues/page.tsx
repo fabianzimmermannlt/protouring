@@ -13,7 +13,7 @@ import {
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
-import { VenueDetailContent } from '@/app/venues/[id]/page'
+import { VenueDetailContent } from '@/app/modules/venues/VenueDetail'
 
 const VENUE_COLS: [string, keyof Venue][] = [
   ['Name', 'name'],
