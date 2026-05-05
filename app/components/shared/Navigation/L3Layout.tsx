@@ -477,6 +477,7 @@ export function L3Layout({
       : sorted[0].id
     setActiveTerminId(target)
     localStorage.setItem('pt_events_last_id', String(target))
+    setTermineInDetail(true)
     window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: target, view: 'details2' } }))
   }, [activeTab, termineList, activeTerminId])
 
@@ -909,6 +910,7 @@ export function L3Layout({
                       setActiveTerminId(item.id)
                       setTerminMenuOpenId(null)
                       localStorage.setItem('pt_events_last_id', String(item.id))
+                      setTermineInDetail(true)
                       window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: advancingView } }))
                     }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
