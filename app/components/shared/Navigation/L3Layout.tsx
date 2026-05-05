@@ -1543,41 +1543,22 @@ export function L3Layout({
 
           {/* Left: Detail-Tabs — Advancing, Appointments oder Venues */}
           <div className="flex-1 flex items-center min-w-0">
-            {activeTab === 'venues' && activeVenueId && (
-              <p className="text-sm font-medium text-gray-700 truncate">
-                {venuesList.find(v => String(v.id) === activeVenueId)?.name ?? ''}
-              </p>
+            {activeTab === 'venues' && (
+              <div className="flex items-center gap-0.5">
+                <button
+                  className="px-3 py-1.5 rounded-md text-sm bg-gray-100 text-gray-900 font-medium"
+                >
+                  Details
+                </button>
+              </div>
             )}
-            {(['partners', 'hotels', 'vehicles'] as const).includes(activeTab as any) && (() => {
-              const activeId = activeTab === 'partners' ? activePartnerId : activeTab === 'hotels' ? activeHotelId : activeVehicleId
-              const clearActive = () => {
-                if (activeTab === 'partners') setActivePartnerId(null)
-                else if (activeTab === 'hotels') setActiveHotelId(null)
-                else setActiveVehicleId(null)
-              }
-              return (
-                <div className="flex items-center gap-0.5">
-                  {[
-                    { id: 'overview', label: 'Übersicht' },
-                    ...(activeId ? [{ id: 'details', label: 'Details' }] : []),
-                  ].map(tab => (
-                    <button key={tab.id}
-                      onClick={() => {
-                        if (tab.id === 'overview') { clearActive(); router.push(`/${activeTab}`) }
-                        else if (tab.id === 'details' && activeId) { router.push(`/${activeTab}/${activeId}`) }
-                      }}
-                      className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                        (tab.id === 'overview' && !activeId) || (tab.id === 'details' && !!activeId)
-                          ? 'bg-gray-100 text-gray-900 font-medium'
-                          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              )
-            })()}
+            {(['partners', 'hotels', 'vehicles'] as const).includes(activeTab as any) && (
+              <div className="flex items-center gap-0.5">
+                <button className="px-3 py-1.5 rounded-md text-sm bg-gray-100 text-gray-900 font-medium">
+                  Details
+                </button>
+              </div>
+            )}
             {activeTab === 'contacts' && (
               <div className="flex items-center gap-0.5">
                 {[
