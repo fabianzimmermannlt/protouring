@@ -130,9 +130,37 @@ export default function HotelsPage() {
     `${h.name} ${h.city} ${h.state} ${h.country} ${h.website}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Desktop SPA: show detail inline
+  // Desktop SPA: show detail inline (modal must still render for sidebar + button)
   if (!isMobile && selectedHotelId) {
-    return <HotelDetailContent hotelId={selectedHotelId} />
+    return (
+      <>
+        <HotelDetailContent hotelId={selectedHotelId} />
+        {isModalOpen && (
+          <HotelFormModal
+            hotel={editingHotel}
+            onClose={() => setIsModalOpen(false)}
+            onSaved={saved => {
+              setHotels(prev => {
+                const idx = prev.findIndex(h => h.id === saved.id)
+                if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
+                return [...prev, saved]
+              })
+              setIsModalOpen(false)
+              setSelectedHotelId(saved.id)
+              localStorage.setItem('pt_hotels_last_id', saved.id)
+              history.pushState(null, '', `/hotels/${saved.id}`)
+              window.dispatchEvent(new CustomEvent('hotel-list-refresh'))
+              setTimeout(() => window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: saved.id } })), 50)
+            }}
+            onDeleted={id => {
+              setHotels(prev => prev.filter(h => h.id !== id))
+              setSelectedHotelId(null)
+              window.dispatchEvent(new CustomEvent('hotel-list-refresh'))
+            }}
+          />
+        )}
+      </>
+    )
   }
 
   return (

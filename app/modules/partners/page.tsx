@@ -118,9 +118,16 @@ export default function PartnersPage() {
       if (editingPartner) {
         const updated = await updatePartner(editingPartner.id, formData as PartnerFormData)
         setPartners(prev => prev.map(p => p.id === updated.id ? updated : p))
+        window.dispatchEvent(new CustomEvent('partner-list-refresh'))
       } else {
         const created = await createPartner(formData as PartnerFormData)
         setPartners(prev => [...prev, created])
+        window.dispatchEvent(new CustomEvent('partner-list-refresh'))
+        // Navigate to new partner in detail view
+        setSelectedPartnerId(created.id)
+        localStorage.setItem('pt_partners_last_id', created.id)
+        history.pushState(null, '', `/partners/${created.id}`)
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: created.id } })), 50)
       }
       setIsModalOpen(false); setEditingPartner(null)
     } catch { alert('Speichern fehlgeschlagen.') }
@@ -180,9 +187,68 @@ export default function PartnersPage() {
   }
 
 
-  // Desktop SPA: show detail inline
+  // Desktop SPA: show detail inline (modal must still be rendered for sidebar + button)
   if (!isMobile && selectedPartnerId) {
-    return <PartnerDetailContent partnerId={selectedPartnerId} />
+    return (
+      <>
+        <PartnerDetailContent partnerId={selectedPartnerId} />
+        {isModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-container max-w-4xl">
+              <div className="modal-header">
+                <h2 className="modal-title">{editingPartner ? 'Partner bearbeiten' : 'Neuen Partner anlegen'}</h2>
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white"><X className="h-5 w-5" /></button>
+              </div>
+              <div className="modal-body">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div><label className="form-label">Art</label>
+                        <select value={formData.type} onChange={e => handleInputChange('type', e.target.value)} className="form-input">
+                          <option value="">Bitte wählen...</option>
+                          {partnerTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                      <div><label className="form-label">Firmenname</label><input type="text" value={formData.companyName} onChange={e => handleInputChange('companyName', e.target.value)} className="form-input" /></div>
+                      <div><label className="form-label">Straße</label><input type="text" value={formData.street} onChange={e => handleInputChange('street', e.target.value)} className="form-input" /></div>
+                      <div className="grid grid-cols-[auto_1fr] gap-1">
+                        <div><label className="form-label">PLZ</label><input type="text" value={formData.postalCode} onChange={e => handleInputChange('postalCode', e.target.value)} maxLength={5} className="form-input !w-20" placeholder="12345" /></div>
+                        <div><label className="form-label">Ort</label><input type="text" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} className="form-input" /></div>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div><label className="form-label">Bundesland</label><input type="text" value={formData.state} onChange={e => handleInputChange('state', e.target.value)} className="form-input" /></div>
+                      <div><label className="form-label">Land</label><input type="text" value={formData.country} onChange={e => handleInputChange('country', e.target.value)} className="form-input" /></div>
+                      <div><label className="form-label">Ansprechpartner</label><input type="text" value={formData.contactPerson} onChange={e => handleInputChange('contactPerson', e.target.value)} className="form-input" /></div>
+                      <div><label className="form-label">E-Mail</label><input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} className="form-input" /></div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div><label className="form-label">Telefon</label><input type="tel" value={formData.phone} onChange={e => handleInputChange('phone', e.target.value)} className="form-input" /></div>
+                      <div><label className="form-label">Steuer-ID</label><input type="text" value={formData.taxId} onChange={e => handleInputChange('taxId', e.target.value)} className="form-input" /></div>
+                    </div>
+                    <div className="space-y-4">
+                      <div><label className="form-label">Abweichende Rechnungsanschrift</label><textarea value={formData.billingAddress} onChange={e => handleInputChange('billingAddress', e.target.value)} rows={3} className="form-input" placeholder="Falls abweichend von der Hauptadresse..." /></div>
+                      <div><label className="form-label">Bemerkung</label><textarea value={formData.notes} onChange={e => handleInputChange('notes', e.target.value)} rows={3} className="form-input" placeholder="Zusätzliche Informationen oder Notizen..." /></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                {editingPartner && (
+                  <button onClick={() => { if (confirm(`Möchten Sie den Partner "${formData.companyName}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) { handleDelete(editingPartner.id); setIsModalOpen(false) } }} className="btn btn-danger"><Trash2 className="h-4 w-4" />Löschen</button>
+                )}
+                <div className={`flex space-x-4 ${editingPartner ? '' : 'ml-auto'}`}>
+                  <button onClick={() => setIsModalOpen(false)} className="btn btn-ghost">Abbrechen</button>
+                  <button onClick={savePartner} className="btn btn-primary"><Save className="h-4 w-4" />{editingPartner ? 'Speichern' : 'Partner anlegen'}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    )
   }
 
   return (
