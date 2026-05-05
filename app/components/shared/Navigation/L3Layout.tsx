@@ -997,9 +997,14 @@ export function L3Layout({
                     }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
                   >
-                    <p className={`text-xs leading-snug truncate font-medium ${isActiveContact ? 'text-white' : 'text-gray-300'}`}>
-                      {c.lastName}{c.firstName ? `, ${c.firstName}` : ''}
-                    </p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className={`text-xs leading-snug truncate font-medium ${isActiveContact ? 'text-white' : 'text-gray-300'}`}>
+                        {c.lastName}{c.firstName ? `, ${c.firstName}` : ''}
+                      </p>
+                      {c.contactType === 'guest' && (
+                        <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-gray-700 text-gray-400 leading-none">manuell</span>
+                      )}
+                    </div>
                     {fn && <p className="text-[10px] text-gray-500 truncate mt-0.5">{fn}</p>}
                   </button>
 
