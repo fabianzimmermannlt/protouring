@@ -116,19 +116,19 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="h-10 bg-gray-900 flex items-center px-3 gap-4 flex-shrink-0 z-50">
+    <div className="h-10 flex items-center px-3 gap-4 flex-shrink-0 z-50" style={{ backgroundColor: '#0d1117' }}>
 
       {/* Logo + Name */}
       <div className="flex items-center gap-2 flex-shrink-0 select-none">
-        {/* Logo mark */}
-        <div className="w-6 h-6 rounded bg-blue-500 flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-[10px] font-bold tracking-tight leading-none">PT</span>
+        {/* Logo mark — gelb wie protouring.de */}
+        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#f5c518' }}>
+          <span className="text-[10px] font-bold tracking-tight leading-none" style={{ color: '#0d1117' }}>PT</span>
         </div>
         <span className="text-white text-sm font-semibold tracking-tight">ProTouring</span>
         {artistName && (
           <>
-            <span className="text-gray-500 text-sm">/</span>
-            <span className="text-gray-300 text-sm truncate max-w-[160px]">{artistName}</span>
+            <span className="text-sm" style={{ color: '#4b5563' }}>/</span>
+            <span className="text-sm truncate max-w-[160px]" style={{ color: '#f5c518' }}>{artistName}</span>
           </>
         )}
       </div>
@@ -136,7 +136,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
       {/* Search */}
       <div className="flex-1 relative max-w-xl">
         <div className="relative flex items-center">
-          <MagnifyingGlassIcon className="absolute left-2.5 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+          <MagnifyingGlassIcon className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6b7280' }} />
           <input
             ref={inputRef}
             type="text"
@@ -145,13 +145,16 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
             onKeyDown={handleKeyDown}
             onFocus={() => { if (results.length > 0) setOpen(true) }}
             placeholder="Suchen… (⌘K)"
-            className="w-full h-7 bg-gray-800 text-gray-100 placeholder-gray-500 text-xs rounded-md pl-8 pr-7 outline-none border border-transparent focus:border-gray-600 transition-colors"
+            className="w-full h-7 text-gray-100 text-xs rounded-md pl-8 pr-7 outline-none border transition-colors"
+            style={{ backgroundColor: '#1c2333', borderColor: 'transparent', '--tw-placeholder-color': '#6b7280' } as React.CSSProperties}
+            onFocus={e => (e.target.style.borderColor = '#f5c518')}
+            onBlur={e => (e.target.style.borderColor = 'transparent')}
           />
           {loading && (
-            <div className="absolute right-2.5 w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+            <div className="absolute right-2.5 w-3 h-3 rounded-full animate-spin" style={{ border: '1.5px solid #f5c518', borderTopColor: 'transparent' }} />
           )}
           {!loading && query && (
-            <button onClick={clear} className="absolute right-2 text-gray-500 hover:text-gray-300">
+            <button onClick={clear} className="absolute right-2 hover:text-white transition-colors" style={{ color: '#6b7280' }}>
               <XMarkIcon className="w-3.5 h-3.5" />
             </button>
           )}
