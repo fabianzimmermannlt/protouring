@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Pencil, AlertCircle, Save, Loader2, Truck, Users } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
-  getVehicle, updateVehicle, deleteVehicle, type Vehicle, type VehicleFormData,
+  getVehicle, updateVehicle, type Vehicle, type VehicleFormData,
 } from '@/lib/api-client'
 
 function KV({ label, value }: { label: string; value?: string }) {
@@ -125,26 +125,11 @@ export function VehicleDetailContent({ vehicleId }: { vehicleId: string }) {
 
   const hasTrailer = inlineForm.hasTrailer === true || inlineForm.hasTrailer === 'true'
 
-  const handleDiscard = async () => {
-    if (!vehicle) return
-    try {
-      await deleteVehicle(vehicleId)
-      window.dispatchEvent(new CustomEvent('vehicle-list-refresh'))
-      window.dispatchEvent(new CustomEvent('vehicle-discarded', { detail: { id: vehicleId } }))
-    } catch (e) { console.error('Failed to discard vehicle', e) }
-  }
-
   return (
     <div className="module-content">
       {error && (
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">
           <AlertCircle className="w-4 h-4 shrink-0" />{error}
-        </div>
-      )}
-      {isEditor && vehicle?.designation === 'Neues Fahrzeug' && (
-        <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <span className="text-sm text-amber-800 flex-1">Neues Fahrzeug — Angaben ergänzen oder verwerfen.</span>
-          <button onClick={handleDiscard} className="text-xs font-medium text-red-600 hover:text-red-800">Verwerfen</button>
         </div>
       )}
 

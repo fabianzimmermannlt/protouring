@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Pencil, AlertCircle, Save, Loader2, Building2, Clock, Coffee } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
-  getHotel, updateHotel, deleteHotel, type Hotel, type HotelFormData,
+  getHotel, updateHotel, type Hotel, type HotelFormData,
 } from '@/lib/api-client'
 
 function KV({ label, value }: { label: string; value?: string }) {
@@ -123,26 +123,11 @@ export function HotelDetailContent({ hotelId }: { hotelId: string }) {
 
   const iF = (key: string, value: string) => setInlineForm(prev => ({ ...prev, [key]: value }))
 
-  const handleDiscard = async () => {
-    if (!hotel) return
-    try {
-      await deleteHotel(hotelId)
-      window.dispatchEvent(new CustomEvent('hotel-list-refresh'))
-      window.dispatchEvent(new CustomEvent('hotel-discarded', { detail: { id: hotelId } }))
-    } catch (e) { console.error('Failed to discard hotel', e) }
-  }
-
   return (
     <div className="module-content">
       {error && (
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">
           <AlertCircle className="w-4 h-4 shrink-0" />{error}
-        </div>
-      )}
-      {isEditor && hotel?.name === 'Neues Hotel' && (
-        <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <span className="text-sm text-amber-800 flex-1">Neues Hotel — Angaben ergänzen oder verwerfen.</span>
-          <button onClick={handleDiscard} className="text-xs font-medium text-red-600 hover:text-red-800">Verwerfen</button>
         </div>
       )}
 
