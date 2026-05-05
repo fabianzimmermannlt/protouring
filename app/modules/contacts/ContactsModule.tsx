@@ -9,6 +9,7 @@ import {
 import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
+import { ContactDetailContent } from './ContactDetail'
 import {
   getContacts, createContact, updateContact, updateMyContact, deleteContact, createGuestContact,
   getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
@@ -87,6 +88,13 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [showGastModal, setShowGastModal] = useState(false)
   const [editingGast, setEditingGast] = useState<Contact | null>(null)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
+
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/contacts\/([^/]+)/)
+    if (m?.[1]) return m[1]
+    return localStorage.getItem('pt_contacts_last_id') ?? null
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
@@ -128,6 +136,30 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     return () => {
       window.removeEventListener('contact-sidebar-invite', onInvite)
       window.removeEventListener('contact-sidebar-create', onCreate)
+    }
+  }, [])
+
+  useEffect(() => {
+    const selectHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) {
+        setSelectedContactId(id)
+        localStorage.setItem('pt_contacts_last_id', id)
+      }
+    }
+    const deleteHandler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      if (id) {
+        setContacts(prev => prev.filter(c => String(c.id) !== id))
+        setSelectedContactId(null)
+        localStorage.removeItem('pt_contacts_last_id')
+      }
+    }
+    window.addEventListener('select-contact', selectHandler)
+    window.addEventListener('contact-deleted', deleteHandler)
+    return () => {
+      window.removeEventListener('select-contact', selectHandler)
+      window.removeEventListener('contact-deleted', deleteHandler)
     }
   }, [])
 
@@ -355,6 +387,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const renderContent = () => {
     switch (activeSubTab) {
       case 'overview':
+        // Desktop SPA: show detail inline
+        if (!isMobile && selectedContactId) {
+          return <ContactDetailContent contactId={selectedContactId} />
+        }
         return (
           <div className="space-y-4">
             {error && (

@@ -376,6 +376,11 @@ export function L3Layout({
   const [contactsSearch, setContactsSearch] = useState('')
   const [contactsMenuOpenId, setContactsMenuOpenId] = useState<string | null>(null)
   const [contactsPlusOpen, setContactsPlusOpen] = useState(false)
+  const [activeContactId, setActiveContactId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/contacts\/([^/]+)/)
+    return m?.[1] ?? null
+  })
 
   useEffect(() => {
     if (activeTab !== 'contacts') return
@@ -390,6 +395,23 @@ export function L3Layout({
     window.addEventListener('contact-created', handler)
     return () => window.removeEventListener('contact-created', handler)
   }, [])
+
+  // Auto-select first contact when list loads
+  useEffect(() => {
+    if (activeTab !== 'contacts') return
+    if (contactsList.length === 0) return
+    if (activeContactId) return
+    const lastId = localStorage.getItem('pt_contacts_last_id')
+    const sorted = [...contactsList].sort((a, b) =>
+      (a.lastName ?? '').localeCompare(b.lastName ?? '', 'de') ||
+      (a.firstName ?? '').localeCompare(b.firstName ?? '', 'de')
+    )
+    const target = (lastId && contactsList.find(c => String(c.id) === lastId)) ? lastId : String(sorted[0].id)
+    setActiveContactId(target)
+    localStorage.setItem('pt_contacts_last_id', target)
+    history.pushState(null, '', `/contacts/${target}`)
+    window.dispatchEvent(new CustomEvent('select-contact', { detail: { id: target } }))
+  }, [activeTab, contactsList, activeContactId])
 
   // ── Termine list laden ────────────────────────────────────────────────────
   useEffect(() => {
@@ -959,16 +981,23 @@ export function L3Layout({
               const cid = String(c.id)
               const menuOpen = contactsMenuOpenId === cid
               const fn = [c.function1, c.function2, c.function3].filter(Boolean).join(' · ')
+              const isActiveContact = activeContactId === cid
               return (
                 <div
                   key={c.id}
-                  className="group relative flex items-center border-l-2 border-transparent hover:bg-gray-800 transition-colors"
+                  className={`group relative flex items-center border-l-2 transition-colors ${isActiveContact ? 'border-blue-500 bg-gray-800' : 'border-transparent hover:bg-gray-800'}`}
                 >
                   <button
-                    onClick={() => setContactsMenuOpenId(null)}
+                    onClick={() => {
+                      setContactsMenuOpenId(null)
+                      setActiveContactId(cid)
+                      localStorage.setItem('pt_contacts_last_id', cid)
+                      history.pushState(null, '', `/contacts/${cid}`)
+                      window.dispatchEvent(new CustomEvent('select-contact', { detail: { id: cid } }))
+                    }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
                   >
-                    <p className="text-xs leading-snug truncate text-gray-300 font-medium">
+                    <p className={`text-xs leading-snug truncate font-medium ${isActiveContact ? 'text-white' : 'text-gray-300'}`}>
                       {c.lastName}{c.firstName ? `, ${c.firstName}` : ''}
                     </p>
                     {fn && <p className="text-[10px] text-gray-500 truncate mt-0.5">{fn}</p>}
@@ -995,6 +1024,11 @@ export function L3Layout({
                               try {
                                 await deleteContact(String(c.id))
                                 setContactsList(prev => prev.filter(x => x.id !== c.id))
+                                if (activeContactId === cid) {
+                                  setActiveContactId(null)
+                                  localStorage.removeItem('pt_contacts_last_id')
+                                  window.dispatchEvent(new CustomEvent('contact-deleted', { detail: { id: cid } }))
+                                }
                               } catch { /* silent */ }
                             }}
                             className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
