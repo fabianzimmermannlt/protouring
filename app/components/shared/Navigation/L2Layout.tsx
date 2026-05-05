@@ -86,7 +86,7 @@ const SUB_ITEMS: Record<string, SubItem[]> = {
 
 const MAIN_NAV = [
   { id: 'desk',         name: 'Schreibtisch', icon: HomeIcon },
-  { id: 'appointments', name: 'Termine',       icon: CalendarDaysIcon },
+  { id: 'events', name: 'Events',       icon: CalendarDaysIcon },
   { id: 'contacts',     name: 'Kontakte',      icon: UsersIcon },
   { id: 'venues',       name: 'Venues',        icon: MusicalNoteIcon },
   { id: 'partners',     name: 'Partner',       icon: BriefcaseIcon },
@@ -368,7 +368,7 @@ export function L2Layout({
   ) => {
     const isActive = activeTab === item.id
     const subs = getVisibleSubs(item.id)
-    const hasSubNav = subs.length > 0 || item.id === 'appointments'
+    const hasSubNav = subs.length > 0 || item.id === 'events'
 
     return (
       <div key={item.id}>
@@ -396,7 +396,7 @@ export function L2Layout({
           )}
         </button>
 
-        {isActive && item.id === 'appointments' && renderTermineSubs()}
+        {isActive && item.id === 'events' && renderTermineSubs()}
 
         {isActive && item.id !== 'appointments' && hasSubNav && (
           <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-700 space-y-0.5">
@@ -607,7 +607,7 @@ export function L2Layout({
           </nav>
 
           {/* Center: Termine detail view tabs */}
-          {activeTab === 'appointments' && termineInDetail && (
+          {activeTab === 'events' && termineInDetail && (
             <div className="flex items-center gap-0.5">
               {([
                 { id: 'details',       label: 'Details' },

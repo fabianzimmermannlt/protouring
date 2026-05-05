@@ -69,8 +69,7 @@ import type { TermineDetailView, TermineListFilter, TermineListView } from './Te
 
 const RAIL_NAV = [
   { id: 'desk',         name: 'Schreibtisch', icon: HomeIcon },
-  { id: 'advancing',    name: 'Vorbereitung', icon: ClipboardDocumentCheckIcon },
-  { id: 'appointments', name: 'Termine',       icon: CalendarDaysIcon },
+  { id: 'advancing',    name: 'Events',       icon: CalendarDaysIcon },
   { id: 'contacts',     name: 'Kontakte',      icon: UsersIcon },
   { id: 'venues',       name: 'Venues',        icon: MusicalNoteIcon },
   { id: 'partners',     name: 'Partner',       icon: BriefcaseIcon },
@@ -85,7 +84,7 @@ const MODULE_NAV = [
 // ─── Context panel definitions ────────────────────────────────────────────────
 
 // Sections that show a context panel
-const HAS_PANEL = ['advancing', 'appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
+const HAS_PANEL = ['events', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'equipment', 'settings']
 
 type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
 
@@ -180,19 +179,13 @@ export function L3Layout({
   // ── Termine state ──────────────────────────────────────────────────────────
   // Sofort aus URL ableiten — kein Event-Race-Condition
   const [termineInDetail, setTermineInDetail] = useState(() =>
-    typeof window !== 'undefined' && /\/appointments\/\d+/.test(window.location.pathname)
+    typeof window !== 'undefined' && /\/events\/\d+/.test(window.location.pathname)
   )
-  const [termineView, setTermineView] = useState<TermineDetailView>(() => {
-    if (typeof window === 'undefined') return 'details'
-    const m = window.location.pathname.match(/\/appointments\/\d+\/(.+)/)
-    const v = m?.[1] as TermineDetailView | undefined
-    return (['details','details2','travel','schedule','catering','agreements','travelparty','advance-sheet','guestlist'].includes(v ?? '')) ? v! : 'details'
-  })
 
-  // ── Advancing state ────────────────────────────────────────────────────────
+  // ── Events/Advancing state ─────────────────────────────────────────────────
   const [advancingView, setAdvancingView] = useState<TermineDetailView>(() => {
     if (typeof window === 'undefined') return 'details2'
-    const m = window.location.pathname.match(/\/advancing\/\d+\/(.+)/)
+    const m = window.location.pathname.match(/\/events\/\d+\/(.+)/)
     const v = m?.[1] as TermineDetailView | undefined
     const valid = ['details2','travel','schedule','catering','hospitality','advancing','agreements','travelparty','advance-sheet','guestlist','briefing']
     return (valid.includes(v ?? '')) ? v! : 'details2'
@@ -206,14 +199,8 @@ export function L3Layout({
     const onViewChanged = (e: Event) => {
       const d = (e as CustomEvent<{ inDetail: boolean; view?: TermineDetailView }>).detail
       if (d.inDetail !== undefined) setTermineInDetail(d.inDetail)
-      if (d.inDetail && d.view) setTermineView(d.view)
     }
-    const onGoToList = () => { setTermineInDetail(false); setTermineView('details') }
-    const onSetView  = (e: Event) => {
-      const v = (e as CustomEvent<{ view: TermineDetailView }>).detail?.view
-      if (v) setTermineView(v)
-    }
-    const onFilter   = (e: Event) => {
+    const onFilter = (e: Event) => {
       const f = (e as CustomEvent<{ filter: TermineListFilter }>).detail?.filter
       if (f) setTermineFilter(f)
     }
@@ -221,7 +208,6 @@ export function L3Layout({
       const v = (e as CustomEvent<{ view: TermineListView }>).detail?.view
       if (v) setTermineListView(v)
     }
-    // Advancing events
     const onAdvancingView = (e: Event) => {
       const v = (e as CustomEvent<{ view: TermineDetailView }>).detail?.view
       if (v) setAdvancingView(v)
@@ -232,16 +218,12 @@ export function L3Layout({
     }
 
     window.addEventListener('termine-view-changed',    onViewChanged)
-    window.addEventListener('termine-go-to-list',      onGoToList)
-    window.addEventListener('termine-set-view',        onSetView)
     window.addEventListener('termine-filter-changed',  onFilter)
     window.addEventListener('termine-listview-changed',onListView)
     window.addEventListener('advancing-view-changed',  onAdvancingView)
     window.addEventListener('advancing-set-view',      onAdvancingSetView)
     return () => {
       window.removeEventListener('termine-view-changed',    onViewChanged)
-      window.removeEventListener('termine-go-to-list',      onGoToList)
-      window.removeEventListener('termine-set-view',        onSetView)
       window.removeEventListener('termine-filter-changed',  onFilter)
       window.removeEventListener('termine-listview-changed',onListView)
       window.removeEventListener('advancing-view-changed',  onAdvancingView)
@@ -455,7 +437,7 @@ export function L3Layout({
 
   // ── Termine list laden ────────────────────────────────────────────────────
   useEffect(() => {
-    if (activeTab !== 'appointments' && activeTab !== 'advancing') return
+    if (activeTab !== 'events') return
     getTermine().then(setTermineList).catch(() => {})
   }, [activeTab])
 
@@ -466,9 +448,9 @@ export function L3Layout({
     return () => window.removeEventListener('termin-list-changed', handler)
   }, [])
 
-  // Aktiven Termin aus URL lesen (appointments oder advancing)
+  // Aktiven Termin aus URL lesen (events)
   useEffect(() => {
-    const match = window.location.pathname.match(/\/(?:appointments|advancing)\/(\d+)/)
+    const match = window.location.pathname.match(/\/events\/(\d+)/)
     setActiveTerminId(match ? parseInt(match[1], 10) : null)
   }, [activeTab, termineInDetail, advancingView])
 
@@ -524,12 +506,12 @@ export function L3Layout({
 
   const handleNav = (id: string) => {
     // Advancing: SPA-Navigation ohne Route-Wechsel
-    if (id === 'advancing') {
-      onTabChange('advancing')
-      const lastId = localStorage.getItem('pt_advancing_last_id')
+    if (id === 'events') {
+      onTabChange('events')
+      const lastId = localStorage.getItem('pt_events_last_id')
       if (lastId) {
         const numId = parseInt(lastId, 10)
-        history.pushState(null, '', `/?tab=advancing&id=${lastId}&view=details2`)
+        history.pushState(null, '', `/?tab=events&id=${lastId}&view=details2`)
         window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: numId, view: 'details2' } }))
       }
       setShowUserMenu(false)
@@ -779,7 +761,7 @@ export function L3Layout({
 
   const renderPanelContent = () => {
     // ── Advancing ─────────────────────────────────────────────────────────────
-    if (activeTab === 'advancing') {
+    if (activeTab === 'events') {
       const today = new Date().toISOString().slice(0, 10)
       const q = advancingSearch.toLowerCase()
       const allSorted = [
@@ -821,7 +803,7 @@ export function L3Layout({
                   key={item.id}
                   onClick={() => {
                     setActiveTerminId(item.id)
-                    localStorage.setItem('pt_advancing_last_id', String(item.id))
+                    localStorage.setItem('pt_events_last_id', String(item.id))
                     window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
@@ -844,119 +826,6 @@ export function L3Layout({
               )
             })}
           </div>
-        </div>
-      )
-    }
-
-    // ── Termine ──────────────────────────────────────────────────────────────
-    if (activeTab === 'appointments') {
-      const today = new Date().toISOString().slice(0, 10)
-      const q = termineSearch.toLowerCase()
-
-      // Filter-Funktion
-      const filtered = termineList.filter(item => {
-        const matchesFilter =
-          termineFilter === 'aktuell'   ? item.date >= today :
-          termineFilter === 'vergangen' ? item.date < today  : true
-        const matchesSearch = !q || [item.title, item.city, item.venueName, item.art].some(v => v?.toLowerCase().includes(q))
-        return matchesFilter && matchesSearch
-      }).sort((a, b) => {
-        if (termineFilter === 'vergangen') return b.date.localeCompare(a.date)
-        return a.date.localeCompare(b.date)
-      })
-
-      return (
-        <div className="flex flex-col h-full">
-          {/* Suche + Neu */}
-          <div className="flex items-center gap-1 px-2 pt-2 pb-1 flex-shrink-0">
-            <input
-              type="text"
-              value={termineSearch}
-              onChange={e => setTermineSearch(e.target.value)}
-              placeholder="Suchen…"
-              className="flex-1 bg-gray-100 text-gray-700 placeholder-gray-400 text-xs rounded px-2 py-1 outline-none border border-gray-200 focus:border-gray-300"
-            />
-            {isEditor && (
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
-                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-gray-900 transition-colors text-sm font-bold"
-                title="Neues Event"
-              >+</button>
-            )}
-          </div>
-
-          {/* Filter-Tabs kompakt */}
-          <div className="flex gap-0.5 px-2 py-1.5 border-b border-gray-200 flex-shrink-0">
-            {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => {
-              const labels = {
-                aktuell:   t('appointments.panel.filter.current'),
-                vergangen: t('appointments.panel.filter.past'),
-                alle:      t('appointments.panel.filter.all'),
-              }
-              return (
-                <button
-                  key={f}
-                  onClick={() => {
-                    setTermineFilter(f)
-                    setTermineListView('list')
-                    window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f } }))
-                    window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
-                  }}
-                  className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
-                    termineFilter === f && termineListView === 'list'
-                      ? 'bg-gray-300 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {labels[f]}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Terminliste scrollbar */}
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-light">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
-            ) : filtered.map(item => {
-              const isActive = item.id === activeTerminId
-              const dateStr = new Date(item.date).toLocaleDateString('de-DE', {
-                day: '2-digit', month: '2-digit', year: '2-digit'
-              })
-              const locationLabel2 = item.venueName || item.city
-              const label = item.showTitleAsHeader ? item.title : (locationLabel2 || item.title || '–')
-              const isPast = item.date < today
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTerminId(item.id)
-                    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details' } }))
-                  }}
-                  className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
-                    isActive
-                      ? 'border-blue-500 bg-gray-200'
-                      : 'border-transparent hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
-                    {item.art && (
-                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-200 text-gray-400 font-medium">{item.art}</span>
-                    )}
-                  </div>
-                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : isPast ? 'text-gray-500' : 'text-gray-700'}`}>
-                    {label}
-                  </p>
-                  {item.city && item.venueName && (
-                    <p className="text-[10px] text-gray-500 truncate">{item.city}</p>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
         </div>
       )
     }
@@ -1528,7 +1397,7 @@ export function L3Layout({
 
   // Breadcrumb — translated
   const TAB_LABEL_KEYS: Record<string, string> = {
-    desk: t('nav.desk'), advancing: t('nav.advancing'), appointments: t('nav.appointments'),
+    desk: t('nav.desk'), events: t('nav.advancing'),
     contacts: t('nav.contacts'), venues: t('nav.venues'), partners: t('nav.partners'),
     hotels: t('nav.hotels'), vehicles: t('nav.vehicles'), equipment: t('nav.equipment'),
     settings: t('nav.settings'),
@@ -1883,11 +1752,11 @@ export function L3Layout({
                 ))}
               </div>
             )}
-            {(activeTab === 'advancing' || activeTab === 'appointments') && (() => {
-              const isAdvancing = activeTab === 'advancing'
-              const currentView = isAdvancing ? advancingView : termineView
-              const eventName = isAdvancing ? 'advancing-set-view' : 'termine-set-view'
-              const setView = isAdvancing ? setAdvancingView : setTermineView
+            {activeTab === 'events' && (() => {
+              const isAdvancing = true
+              const currentView = advancingView
+              const eventName = 'advancing-set-view'
+              const setView = setAdvancingView
 
               // "Übersicht"-Tab immer anzeigen
               const overviewActive = !termineInDetail
@@ -1914,7 +1783,7 @@ export function L3Layout({
                   <button
                     onClick={() => {
                       setTermineInDetail(false)
-                      window.dispatchEvent(new CustomEvent(isAdvancing ? 'advancing-go-to-list' : 'termine-go-to-list'))
+                      window.dispatchEvent(new CustomEvent('advancing-go-to-list'))
                     }}
                     className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                       overviewActive

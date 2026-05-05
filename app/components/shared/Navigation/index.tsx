@@ -53,7 +53,7 @@ export interface NavigationProps {
 // Haupt-Nav-Items
 const navigationItems: NavigationItem[] = [
   { id: 'desk',         name: 'SCHREIBTISCH',  icon: HomeIcon,         description: 'Haupt-Dashboard' },
-  { id: 'appointments', name: 'TERMINE',        icon: CalendarDaysIcon, description: 'Termine & Planung' },
+  { id: 'events', name: 'EVENTS',        icon: CalendarDaysIcon, description: 'Termine & Planung' },
   { id: 'contacts',     name: 'KONTAKTE',       icon: UsersIcon,        description: 'Kontaktverwaltung' },
   { id: 'venues',       name: 'VENUES',         icon: MusicalNoteIcon,  description: 'Spielstätten' },
   { id: 'partners',     name: 'PARTNER',        icon: BriefcaseIcon,    description: 'Partnerunternehmen' },
@@ -91,7 +91,7 @@ export function Navigation({
   const [artistName, setArtistName] = useState('')
   const [termineInDetail, setTermineInDetail] = useState(() => {
     if (typeof window === 'undefined') return false
-    return window.location.pathname.startsWith('/appointments/')
+    return window.location.pathname.startsWith('/events/')
   })
   const [termineView, setTermineView] = useState<TermineDetailView>(() => {
     if (typeof window === 'undefined') return 'details'
@@ -266,7 +266,7 @@ export function Navigation({
             <nav className="hidden md:flex items-center space-x-1">
 
               {/* Schreibtisch, Termine, Kontakte, Venues, Partner, Hotels, Fahrzeuge */}
-              {visibleItems(['desk', 'appointments', 'contacts', 'venues', 'partners', 'hotels', 'vehicles']).map(item => (
+              {visibleItems(['desk', 'events', 'contacts', 'venues', 'partners', 'hotels', 'vehicles']).map(item => (
                 <NavButton key={item.id} item={item} />
               ))}
 
@@ -509,7 +509,7 @@ export function Navigation({
           maxWidth={maxWidth}
         />
       )}
-      {currentTab === 'appointments' && termineInDetail && (
+      {currentTab === 'events' && termineInDetail && (
         <TermineSubNavigation
           maxWidth={maxWidth}
           activeView={termineView}
@@ -524,7 +524,7 @@ export function Navigation({
           }}
         />
       )}
-      {currentTab === 'appointments' && !termineInDetail && (
+      {currentTab === 'events' && !termineInDetail && (
         <TermineListSubNavigation
           maxWidth={maxWidth}
           activeFilter={termineFilter}
@@ -550,7 +550,7 @@ export function Navigation({
           maxWidth={maxWidth}
         />
       )}
-      {currentTab !== 'desk' && currentTab !== 'settings' && currentTab !== 'contacts' && currentTab !== 'appointments' && currentTab !== 'equipment' && (
+      {currentTab !== 'desk' && currentTab !== 'settings' && currentTab !== 'contacts' && currentTab !== 'events' && currentTab !== 'equipment' && (
         <div className="bg-gray-50 border-b h-12" />
       )}
     </>

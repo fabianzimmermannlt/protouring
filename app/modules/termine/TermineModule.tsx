@@ -1088,12 +1088,12 @@ export default function TerminePage() {
 
   const getTab = () =>
     typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('tab') || 'appointments'
-      : 'appointments'
+      ? new URLSearchParams(window.location.search).get('tab') || 'events'
+      : 'events'
 
   const selectTermin = useCallback((id: number, view?: string) => {
     const tab = getTab()
-    const defaultView = tab === 'advancing' ? 'details2' : 'details'
+    const defaultView = tab === 'events' ? 'details2' : 'details'
     const v = view || defaultView
     setSelectedTerminId(id)
     setSelectedView(v)
@@ -1368,7 +1368,7 @@ export default function TerminePage() {
       window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
       window.dispatchEvent(new CustomEvent('termin-list-changed'))
     }
-    const isAdvancingTab = tab === 'advancing'
+    const isAdvancingTab = tab === 'events'
 
     return (
       <div className="module-content">

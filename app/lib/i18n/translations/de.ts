@@ -4,7 +4,7 @@ const de = {
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   'nav.desk':          'Schreibtisch',
-  'nav.advancing':     'Vorbereitung',
+  'nav.advancing':     'Events',
   'nav.appointments':  'Termine',
   'nav.contacts':      'Kontakte',
   'nav.venues':        'Venues',

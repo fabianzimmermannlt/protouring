@@ -76,23 +76,23 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
     if (nextTerminId) {
       // Direkt zur Detail-URL navigieren — kein Event-Timing-Problem
       window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: nextTerminId, view: 'details' } }))
-      onTabChange('appointments')
+      onTabChange('events')
     } else {
-      onTabChange('appointments')
+      onTabChange('events')
     }
   }, [nextTerminId, onTabChange, router])
 
-  const handleTermine = useCallback(() => {
+  const handleEvents = useCallback(() => {
     setShowMore(false)
-    setActiveNavItem('appointments')
+    setActiveNavItem('events')
     // Auf echten Appointments-Routen (/appointments/...) direkt navigieren
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/appointments/')) {
-      onTabChange('appointments')
-    } else if (activeTab === 'appointments') {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/events/')) {
+      onTabChange('events')
+    } else if (activeTab === 'events') {
       // SPA-Modus: zurück zur Liste via Event
       window.dispatchEvent(new CustomEvent('termine-go-to-list'))
     } else {
-      onTabChange('appointments')
+      onTabChange('events')
     }
   }, [activeTab, onTabChange])
 
@@ -145,10 +145,10 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
             <span className="text-[10px] font-medium">Desk</span>
           </button>
 
-          <button onClick={handleTermine}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${activeNavItem === 'appointments' ? 'text-orange-500' : 'text-gray-500'}`}>
+          <button onClick={handleEvents}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${activeNavItem === 'events' ? 'text-orange-500' : 'text-gray-500'}`}>
             <CalendarDaysIcon className="w-6 h-6" />
-            <span className="text-[10px] font-medium">Termine</span>
+            <span className="text-[10px] font-medium">Events</span>
           </button>
 
           <button onClick={handleAktuell} disabled={!nextTerminId}

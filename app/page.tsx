@@ -25,7 +25,7 @@ import { getEffectiveRole } from '@/lib/api-client'
 function ProTouringAppInner() {
   const router = useRouter()
 
-  const VALID_TABS = ['desk','advancing','appointments','contacts','venues','partners','hotels','vehicles','templates','equipment','settings','feedback']
+  const VALID_TABS = ['desk','events','contacts','venues','partners','hotels','vehicles','templates','equipment','settings','feedback']
 
   const STORAGE_TAB = 'pt_tab'
   const STORAGE_SUB = 'pt_sub'
@@ -50,7 +50,7 @@ function ProTouringAppInner() {
       const id = parseInt(terminId, 10)
       if (!isNaN(id)) {
         // SPA: kein Route-Wechsel
-        history.replaceState(null, '', `/?tab=appointments&id=${id}&view=details`)
+        history.replaceState(null, '', `/?tab=events&id=${id}&view=details2`)
         setTimeout(() => window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details' } })), 50)
       }
     }
@@ -125,7 +125,7 @@ function ProTouringAppInner() {
   const content = (
     <>
       {activeTab === 'desk' && <DeskModule />}
-      {(activeTab === 'appointments' || activeTab === 'advancing') && <TerminePage />}
+      {activeTab === 'events' && <TerminePage />}
       {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
       {activeTab === 'venues' && <VenuesPage />}
       {activeTab === 'partners' && <PartnersPage />}

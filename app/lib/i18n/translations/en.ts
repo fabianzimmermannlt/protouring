@@ -4,8 +4,7 @@ const en = {
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   'nav.desk':          'Dashboard',
-  'nav.advancing':     'Advancing',
-  'nav.appointments':  'Events',
+  'nav.advancing':     'Events',
   'nav.contacts':      'Contacts',
   'nav.venues':        'Venues',
   'nav.partners':      'Partners',
