@@ -909,7 +909,7 @@ export function L3Layout({
                       setActiveTerminId(item.id)
                       setTerminMenuOpenId(null)
                       localStorage.setItem('pt_events_last_id', String(item.id))
-                      window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
+                      window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: advancingView } }))
                     }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
                   >
