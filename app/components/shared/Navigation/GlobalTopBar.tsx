@@ -143,12 +143,11 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
             value={query}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => { if (results.length > 0) setOpen(true) }}
+            onFocus={e => { if (results.length > 0) setOpen(true); e.target.style.borderColor = '#f5c518' }}
+            onBlur={e => { e.target.style.borderColor = 'transparent' }}
             placeholder="Suchen… (⌘K)"
             className="w-full h-7 text-gray-100 text-xs rounded-md pl-8 pr-7 outline-none border transition-colors"
-            style={{ backgroundColor: '#1c2333', borderColor: 'transparent', '--tw-placeholder-color': '#6b7280' } as React.CSSProperties}
-            onFocus={e => (e.target.style.borderColor = '#f5c518')}
-            onBlur={e => (e.target.style.borderColor = 'transparent')}
+            style={{ backgroundColor: '#1c2333', borderColor: 'transparent' } as React.CSSProperties}
           />
           {loading && (
             <div className="absolute right-2.5 w-3 h-3 rounded-full animate-spin" style={{ border: '1.5px solid #f5c518', borderTopColor: 'transparent' }} />
