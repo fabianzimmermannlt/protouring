@@ -1505,32 +1505,40 @@ export function L3Layout({
 
   // ── Search navigation handler ──────────────────────────────────────────────
   const handleSearchNavigate = (result: SearchResult) => {
+    // Tab-Wechsel zuerst, dann Event dispatchen — nach kurzer Pause damit das Modul
+    // Zeit hat zu mounten und seinen Event-Listener zu registrieren.
+    const dispatch = (eventName: string) => {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { id: result.id, view: 'details2' } }))
+      }, 50)
+    }
+
     switch (result.type) {
       case 'event':
         onTabChange('events')
         setActiveTerminId(result.id)
         localStorage.setItem('pt_events_last_id', String(result.id))
-        window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: result.id, view: 'details2' } }))
+        dispatch('select-termin')
         break
       case 'contact':
         onTabChange('contacts')
-        window.dispatchEvent(new CustomEvent('select-contact', { detail: { id: result.id } }))
+        dispatch('select-contact')
         break
       case 'venue':
         onTabChange('venues')
-        window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: result.id } }))
+        dispatch('select-venue')
         break
       case 'partner':
         onTabChange('partners')
-        window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: result.id } }))
+        dispatch('select-partner')
         break
       case 'hotel':
         onTabChange('hotels')
-        window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: result.id } }))
+        dispatch('select-hotel')
         break
       case 'vehicle':
         onTabChange('vehicles')
-        window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: result.id } }))
+        dispatch('select-vehicle')
         break
     }
   }
