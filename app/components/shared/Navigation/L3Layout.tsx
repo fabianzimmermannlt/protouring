@@ -1549,7 +1549,7 @@ export function L3Layout({
   }
 
   return (
-    <div className="hidden md:flex flex-col h-screen bg-gray-100 overflow-hidden">
+    <div className="hidden md:flex flex-col h-screen bg-gray-100">
 
       {/* ── GLOBAL TOP BAR ──────────────────────────────────────────────────── */}
       <GlobalTopBar artistName={artistName} onNavigate={handleSearchNavigate} />

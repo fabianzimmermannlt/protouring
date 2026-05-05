@@ -184,11 +184,10 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
         </form>
 
         {/* Dropdown */}
-        {open && results.length > 0 && dropdownPos && (
+        {open && results.length > 0 && (
           <div
             ref={dropdownRef}
-            className="fixed bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[9999] max-h-80 overflow-y-auto"
-            style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+            className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[9999] max-h-80 overflow-y-auto"
           >
             {results.map((r, i) => (
               <button
@@ -215,11 +214,10 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
           </div>
         )}
 
-        {open && results.length === 0 && query.length >= 2 && !loading && dropdownPos && (
+        {open && results.length === 0 && query.length >= 2 && !loading && (
           <div
             ref={dropdownRef}
-            className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
-            style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+            className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
           >
             <p className="px-3 py-4 text-xs text-gray-400 text-center">Keine Treffer für „{query}"</p>
           </div>
