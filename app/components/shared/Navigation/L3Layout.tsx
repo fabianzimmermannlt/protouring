@@ -1526,13 +1526,13 @@ export function L3Layout({
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
 
       {/* ── RAIL (64px) ─────────────────────────────────────────────────────── */}
-      <aside className="w-16 flex-shrink-0 bg-white flex flex-col items-center border-r border-gray-200">
+      <aside className="w-16 flex-shrink-0 bg-gray-200 flex flex-col items-center border-r border-gray-300">
 
         {/* User initials / dropdown trigger */}
         <div className="relative w-full flex justify-center pt-3 pb-2" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu(v => !v)}
-            className="flex flex-col items-center gap-1 w-full py-2 hover:bg-gray-100 transition-colors rounded-md mx-1"
+            className="flex flex-col items-center gap-1 w-full py-2 hover:bg-gray-300 transition-colors rounded-md mx-1"
           >
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-semibold">
               {initials}
@@ -1660,7 +1660,7 @@ export function L3Layout({
                 className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
                   isActive
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                 }`}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -1672,7 +1672,7 @@ export function L3Layout({
           {/* Module divider */}
           {canDo(role, NAV_VISIBLE['modules'] ?? []) && (
             <>
-              <div className="w-8 border-t border-gray-200 my-1" />
+              <div className="w-8 border-t border-gray-300 my-1" />
               {MODULE_NAV.map(item => {
                 const isActive = activeTab === item.id
                 return (
@@ -1683,7 +1683,7 @@ export function L3Layout({
                     className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
                       isActive
                         ? 'bg-blue-600 text-white'
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                     }`}
                   >
                     <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -1696,14 +1696,14 @@ export function L3Layout({
         </nav>
 
         {/* Settings at bottom */}
-        <div className="w-full px-1 pb-3 border-t border-gray-200 pt-2">
+        <div className="w-full px-1 pb-3 border-t border-gray-300 pt-2">
           <button
             onClick={() => handleNav('settings')}
             title="Einstellungen"
             className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
               activeTab === 'settings'
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
             }`}
           >
             <Cog6ToothIcon className="w-5 h-5" />
