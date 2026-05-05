@@ -69,7 +69,7 @@ import type { TermineDetailView, TermineListFilter, TermineListView } from './Te
 
 const RAIL_NAV = [
   { id: 'desk',         name: 'Schreibtisch', icon: HomeIcon },
-  { id: 'advancing',    name: 'Events',       icon: CalendarDaysIcon },
+  { id: 'events',       name: 'Events',        icon: CalendarDaysIcon },
   { id: 'contacts',     name: 'Kontakte',      icon: UsersIcon },
   { id: 'venues',       name: 'Venues',        icon: MusicalNoteIcon },
   { id: 'partners',     name: 'Partner',       icon: BriefcaseIcon },
