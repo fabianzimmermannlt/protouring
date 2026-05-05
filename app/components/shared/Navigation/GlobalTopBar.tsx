@@ -224,7 +224,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
             className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999]"
           >
             {searchError
-              ? <p className="px-3 py-4 text-xs text-red-500 text-center">Fehler: {searchError}</p>
+              ? <p className="px-3 py-4 text-xs text-red-400 text-center">Suche nicht verfügbar</p>
               : <p className="px-3 py-4 text-xs text-gray-400 text-center">Keine Treffer für „{query}"</p>
             }
           </div>
