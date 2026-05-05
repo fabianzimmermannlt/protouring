@@ -17,12 +17,32 @@ function KV({ label, value }: { label: string; value?: string }) {
   )
 }
 
+const PARTNER_TYPES = [
+  'Veranstaltende', 'Autovermietung', 'Trucking-Firma', 'Reisebüro', 'Technik-Lieferant',
+  'Backline-Firma', 'Medien-/Videoproduktion', 'Catering-Firma', 'Sicherheits-Firma',
+  'Merchandise-Dienstleister', 'Ticketing-Dienstleister', 'Support-Band', 'Booking Agentur',
+  'Zulieferer Sonstiges', 'Endorser', 'Brand', 'Management', 'Studio', 'Label', 'Marketing',
+]
+
 function IField({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div>
       <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
       <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white" />
+    </div>
+  )
+}
+
+function ISelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white">
+        <option value="">– bitte wählen –</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
     </div>
   )
 }
@@ -113,7 +133,7 @@ export function PartnerDetailContent({ partnerId }: { partnerId: string }) {
             : editingSection === 'allgemein' ? (
               <div className="space-y-2">
                 <IField label="Firma *" value={inlineForm.companyName ?? ''} onChange={v => iF('companyName', v)} />
-                <IField label="Typ / Kategorie" value={inlineForm.type ?? ''} onChange={v => iF('type', v)} placeholder="z.B. Catering, Bus, Hotel" />
+                <ISelect label="Art" value={inlineForm.type ?? ''} onChange={v => iF('type', v)} options={PARTNER_TYPES} />
                 <IField label="Ansprechpartner" value={inlineForm.contactPerson ?? ''} onChange={v => iF('contactPerson', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>

@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Pencil, AlertCircle, Save, Loader2, User, Phone, Globe, Coffee, CreditCard, FileText } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole, ROLE_LABELS,
-  getContact, updateContact, type Contact, type ContactFormData, type TenantRole,
+  getContact, updateContact, getActiveFunctions,
+  type Contact, type ContactFormData, type TenantRole,
 } from '@/lib/api-client'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -39,6 +40,22 @@ function ITextarea({ label, value, onChange, rows = 3 }: {
       <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
       <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows}
         className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none" />
+    </div>
+  )
+}
+
+function ISelect({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white">
+        <option value="">– keine –</option>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
     </div>
   )
 }
@@ -96,6 +113,11 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [activeFunctions, setActiveFunctions] = useState<{ name: string }[]>([])
+
+  useEffect(() => {
+    getActiveFunctions().then(setActiveFunctions).catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -194,9 +216,15 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                   <IField label="Vorname" value={d('firstName')} onChange={v => set('firstName', v)} />
                   <IField label="Nachname" value={d('lastName')} onChange={v => set('lastName', v)} />
                 </div>
-                <IField label="Funktion 1" value={d('function1')} onChange={v => set('function1', v)} />
-                <IField label="Funktion 2" value={d('function2')} onChange={v => set('function2', v)} />
-                <IField label="Funktion 3" value={d('function3')} onChange={v => set('function3', v)} />
+                {(['function1', 'function2', 'function3'] as const).map((field, i) => {
+                  const cur = d(field)
+                  const activeNames = new Set(activeFunctions.map(f => f.name))
+                  const opts = [
+                    ...(cur && !activeNames.has(cur) ? [{ value: cur, label: `${cur} ⚠ (deaktiviert)` }] : []),
+                    ...activeFunctions.map(f => ({ value: f.name, label: f.name })),
+                  ]
+                  return <ISelect key={field} label={`${i + 1}. Funktion`} value={cur} onChange={v => set(field, v)} options={opts} />
+                })}
                 <IField label="Spezifikation" value={d('specification')} onChange={v => set('specification', v)} placeholder="z.B. FOH, Monitor, Backline…" />
                 <IField label="Sprachen" value={d('languages')} onChange={v => set('languages', v)} />
                 {bar}
@@ -263,7 +291,12 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                   <IField label="Geburtsort" value={d('birthPlace')} onChange={v => set('birthPlace', v)} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Geschlecht" value={d('gender')} onChange={v => set('gender', v)} />
+                  <ISelect label="Geschlecht" value={d('gender')} onChange={v => set('gender', v)} options={[
+                    { value: 'männlich', label: 'Männlich' },
+                    { value: 'weiblich', label: 'Weiblich' },
+                    { value: 'divers', label: 'Divers' },
+                    { value: 'keine_angabe', label: 'Keine Angabe' },
+                  ]} />
                   <IField label="Pronomen" value={d('pronouns')} onChange={v => set('pronouns', v)} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -307,7 +340,11 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
               <div className="space-y-2">
                 <IField label="Hotelinfo" value={d('hotelInfo')} onChange={v => set('hotelInfo', v)} placeholder="z.B. Einzelzimmer, EG bevorzugt…" />
                 <IField label="Hotelalias" value={d('hotelAlias')} onChange={v => set('hotelAlias', v)} placeholder="Name für Buchung" />
-                <IField label="Diät" value={d('diet')} onChange={v => set('diet', v)} placeholder="vegan, vegetarisch…" />
+                <ISelect label="Ernährung" value={d('diet')} onChange={v => set('diet', v)} options={[
+                  { value: 'alles', label: 'Alles' },
+                  { value: 'vegetarisch', label: 'Vegetarisch' },
+                  { value: 'vegan', label: 'Vegan' },
+                ]} />
                 <ICheckbox label="Glutenfrei" checked={db('glutenFree')} onChange={v => set('glutenFree', v)} />
                 <ICheckbox label="Laktosefrei" checked={db('lactoseFree')} onChange={v => set('lactoseFree', v)} />
                 <IField label="Allergien" value={d('allergies')} onChange={v => set('allergies', v)} />
