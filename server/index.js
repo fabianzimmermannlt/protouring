@@ -7946,10 +7946,10 @@ app.get('/api/search', authenticateToken, requireTenant, async (req, res) => {
       db.all(`
         SELECT 'contact' as type, c.id,
                (c.first_name || ' ' || c.last_name) as label,
-               c.role as subtitle
+               c.function1 as subtitle
         FROM contacts c
         WHERE c.tenant_id = ?
-          AND (c.first_name LIKE ? OR c.last_name LIKE ? OR c.role LIKE ? OR c.email LIKE ?)
+          AND (c.first_name LIKE ? OR c.last_name LIKE ? OR c.function1 LIKE ? OR c.email LIKE ?)
         ORDER BY c.last_name LIMIT 8
       `, [tid, like, like, like, like]),
 
@@ -7979,11 +7979,11 @@ app.get('/api/search', authenticateToken, requireTenant, async (req, res) => {
       `, [tid, like, like]),
 
       db.all(`
-        SELECT 'vehicle' as type, v.id, v.name as label, v.type as subtitle
+        SELECT 'vehicle' as type, v.id, v.designation as label, v.vehicle_type as subtitle
         FROM vehicles v
         WHERE v.tenant_id = ?
-          AND (v.name LIKE ? OR v.type LIKE ?)
-        ORDER BY v.name LIMIT 5
+          AND (v.designation LIKE ? OR v.vehicle_type LIKE ?)
+        ORDER BY v.designation LIMIT 5
       `, [tid, like, like]),
     ])
 
