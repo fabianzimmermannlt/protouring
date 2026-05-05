@@ -1178,6 +1178,13 @@ export default function TerminePage() {
     return () => window.removeEventListener('termine-listview-changed', handler)
   }, [])
 
+  // Sidebar "+" Button → neues Event öffnen
+  useEffect(() => {
+    const handler = () => { setEditingTermin(null); setIsModalOpen(true) }
+    window.addEventListener('open-new-termin', handler)
+    return () => window.removeEventListener('open-new-termin', handler)
+  }, [])
+
   // New/edit modal
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTermin, setEditingTermin] = useState<Termin | null>(null)

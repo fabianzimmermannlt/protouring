@@ -192,6 +192,8 @@ export function L3Layout({
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
+  const [termineSearch, setTermineSearch] = useState('')
+  const [advancingSearch, setAdvancingSearch] = useState('')
 
   useEffect(() => {
     const onViewChanged = (e: Event) => {
@@ -457,24 +459,37 @@ export function L3Layout({
     // ── Advancing ─────────────────────────────────────────────────────────────
     if (activeTab === 'advancing') {
       const today = new Date().toISOString().slice(0, 10)
-      const filtered = termineList
-        .filter(item => item.date >= today)
-        .sort((a, b) => a.date.localeCompare(b.date))
-      const past = termineList
-        .filter(item => item.date < today)
-        .sort((a, b) => b.date.localeCompare(a.date))
-      const allSorted = [...filtered, ...past]
+      const q = advancingSearch.toLowerCase()
+      const allSorted = [
+        ...termineList.filter(item => item.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
+        ...termineList.filter(item => item.date < today).sort((a, b) => b.date.localeCompare(a.date)),
+      ].filter(item => !q || [item.title, item.city, item.venueName, item.art].some(v => v?.toLowerCase().includes(q)))
 
       return (
         <div className="flex flex-col h-full">
+          {/* Suche + Neu */}
+          {isEditor && (
+            <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-700 flex-shrink-0">
+              <input
+                type="text"
+                value={advancingSearch}
+                onChange={e => setAdvancingSearch(e.target.value)}
+                placeholder="Suchen…"
+                className="flex-1 bg-gray-800 text-gray-200 placeholder-gray-600 text-xs rounded px-2 py-1 outline-none border border-gray-700 focus:border-gray-500"
+              />
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-700 text-gray-300 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
+                title="Neues Event"
+              >+</button>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto py-1">
             {allSorted.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : allSorted.map(item => {
               const isActive = item.id === activeTerminId
-              const dateStr = new Date(item.date).toLocaleDateString('de-DE', {
-                day: '2-digit', month: '2-digit', year: '2-digit'
-              })
+              const dateStr = new Date(item.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
               const locationLabel = item.venueName || item.city
               const label = item.showTitleAsHeader ? item.title : (locationLabel || item.title || '–')
               const isPast = item.date < today
@@ -486,15 +501,17 @@ export function L3Layout({
                     setActiveTerminId(item.id)
                     localStorage.setItem('pt_advancing_last_id', String(item.id))
                     window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
-                    localStorage.setItem('pt_advancing_last_id', String(item.id))
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
-                    isActive
-                      ? 'border-blue-500 bg-gray-700'
-                      : 'border-transparent hover:bg-gray-800'
+                    isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'
                   }`}
                 >
-                  <p className={`text-[11px] leading-none mb-0.5 ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
+                    {item.art && (
+                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-700 text-gray-400 font-medium">{item.art}</span>
+                    )}
+                  </div>
                   <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : isPast ? 'text-gray-500' : 'text-gray-300'}`}>
                     {label}
                   </p>
@@ -512,29 +529,42 @@ export function L3Layout({
     // ── Termine ──────────────────────────────────────────────────────────────
     if (activeTab === 'appointments') {
       const today = new Date().toISOString().slice(0, 10)
+      const q = termineSearch.toLowerCase()
 
       // Filter-Funktion
-      const filtered = termineList.filter(t => {
-        if (termineFilter === 'aktuell')   return t.date >= today
-        if (termineFilter === 'vergangen') return t.date < today
-        return true
+      const filtered = termineList.filter(item => {
+        const matchesFilter =
+          termineFilter === 'aktuell'   ? item.date >= today :
+          termineFilter === 'vergangen' ? item.date < today  : true
+        const matchesSearch = !q || [item.title, item.city, item.venueName, item.art].some(v => v?.toLowerCase().includes(q))
+        return matchesFilter && matchesSearch
       }).sort((a, b) => {
         if (termineFilter === 'vergangen') return b.date.localeCompare(a.date)
         return a.date.localeCompare(b.date)
       })
 
-      // Detail-View: Termin-Liste oben + View-Tabs darunter
-      const detailViews = [
-        { id: 'details',       label: t('appointments.view.details') },
-        { id: 'travelparty',   label: t('appointments.view.travelparty') },
-        ...(isEditor ? [{ id: 'advance-sheet', label: t('appointments.view.advancesheet') }] : []),
-        { id: 'guestlist',     label: t('appointments.view.guestlist') },
-      ]
-
       return (
         <div className="flex flex-col h-full">
+          {/* Suche + Neu */}
+          <div className="flex items-center gap-1 px-2 pt-2 pb-1 flex-shrink-0">
+            <input
+              type="text"
+              value={termineSearch}
+              onChange={e => setTermineSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="flex-1 bg-gray-800 text-gray-200 placeholder-gray-600 text-xs rounded px-2 py-1 outline-none border border-gray-700 focus:border-gray-500"
+            />
+            {isEditor && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-700 text-gray-300 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
+                title="Neues Event"
+              >+</button>
+            )}
+          </div>
+
           {/* Filter-Tabs kompakt */}
-          <div className="flex gap-0.5 px-2 py-2 border-b border-gray-700 flex-shrink-0">
+          <div className="flex gap-0.5 px-2 py-1.5 border-b border-gray-700 flex-shrink-0">
             {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => {
               const labels = {
                 aktuell:   t('appointments.panel.filter.current'),
@@ -566,20 +596,21 @@ export function L3Layout({
           <div className="flex-1 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
-            ) : filtered.map(t => {
-              const isActive = t.id === activeTerminId
-              const dateStr = new Date(t.date).toLocaleDateString('de-DE', {
+            ) : filtered.map(item => {
+              const isActive = item.id === activeTerminId
+              const dateStr = new Date(item.date).toLocaleDateString('de-DE', {
                 day: '2-digit', month: '2-digit', year: '2-digit'
               })
-              const locationLabel2 = t.venueName || t.city
-              const label = t.showTitleAsHeader ? t.title : (locationLabel2 || t.title || '–')
+              const locationLabel2 = item.venueName || item.city
+              const label = item.showTitleAsHeader ? item.title : (locationLabel2 || item.title || '–')
+              const isPast = item.date < today
 
               return (
                 <button
-                  key={t.id}
+                  key={item.id}
                   onClick={() => {
-                    setActiveTerminId(t.id)
-                    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: t.id, view: 'details' } }))
+                    setActiveTerminId(item.id)
+                    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details' } }))
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
                     isActive
@@ -587,12 +618,17 @@ export function L3Layout({
                       : 'border-transparent hover:bg-gray-800'
                   }`}
                 >
-                  <p className="text-[11px] text-gray-400 leading-none mb-0.5">{dateStr}</p>
-                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
+                    {item.art && (
+                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-700 text-gray-400 font-medium">{item.art}</span>
+                    )}
+                  </div>
+                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : isPast ? 'text-gray-500' : 'text-gray-300'}`}>
                     {label}
                   </p>
-                  {t.city && t.venueName && (
-                    <p className="text-[10px] text-gray-500 truncate">{t.city}</p>
+                  {item.city && item.venueName && (
+                    <p className="text-[10px] text-gray-500 truncate">{item.city}</p>
                   )}
                 </button>
               )
