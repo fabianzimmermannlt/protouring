@@ -76,12 +76,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); return }
     if (e.key === 'Enter') {
-      e.preventDefault()
-      e.stopPropagation()
-      console.log('[Search] Enter pressed — results:', results.length, 'focused:', focused, 'open:', open, 'query:', query)
-      if (results.length > 0) {
-        handleSelect(results[focused >= 0 ? focused : 0])
-      }
+      // handled by form onSubmit
       return
     }
     if (!open || results.length === 0) return
@@ -143,9 +138,16 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
 
       {/* Search */}
       <div className="flex-1 relative max-w-xl">
-        <form onSubmit={e => {
+        <form onSubmit={async e => {
           e.preventDefault()
-          if (results.length > 0) handleSelect(results[focused >= 0 ? focused : 0])
+          if (results.length > 0) {
+            handleSelect(results[focused >= 0 ? focused : 0])
+          } else if (query.trim().length >= 2) {
+            // Debounce noch nicht fertig — sofort suchen
+            if (debounceRef.current) clearTimeout(debounceRef.current)
+            const data = await searchGlobal(query.trim())
+            if (data.length > 0) handleSelect(data[0])
+          }
         }}>
         <div className="relative flex items-center">
           <MagnifyingGlassIcon className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6b7280' }} />
