@@ -149,6 +149,13 @@ export function L3Layout({
     if (typeof window === 'undefined') return true
     return localStorage.getItem('pt_l3_panel') !== 'closed'
   })
+  const [panelWidth, setPanelWidth] = useState(() => {
+    if (typeof window === 'undefined') return 224
+    return parseInt(localStorage.getItem('pt_l3_panel_width') ?? '224', 10)
+  })
+  const isDraggingPanel = useRef(false)
+  const dragStartX = useRef(0)
+  const dragStartWidth = useRef(0)
   const [allTenantsState, setAllTenantsState] = useState<
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
@@ -241,6 +248,39 @@ export function L3Layout({
       window.removeEventListener('advancing-set-view',      onAdvancingSetView)
     }
   }, [])
+
+  // ── Panel resize ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!isDraggingPanel.current) return
+      const delta = e.clientX - dragStartX.current
+      const next = Math.min(360, Math.max(180, dragStartWidth.current + delta))
+      setPanelWidth(next)
+    }
+    function onMouseUp() {
+      if (!isDraggingPanel.current) return
+      isDraggingPanel.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      // persist
+      setPanelWidth(w => { localStorage.setItem('pt_l3_panel_width', String(w)); return w })
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  function startPanelDrag(e: React.MouseEvent) {
+    isDraggingPanel.current = true
+    dragStartX.current = e.clientX
+    dragStartWidth.current = panelWidth
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    e.preventDefault()
+  }
 
   // ── Partners list ─────────────────────────────────────────────────────────
   const [partnersList, setPartnersList] = useState<Partner[]>([])
@@ -1714,7 +1754,10 @@ export function L3Layout({
 
       {/* ── CONTEXT PANEL (collapsible) ──────────────────────────────────────── */}
       {hasPanelForSection && panelOpen && (
-        <div className="w-56 flex-shrink-0 bg-gray-50 flex flex-col border-r border-gray-200">
+        <div
+          className="flex-shrink-0 bg-gray-50 flex flex-col border-r border-gray-200 relative"
+          style={{ width: panelWidth }}
+        >
 
           {/* Panel header */}
           <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200">
@@ -1776,6 +1819,13 @@ export function L3Layout({
           <div className="flex-1 overflow-y-auto py-2">
             {renderPanelContent()}
           </div>
+
+          {/* Drag handle */}
+          <div
+            onMouseDown={startPanelDrag}
+            className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 active:bg-blue-500 transition-colors z-10"
+            title="Breite anpassen"
+          />
         </div>
       )}
 
