@@ -65,7 +65,7 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: {
   )
 }
 
-export function HotelDetailContent({ hotelId }: { hotelId: string }) {
+export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; onNotFound?: () => void }) {
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [hotel, setHotel] = useState<Hotel | null>(null)
@@ -84,12 +84,13 @@ export function HotelDetailContent({ hotelId }: { hotelId: string }) {
       const h = await getHotel(hotelId)
       setHotel(h)
       setInlineForm(h as any)
-    } catch (e) {
-      setError((e as Error).message || 'Hotel nicht gefunden')
+    } catch {
+      if (onNotFound) { onNotFound(); return }
+      setError('Hotel nicht gefunden')
     } finally {
       setLoading(false)
     }
-  }, [hotelId])
+  }, [hotelId, onNotFound])
 
   useEffect(() => { loadHotel() }, [loadHotel])
 

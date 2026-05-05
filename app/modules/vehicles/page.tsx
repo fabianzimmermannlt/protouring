@@ -81,7 +81,10 @@ export default function VehiclesPage() {
 
   // Desktop SPA: show detail inline
   if (!isMobile && selectedVehicleId) {
-    return <VehicleDetailContent vehicleId={selectedVehicleId} />
+    return <VehicleDetailContent vehicleId={selectedVehicleId} onNotFound={() => {
+      localStorage.removeItem('pt_vehicles_last_id')
+      setSelectedVehicleId(null)
+    }} />
   }
 
   return (

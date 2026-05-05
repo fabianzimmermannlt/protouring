@@ -132,7 +132,10 @@ export default function HotelsPage() {
 
   // Desktop SPA: show detail inline
   if (!isMobile && selectedHotelId) {
-    return <HotelDetailContent hotelId={selectedHotelId} />
+    return <HotelDetailContent hotelId={selectedHotelId} onNotFound={() => {
+      localStorage.removeItem('pt_hotels_last_id')
+      setSelectedHotelId(null)
+    }} />
   }
 
   return (

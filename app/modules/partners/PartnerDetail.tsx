@@ -73,7 +73,7 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: { onSave: () => void
   )
 }
 
-export function PartnerDetailContent({ partnerId }: { partnerId: string }) {
+export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: string; onNotFound?: () => void }) {
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [partner, setPartner] = useState<Partner | null>(null)
@@ -92,12 +92,13 @@ export function PartnerDetailContent({ partnerId }: { partnerId: string }) {
       const p = await getPartner(partnerId)
       setPartner(p)
       setInlineForm(p as any)
-    } catch (e) {
-      setError((e as Error).message || 'Partner nicht gefunden')
+    } catch {
+      if (onNotFound) { onNotFound(); return }
+      setError('Partner nicht gefunden')
     } finally {
       setLoading(false)
     }
-  }, [partnerId])
+  }, [partnerId, onNotFound])
 
   useEffect(() => { loadPartner() }, [loadPartner])
 

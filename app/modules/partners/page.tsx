@@ -182,7 +182,10 @@ export default function PartnersPage() {
 
   // Desktop SPA: show detail inline
   if (!isMobile && selectedPartnerId) {
-    return <PartnerDetailContent partnerId={selectedPartnerId} />
+    return <PartnerDetailContent partnerId={selectedPartnerId} onNotFound={() => {
+      localStorage.removeItem('pt_partners_last_id')
+      setSelectedPartnerId(null)
+    }} />
   }
 
   return (

@@ -65,7 +65,7 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: {
   )
 }
 
-export function VehicleDetailContent({ vehicleId }: { vehicleId: string }) {
+export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: string; onNotFound?: () => void }) {
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
@@ -84,12 +84,13 @@ export function VehicleDetailContent({ vehicleId }: { vehicleId: string }) {
       const v = await getVehicle(vehicleId)
       setVehicle(v)
       setInlineForm(v as any)
-    } catch (e) {
-      setError((e as Error).message || 'Fahrzeug nicht gefunden')
+    } catch {
+      if (onNotFound) { onNotFound(); return }
+      setError('Fahrzeug nicht gefunden')
     } finally {
       setLoading(false)
     }
-  }, [vehicleId])
+  }, [vehicleId, onNotFound])
 
   useEffect(() => { loadVehicle() }, [loadVehicle])
 
