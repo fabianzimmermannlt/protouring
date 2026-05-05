@@ -247,7 +247,6 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                   <IField label="Nationalität" value={d('nationality')} onChange={v => set('nationality', v)} />
                   <IField label="Ausweis-Nr." value={d('idNumber')} onChange={v => set('idNumber', v)} />
                 </div>
-                <IField label="Sozialversicherungs-Nr." value={d('socialSecurity')} onChange={v => set('socialSecurity', v)} />
                 {bar}
               </div>
             ) : contact ? (
@@ -260,7 +259,6 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                 <KV label="Pronomen" value={contact.pronouns} />
                 <KV label="Nationalität" value={contact.nationality} />
                 <KV label="Ausweis-Nr." value={contact.idNumber} />
-                <KV label="Sozialversicherung" value={contact.socialSecurity} />
                 {!contact.birthDate && !contact.gender && !contact.nationality && !contact.idNumber && EMPTY()}
               </>
             ) : null}
@@ -276,7 +274,18 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'kontakt' ? (
               <div className="space-y-2">
-                <IField label="E-Mail" value={d('email')} onChange={v => set('email', v)} type="email" />
+                {contact?.userId
+                  ? (
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">E-Mail</label>
+                      <input type="email" value={d('email')} readOnly
+                        className="w-full text-sm border border-gray-100 rounded px-2 py-1 bg-gray-50 text-gray-400 cursor-not-allowed"
+                        title="E-Mail kann nur vom Nutzer selbst oder einem Admin geändert werden" />
+                    </div>
+                  ) : (
+                    <IField label="E-Mail" value={d('email')} onChange={v => set('email', v)} type="email" />
+                  )
+                }
                 <div className="grid grid-cols-2 gap-2">
                   <IField label="Telefon" value={d('phone')} onChange={v => set('phone', v)} type="tel" />
                   <IField label="Mobil" value={d('mobile')} onChange={v => set('mobile', v)} type="tel" />
