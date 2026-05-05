@@ -79,37 +79,9 @@ export default function VehiclesPage() {
     `${v.designation} ${v.vehicleType} ${v.driver} ${v.licensePlate}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Desktop SPA: show detail inline (modal must still render for sidebar + button)
+  // Desktop SPA: show detail inline
   if (!isMobile && selectedVehicleId) {
-    return (
-      <>
-        <VehicleDetailContent vehicleId={selectedVehicleId} />
-        {isModalOpen && (
-          <VehicleFormModal
-            vehicle={editingVehicle}
-            onClose={() => setIsModalOpen(false)}
-            onSaved={saved => {
-              setVehicles(prev => {
-                const idx = prev.findIndex(v => v.id === saved.id)
-                if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
-                return [...prev, saved]
-              })
-              setIsModalOpen(false)
-              setSelectedVehicleId(saved.id)
-              localStorage.setItem('pt_vehicles_last_id', saved.id)
-              history.pushState(null, '', `/vehicles/${saved.id}`)
-              window.dispatchEvent(new CustomEvent('vehicle-list-refresh'))
-              setTimeout(() => window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: saved.id } })), 50)
-            }}
-            onDeleted={id => {
-              setVehicles(prev => prev.filter(v => v.id !== id))
-              setSelectedVehicleId(null)
-              window.dispatchEvent(new CustomEvent('vehicle-list-refresh'))
-            }}
-          />
-        )}
-      </>
-    )
+    return <VehicleDetailContent vehicleId={selectedVehicleId} />
   }
 
   return (

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Pencil, AlertCircle, Save, Loader2, Building2, MapPin, Phone } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
-  getPartner, updatePartner, type Partner, type PartnerFormData,
+  getPartner, updatePartner, deletePartner, type Partner, type PartnerFormData,
 } from '@/lib/api-client'
 
 function KV({ label, value }: { label: string; value?: string }) {
@@ -117,9 +117,24 @@ export function PartnerDetailContent({ partnerId }: { partnerId: string }) {
 
   const iF = (key: string, value: string) => setInlineForm(prev => ({ ...prev, [key]: value }))
 
+  const handleDiscard = async () => {
+    if (!partner) return
+    try {
+      await deletePartner(partnerId)
+      window.dispatchEvent(new CustomEvent('partner-list-refresh'))
+      window.dispatchEvent(new CustomEvent('partner-discarded', { detail: { id: partnerId } }))
+    } catch (e) { console.error('Failed to discard partner', e) }
+  }
+
   return (
     <div className="module-content">
       {error && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{error}</div>}
+      {isEditor && partner?.companyName === 'Neuer Partner' && (
+        <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <span className="text-sm text-amber-800 flex-1">Neuer Partner — Angaben ergänzen oder verwerfen.</span>
+          <button onClick={handleDiscard} className="text-xs font-medium text-red-600 hover:text-red-800">Verwerfen</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

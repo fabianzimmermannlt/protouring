@@ -35,10 +35,13 @@ import {
   createVenue,
   deleteVenue,
   getPartners,
+  createPartner,
   deletePartner,
   getHotels,
+  createHotel,
   deleteHotel,
   getVehicles,
+  createVehicle,
   deleteVehicle,
   getContacts,
   deleteContact,
@@ -284,11 +287,21 @@ export function L3Layout({
     getPartners().then(setPartnersList).catch(() => {})
   }, [activeTab])
 
-  // Refresh partners list when a partner is created/updated
+  // Refresh partners list when a partner is created/updated/deleted
   useEffect(() => {
-    const handler = () => getPartners().then(setPartnersList).catch(() => {})
-    window.addEventListener('partner-list-refresh', handler)
-    return () => window.removeEventListener('partner-list-refresh', handler)
+    const refresh = () => getPartners().then(setPartnersList).catch(() => {})
+    const discard = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      setPartnersList(prev => prev.filter(p => p.id !== id))
+      setActivePartnerId(null)
+      history.pushState(null, '', '/?tab=partners')
+    }
+    window.addEventListener('partner-list-refresh', refresh)
+    window.addEventListener('partner-discarded', discard)
+    return () => {
+      window.removeEventListener('partner-list-refresh', refresh)
+      window.removeEventListener('partner-discarded', discard)
+    }
   }, [])
 
   // Auto-select last / first partner when navigating to partners with no selection
@@ -319,11 +332,21 @@ export function L3Layout({
     getHotels().then(setHotelsList).catch(() => {})
   }, [activeTab])
 
-  // Refresh hotels list when a hotel is created/updated
+  // Refresh hotels list when a hotel is created/updated/deleted
   useEffect(() => {
-    const handler = () => getHotels().then(setHotelsList).catch(() => {})
-    window.addEventListener('hotel-list-refresh', handler)
-    return () => window.removeEventListener('hotel-list-refresh', handler)
+    const refresh = () => getHotels().then(setHotelsList).catch(() => {})
+    const discard = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      setHotelsList(prev => prev.filter(h => h.id !== id))
+      setActiveHotelId(null)
+      history.pushState(null, '', '/?tab=hotels')
+    }
+    window.addEventListener('hotel-list-refresh', refresh)
+    window.addEventListener('hotel-discarded', discard)
+    return () => {
+      window.removeEventListener('hotel-list-refresh', refresh)
+      window.removeEventListener('hotel-discarded', discard)
+    }
   }, [])
 
   // Auto-select last / first hotel when navigating to hotels with no selection
@@ -354,11 +377,21 @@ export function L3Layout({
     getVehicles().then(setVehiclesList).catch(() => {})
   }, [activeTab])
 
-  // Refresh vehicles list when a vehicle is created/updated
+  // Refresh vehicles list when a vehicle is created/updated/deleted
   useEffect(() => {
-    const handler = () => getVehicles().then(setVehiclesList).catch(() => {})
-    window.addEventListener('vehicle-list-refresh', handler)
-    return () => window.removeEventListener('vehicle-list-refresh', handler)
+    const refresh = () => getVehicles().then(setVehiclesList).catch(() => {})
+    const discard = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      setVehiclesList(prev => prev.filter(v => v.id !== id))
+      setActiveVehicleId(null)
+      history.pushState(null, '', '/?tab=vehicles')
+    }
+    window.addEventListener('vehicle-list-refresh', refresh)
+    window.addEventListener('vehicle-discarded', discard)
+    return () => {
+      window.removeEventListener('vehicle-list-refresh', refresh)
+      window.removeEventListener('vehicle-discarded', discard)
+    }
   }, [])
 
   // Auto-select last / first vehicle when navigating to vehicles with no selection
@@ -563,6 +596,39 @@ export function L3Layout({
     } catch (e) {
       console.error('Failed to create event', e)
     }
+  }
+
+  const handleCreateNewPartner = async () => {
+    try {
+      const created = await createPartner({ companyName: 'Neuer Partner' } as any)
+      setPartnersList(prev => [created, ...prev])
+      setActivePartnerId(created.id)
+      localStorage.setItem('pt_partners_last_id', created.id)
+      history.pushState(null, '', `/partners/${created.id}`)
+      window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: created.id } }))
+    } catch (e) { console.error('Failed to create partner', e) }
+  }
+
+  const handleCreateNewHotel = async () => {
+    try {
+      const created = await createHotel({ name: 'Neues Hotel' } as any)
+      setHotelsList(prev => [created, ...prev])
+      setActiveHotelId(created.id)
+      localStorage.setItem('pt_hotels_last_id', created.id)
+      history.pushState(null, '', `/hotels/${created.id}`)
+      window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: created.id } }))
+    } catch (e) { console.error('Failed to create hotel', e) }
+  }
+
+  const handleCreateNewVehicle = async () => {
+    try {
+      const created = await createVehicle({ designation: 'Neues Fahrzeug' } as any)
+      setVehiclesList(prev => [created, ...prev])
+      setActiveVehicleId(created.id)
+      localStorage.setItem('pt_vehicles_last_id', created.id)
+      history.pushState(null, '', `/vehicles/${created.id}`)
+      window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: created.id } }))
+    } catch (e) { console.error('Failed to create vehicle', e) }
   }
 
   const handleNav = (id: string) => {
@@ -1295,7 +1361,7 @@ export function L3Layout({
               className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
-              <button onClick={() => window.dispatchEvent(new CustomEvent('partner-sidebar-create'))}
+              <button onClick={handleCreateNewPartner}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neuer Partner">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
@@ -1364,7 +1430,7 @@ export function L3Layout({
               className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
-              <button onClick={() => window.dispatchEvent(new CustomEvent('hotel-sidebar-create'))}
+              <button onClick={handleCreateNewHotel}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neues Hotel">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
@@ -1433,7 +1499,7 @@ export function L3Layout({
               className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
-              <button onClick={() => window.dispatchEvent(new CustomEvent('vehicle-sidebar-create'))}
+              <button onClick={handleCreateNewVehicle}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neues Fahrzeug">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
