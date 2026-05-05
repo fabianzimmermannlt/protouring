@@ -723,8 +723,8 @@ export function L3Layout({
       onClick={onClick}
       className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
         isActive
-          ? 'bg-gray-700 text-white font-medium'
-          : 'text-gray-300 hover:text-white hover:bg-gray-800'
+          ? 'bg-gray-200 text-gray-900 font-medium'
+          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
       }`}
     >
       {label}
@@ -751,22 +751,22 @@ export function L3Layout({
         <div className="flex flex-col h-full">
           {/* Suche + Neu */}
           {isEditor && (
-            <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-200 flex-shrink-0">
               <input
                 type="text"
                 value={advancingSearch}
                 onChange={e => setAdvancingSearch(e.target.value)}
                 placeholder="Suchen…"
-                className="flex-1 bg-gray-800 text-gray-200 placeholder-gray-600 text-xs rounded px-2 py-1 outline-none border border-gray-700 focus:border-gray-500"
+                className="flex-1 bg-gray-100 text-gray-700 placeholder-gray-400 text-xs rounded px-2 py-1 outline-none border border-gray-200 focus:border-gray-300"
               />
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
-                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-700 text-gray-300 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-gray-900 transition-colors text-sm font-bold"
                 title="Neues Event"
               >+</button>
             </div>
           )}
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark">
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light">
             {allSorted.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : allSorted.map(item => {
@@ -785,16 +785,16 @@ export function L3Layout({
                     window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
-                    isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'
+                    isActive ? 'border-blue-500 bg-gray-200' : 'border-transparent hover:bg-gray-100'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
                     {item.art && (
-                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-700 text-gray-400 font-medium">{item.art}</span>
+                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-200 text-gray-400 font-medium">{item.art}</span>
                     )}
                   </div>
-                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : isPast ? 'text-gray-500' : 'text-gray-300'}`}>
+                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : isPast ? 'text-gray-500' : 'text-gray-700'}`}>
                     {label}
                   </p>
                   {item.city && item.venueName && (
@@ -834,19 +834,19 @@ export function L3Layout({
               value={termineSearch}
               onChange={e => setTermineSearch(e.target.value)}
               placeholder="Suchen…"
-              className="flex-1 bg-gray-800 text-gray-200 placeholder-gray-600 text-xs rounded px-2 py-1 outline-none border border-gray-700 focus:border-gray-500"
+              className="flex-1 bg-gray-100 text-gray-700 placeholder-gray-400 text-xs rounded px-2 py-1 outline-none border border-gray-200 focus:border-gray-300"
             />
             {isEditor && (
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
-                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-700 text-gray-300 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-gray-900 transition-colors text-sm font-bold"
                 title="Neues Event"
               >+</button>
             )}
           </div>
 
           {/* Filter-Tabs kompakt */}
-          <div className="flex gap-0.5 px-2 py-1.5 border-b border-gray-700 flex-shrink-0">
+          <div className="flex gap-0.5 px-2 py-1.5 border-b border-gray-200 flex-shrink-0">
             {(['aktuell', 'vergangen', 'alle'] as TermineListFilter[]).map(f => {
               const labels = {
                 aktuell:   t('appointments.panel.filter.current'),
@@ -864,8 +864,8 @@ export function L3Layout({
                   }}
                   className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
                     termineFilter === f && termineListView === 'list'
-                      ? 'bg-gray-600 text-white'
-                      : 'text-gray-500 hover:text-gray-300'
+                      ? 'bg-gray-300 text-gray-900'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   {labels[f]}
@@ -875,7 +875,7 @@ export function L3Layout({
           </div>
 
           {/* Terminliste scrollbar */}
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark">
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light">
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : filtered.map(item => {
@@ -896,17 +896,17 @@ export function L3Layout({
                   }}
                   className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
                     isActive
-                      ? 'border-blue-500 bg-gray-700'
-                      : 'border-transparent hover:bg-gray-800'
+                      ? 'border-blue-500 bg-gray-200'
+                      : 'border-transparent hover:bg-gray-100'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
                     {item.art && (
-                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-700 text-gray-400 font-medium">{item.art}</span>
+                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-200 text-gray-400 font-medium">{item.art}</span>
                     )}
                   </div>
-                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : isPast ? 'text-gray-500' : 'text-gray-300'}`}>
+                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : isPast ? 'text-gray-500' : 'text-gray-700'}`}>
                     {label}
                   </p>
                   {item.city && item.venueName && (
@@ -931,37 +931,37 @@ export function L3Layout({
       return (
         <div className="flex flex-col h-full" onClick={() => { setContactsMenuOpenId(null); setContactsPlusOpen(false) }}>
           {/* Suche + Plus */}
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
+          <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0 flex gap-1.5">
             <input
               type="text"
               value={contactsSearch}
               onChange={e => setContactsSearch(e.target.value)}
               placeholder="Suchen…"
-              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
               <div className="relative flex-shrink-0">
                 <button
                   onClick={e => { e.stopPropagation(); setContactsPlusOpen(o => !o) }}
-                  className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                  className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors"
                   title="Kontakt hinzufügen"
                 >
                   <PlusIcon className="w-3.5 h-3.5" />
                 </button>
                 {contactsPlusOpen && (
                   <div
-                    className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                    className="absolute right-0 top-full mt-0.5 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
                     onClick={e => e.stopPropagation()}
                   >
                     <button
                       onClick={() => { setContactsPlusOpen(false); window.dispatchEvent(new CustomEvent('contact-sidebar-invite')) }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                     >
                       + Einladen
                     </button>
                     <button
                       onClick={() => { setContactsPlusOpen(false); window.dispatchEvent(new CustomEvent('contact-sidebar-create')) }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                     >
                       + Manuell anlegen
                     </button>
@@ -972,7 +972,7 @@ export function L3Layout({
           </div>
 
           {/* Liste */}
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark">
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light">
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">
                 {contactsList.length === 0 ? 'Keine Kontakte' : 'Keine Treffer'}
@@ -985,7 +985,7 @@ export function L3Layout({
               return (
                 <div
                   key={c.id}
-                  className={`group relative flex items-center border-l-2 transition-colors ${isActiveContact ? 'border-blue-500 bg-gray-800' : 'border-transparent hover:bg-gray-800'}`}
+                  className={`group relative flex items-center border-l-2 transition-colors ${isActiveContact ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-100'}`}
                 >
                   <button
                     onClick={() => {
@@ -998,11 +998,11 @@ export function L3Layout({
                     className="flex-1 text-left px-3 py-2 min-w-0"
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className={`text-xs leading-snug truncate font-medium ${isActiveContact ? 'text-white' : 'text-gray-300'}`}>
+                      <p className={`text-xs leading-snug truncate font-medium ${isActiveContact ? 'text-gray-900' : 'text-gray-700'}`}>
                         {c.lastName}{c.firstName ? `, ${c.firstName}` : ''}
                       </p>
                       {c.contactType === 'guest' && (
-                        <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-gray-700 text-gray-400 leading-none">manuell</span>
+                        <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-gray-200 text-gray-400 leading-none">manuell</span>
                       )}
                     </div>
                     {fn && <p className="text-[10px] text-gray-500 truncate mt-0.5">{fn}</p>}
@@ -1012,14 +1012,14 @@ export function L3Layout({
                     <div className="relative flex-shrink-0 pr-1">
                       <button
                         onClick={e => { e.stopPropagation(); setContactsMenuOpenId(menuOpen ? null : cid) }}
-                        className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        className={`p-1 rounded transition-all text-gray-500 hover:text-gray-900 hover:bg-gray-200 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                         title="Optionen"
                       >
                         <EllipsisHorizontalIcon className="w-4 h-4" />
                       </button>
                       {menuOpen && (
                         <div
-                          className="absolute right-0 top-full mt-0.5 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                          className="absolute right-0 top-full mt-0.5 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
                           onClick={e => e.stopPropagation()}
                         >
                           <button
@@ -1036,7 +1036,7 @@ export function L3Layout({
                                 }
                               } catch { /* silent */ }
                             }}
-                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-100 hover:text-red-600 transition-colors"
                           >
                             Kontakt löschen
                           </button>
@@ -1138,18 +1138,18 @@ export function L3Layout({
       return (
         <div className="flex flex-col h-full">
           {/* Suche + Neu-Button */}
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
+          <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0 flex gap-1.5">
             <input
               type="text"
               value={venuesSearch}
               onChange={e => setVenuesSearch(e.target.value)}
               placeholder="Suchen…"
-              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
               <button
                 onClick={() => { setVenueInlineNew(true); setVenueNewName('') }}
-                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors"
                 title="Neue Venue"
               >
                 <PlusIcon className="w-3.5 h-3.5" />
@@ -1159,7 +1159,7 @@ export function L3Layout({
 
           {/* Inline-Anlegen */}
           {venueInlineNew && (
-            <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0">
+            <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0">
               <input
                 autoFocus
                 type="text"
@@ -1170,19 +1170,19 @@ export function L3Layout({
                   if (e.key === 'Escape') { setVenueInlineNew(false); setVenueNewName('') }
                 }}
                 placeholder="Name der Venue…"
-                className="w-full px-2.5 py-1.5 bg-gray-900 border border-blue-500 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none"
+                className="w-full px-2.5 py-1.5 bg-white border border-blue-500 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none"
               />
               <div className="flex gap-1.5 mt-1.5">
                 <button
                   onClick={handleCreateVenue}
                   disabled={!venueNewName.trim() || venueCreating}
-                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors"
+                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-gray-900 rounded disabled:opacity-50 transition-colors"
                 >
                   {venueCreating ? '…' : 'Anlegen'}
                 </button>
                 <button
                   onClick={() => { setVenueInlineNew(false); setVenueNewName('') }}
-                  className="px-2 py-1 text-xs text-gray-400 hover:text-white"
+                  className="px-2 py-1 text-xs text-gray-400 hover:text-gray-900"
                 >
                   Abbrechen
                 </button>
@@ -1191,7 +1191,7 @@ export function L3Layout({
           )}
 
           {/* Liste */}
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setVenueMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setVenueMenuOpenId(null)}>
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">
                 {venuesList.length === 0 ? 'Keine Venues' : 'Keine Treffer'}
@@ -1204,8 +1204,8 @@ export function L3Layout({
                   key={v.id}
                   className={`group relative flex items-center border-l-2 transition-colors ${
                     isActive
-                      ? 'border-blue-500 bg-gray-700'
-                      : 'border-transparent hover:bg-gray-800'
+                      ? 'border-blue-500 bg-gray-200'
+                      : 'border-transparent hover:bg-gray-100'
                   }`}
                 >
                   <button
@@ -1219,7 +1219,7 @@ export function L3Layout({
                     }}
                     className="flex-1 text-left px-3 py-2 min-w-0"
                   >
-                    <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>
+                    <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
                       {v.name}
                     </p>
                     {v.city && (
@@ -1234,7 +1234,7 @@ export function L3Layout({
                           e.stopPropagation()
                           setVenueMenuOpenId(menuOpen ? null : String(v.id))
                         }}
-                        className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${
+                        className={`p-1 rounded transition-all text-gray-500 hover:text-gray-900 hover:bg-gray-200 ${
                           menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                         }`}
                         title="Optionen"
@@ -1244,7 +1244,7 @@ export function L3Layout({
 
                       {menuOpen && (
                         <div
-                          className="absolute right-0 top-full mt-0.5 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                          className="absolute right-0 top-full mt-0.5 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
                           onClick={e => e.stopPropagation()}
                         >
                           <button
@@ -1260,7 +1260,7 @@ export function L3Layout({
                                 }
                               } catch { /* silent */ }
                             }}
-                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-100 hover:text-red-600 transition-colors"
                           >
                             Venue löschen
                           </button>
@@ -1285,27 +1285,27 @@ export function L3Layout({
 
       return (
         <div className="flex flex-col h-full">
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
+          <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0 flex gap-1.5">
             <input
               type="text" value={partnersSearch} onChange={e => setPartnersSearch(e.target.value)}
               placeholder="Suchen…"
-              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
               <button onClick={() => window.dispatchEvent(new CustomEvent('partner-sidebar-create'))}
-                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Neuer Partner">
+                className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neuer Partner">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setPartnerMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setPartnerMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{partnersList.length === 0 ? 'Keine Partner' : 'Keine Treffer'}</p>
               : filtered.map(p => {
                 const isActive = activePartnerId === p.id
                 const menuOpen = partnerMenuOpenId === p.id
                 return (
-                  <div key={p.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
+                  <div key={p.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-200' : 'border-transparent hover:bg-gray-100'}`}>
                     <button
                       onClick={() => {
                         setActivePartnerId(p.id)
@@ -1315,7 +1315,7 @@ export function L3Layout({
                       }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
-                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{p.companyName}</p>
+                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>{p.companyName}</p>
                       {(p.type || p.city) && (
                         <p className="text-[10px] text-gray-500 truncate mt-0.5">{[p.type, p.city].filter(Boolean).join(' · ')}</p>
                       )}
@@ -1323,13 +1323,13 @@ export function L3Layout({
                     {isEditor && (
                       <div className="relative flex-shrink-0 pr-1">
                         <button onClick={e => { e.stopPropagation(); setPartnerMenuOpenId(menuOpen ? null : p.id) }}
-                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-gray-900 hover:bg-gray-200 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <EllipsisHorizontalIcon className="w-4 h-4" />
                         </button>
                         {menuOpen && (
-                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
                             <button onClick={async () => { setPartnerMenuOpenId(null); if (!confirm(`Partner „${p.companyName}" wirklich löschen?`)) return; try { await deletePartner(p.id); setPartnersList(prev => prev.filter(x => x.id !== p.id)); if (activePartnerId === p.id) setActivePartnerId(null) } catch { /* silent */ } }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors">
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-100 hover:text-red-600 transition-colors">
                               Partner löschen
                             </button>
                           </div>
@@ -1354,27 +1354,27 @@ export function L3Layout({
 
       return (
         <div className="flex flex-col h-full">
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
+          <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0 flex gap-1.5">
             <input
               type="text" value={hotelsSearch} onChange={e => setHotelsSearch(e.target.value)}
               placeholder="Suchen…"
-              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
               <button onClick={() => window.dispatchEvent(new CustomEvent('hotel-sidebar-create'))}
-                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Neues Hotel">
+                className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neues Hotel">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setHotelMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setHotelMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{hotelsList.length === 0 ? 'Keine Hotels' : 'Keine Treffer'}</p>
               : filtered.map(h => {
                 const isActive = activeHotelId === h.id
                 const menuOpen = hotelMenuOpenId === h.id
                 return (
-                  <div key={h.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
+                  <div key={h.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-200' : 'border-transparent hover:bg-gray-100'}`}>
                     <button
                       onClick={() => {
                         setActiveHotelId(h.id)
@@ -1384,7 +1384,7 @@ export function L3Layout({
                       }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
-                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{h.name}</p>
+                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>{h.name}</p>
                       {(h.city || h.country) && (
                         <p className="text-[10px] text-gray-500 truncate mt-0.5">{[h.city, h.country].filter(Boolean).join(', ')}</p>
                       )}
@@ -1392,13 +1392,13 @@ export function L3Layout({
                     {isEditor && (
                       <div className="relative flex-shrink-0 pr-1">
                         <button onClick={e => { e.stopPropagation(); setHotelMenuOpenId(menuOpen ? null : h.id) }}
-                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-gray-900 hover:bg-gray-200 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <EllipsisHorizontalIcon className="w-4 h-4" />
                         </button>
                         {menuOpen && (
-                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
                             <button onClick={async () => { setHotelMenuOpenId(null); if (!confirm(`Hotel „${h.name}" wirklich löschen?`)) return; try { await deleteHotel(h.id); setHotelsList(prev => prev.filter(x => x.id !== h.id)); if (activeHotelId === h.id) setActiveHotelId(null) } catch { /* silent */ } }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors">
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-100 hover:text-red-600 transition-colors">
                               Hotel löschen
                             </button>
                           </div>
@@ -1423,27 +1423,27 @@ export function L3Layout({
 
       return (
         <div className="flex flex-col h-full">
-          <div className="px-2 py-2 border-b border-gray-700 flex-shrink-0 flex gap-1.5">
+          <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0 flex gap-1.5">
             <input
               type="text" value={vehiclesSearch} onChange={e => setVehiclesSearch(e.target.value)}
               placeholder="Suchen…"
-              className="flex-1 px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded-md text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
               <button onClick={() => window.dispatchEvent(new CustomEvent('vehicle-sidebar-create'))}
-                className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors" title="Neues Fahrzeug">
+                className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neues Fahrzeug">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setVehicleMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setVehicleMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{vehiclesList.length === 0 ? 'Keine Fahrzeuge' : 'Keine Treffer'}</p>
               : filtered.map(v => {
                 const isActive = activeVehicleId === v.id
                 const menuOpen = vehicleMenuOpenId === v.id
                 return (
-                  <div key={v.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-700' : 'border-transparent hover:bg-gray-800'}`}>
+                  <div key={v.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-200' : 'border-transparent hover:bg-gray-100'}`}>
                     <button
                       onClick={() => {
                         setActiveVehicleId(v.id)
@@ -1453,7 +1453,7 @@ export function L3Layout({
                       }}
                       className="flex-1 text-left px-3 py-2 min-w-0"
                     >
-                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-white font-medium' : 'text-gray-300'}`}>{v.designation || v.vehicleType || '–'}</p>
+                      <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>{v.designation || v.vehicleType || '–'}</p>
                       {(v.vehicleType || v.licensePlate) && (
                         <p className="text-[10px] text-gray-500 truncate mt-0.5">{[v.vehicleType, v.licensePlate].filter(Boolean).join(' · ')}</p>
                       )}
@@ -1461,13 +1461,13 @@ export function L3Layout({
                     {isEditor && (
                       <div className="relative flex-shrink-0 pr-1">
                         <button onClick={e => { e.stopPropagation(); setVehicleMenuOpenId(menuOpen ? null : v.id) }}
-                          className={`p-1 rounded transition-all text-gray-500 hover:text-white hover:bg-gray-700 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          className={`p-1 rounded transition-all text-gray-500 hover:text-gray-900 hover:bg-gray-200 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <EllipsisHorizontalIcon className="w-4 h-4" />
                         </button>
                         {menuOpen && (
-                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                          <div className="absolute right-0 top-full mt-0.5 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
                             <button onClick={async () => { setVehicleMenuOpenId(null); if (!confirm(`Fahrzeug „${v.designation || v.vehicleType}" wirklich löschen?`)) return; try { await deleteVehicle(v.id); setVehiclesList(prev => prev.filter(x => x.id !== v.id)); if (activeVehicleId === v.id) setActiveVehicleId(null) } catch { /* silent */ } }}
-                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors">
+                              className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-100 hover:text-red-600 transition-colors">
                               Fahrzeug löschen
                             </button>
                           </div>
@@ -1714,12 +1714,12 @@ export function L3Layout({
 
       {/* ── CONTEXT PANEL (collapsible) ──────────────────────────────────────── */}
       {hasPanelForSection && panelOpen && (
-        <div className="w-56 flex-shrink-0 bg-gray-850 bg-gray-800 flex flex-col border-r border-gray-700">
+        <div className="w-56 flex-shrink-0 bg-gray-50 flex flex-col border-r border-gray-200">
 
           {/* Panel header */}
-          <div className="flex items-center justify-between px-3 py-3 border-b border-gray-700">
+          <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-gray-900">
                 {TAB_LABEL_KEYS[activeTab] ?? activeTab}
               </p>
               {artistName && (
@@ -1738,23 +1738,23 @@ export function L3Layout({
                   <div className="relative">
                     <button
                       onClick={() => setMenuOpen(o => !o)}
-                      className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors"
+                      className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-900 transition-colors"
                       title="CSV Import / Export"
                     >
                       <EllipsisHorizontalIcon className="w-4 h-4" />
                     </button>
                     {menuOpen && (
                       <div
-                        className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                        className="absolute right-0 top-full mt-0.5 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
                         onClick={e => e.stopPropagation()}
                       >
                         <button
                           onClick={onExport}
-                          className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                          className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                         >
                           CSV exportieren
                         </button>
-                        <label className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors cursor-pointer block">
+                        <label className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer block">
                           CSV importieren
                           <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={onImport} />
                         </label>
@@ -1765,7 +1765,7 @@ export function L3Layout({
               })()}
               <button
                 onClick={togglePanel}
-                className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors"
               >
                 <ChevronLeftIcon className="w-4 h-4" />
               </button>

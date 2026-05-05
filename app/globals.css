@@ -1399,3 +1399,14 @@ body {
   border-radius: 9999px;
 }
 .scrollbar-dark::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }
+
+/* Helle Bereiche (Panel im Light Mode) */
+.scrollbar-light {
+  scrollbar-color: #d1d5db transparent; /* Firefox */
+}
+.scrollbar-light::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-light::-webkit-scrollbar-thumb {
+  background-color: #d1d5db; /* gray-300 */
+  border-radius: 9999px;
+}
+.scrollbar-light::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
