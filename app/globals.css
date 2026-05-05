@@ -1369,3 +1369,33 @@ body {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0.75rem;
 }
+
+/* ── Custom Scrollbars ───────────────────────────────────────────────────────
+   Schlanke, ans Design angepasste Scrollleisten für Windows/Linux.
+   .scrollbar-light  → heller Content-Bereich (grauer Thumb)
+   .scrollbar-dark   → dunkle Sidebar (dunkelgrauer Thumb auf dunklem Track)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Globaler Reset: dünn, kein Standard-Windows-Style */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 transparent; /* Firefox: thumb track */
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #d1d5db; /* gray-300 — dezent auf weißem BG */
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
+
+/* Dunkle Bereiche (L3-Sidebar, Rail, Panel-Listen) */
+.scrollbar-dark {
+  scrollbar-color: #4b5563 #1f2937; /* Firefox: thumb track */
+}
+.scrollbar-dark::-webkit-scrollbar-track { background: #1f2937; } /* gray-800 */
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background-color: #4b5563; /* gray-600 */
+  border-radius: 9999px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }

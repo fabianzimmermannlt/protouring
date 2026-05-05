@@ -766,7 +766,7 @@ export function L3Layout({
               >+</button>
             </div>
           )}
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark">
             {allSorted.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : allSorted.map(item => {
@@ -875,7 +875,7 @@ export function L3Layout({
           </div>
 
           {/* Terminliste scrollbar */}
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark">
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : filtered.map(item => {
@@ -972,7 +972,7 @@ export function L3Layout({
           </div>
 
           {/* Liste */}
-          <div className="flex-1 overflow-y-auto py-1">
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark">
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">
                 {contactsList.length === 0 ? 'Keine Kontakte' : 'Keine Treffer'}
@@ -1191,7 +1191,7 @@ export function L3Layout({
           )}
 
           {/* Liste */}
-          <div className="flex-1 overflow-y-auto py-1" onClick={() => setVenueMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setVenueMenuOpenId(null)}>
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">
                 {venuesList.length === 0 ? 'Keine Venues' : 'Keine Treffer'}
@@ -1298,7 +1298,7 @@ export function L3Layout({
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto py-1" onClick={() => setPartnerMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setPartnerMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{partnersList.length === 0 ? 'Keine Partner' : 'Keine Treffer'}</p>
               : filtered.map(p => {
@@ -1367,7 +1367,7 @@ export function L3Layout({
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto py-1" onClick={() => setHotelMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setHotelMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{hotelsList.length === 0 ? 'Keine Hotels' : 'Keine Treffer'}</p>
               : filtered.map(h => {
@@ -1436,7 +1436,7 @@ export function L3Layout({
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto py-1" onClick={() => setVehicleMenuOpenId(null)}>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-dark" onClick={() => setVehicleMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{vehiclesList.length === 0 ? 'Keine Fahrzeuge' : 'Keine Treffer'}</p>
               : filtered.map(v => {
@@ -1649,7 +1649,7 @@ export function L3Layout({
         </div>
 
         {/* Main nav items */}
-        <nav className="flex-1 flex flex-col items-center w-full px-1 py-1 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 flex flex-col items-center w-full px-1 py-1 space-y-0.5 overflow-y-auto scrollbar-dark">
           {RAIL_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item => {
             const isActive = activeTab === item.id
             return (
