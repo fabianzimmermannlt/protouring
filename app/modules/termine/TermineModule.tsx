@@ -977,6 +977,20 @@ export function TerminDetail2({
   return (
     <div className="min-h-0 flex flex-col gap-6">
 
+      {/* Verwerfen-Banner für leere (neu angelegte) Events */}
+      {isAdmin && !termin.title && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <span className="text-sm text-amber-800 flex-1">Neues Event — Angaben ergänzen oder verwerfen.</span>
+          <button
+            onClick={handleDeleteTermin}
+            disabled={deletingTermin}
+            className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50"
+          >
+            Verwerfen
+          </button>
+        </div>
+      )}
+
       {/* Zeile 1: Event + Schnellzugriff */}
       <section>
         <SectionLabel label="Event" />

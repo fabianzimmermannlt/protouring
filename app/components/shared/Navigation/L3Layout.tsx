@@ -43,6 +43,7 @@ import {
   getContacts,
   deleteContact,
   deleteTermin,
+  createTermin,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -525,6 +526,19 @@ export function L3Layout({
     })
   }
 
+  const handleCreateNewTermin = async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    try {
+      const newTermin = await createTermin({ date: today, title: '' })
+      setTermineList(prev => [newTermin, ...prev])
+      setActiveTerminId(newTermin.id)
+      localStorage.setItem('pt_events_last_id', String(newTermin.id))
+      window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: newTermin.id, view: 'details2' } }))
+    } catch (e) {
+      console.error('Failed to create event', e)
+    }
+  }
+
   const handleNav = (id: string) => {
     // Advancing: SPA-Navigation ohne Route-Wechsel
     if (id === 'events') {
@@ -803,7 +817,7 @@ export function L3Layout({
             />
             {isEditor && (
               <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
+                onClick={handleCreateNewTermin}
                 className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
                 title="Neues Event"
               >+</button>
