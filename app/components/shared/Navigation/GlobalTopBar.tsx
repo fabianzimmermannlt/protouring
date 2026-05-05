@@ -74,11 +74,16 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
 
   // ── Keyboard navigation ────────────────────────────────────────────────────
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); return }
+    if (e.key === 'Enter' && results.length > 0) {
+      e.preventDefault()
+      setOpen(true)
+      handleSelect(results[focused >= 0 ? focused : 0])
+      return
+    }
     if (!open || results.length === 0) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setFocused(f => Math.min(f + 1, results.length - 1)) }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setFocused(f => Math.max(f - 1, 0)) }
-    if (e.key === 'Enter') { e.preventDefault(); handleSelect(results[focused >= 0 ? focused : 0]) }
-    if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur() }
   }
 
   // ── Select ─────────────────────────────────────────────────────────────────
