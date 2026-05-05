@@ -472,11 +472,12 @@ export function L3Layout({
     return () => window.removeEventListener('termin-list-changed', handler)
   }, [])
 
-  // Aktiven Termin aus URL lesen (events)
+  // Aktiven Termin aus URL lesen (events) — nur beim Tab-Wechsel, nicht bei View-Änderung
   useEffect(() => {
-    const match = window.location.pathname.match(/\/events\/(\d+)/)
-    setActiveTerminId(match ? parseInt(match[1], 10) : null)
-  }, [activeTab, termineInDetail, advancingView])
+    if (activeTab !== 'events') return
+    const id = new URLSearchParams(window.location.search).get('id')
+    if (id) setActiveTerminId(parseInt(id, 10))
+  }, [activeTab])
 
   // ── Effects ────────────────────────────────────────────────────────────────
 
