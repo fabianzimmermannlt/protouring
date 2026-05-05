@@ -7922,6 +7922,79 @@ app.put('/api/termine/:terminId/briefings/:gewerkId/sections/reorder', authentic
 })
 
 // ============================================
+// GLOBAL SEARCH
+// ============================================
+
+app.get('/api/search', authenticateToken, requireTenant, async (req, res) => {
+  const q = (req.query.q || '').trim()
+  if (q.length < 2) return res.json({ results: [] })
+  const like = `%${q}%`
+  const tid = req.tenant.id
+
+  try {
+    const [events, contacts, venues, partners, hotels, vehicles] = await Promise.all([
+      db.all(`
+        SELECT 'event' as type, t.id, t.date as subtitle,
+               COALESCE(NULLIF(t.title,''), v.name, t.city, '–') as label,
+               t.title, t.city, v.name as venue_name
+        FROM termine t LEFT JOIN venues v ON t.venue_id = v.id
+        WHERE t.tenant_id = ?
+          AND (t.title LIKE ? OR t.city LIKE ? OR v.name LIKE ? OR t.art LIKE ?)
+        ORDER BY t.date DESC LIMIT 8
+      `, [tid, like, like, like, like]),
+
+      db.all(`
+        SELECT 'contact' as type, c.id,
+               (c.first_name || ' ' || c.last_name) as label,
+               c.role as subtitle
+        FROM contacts c
+        WHERE c.tenant_id = ?
+          AND (c.first_name LIKE ? OR c.last_name LIKE ? OR c.role LIKE ? OR c.email LIKE ?)
+        ORDER BY c.last_name LIMIT 8
+      `, [tid, like, like, like, like]),
+
+      db.all(`
+        SELECT 'venue' as type, v.id, v.name as label,
+               (COALESCE(v.city,'') || CASE WHEN v.city IS NOT NULL AND v.country IS NOT NULL THEN ', ' ELSE '' END || COALESCE(v.country,'')) as subtitle
+        FROM venues v
+        WHERE v.tenant_id = ?
+          AND (v.name LIKE ? OR v.city LIKE ? OR v.country LIKE ?)
+        ORDER BY v.name LIMIT 5
+      `, [tid, like, like, like]),
+
+      db.all(`
+        SELECT 'partner' as type, p.id, p.company_name as label, p.city as subtitle
+        FROM partners p
+        WHERE p.tenant_id = ?
+          AND (p.company_name LIKE ? OR p.city LIKE ?)
+        ORDER BY p.company_name LIMIT 5
+      `, [tid, like, like]),
+
+      db.all(`
+        SELECT 'hotel' as type, h.id, h.name as label, h.city as subtitle
+        FROM hotels h
+        WHERE h.tenant_id = ?
+          AND (h.name LIKE ? OR h.city LIKE ?)
+        ORDER BY h.name LIMIT 5
+      `, [tid, like, like]),
+
+      db.all(`
+        SELECT 'vehicle' as type, v.id, v.name as label, v.type as subtitle
+        FROM vehicles v
+        WHERE v.tenant_id = ?
+          AND (v.name LIKE ? OR v.type LIKE ?)
+        ORDER BY v.name LIMIT 5
+      `, [tid, like, like]),
+    ])
+
+    res.json({ results: [...events, ...contacts, ...venues, ...partners, ...hotels, ...vehicles] })
+  } catch (e) {
+    console.error('Search error:', e)
+    res.status(500).json({ error: 'Search failed' })
+  }
+})
+
+// ============================================
 // START
 // ============================================
 

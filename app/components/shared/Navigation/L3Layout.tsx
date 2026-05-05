@@ -65,6 +65,8 @@ import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
+import GlobalTopBar from './GlobalTopBar'
+import type { SearchResult } from '@/lib/api-client'
 import type { TermineDetailView, TermineListFilter, TermineListView } from './TermineSubNavigation'
 
 // ─── Rail nav items ───────────────────────────────────────────────────────────
@@ -1501,8 +1503,46 @@ export function L3Layout({
 
   const hasPanelForSection = HAS_PANEL.includes(activeTab)
 
+  // ── Search navigation handler ──────────────────────────────────────────────
+  const handleSearchNavigate = (result: SearchResult) => {
+    switch (result.type) {
+      case 'event':
+        onTabChange('events')
+        setActiveTerminId(result.id)
+        localStorage.setItem('pt_events_last_id', String(result.id))
+        window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: result.id, view: 'details2' } }))
+        break
+      case 'contact':
+        onTabChange('contacts')
+        window.dispatchEvent(new CustomEvent('select-contact', { detail: { id: result.id } }))
+        break
+      case 'venue':
+        onTabChange('venues')
+        window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: result.id } }))
+        break
+      case 'partner':
+        onTabChange('partners')
+        window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: result.id } }))
+        break
+      case 'hotel':
+        onTabChange('hotels')
+        window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: result.id } }))
+        break
+      case 'vehicle':
+        onTabChange('vehicles')
+        window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: result.id } }))
+        break
+    }
+  }
+
   return (
-    <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
+    <div className="hidden md:flex flex-col h-screen bg-gray-100 overflow-hidden">
+
+      {/* ── GLOBAL TOP BAR ──────────────────────────────────────────────────── */}
+      <GlobalTopBar artistName={artistName} onNavigate={handleSearchNavigate} />
+
+      {/* ── BODY (Rail + Panel + Content) ───────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
       {/* ── RAIL (64px) ─────────────────────────────────────────────────────── */}
       <aside className="w-16 flex-shrink-0 bg-gray-200 flex flex-col items-center border-r border-gray-300">
@@ -1900,6 +1940,7 @@ export function L3Layout({
           </div>
         </div>
       </div>
+      </div> {/* end BODY */}
     </div>
   )
 }

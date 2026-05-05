@@ -3087,3 +3087,21 @@ export async function deleteBriefingSection(terminId: number, gewerkId: number, 
 export async function reorderBriefingSections(terminId: number, gewerkId: number, order: { id: number; sort_order: number }[]): Promise<void> {
   await request<{ ok: boolean }>(`/api/termine/${terminId}/briefings/${gewerkId}/sections/reorder`, { method: 'PUT', body: { order } })
 }
+
+// ── Global Search ────────────────────────────────────────────────────────────
+
+export type SearchResultType = 'event' | 'contact' | 'venue' | 'partner' | 'hotel' | 'vehicle'
+
+export interface SearchResult {
+  type: SearchResultType
+  id: number
+  label: string
+  subtitle?: string
+  date?: string
+}
+
+export async function searchGlobal(q: string): Promise<SearchResult[]> {
+  if (q.trim().length < 2) return []
+  const res = await request<{ results: SearchResult[] }>(`/api/search?q=${encodeURIComponent(q)}`)
+  return res.results
+}
