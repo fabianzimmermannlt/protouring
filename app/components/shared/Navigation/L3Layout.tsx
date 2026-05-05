@@ -1505,40 +1505,44 @@ export function L3Layout({
 
   // ── Search navigation handler ──────────────────────────────────────────────
   const handleSearchNavigate = (result: SearchResult) => {
-    // Tab-Wechsel zuerst, dann Event dispatchen — nach kurzer Pause damit das Modul
-    // Zeit hat zu mounten und seinen Event-Listener zu registrieren.
-    const dispatch = (eventName: string) => {
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent(eventName, { detail: { id: result.id, view: 'details2' } }))
-      }, 50)
-    }
+    const id = result.id
 
     switch (result.type) {
-      case 'event':
+      case 'event': {
+        // URL setzen damit TermineModule beim Mount direkt die richtige ID liest
+        history.pushState(null, '', `/?tab=events&id=${id}&view=details2`)
+        setActiveTerminId(id)
+        localStorage.setItem('pt_events_last_id', String(id))
         onTabChange('events')
-        setActiveTerminId(result.id)
-        localStorage.setItem('pt_events_last_id', String(result.id))
-        dispatch('select-termin')
+        // Sofort dispatchen (wie Sidebar-Click) — Modul ist bereits gemountet wenn
+        // User auf Events-Tab ist; wenn nicht, liest es die ID aus der URL beim Mount
+        window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details2' } }))
         break
+      }
       case 'contact':
+        history.pushState(null, '', `/?tab=contacts&id=${id}`)
         onTabChange('contacts')
-        dispatch('select-contact')
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-contact', { detail: { id } })), 80)
         break
       case 'venue':
+        history.pushState(null, '', `/?tab=venues&id=${id}`)
         onTabChange('venues')
-        dispatch('select-venue')
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-venue', { detail: { id } })), 80)
         break
       case 'partner':
+        history.pushState(null, '', `/?tab=partners&id=${id}`)
         onTabChange('partners')
-        dispatch('select-partner')
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-partner', { detail: { id } })), 80)
         break
       case 'hotel':
+        history.pushState(null, '', `/?tab=hotels&id=${id}`)
         onTabChange('hotels')
-        dispatch('select-hotel')
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id } })), 80)
         break
       case 'vehicle':
+        history.pushState(null, '', `/?tab=vehicles&id=${id}`)
         onTabChange('vehicles')
-        dispatch('select-vehicle')
+        setTimeout(() => window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id } })), 80)
         break
     }
   }
