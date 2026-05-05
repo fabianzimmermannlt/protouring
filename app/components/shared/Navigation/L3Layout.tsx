@@ -335,6 +335,12 @@ export function L3Layout({
   const [venueMenuOpenId, setVenueMenuOpenId] = useState<string | null>(null)
   const [venuesCsvMenuOpen, setVenuesCsvMenuOpen] = useState(false)
   const venuesCsvInputRef = useRef<HTMLInputElement>(null)
+  const [partnersCsvMenuOpen, setPartnersCsvMenuOpen] = useState(false)
+  const partnersCsvInputRef = useRef<HTMLInputElement>(null)
+  const [hotelsCsvMenuOpen, setHotelsCsvMenuOpen] = useState(false)
+  const hotelsCsvInputRef = useRef<HTMLInputElement>(null)
+  const [vehiclesCsvMenuOpen, setVehiclesCsvMenuOpen] = useState(false)
+  const vehiclesCsvInputRef = useRef<HTMLInputElement>(null)
   const [activeVenueId, setActiveVenueId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/venues\/([^/]+)/)
@@ -538,6 +544,153 @@ export function L3Layout({
     reader.readAsText(file)
     e.target.value = ''
     setVenuesCsvMenuOpen(false)
+  }
+
+  // ── Partners CSV ──────────────────────────────────────────────────────────
+
+  const exportPartnersCsv = () => {
+    const headers = ['Firmenname', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Art']
+    const rows = partnersList.map(p =>
+      [p.companyName, p.street, p.postalCode, p.city, p.state, p.country, p.type]
+        .map(val => `"${(val || '').replace(/"/g, '""')}"`)
+        .join(';')
+    )
+    const csv = [headers.join(';'), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `partners_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    setPartnersCsvMenuOpen(false)
+  }
+
+  const importPartnersCsv = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCSV(text).slice(1)
+      let count = 0
+      for (const row of rows) {
+        if (!col(row, 0)) continue
+        try {
+          const { createPartner } = await import('@/lib/api-client')
+          const created = await createPartner({
+            companyName: col(row, 0), street: col(row, 1), postalCode: col(row, 2),
+            city: col(row, 3), state: col(row, 4), country: col(row, 5),
+            type: col(row, 6), contactPerson: '', email: '', phone: '', taxId: '', billingAddress: '', notes: '',
+          })
+          setPartnersList(prev => [...prev, created])
+          count++
+        } catch { /* skip */ }
+      }
+      if (count > 0) alert(`${count} Partner importiert.`)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+    setPartnersCsvMenuOpen(false)
+  }
+
+  // ── Hotels CSV ─────────────────────────────────────────────────────────────
+
+  const exportHotelsCsv = () => {
+    const headers = ['Name', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Website']
+    const rows = hotelsList.map(h =>
+      [h.name, h.street, h.postalCode, h.city, h.state, h.country, h.website]
+        .map(val => `"${(val || '').replace(/"/g, '""')}"`)
+        .join(';')
+    )
+    const csv = [headers.join(';'), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `hotels_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    setHotelsCsvMenuOpen(false)
+  }
+
+  const importHotelsCsv = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCSV(text).slice(1)
+      let count = 0
+      for (const row of rows) {
+        if (!col(row, 0)) continue
+        try {
+          const { createHotel } = await import('@/lib/api-client')
+          const created = await createHotel({
+            name: col(row, 0), street: col(row, 1), postalCode: col(row, 2),
+            city: col(row, 3), state: col(row, 4), country: col(row, 5),
+            website: col(row, 6), email: '', phone: '', reception: '',
+            checkIn: '', checkOut: '', earlyCheckIn: '', lateCheckOut: '',
+            breakfast: '', breakfastWeekend: '', additionalInfo: '',
+          })
+          setHotelsList(prev => [...prev, created])
+          count++
+        } catch { /* skip */ }
+      }
+      if (count > 0) alert(`${count} Hotels importiert.`)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+    setHotelsCsvMenuOpen(false)
+  }
+
+  // ── Vehicles CSV ───────────────────────────────────────────────────────────
+
+  const exportVehiclesCsv = () => {
+    const headers = ['Bezeichnung', 'Fahrzeugart', 'Driver', 'Kennzeichen', 'Maße', 'Stromanschluss', 'Sitzplätze', 'Schlafplätze']
+    const rows = vehiclesList.map(v =>
+      [v.designation, v.vehicleType, v.driver, v.licensePlate, v.dimensions, v.powerConnection, v.seats, v.sleepingPlaces]
+        .map(val => `"${(val || '').replace(/"/g, '""')}"`)
+        .join(';')
+    )
+    const csv = [headers.join(';'), ...rows].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `vehicles_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    setVehiclesCsvMenuOpen(false)
+  }
+
+  const importVehiclesCsv = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string
+      const rows = parseCSV(text).slice(1)
+      let count = 0
+      for (const row of rows) {
+        if (!col(row, 0)) continue
+        try {
+          const { createVehicle } = await import('@/lib/api-client')
+          const created = await createVehicle({
+            designation: col(row, 0), vehicleType: col(row, 1), driver: col(row, 2),
+            licensePlate: col(row, 3), dimensions: col(row, 4), powerConnection: col(row, 5),
+            seats: col(row, 6), sleepingPlaces: col(row, 7),
+            hasTrailer: false, trailerDimensions: '', trailerLicensePlate: '', notes: '',
+          })
+          setVehiclesList(prev => [...prev, created])
+          count++
+        } catch { /* skip */ }
+      }
+      if (count > 0) alert(`${count} Fahrzeuge importiert.`)
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+    setVehiclesCsvMenuOpen(false)
   }
 
   // ── Context panel content ──────────────────────────────────────────────────
@@ -1535,41 +1688,42 @@ export function L3Layout({
               )}
             </div>
             <div className="flex items-center gap-0.5 flex-shrink-0">
-              {/* CSV Menu — nur für Venues + Editor */}
-              {activeTab === 'venues' && isEditor && (
-                <div className="relative">
-                  <button
-                    onClick={() => setVenuesCsvMenuOpen(o => !o)}
-                    className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors"
-                    title="CSV Import / Export"
-                  >
-                    <EllipsisHorizontalIcon className="w-4 h-4" />
-                  </button>
-                  {venuesCsvMenuOpen && (
-                    <div
-                      className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
-                      onClick={e => e.stopPropagation()}
+              {/* CSV Menu — Venues, Partners, Hotels, Vehicles */}
+              {(['venues', 'partners', 'hotels', 'vehicles'] as const).includes(activeTab as any) && isEditor && (() => {
+                const menuOpen = activeTab === 'venues' ? venuesCsvMenuOpen : activeTab === 'partners' ? partnersCsvMenuOpen : activeTab === 'hotels' ? hotelsCsvMenuOpen : vehiclesCsvMenuOpen
+                const setMenuOpen = activeTab === 'venues' ? setVenuesCsvMenuOpen : activeTab === 'partners' ? setPartnersCsvMenuOpen : activeTab === 'hotels' ? setHotelsCsvMenuOpen : setVehiclesCsvMenuOpen
+                const inputRef = activeTab === 'venues' ? venuesCsvInputRef : activeTab === 'partners' ? partnersCsvInputRef : activeTab === 'hotels' ? hotelsCsvInputRef : vehiclesCsvInputRef
+                const onExport = activeTab === 'venues' ? exportVenuesCsv : activeTab === 'partners' ? exportPartnersCsv : activeTab === 'hotels' ? exportHotelsCsv : exportVehiclesCsv
+                const onImport = activeTab === 'venues' ? importVenuesCsv : activeTab === 'partners' ? importPartnersCsv : activeTab === 'hotels' ? importHotelsCsv : importVehiclesCsv
+                return (
+                  <div className="relative">
+                    <button
+                      onClick={() => setMenuOpen(o => !o)}
+                      className="p-1 rounded hover:bg-gray-700 text-gray-500 hover:text-white transition-colors"
+                      title="CSV Import / Export"
                     >
-                      <button
-                        onClick={exportVenuesCsv}
-                        className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                      <EllipsisHorizontalIcon className="w-4 h-4" />
+                    </button>
+                    {menuOpen && (
+                      <div
+                        className="absolute right-0 top-full mt-0.5 w-44 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-50 py-1"
+                        onClick={e => e.stopPropagation()}
                       >
-                        CSV exportieren
-                      </button>
-                      <label className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors cursor-pointer block">
-                        CSV importieren
-                        <input
-                          ref={venuesCsvInputRef}
-                          type="file"
-                          accept=".csv"
-                          className="hidden"
-                          onChange={importVenuesCsv}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-              )}
+                        <button
+                          onClick={onExport}
+                          className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                        >
+                          CSV exportieren
+                        </button>
+                        <label className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors cursor-pointer block">
+                          CSV importieren
+                          <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={onImport} />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               <button
                 onClick={togglePanel}
                 className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"

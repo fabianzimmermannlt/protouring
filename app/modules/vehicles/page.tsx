@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Download, Upload } from 'lucide-react'
-import { getVehicles, createVehicle, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
+import { Plus } from 'lucide-react'
+import { getVehicles, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
-import { parseCSV, col } from '@/lib/csvParser'
 import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
 
 const VEHICLE_COLS: [string, keyof Vehicle][] = [
@@ -31,7 +30,8 @@ export default function VehiclesPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/vehicles\/([^/]+)/)
-    return m?.[1] ?? null
+    if (m?.[1]) return m[1]
+    return localStorage.getItem('pt_vehicles_last_id') ?? null
   })
 
   useEffect(() => {
@@ -74,84 +74,6 @@ export default function VehiclesPage() {
     }
   }, [])
 
-  // CSV Export
-  const exportToCSV = () => {
-    if (vehicles.length === 0) {
-      alert('Keine Fahrzeuge zum Exportieren vorhanden.')
-      return
-    }
-
-    const headers = [
-      'Bezeichnung', 'Fahrzeugart', 'Driver', 'Kennzeichen', 'Maße', 'Stromanschluss',
-      'Anhänger', 'Anhängermaße', 'Anhänger-Kennzeichen', 'Sitzplätze', 'Schlafplätze', 'Bemerkung'
-    ]
-
-    const csvContent = [
-      headers.join(';'),
-      ...vehicles.map(vehicle => [
-        `"${vehicle.designation}"`,
-        `"${vehicle.vehicleType}"`,
-        `"${vehicle.driver}"`,
-        `"${vehicle.licensePlate}"`,
-        `"${vehicle.dimensions}"`,
-        `"${vehicle.powerConnection}"`,
-        `"${vehicle.hasTrailer ? 'Ja' : 'Nein'}"`,
-        `"${vehicle.trailerDimensions}"`,
-        `"${vehicle.trailerLicensePlate}"`,
-        `"${vehicle.seats}"`,
-        `"${vehicle.sleepingPlaces}"`,
-        `"${vehicle.notes}"`
-      ].join(';'))
-    ].join('\n')
-
-    // Add BOM for proper UTF-8 encoding in Excel
-    const BOM = '\uFEFF'
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `vehicles_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  // CSV Import
-  const importFromCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      try {
-        const text = e.target?.result as string
-        const rows = parseCSV(text).slice(1) // Header überspringen
-        let count = 0
-        for (const row of rows) {
-          if (!col(row, 0)) continue
-          try {
-            const created = await createVehicle({
-              designation: col(row, 0), vehicleType: col(row, 1),
-              driver: col(row, 2), licensePlate: col(row, 3),
-              dimensions: col(row, 4), powerConnection: col(row, 5),
-              hasTrailer: col(row, 6) === 'Ja', trailerDimensions: col(row, 7),
-              trailerLicensePlate: col(row, 8), seats: col(row, 9),
-              sleepingPlaces: col(row, 10), notes: col(row, 11)
-            })
-            setVehicles(prev => [...prev, created]); count++
-          } catch {}
-        }
-        alert(`${count} Fahrzeuge erfolgreich importiert.`)
-      } catch (error) {
-        alert('Fehler beim Importieren der CSV-Datei.')
-      }
-    }
-    
-    reader.readAsText(file)
-    // Reset file input
-    event.target.value = ''
-  }
 
   const filteredVehicles = vehicles.filter(v =>
     `${v.designation} ${v.vehicleType} ${v.driver} ${v.licensePlate}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -164,39 +86,11 @@ export default function VehiclesPage() {
 
   return (
     <div className="module-content">
-      {/* Header — nur 1-3 */}
-      {isMobile ? (
-        isEditor && (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex gap-2">
-              <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
-            </div>
-            <div className="flex gap-1">
-              <button onClick={exportToCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"><Download className="w-5 h-5" /></button>
-              <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import"><Upload className="w-5 h-5" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
-            </div>
-          </div>
-        )
-      ) : (
-        isEditor && (
-          <div className="flex justify-between items-center">
-            <button onClick={openNewVehicleModal} className="btn btn-primary">
-              <Plus className="h-4 w-4" />
-              Neues Fahrzeug
-            </button>
-            <div className="flex gap-3">
-              <button onClick={exportToCSV} className="btn btn-ghost">
-                <Download className="h-4 w-4" />
-                CSV
-              </button>
-              <label className="btn btn-ghost cursor-pointer">
-                <Upload className="h-4 w-4" />
-                CSV
-                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-              </label>
-            </div>
-          </div>
-        )
+      {/* Mobile: Neu-Button */}
+      {isMobile && isEditor && (
+        <div className="flex items-center gap-2">
+          <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+        </div>
       )}
 
       {/* Search */}

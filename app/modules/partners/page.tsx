@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Download, Upload, Edit, Trash2, Save, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react'
 import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
-import { parseCSV, col } from '@/lib/csvParser'
 import { PartnerDetailContent } from '@/app/modules/partners/PartnerDetail'
 
 const PARTNER_COLS: [string, keyof Partner][] = [
@@ -30,7 +29,8 @@ export default function PartnersPage() {
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/partners\/([^/]+)/)
-    return m?.[1] ?? null
+    if (m?.[1]) return m[1]
+    return localStorage.getItem('pt_partners_last_id') ?? null
   })
   const [formData, setFormData] = useState<PartnerFormData>({
     type: '',
@@ -179,62 +179,6 @@ export default function PartnersPage() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  // Export to CSV
-  const exportToCSV = () => {
-    const headers = ['Firmenname', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Art']
-    const csvContent = [
-      headers.join(';'),
-      ...partners.map(partner => [
-        partner.companyName || '',
-        partner.street || '',
-        partner.postalCode || '',
-        partner.city || '',
-        partner.state || '',
-        partner.country || '',
-        partner.type || ''
-      ].map(v => `"${v.replace(/"/g, '""')}"`)
-      .join(';'))
-    ].join('\n')
-
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `partner_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  // Import from CSV
-  const importFromCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const text = e.target?.result as string
-      const rows = parseCSV(text).slice(1) // Header überspringen
-      let count = 0
-      for (const row of rows) {
-        if (!col(row, 0)) continue
-        try {
-          const created = await createPartner({
-            companyName: col(row, 0), street: col(row, 1),
-            postalCode: col(row, 2), city: col(row, 3),
-            state: col(row, 4), country: col(row, 5),
-            type: col(row, 6), contactPerson: '', email: '',
-            phone: '', taxId: '', billingAddress: '', notes: ''
-          })
-          setPartners(prev => [...prev, created]); count++
-        } catch {}
-      }
-      if (count > 0) alert(`${count} Partner erfolgreich importiert.`)
-    }
-    reader.readAsText(file)
-    event.target.value = ''
-  }
 
   // Desktop SPA: show detail inline
   if (!isMobile && selectedPartnerId) {
@@ -243,39 +187,11 @@ export default function PartnersPage() {
 
   return (
     <div className="module-content">
-      {/* Action Buttons — nur 1-3 */}
-      {isMobile ? (
-        isEditor && (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex gap-2">
-              <button onClick={openNewPartnerModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
-            </div>
-            <div className="flex gap-1">
-              <button onClick={exportToCSV} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"><Download className="w-5 h-5" /></button>
-              <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import"><Upload className="w-5 h-5" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
-            </div>
-          </div>
-        )
-      ) : (
-        isEditor && (
-          <div className="flex justify-between items-center">
-            <button onClick={openNewPartnerModal} className="btn btn-primary">
-              <Plus className="w-4 h-4" />
-              Neuer Partner
-            </button>
-            <div className="flex gap-3">
-              <button onClick={exportToCSV} className="btn btn-ghost">
-                <Download className="w-4 h-4" />
-                CSV
-              </button>
-              <label className="btn btn-ghost cursor-pointer">
-                <Upload className="w-4 h-4" />
-                CSV
-                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-              </label>
-            </div>
-          </div>
-        )
+      {/* Mobile: Neu-Button */}
+      {isMobile && isEditor && (
+        <div className="flex items-center gap-2">
+          <button onClick={openNewPartnerModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+        </div>
       )}
 
       {/* Search */}
