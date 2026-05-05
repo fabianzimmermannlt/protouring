@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Pencil, AlertCircle, Save, Loader2, User, Phone, Globe, Coffee, CreditCard, FileText } from 'lucide-react'
+import { Pencil, AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole, ROLE_LABELS,
   getContact, updateContact, getActiveFunctions,
@@ -10,12 +10,12 @@ import {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-function KV({ label, value }: { label: string; value?: string | number }) {
-  if (value === undefined || value === null || value === '' || value === 0) return null
+function KV({ label, value }: { label: string; value?: string | number | boolean }) {
+  if (value === undefined || value === null || value === '' || value === false) return null
   return (
     <div className="grid grid-cols-[160px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50 last:border-0">
       <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{label}</span>
-      <span className="text-gray-800">{String(value)}</span>
+      <span className="text-gray-800">{value === true ? 'Ja' : String(value)}</span>
     </div>
   )
 }
@@ -32,18 +32,6 @@ function IField({ label, value, onChange, type = 'text', placeholder = '' }: {
   )
 }
 
-function ITextarea({ label, value, onChange, rows = 3 }: {
-  label: string; value: string; onChange: (v: string) => void; rows?: number
-}) {
-  return (
-    <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none" />
-    </div>
-  )
-}
-
 function ISelect({ label, value, onChange, options }: {
   label: string; value: string; onChange: (v: string) => void
   options: { value: string; label: string }[]
@@ -56,6 +44,18 @@ function ISelect({ label, value, onChange, options }: {
         <option value="">– keine –</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
+    </div>
+  )
+}
+
+function ITextarea({ label, value, onChange, rows = 2, placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows} placeholder={placeholder}
+        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none" />
     </div>
   )
 }
@@ -98,9 +98,22 @@ const EMPTY = (msg = 'Keine Angaben hinterlegt.') => (
   <p className="text-sm text-gray-400 py-2">{msg}</p>
 )
 
+const GENDER_OPTIONS = [
+  { value: 'männlich', label: 'Männlich' },
+  { value: 'weiblich', label: 'Weiblich' },
+  { value: 'divers', label: 'Divers' },
+  { value: 'keine_angabe', label: 'Keine Angabe' },
+]
+
+const DIET_OPTIONS = [
+  { value: 'alles', label: 'Alles' },
+  { value: 'vegetarisch', label: 'Vegetarisch' },
+  { value: 'vegan', label: 'Vegan' },
+]
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type Section = 'allgemein' | 'kontakt' | 'persoenlich' | 'hotel' | 'finanzen' | 'bemerkung'
+type Section = 'persoenlich' | 'kontakt' | 'beruflich' | 'reise' | 'ernaehrung' | 'kleider' | 'finanzen' | 'bemerkung'
 
 export function ContactDetailContent({ contactId }: { contactId: string }) {
   const isEditor = isEditorRole(getEffectiveRole())
@@ -151,12 +164,10 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
 
   const d = (k: keyof Contact) => String(draft[k] ?? '')
   const db = (k: keyof Contact) => Boolean(draft[k])
-  const dn = (k: keyof Contact) => String(draft[k] ?? '0')
   const set = (k: keyof Contact, v: unknown) => setDraft(p => ({ ...p, [k]: v }))
 
   const bar = <SaveBar onSave={saveSection} onCancel={cancelEdit} saving={saving} error={saveError} />
 
-  // edit-button helper
   const editBtn = (s: Section) =>
     isEditor && contact && editSection !== s
       ? <button onClick={() => startEdit(s)} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
@@ -173,6 +184,14 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
   const role = contact?.tenantRole
     ? (ROLE_LABELS[contact.tenantRole as TenantRole] ?? contact.tenantRole)
     : contact?.accessRights
+
+  const funcOpts = (cur: string) => {
+    const activeNames = new Set(activeFunctions.map(f => f.name))
+    return [
+      ...(cur && !activeNames.has(cur) ? [{ value: cur, label: `${cur} ⚠ (deaktiviert)` }] : []),
+      ...activeFunctions.map(f => ({ value: f.name, label: f.name })),
+    ]
+  }
 
   return (
     <div className="module-content">
@@ -203,49 +222,55 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* ── Allgemein ── */}
+        {/* ── 1. Persönliche Daten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><User className="w-3.5 h-3.5 inline mr-1" />Allgemein</span>
-            {editBtn('allgemein')}
+            <span className="pt-card-title"><User className="w-3.5 h-3.5 inline mr-1" />Persönliche Daten</span>
+            {editBtn('persoenlich')}
           </div>
           <div className="pt-card-body">
-            {loading ? SKELETON : editSection === 'allgemein' ? (
+            {loading ? SKELETON : editSection === 'persoenlich' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <IField label="Vorname" value={d('firstName')} onChange={v => set('firstName', v)} />
                   <IField label="Nachname" value={d('lastName')} onChange={v => set('lastName', v)} />
                 </div>
-                {(['function1', 'function2', 'function3'] as const).map((field, i) => {
-                  const cur = d(field)
-                  const activeNames = new Set(activeFunctions.map(f => f.name))
-                  const opts = [
-                    ...(cur && !activeNames.has(cur) ? [{ value: cur, label: `${cur} ⚠ (deaktiviert)` }] : []),
-                    ...activeFunctions.map(f => ({ value: f.name, label: f.name })),
-                  ]
-                  return <ISelect key={field} label={`${i + 1}. Funktion`} value={cur} onChange={v => set(field, v)} options={opts} />
-                })}
-                <IField label="Spezifikation" value={d('specification')} onChange={v => set('specification', v)} placeholder="z.B. FOH, Monitor, Backline…" />
-                <IField label="Sprachen" value={d('languages')} onChange={v => set('languages', v)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Geburtsdatum" value={d('birthDate')} onChange={v => set('birthDate', v)} type="date" />
+                  <IField label="Geburtsort" value={d('birthPlace')} onChange={v => set('birthPlace', v)} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <ISelect label="Geschlecht" value={d('gender')} onChange={v => set('gender', v)} options={GENDER_OPTIONS} />
+                  <IField label="Pronomen" value={d('pronouns')} onChange={v => set('pronouns', v)} placeholder="er/ihm, sie/ihr…" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Nationalität" value={d('nationality')} onChange={v => set('nationality', v)} />
+                  <IField label="Ausweis-Nr." value={d('idNumber')} onChange={v => set('idNumber', v)} />
+                </div>
+                <IField label="Sozialversicherungs-Nr." value={d('socialSecurity')} onChange={v => set('socialSecurity', v)} />
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="Funktion 1" value={contact.function1} />
-                <KV label="Funktion 2" value={contact.function2} />
-                <KV label="Funktion 3" value={contact.function3} />
-                <KV label="Spezifikation" value={contact.specification} />
-                <KV label="Sprachen" value={contact.languages} />
-                {!contact.function1 && !contact.specification && !contact.languages && EMPTY()}
+                <KV label="Vorname" value={contact.firstName} />
+                <KV label="Nachname" value={contact.lastName} />
+                <KV label="Geburtsdatum" value={contact.birthDate} />
+                <KV label="Geburtsort" value={contact.birthPlace} />
+                <KV label="Geschlecht" value={contact.gender} />
+                <KV label="Pronomen" value={contact.pronouns} />
+                <KV label="Nationalität" value={contact.nationality} />
+                <KV label="Ausweis-Nr." value={contact.idNumber} />
+                <KV label="Sozialversicherung" value={contact.socialSecurity} />
+                {!contact.birthDate && !contact.gender && !contact.nationality && !contact.idNumber && EMPTY()}
               </>
             ) : null}
           </div>
         </div>
 
-        {/* ── Kontakt & Adresse ── */}
+        {/* ── 2. Kontaktdaten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />Kontakt & Adresse</span>
+            <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />Kontaktdaten</span>
             {editBtn('kontakt')}
           </div>
           <div className="pt-card-body">
@@ -259,8 +284,8 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                 <IField label="Website" value={d('website')} onChange={v => set('website', v)} />
                 <IField label="Straße" value={d('address')} onChange={v => set('address', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label="PLZ" value={d('postalCode')} onChange={v => set('postalCode', v)} />
-                  <IField label="Ort" value={d('residence')} onChange={v => set('residence', v)} />
+                  <IField label="PLZ" value={d('postalCode')} onChange={v => set('postalCode', v)} placeholder="12345" />
+                  <IField label="Wohnort" value={d('residence')} onChange={v => set('residence', v)} />
                 </div>
                 {bar}
               </div>
@@ -270,118 +295,143 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                 <KV label="Telefon" value={contact.phone} />
                 <KV label="Mobil" value={contact.mobile} />
                 <KV label="Website" value={contact.website} />
-                <KV label="Adresse" value={[contact.address, [contact.postalCode, contact.residence].filter(Boolean).join(' ')].filter(Boolean).join(', ')} />
+                <KV label="Straße" value={contact.address} />
+                <KV label="PLZ" value={contact.postalCode} />
+                <KV label="Wohnort" value={contact.residence} />
                 {!contact.email && !contact.phone && !contact.mobile && !contact.address && EMPTY()}
               </>
             ) : null}
           </div>
         </div>
 
-        {/* ── Persönliches & Reise ── */}
+        {/* ── 3. Berufliche Daten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Globe className="w-3.5 h-3.5 inline mr-1" />Persönliches & Reise</span>
-            {editBtn('persoenlich')}
+            <span className="pt-card-title"><Briefcase className="w-3.5 h-3.5 inline mr-1" />Berufliche Daten</span>
+            {editBtn('beruflich')}
           </div>
           <div className="pt-card-body">
-            {loading ? SKELETON : editSection === 'persoenlich' ? (
+            {loading ? SKELETON : editSection === 'beruflich' ? (
               <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <IField label="Geburtsdatum" value={d('birthDate')} onChange={v => set('birthDate', v)} type="date" />
-                  <IField label="Geburtsort" value={d('birthPlace')} onChange={v => set('birthPlace', v)} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <ISelect label="Geschlecht" value={d('gender')} onChange={v => set('gender', v)} options={[
-                    { value: 'männlich', label: 'Männlich' },
-                    { value: 'weiblich', label: 'Weiblich' },
-                    { value: 'divers', label: 'Divers' },
-                    { value: 'keine_angabe', label: 'Keine Angabe' },
-                  ]} />
-                  <IField label="Pronomen" value={d('pronouns')} onChange={v => set('pronouns', v)} />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <IField label="Nationalität" value={d('nationality')} onChange={v => set('nationality', v)} />
-                  <IField label="Ausweis-Nr." value={d('idNumber')} onChange={v => set('idNumber', v)} />
-                </div>
-                <IField label="Sozialversicherungs-Nr." value={d('socialSecurity')} onChange={v => set('socialSecurity', v)} />
+                {(['function1', 'function2', 'function3'] as const).map((field, i) => (
+                  <ISelect key={field} label={`${i + 1}. Funktion`} value={d(field)} onChange={v => set(field, v)} options={funcOpts(d(field))} />
+                ))}
+                <IField label="Spezifikation" value={d('specification')} onChange={v => set('specification', v)} placeholder="z.B. FOH, Monitor, Backline…" />
+                <IField label="Sprachen" value={d('languages')} onChange={v => set('languages', v)} placeholder="Deutsch, Englisch…" />
+                {bar}
+              </div>
+            ) : contact ? (
+              <>
+                <KV label="1. Funktion" value={contact.function1} />
+                <KV label="2. Funktion" value={contact.function2} />
+                <KV label="3. Funktion" value={contact.function3} />
+                <KV label="Spezifikation" value={contact.specification} />
+                <KV label="Sprachen" value={contact.languages} />
+                {!contact.function1 && !contact.specification && !contact.languages && EMPTY()}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {/* ── 4. Reisedaten ── */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><Globe className="w-3.5 h-3.5 inline mr-1" />Reisedaten</span>
+            {editBtn('reise')}
+          </div>
+          <div className="pt-card-body">
+            {loading ? SKELETON : editSection === 'reise' ? (
+              <div className="space-y-2">
                 <IField label="Führerschein" value={d('driversLicense')} onChange={v => set('driversLicense', v)} placeholder="B, BE, C…" />
                 <div className="grid grid-cols-2 gap-2">
                   <IField label="BahnCard" value={d('railcard')} onChange={v => set('railcard', v)} placeholder="25, 50, 100…" />
                   <IField label="Vielfliegerprogramm" value={d('frequentFlyer')} onChange={v => set('frequentFlyer', v)} />
                 </div>
+                <IField label="Hotel Deckname" value={d('hotelAlias')} onChange={v => set('hotelAlias', v)} placeholder="Name für Buchung" />
+                <ITextarea label="Hotelwünsche" value={d('hotelInfo')} onChange={v => set('hotelInfo', v)} placeholder="z.B. Einzelzimmer, EG bevorzugt…" />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Notfallkontakt" value={d('emergencyContact')} onChange={v => set('emergencyContact', v)} />
+                  <IField label="Notfall-Telefon" value={d('emergencyPhone')} onChange={v => set('emergencyPhone', v)} type="tel" />
+                </div>
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="Geburtsdatum" value={contact.birthDate} />
-                <KV label="Geburtsort" value={contact.birthPlace} />
-                <KV label="Geschlecht" value={contact.gender} />
-                <KV label="Pronomen" value={contact.pronouns} />
-                <KV label="Nationalität" value={contact.nationality} />
-                <KV label="Ausweis-Nr." value={contact.idNumber} />
-                <KV label="Sozialversicherung" value={contact.socialSecurity} />
                 <KV label="Führerschein" value={contact.driversLicense} />
                 <KV label="BahnCard" value={contact.railcard} />
                 <KV label="Vielfliegerprogramm" value={contact.frequentFlyer} />
-                {!contact.birthDate && !contact.nationality && !contact.idNumber && !contact.driversLicense && EMPTY()}
+                <KV label="Hotel Deckname" value={contact.hotelAlias} />
+                <KV label="Hotelwünsche" value={contact.hotelInfo} />
+                <KV label="Notfallkontakt" value={contact.emergencyContact} />
+                <KV label="Notfall-Tel." value={contact.emergencyPhone} />
+                {!contact.driversLicense && !contact.railcard && !contact.frequentFlyer && !contact.hotelAlias && !contact.emergencyContact && EMPTY()}
               </>
             ) : null}
           </div>
         </div>
 
-        {/* ── Hotel & Ernährung ── */}
+        {/* ── 5. Ernährung ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Coffee className="w-3.5 h-3.5 inline mr-1" />Hotel & Ernährung</span>
-            {editBtn('hotel')}
+            <span className="pt-card-title"><Utensils className="w-3.5 h-3.5 inline mr-1" />Ernährung</span>
+            {editBtn('ernaehrung')}
           </div>
           <div className="pt-card-body">
-            {loading ? SKELETON : editSection === 'hotel' ? (
+            {loading ? SKELETON : editSection === 'ernaehrung' ? (
               <div className="space-y-2">
-                <IField label="Hotelinfo" value={d('hotelInfo')} onChange={v => set('hotelInfo', v)} placeholder="z.B. Einzelzimmer, EG bevorzugt…" />
-                <IField label="Hotelalias" value={d('hotelAlias')} onChange={v => set('hotelAlias', v)} placeholder="Name für Buchung" />
-                <ISelect label="Ernährung" value={d('diet')} onChange={v => set('diet', v)} options={[
-                  { value: 'alles', label: 'Alles' },
-                  { value: 'vegetarisch', label: 'Vegetarisch' },
-                  { value: 'vegan', label: 'Vegan' },
-                ]} />
-                <ICheckbox label="Glutenfrei" checked={db('glutenFree')} onChange={v => set('glutenFree', v)} />
-                <ICheckbox label="Laktosefrei" checked={db('lactoseFree')} onChange={v => set('lactoseFree', v)} />
-                <IField label="Allergien" value={d('allergies')} onChange={v => set('allergies', v)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <IField label="T-Shirt" value={d('shirtSize')} onChange={v => set('shirtSize', v)} placeholder="S, M, L…" />
-                  <IField label="Hoodie" value={d('hoodieSize')} onChange={v => set('hoodieSize', v)} />
+                <ISelect label="Ernährungsweise" value={d('diet')} onChange={v => set('diet', v)} options={DIET_OPTIONS} />
+                <IField label="Allergien" value={d('allergies')} onChange={v => set('allergies', v)} placeholder="z.B. Nüsse, Fisch…" />
+                <div className="flex gap-4 pt-1">
+                  <ICheckbox label="Glutenfrei" checked={db('glutenFree')} onChange={v => set('glutenFree', v)} />
+                  <ICheckbox label="Laktosefrei" checked={db('lactoseFree')} onChange={v => set('lactoseFree', v)} />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <IField label="Hose (W/L)" value={d('pantsSize')} onChange={v => set('pantsSize', v)} />
-                  <IField label="Schuhgröße" value={d('shoeSize')} onChange={v => set('shoeSize', v)} />
-                </div>
-                <IField label="Notfallkontakt" value={d('emergencyContact')} onChange={v => set('emergencyContact', v)} />
-                <IField label="Notfall-Telefon" value={d('emergencyPhone')} onChange={v => set('emergencyPhone', v)} type="tel" />
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="Hotelinfo" value={contact.hotelInfo} />
-                <KV label="Hotelalias" value={contact.hotelAlias} />
-                <KV label="Diät" value={contact.diet} />
-                {contact.glutenFree && <KV label="Glutenfrei" value="Ja" />}
-                {contact.lactoseFree && <KV label="Laktosefrei" value="Ja" />}
+                <KV label="Ernährung" value={contact.diet} />
                 <KV label="Allergien" value={contact.allergies} />
+                {contact.glutenFree && <KV label="Glutenfrei" value={true} />}
+                {contact.lactoseFree && <KV label="Laktosefrei" value={true} />}
+                {!contact.diet && !contact.allergies && !contact.glutenFree && !contact.lactoseFree && EMPTY()}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {/* ── 6. Kleidergrößen ── */}
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title"><Shirt className="w-3.5 h-3.5 inline mr-1" />Kleidergrößen</span>
+            {editBtn('kleider')}
+          </div>
+          <div className="pt-card-body">
+            {loading ? SKELETON : editSection === 'kleider' ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="T-Shirt" value={d('shirtSize')} onChange={v => set('shirtSize', v)} placeholder="S, M, L…" />
+                  <IField label="Hoodie" value={d('hoodieSize')} onChange={v => set('hoodieSize', v)} placeholder="S, M, L…" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label="Hose (W/L)" value={d('pantsSize')} onChange={v => set('pantsSize', v)} placeholder="32/32…" />
+                  <IField label="Schuhgröße" value={d('shoeSize')} onChange={v => set('shoeSize', v)} placeholder="42, 43…" />
+                </div>
+                {bar}
+              </div>
+            ) : contact ? (
+              <>
                 <KV label="T-Shirt" value={contact.shirtSize} />
                 <KV label="Hoodie" value={contact.hoodieSize} />
                 <KV label="Hose" value={contact.pantsSize} />
                 <KV label="Schuhgröße" value={contact.shoeSize} />
-                <KV label="Notfallkontakt" value={contact.emergencyContact} />
-                <KV label="Notfall-Tel." value={contact.emergencyPhone} />
-                {!contact.hotelInfo && !contact.diet && !contact.allergies && !contact.emergencyContact && !contact.shirtSize && EMPTY()}
+                {!contact.shirtSize && !contact.hoodieSize && !contact.pantsSize && !contact.shoeSize && EMPTY()}
               </>
             ) : null}
           </div>
         </div>
 
-        {/* ── Finanzen ── */}
-        <div className="pt-card">
+        {/* ── 7. Finanzen ── */}
+        <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
             <span className="pt-card-title"><CreditCard className="w-3.5 h-3.5 inline mr-1" />Finanzen</span>
             {editBtn('finanzen')}
@@ -389,38 +439,40 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'finanzen' ? (
               <div className="space-y-2">
-                <IField label="IBAN" value={d('bankIban')} onChange={v => set('bankIban', v)} />
-                <IField label="BIC" value={d('bankBic')} onChange={v => set('bankBic', v)} />
-                <IField label="Kontonummer" value={d('bankAccount')} onChange={v => set('bankAccount', v)} />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <IField label="Kontoinhaber" value={d('bankAccount')} onChange={v => set('bankAccount', v)} />
+                  <IField label="IBAN" value={d('bankIban')} onChange={v => set('bankIban', v)} />
+                  <IField label="BIC" value={d('bankBic')} onChange={v => set('bankBic', v)} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <IField label="Steuer-ID" value={d('taxId')} onChange={v => set('taxId', v)} />
                   <IField label="Steuernummer" value={d('taxNumber')} onChange={v => set('taxNumber', v)} />
-                </div>
-                <IField label="USt-IdNr." value={d('vatId')} onChange={v => set('vatId', v)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <IField label="Stundensatz (€)" value={dn('hourlyRate')} onChange={v => set('hourlyRate', parseFloat(v) || 0)} type="number" />
-                  <IField label="Tagessatz (€)" value={dn('dailyRate')} onChange={v => set('dailyRate', parseFloat(v) || 0)} type="number" />
+                  <IField label="USt-IdNr." value={d('vatId')} onChange={v => set('vatId', v)} />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
-              <>
-                <KV label="IBAN" value={contact.bankIban} />
-                <KV label="BIC" value={contact.bankBic} />
-                <KV label="Kontonummer" value={contact.bankAccount} />
-                <KV label="Steuer-ID" value={contact.taxId} />
-                <KV label="Steuernummer" value={contact.taxNumber} />
-                <KV label="USt-IdNr." value={contact.vatId} />
-                {(contact.hourlyRate > 0) && <KV label="Stundensatz" value={`${contact.hourlyRate} €`} />}
-                {(contact.dailyRate > 0) && <KV label="Tagessatz" value={`${contact.dailyRate} €`} />}
-                {!contact.bankIban && !contact.taxId && !(contact.hourlyRate > 0) && EMPTY()}
-              </>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                <div>
+                  <KV label="Kontoinhaber" value={contact.bankAccount} />
+                  <KV label="IBAN" value={contact.bankIban} />
+                  <KV label="BIC" value={contact.bankBic} />
+                </div>
+                <div>
+                  <KV label="Steuer-ID" value={contact.taxId} />
+                  <KV label="Steuernummer" value={contact.taxNumber} />
+                  <KV label="USt-IdNr." value={contact.vatId} />
+                </div>
+                {!contact.bankAccount && !contact.bankIban && !contact.taxId && !contact.taxNumber && (
+                  <div className="md:col-span-2">{EMPTY()}</div>
+                )}
+              </div>
             ) : null}
           </div>
         </div>
 
-        {/* ── Bemerkung ── */}
-        <div className="pt-card">
+        {/* ── 8. Bemerkung ── */}
+        <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
             <span className="pt-card-title"><FileText className="w-3.5 h-3.5 inline mr-1" />Bemerkung</span>
             {editBtn('bemerkung')}
@@ -432,9 +484,11 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                 {bar}
               </div>
             ) : contact ? (
-              contact.notes
-                ? <p className="text-sm text-gray-800 whitespace-pre-wrap">{contact.notes}</p>
-                : EMPTY('Keine Bemerkungen hinterlegt.')
+              <>
+                {contact.notes
+                  ? <p className="text-sm text-gray-800 whitespace-pre-wrap">{contact.notes}</p>
+                  : EMPTY()}
+              </>
             ) : null}
           </div>
         </div>
