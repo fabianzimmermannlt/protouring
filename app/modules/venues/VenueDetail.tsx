@@ -616,25 +616,6 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
 
       </div>
 
-      {/* Danger Zone */}
-      {isEditor && venue && (
-        <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-          <button
-            onClick={async () => {
-              if (!confirm(`Spielstätte "${venue.name}" wirklich löschen?`)) return
-              try {
-                await fetch(`${API_BASE}/api/venues/${venueId}`, { method: 'DELETE', headers: authHeaders() })
-                window.dispatchEvent(new CustomEvent('venue-deleted', { detail: { id: venueId } }))
-                history.pushState(null, '', '/?tab=venues')
-              } catch { alert('Löschen fehlgeschlagen') }
-            }}
-            className="btn btn-danger"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Spielstätte löschen
-          </button>
-        </div>
-      )}
-
       {/* Upload Modal */}
       {showUploadModal && (
         <div className="modal-overlay">

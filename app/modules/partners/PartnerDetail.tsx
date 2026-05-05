@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Pencil, Trash2, AlertCircle, Save, Loader2, Building2, MapPin, Phone } from 'lucide-react'
+import { Pencil, AlertCircle, Save, Loader2, Building2, MapPin, Phone } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
-  getPartner, updatePartner, deletePartner, type Partner, type PartnerFormData,
+  getPartner, updatePartner, type Partner, type PartnerFormData,
 } from '@/lib/api-client'
 
 function KV({ label, value }: { label: string; value?: string }) {
@@ -191,17 +191,6 @@ export function PartnerDetailContent({ partnerId }: { partnerId: string }) {
 
       </div>
 
-      {isEditor && partner && (
-        <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-          <button onClick={async () => {
-            if (!confirm(`Partner "${partner.companyName}" wirklich löschen?`)) return
-            try { await deletePartner(partnerId); window.dispatchEvent(new CustomEvent('partner-deleted', { detail: { id: partnerId } })); history.pushState(null, '', '/?tab=partners') }
-            catch { alert('Löschen fehlgeschlagen') }
-          }} className="btn btn-danger">
-            <Trash2 className="w-3.5 h-3.5" /> Partner löschen
-          </button>
-        </div>
-      )}
     </div>
   )
 }

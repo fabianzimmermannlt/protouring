@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Pencil, Trash2, AlertCircle, Save, Loader2, Building2, Clock, Coffee } from 'lucide-react'
+import { Pencil, AlertCircle, Save, Loader2, Building2, Clock, Coffee } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
-  getHotel, updateHotel, deleteHotel, type Hotel, type HotelFormData,
+  getHotel, updateHotel, type Hotel, type HotelFormData,
 } from '@/lib/api-client'
 
 function KV({ label, value }: { label: string; value?: string }) {
@@ -255,23 +255,6 @@ export function HotelDetailContent({ hotelId }: { hotelId: string }) {
 
       </div>
 
-      {isEditor && hotel && (
-        <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-          <button
-            onClick={async () => {
-              if (!confirm(`Hotel "${hotel.name}" wirklich löschen?`)) return
-              try {
-                await deleteHotel(hotelId)
-                window.dispatchEvent(new CustomEvent('hotel-deleted', { detail: { id: hotelId } }))
-                history.pushState(null, '', '/?tab=hotels')
-              } catch { alert('Löschen fehlgeschlagen') }
-            }}
-            className="btn btn-danger"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Hotel löschen
-          </button>
-        </div>
-      )}
     </div>
   )
 }

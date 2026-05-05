@@ -59,7 +59,7 @@ import {
   type Contact,
 } from '@/lib/api-client'
 import { parseCSV, col } from '@/lib/csvParser'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
@@ -139,7 +139,6 @@ export function L3Layout({
   children,
 }: L3LayoutProps) {
   const router = useRouter()
-  const pathname = usePathname()
   const { layout, setLayout } = useLayout()
   const t = useT()
   const { language, setLanguage } = useLanguage()
@@ -247,44 +246,85 @@ export function L3Layout({
   const [partnersList, setPartnersList] = useState<Partner[]>([])
   const [partnersSearch, setPartnersSearch] = useState('')
   const [partnerMenuOpenId, setPartnerMenuOpenId] = useState<string | null>(null)
-  const [activePartnerId, setActivePartnerId] = useState<string | null>(null)
+  const [activePartnerId, setActivePartnerId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/partners\/([^/]+)/)
+    return m?.[1] ?? null
+  })
 
   useEffect(() => {
     if (activeTab !== 'partners') return
     getPartners().then(setPartnersList).catch(() => {})
   }, [activeTab])
 
+  // Auto-select last / first partner when navigating to partners with no selection
+  useEffect(() => {
+    if (activeTab !== 'partners') return
+    if (partnersList.length === 0) return
+    if (activePartnerId) return
+    const lastId = localStorage.getItem('pt_partners_last_id')
+    const sorted = [...partnersList].sort((a, b) => (a.companyName ?? '').localeCompare(b.companyName ?? '', 'de'))
+    const target = (lastId && partnersList.find(p => p.id === lastId)) ? lastId : sorted[0].id
+    setActivePartnerId(target)
+    history.pushState(null, '', `/partners/${target}`)
+    window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: target } }))
+  }, [activeTab, partnersList, activePartnerId])
+
   // ── Hotels list ───────────────────────────────────────────────────────────
   const [hotelsList, setHotelsList] = useState<Hotel[]>([])
   const [hotelsSearch, setHotelsSearch] = useState('')
   const [hotelMenuOpenId, setHotelMenuOpenId] = useState<string | null>(null)
-  const [activeHotelId, setActiveHotelId] = useState<string | null>(null)
+  const [activeHotelId, setActiveHotelId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/hotels\/([^/]+)/)
+    return m?.[1] ?? null
+  })
 
   useEffect(() => {
     if (activeTab !== 'hotels') return
     getHotels().then(setHotelsList).catch(() => {})
   }, [activeTab])
 
+  // Auto-select last / first hotel when navigating to hotels with no selection
+  useEffect(() => {
+    if (activeTab !== 'hotels') return
+    if (hotelsList.length === 0) return
+    if (activeHotelId) return
+    const lastId = localStorage.getItem('pt_hotels_last_id')
+    const sorted = [...hotelsList].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
+    const target = (lastId && hotelsList.find(h => h.id === lastId)) ? lastId : sorted[0].id
+    setActiveHotelId(target)
+    history.pushState(null, '', `/hotels/${target}`)
+    window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: target } }))
+  }, [activeTab, hotelsList, activeHotelId])
+
   // ── Vehicles list ─────────────────────────────────────────────────────────
   const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([])
   const [vehiclesSearch, setVehiclesSearch] = useState('')
   const [vehicleMenuOpenId, setVehicleMenuOpenId] = useState<string | null>(null)
-  const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null)
+  const [activeVehicleId, setActiveVehicleId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const m = window.location.pathname.match(/\/vehicles\/([^/]+)/)
+    return m?.[1] ?? null
+  })
 
   useEffect(() => {
     if (activeTab !== 'vehicles') return
     getVehicles().then(setVehiclesList).catch(() => {})
   }, [activeTab])
 
-  // ── Sync active ID from URL ───────────────────────────────────────────────
+  // Auto-select last / first vehicle when navigating to vehicles with no selection
   useEffect(() => {
-    const partnerMatch = pathname.match(/^\/partners\/(.+)$/)
-    if (partnerMatch) { setActivePartnerId(partnerMatch[1]); return }
-    const hotelMatch = pathname.match(/^\/hotels\/(.+)$/)
-    if (hotelMatch) { setActiveHotelId(hotelMatch[1]); return }
-    const vehicleMatch = pathname.match(/^\/vehicles\/(.+)$/)
-    if (vehicleMatch) { setActiveVehicleId(vehicleMatch[1]); return }
-  }, [pathname])
+    if (activeTab !== 'vehicles') return
+    if (vehiclesList.length === 0) return
+    if (activeVehicleId) return
+    const lastId = localStorage.getItem('pt_vehicles_last_id')
+    const sorted = [...vehiclesList].sort((a, b) => (a.designation ?? '').localeCompare(b.designation ?? '', 'de'))
+    const target = (lastId && vehiclesList.find(v => v.id === lastId)) ? lastId : sorted[0].id
+    setActiveVehicleId(target)
+    history.pushState(null, '', `/vehicles/${target}`)
+    window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: target } }))
+  }, [activeTab, vehiclesList, activeVehicleId])
 
   // ── Venues list ───────────────────────────────────────────────────────────
   const [venuesList, setVenuesList] = useState<Venue[]>([])

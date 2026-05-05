@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Pencil, Trash2, AlertCircle, Save, Loader2, Truck, Users } from 'lucide-react'
+import { Pencil, AlertCircle, Save, Loader2, Truck, Users } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
-  getVehicle, updateVehicle, deleteVehicle, type Vehicle, type VehicleFormData,
+  getVehicle, updateVehicle, type Vehicle, type VehicleFormData,
 } from '@/lib/api-client'
 
 function KV({ label, value }: { label: string; value?: string }) {
@@ -255,23 +255,6 @@ export function VehicleDetailContent({ vehicleId }: { vehicleId: string }) {
 
       </div>
 
-      {isEditor && vehicle && (
-        <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-          <button
-            onClick={async () => {
-              if (!confirm(`Fahrzeug "${vehicle.designation}" wirklich löschen?`)) return
-              try {
-                await deleteVehicle(vehicleId)
-                window.dispatchEvent(new CustomEvent('vehicle-deleted', { detail: { id: vehicleId } }))
-                history.pushState(null, '', '/?tab=vehicles')
-              } catch { alert('Löschen fehlgeschlagen') }
-            }}
-            className="btn btn-danger"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> Fahrzeug löschen
-          </button>
-        </div>
-      )}
     </div>
   )
 }
