@@ -143,6 +143,10 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
 
       {/* Search */}
       <div className="flex-1 relative max-w-xl">
+        <form onSubmit={e => {
+          e.preventDefault()
+          if (results.length > 0) handleSelect(results[focused >= 0 ? focused : 0])
+        }}>
         <div className="relative flex items-center">
           <MagnifyingGlassIcon className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: '#6b7280' }} />
           <input
@@ -166,6 +170,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
             </button>
           )}
         </div>
+        </form>
 
         {/* Dropdown */}
         {open && results.length > 0 && (
