@@ -1397,7 +1397,7 @@ export function L3Layout({
 
   // Breadcrumb — translated
   const TAB_LABEL_KEYS: Record<string, string> = {
-    desk: t('nav.desk'), events: t('nav.advancing'),
+    desk: t('nav.desk'), events: t('nav.events'),
     contacts: t('nav.contacts'), venues: t('nav.venues'), partners: t('nav.partners'),
     hotels: t('nav.hotels'), vehicles: t('nav.vehicles'), equipment: t('nav.equipment'),
     settings: t('nav.settings'),
