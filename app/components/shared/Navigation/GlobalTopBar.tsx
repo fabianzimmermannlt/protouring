@@ -77,7 +77,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
     if (!open || results.length === 0) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setFocused(f => Math.min(f + 1, results.length - 1)) }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setFocused(f => Math.max(f - 1, 0)) }
-    if (e.key === 'Enter' && focused >= 0) { e.preventDefault(); handleSelect(results[focused]) }
+    if (e.key === 'Enter') { e.preventDefault(); handleSelect(results[focused >= 0 ? focused : 0]) }
     if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur() }
   }
 
