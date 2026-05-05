@@ -533,6 +533,8 @@ export function L3Layout({
       setTermineList(prev => [newTermin, ...prev])
       setActiveTerminId(newTermin.id)
       localStorage.setItem('pt_events_last_id', String(newTermin.id))
+      // Erst das neue Objekt in TermineModule einspeisen, dann navigieren
+      window.dispatchEvent(new CustomEvent('termin-added', { detail: { termin: newTermin } }))
       window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: newTermin.id, view: 'details2' } }))
     } catch (e) {
       console.error('Failed to create event', e)

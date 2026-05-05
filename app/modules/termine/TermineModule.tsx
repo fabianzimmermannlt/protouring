@@ -1184,11 +1184,24 @@ export default function TerminePage() {
     return () => window.removeEventListener('termine-listview-changed', handler)
   }, [])
 
-  // Sidebar "+" Button → neues Event öffnen
+  // Sidebar "+" Button → neues Event öffnen (Legacy, nicht mehr genutzt)
   useEffect(() => {
     const handler = () => { setEditingTermin(null); setIsModalOpen(true) }
     window.addEventListener('open-new-termin', handler)
     return () => window.removeEventListener('open-new-termin', handler)
+  }, [])
+
+  // Neues Event wurde direkt per API erstellt (kein Modal) → in lokalen State einfügen
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { termin } = (e as CustomEvent<{ termin: Termin }>).detail
+      setTermine(prev => {
+        if (prev.find(t => t.id === termin.id)) return prev
+        return [termin, ...prev]
+      })
+    }
+    window.addEventListener('termin-added', handler)
+    return () => window.removeEventListener('termin-added', handler)
   }, [])
 
   // New/edit modal
