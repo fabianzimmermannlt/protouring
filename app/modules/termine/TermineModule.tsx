@@ -1047,14 +1047,6 @@ export function TerminDetail2({
         </div>
       </section>
 
-      {isAdmin && (
-        <div className="pt-4 border-t border-gray-200 mt-2">
-          <button onClick={handleDeleteTermin} disabled={deletingTermin} className="btn btn-danger text-xs">
-            {deletingTermin ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
-            Termin löschen
-          </button>
-        </div>
-      )}
     </div>
   )
 }

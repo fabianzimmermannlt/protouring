@@ -42,6 +42,7 @@ import {
   deleteVehicle,
   getContacts,
   deleteContact,
+  deleteTermin,
   logout,
   CURRENT_TENANT_KEY,
   getTenantArtistSettings,
@@ -161,6 +162,7 @@ export function L3Layout({
   const [activeTenantSlug, setActiveTenantSlug] = useState<string | null>(null)
   const [termineList, setTermineList] = useState<Termin[]>([])
   const [activeTerminId, setActiveTerminId] = useState<number | null>(null)
+  const [terminMenuOpenId, setTerminMenuOpenId] = useState<number | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -791,57 +793,90 @@ export function L3Layout({
       return (
         <div className="flex flex-col h-full">
           {/* Suche + Neu */}
-          {isEditor && (
-            <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-200 flex-shrink-0">
-              <input
-                type="text"
-                value={advancingSearch}
-                onChange={e => setAdvancingSearch(e.target.value)}
-                placeholder="Suchen…"
-                className="flex-1 bg-gray-100 text-gray-700 placeholder-gray-400 text-xs rounded px-2 py-1 outline-none border border-gray-200 focus:border-gray-300"
-              />
+          <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-200 flex-shrink-0">
+            <input
+              type="text"
+              value={advancingSearch}
+              onChange={e => setAdvancingSearch(e.target.value)}
+              placeholder="Suchen…"
+              className="flex-1 bg-gray-100 text-gray-700 placeholder-gray-400 text-xs rounded px-2 py-1 outline-none border border-gray-200 focus:border-gray-300"
+            />
+            {isEditor && (
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
-                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-gray-900 transition-colors text-sm font-bold"
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
                 title="Neues Event"
               >+</button>
-            </div>
-          )}
-          <div className="flex-1 overflow-y-auto py-1 scrollbar-light">
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setTerminMenuOpenId(null)}>
             {allSorted.length === 0 ? (
               <p className="px-3 py-4 text-xs text-gray-600 text-center">{t('appointments.panel.empty')}</p>
             ) : allSorted.map(item => {
               const isActive = item.id === activeTerminId
+              const menuOpen = terminMenuOpenId === item.id
               const dateStr = new Date(item.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
               const locationLabel = item.venueName || item.city
               const label = item.showTitleAsHeader ? item.title : (locationLabel || item.title || '–')
               const isPast = item.date < today
 
               return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTerminId(item.id)
-                    localStorage.setItem('pt_events_last_id', String(item.id))
-                    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
-                  }}
-                  className={`w-full text-left px-3 py-2 transition-colors border-l-2 ${
-                    isActive ? 'border-blue-500 bg-gray-200' : 'border-transparent hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
-                    {item.art && (
-                      <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-200 text-gray-400 font-medium">{item.art}</span>
+                <div key={item.id} className={`group relative flex items-center border-l-2 transition-colors ${isActive ? 'border-blue-500 bg-gray-200' : 'border-transparent hover:bg-gray-100'}`}>
+                  <button
+                    onClick={() => {
+                      setActiveTerminId(item.id)
+                      setTerminMenuOpenId(null)
+                      localStorage.setItem('pt_events_last_id', String(item.id))
+                      window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: item.id, view: 'details2' } }))
+                    }}
+                    className="flex-1 text-left px-3 py-2 min-w-0"
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className={`text-[11px] leading-none ${isPast ? 'text-gray-600' : 'text-gray-400'}`}>{dateStr}</p>
+                      {item.art && (
+                        <span className="text-[9px] leading-none px-1 py-0.5 rounded bg-gray-200 text-gray-400 font-medium">{item.art}</span>
+                      )}
+                    </div>
+                    <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : isPast ? 'text-gray-500' : 'text-gray-700'}`}>
+                      {label}
+                    </p>
+                    {item.city && item.venueName && (
+                      <p className="text-[10px] text-gray-500 truncate">{item.city}</p>
                     )}
-                  </div>
-                  <p className={`text-xs leading-snug truncate ${isActive ? 'text-gray-900 font-medium' : isPast ? 'text-gray-500' : 'text-gray-700'}`}>
-                    {label}
-                  </p>
-                  {item.city && item.venueName && (
-                    <p className="text-[10px] text-gray-500 truncate">{item.city}</p>
+                  </button>
+                  {isEditor && (
+                    <div className="relative flex-shrink-0 pr-1">
+                      <button
+                        onClick={e => { e.stopPropagation(); setTerminMenuOpenId(menuOpen ? null : item.id) }}
+                        className={`p-1 rounded transition-all text-gray-500 hover:text-gray-900 hover:bg-gray-200 ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <EllipsisHorizontalIcon className="w-4 h-4" />
+                      </button>
+                      {menuOpen && (
+                        <div className="absolute right-0 top-full mt-0.5 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={async () => {
+                              setTerminMenuOpenId(null)
+                              if (!confirm(`Event „${label}" wirklich löschen?`)) return
+                              try {
+                                await deleteTermin(item.id)
+                                setTermineList(prev => prev.filter(x => x.id !== item.id))
+                                if (activeTerminId === item.id) {
+                                  setActiveTerminId(null)
+                                  localStorage.removeItem('pt_events_last_id')
+                                  window.dispatchEvent(new CustomEvent('advancing-go-to-list'))
+                                }
+                              } catch { /* silent */ }
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-gray-100 hover:text-red-600 transition-colors"
+                          >
+                            Event löschen
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
