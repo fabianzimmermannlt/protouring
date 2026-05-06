@@ -625,8 +625,12 @@ export function L3Layout({
       const lastId = localStorage.getItem('pt_events_last_id')
       if (lastId) {
         const numId = parseInt(lastId, 10)
+        setActiveTerminId(numId)
+        setTermineInDetail(true)
         history.pushState(null, '', `/?tab=events&id=${lastId}&view=details2`)
         window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: numId, view: 'details2' } }))
+      } else {
+        setTermineInDetail(false)
       }
       setShowUserMenu(false)
       return
@@ -1593,6 +1597,7 @@ export function L3Layout({
         // URL setzen damit TermineModule beim Mount direkt die richtige ID liest
         history.pushState(null, '', `/?tab=events&id=${id}&view=details2`)
         setActiveTerminId(id)
+        setTermineInDetail(true)
         localStorage.setItem('pt_events_last_id', String(id))
         onTabChange('events')
         // Sofort dispatchen (wie Sidebar-Click) — Modul ist bereits gemountet wenn

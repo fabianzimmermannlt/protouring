@@ -1158,9 +1158,11 @@ export default function TerminePage() {
   })
   const [listView, setListView] = useState<'list' | 'calendar'>('list')
 
-  // Notify Navigation: we are in list mode (only when no termin selected)
+  // Notify Navigation about current view state on mount
   useEffect(() => {
-    if (!selectedTerminId) {
+    if (selectedTerminId) {
+      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: true, view: selectedView } }))
+    } else {
       window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
