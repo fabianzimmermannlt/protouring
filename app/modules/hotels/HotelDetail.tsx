@@ -116,6 +116,7 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
       setHotel(updated)
       setInlineForm({ ...updated as any })
       setEditingSection(null)
+      window.dispatchEvent(new CustomEvent('hotel-updated', { detail: updated }))
     } catch (e) {
       setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
     } finally {

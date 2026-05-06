@@ -287,6 +287,15 @@ export function L3Layout({
     getPartners().then(setPartnersList).catch(() => {})
   }, [activeTab])
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const updated = (e as CustomEvent).detail
+      if (updated?.id) setPartnersList(prev => prev.map(p => p.id === updated.id ? updated : p))
+    }
+    window.addEventListener('partner-updated', handler)
+    return () => window.removeEventListener('partner-updated', handler)
+  }, [])
+
   // Auto-select last / first partner when navigating to partners with no selection
   useEffect(() => {
     if (activeTab !== 'partners') return
@@ -314,6 +323,15 @@ export function L3Layout({
     if (activeTab !== 'hotels') return
     getHotels().then(setHotelsList).catch(() => {})
   }, [activeTab])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const updated = (e as CustomEvent).detail
+      if (updated?.id) setHotelsList(prev => prev.map(h => h.id === updated.id ? updated : h))
+    }
+    window.addEventListener('hotel-updated', handler)
+    return () => window.removeEventListener('hotel-updated', handler)
+  }, [])
 
   // Auto-select last / first hotel when navigating to hotels with no selection
   useEffect(() => {
@@ -393,6 +411,15 @@ export function L3Layout({
     if (activeTab !== 'venues') return
     getVenues().then(v => setVenuesList(v)).catch(() => {})
   }, [activeTab])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const updated = (e as CustomEvent).detail
+      if (updated?.id) setVenuesList(prev => prev.map(v => String(v.id) === String(updated.id) ? updated : v))
+    }
+    window.addEventListener('venue-updated', handler)
+    return () => window.removeEventListener('venue-updated', handler)
+  }, [])
 
   useEffect(() => {
     if (activeTab !== 'venues') return

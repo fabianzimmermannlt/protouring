@@ -112,6 +112,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
     try {
       const updated = await updatePartner(partnerId, inlineForm as unknown as PartnerFormData)
       setPartner(updated); setInlineForm({ ...updated as any }); setEditingSection(null)
+      window.dispatchEvent(new CustomEvent('partner-updated', { detail: updated }))
     } catch (e) {
       setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
     } finally { setSavingInline(false) }

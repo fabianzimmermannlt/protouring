@@ -321,6 +321,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
       setVenue(data.venue)
       setInlineForm({ ...data.venue })
       setEditingSection(null)
+      window.dispatchEvent(new CustomEvent('venue-updated', { detail: data.venue }))
     } catch (e) {
       setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
     } finally {
@@ -674,7 +675,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         <VenueModal
           venue={venue}
           onClose={() => setEditModalOpen(false)}
-          onSaved={updated => { setVenue(updated); setEditModalOpen(false) }}
+          onSaved={updated => { setVenue(updated); setEditModalOpen(false); window.dispatchEvent(new CustomEvent('venue-updated', { detail: updated })) }}
           onDeleted={() => { window.location.href = '/?tab=venues' }}
         />
       )}
