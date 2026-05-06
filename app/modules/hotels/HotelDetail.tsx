@@ -6,7 +6,7 @@ import {
   isEditorRole, getEffectiveRole,
   getHotel, updateHotel, type Hotel, type HotelFormData,
 } from '@/lib/api-client'
-import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -150,10 +150,14 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'allgemein' ? (
               <div className="space-y-2">
-                <IField label="Name *" value={inlineForm.name ?? ''} onChange={v => iF('name', v)} />
-                <AddressAutocomplete
-                  onSelect={a => setInlineForm(prev => ({
+                <NameAddressAutocomplete
+                  label="Name *"
+                  variant="inline"
+                  value={inlineForm.name ?? ''}
+                  onChange={v => iF('name', v)}
+                  onAddressSelect={a => setInlineForm(prev => ({
                     ...prev,
+                    ...(a.name ? { name: a.name } : {}),
                     ...(a.street ? { street: a.street } : {}),
                     ...(a.postalCode ? { postalCode: a.postalCode } : {}),
                     ...(a.city ? { city: a.city } : {}),

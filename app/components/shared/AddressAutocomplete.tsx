@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Search, Loader2, MapPin } from 'lucide-react'
+import { MapPin, Loader2 } from 'lucide-react'
 
 export interface AddressResult {
+  name?: string
   street: string
   postalCode: string
   city: string
@@ -13,91 +14,109 @@ export interface AddressResult {
   longitude?: string
 }
 
-interface NominatimResult {
-  place_id: number
-  display_name: string
-  lat: string
-  lon: string
-  address: {
-    road?: string
-    house_number?: string
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] }
+  properties: {
+    name?: string
+    street?: string
+    housenumber?: string
     postcode?: string
     city?: string
     town?: string
     village?: string
-    municipality?: string
-    county?: string
     state?: string
     country?: string
   }
 }
 
-interface AddressAutocompleteProps {
-  onSelect: (addr: Partial<AddressResult>) => void
-  withLatLon?: boolean
+interface NameAddressAutocompleteProps {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  onAddressSelect: (result: AddressResult) => void
   placeholder?: string
-  className?: string
+  withLatLon?: boolean
+  /** 'modal' = form-label / form-input classes; 'inline' = compact inline-edit style */
+  variant?: 'modal' | 'inline'
+  autoFocus?: boolean
 }
 
-export function AddressAutocomplete({
-  onSelect,
+export function NameAddressAutocomplete({
+  label,
+  value,
+  onChange,
+  onAddressSelect,
+  placeholder = '',
   withLatLon = false,
-  placeholder = 'Adresse oder Ort suchen…',
-  className = '',
-}: AddressAutocompleteProps) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<NominatimResult[]>([])
+  variant = 'inline',
+  autoFocus = false,
+}: NameAddressAutocompleteProps) {
+  const [suggestions, setSuggestions] = useState<PhotonFeature[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const search = useCallback(async (q: string) => {
-    if (q.trim().length < 3) { setResults([]); setOpen(false); return }
+    if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
     setLoading(true)
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=6&accept-language=de`
-      const res = await fetch(url, {
-        headers: { 'Accept-Language': 'de' },
-      })
-      const data: NominatimResult[] = await res.json()
-      setResults(data)
-      setOpen(data.length > 0)
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=de`
+      const res = await fetch(url)
+      const data = await res.json()
+      const features: PhotonFeature[] = data.features ?? []
+      setSuggestions(features)
+      setOpen(features.length > 0)
     } catch {
-      setResults([])
+      setSuggestions([])
     } finally {
       setLoading(false)
     }
   }, [])
 
   const handleChange = (val: string) => {
-    setQuery(val)
+    onChange(val)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => search(val), 400)
+    debounceRef.current = setTimeout(() => search(val), 350)
   }
 
-  const handleSelect = (r: NominatimResult) => {
-    const a = r.address
-    const city = a.city || a.town || a.village || a.municipality || a.county || ''
-    const street = [a.road, a.house_number].filter(Boolean).join(' ')
-    const result: Partial<AddressResult> = {
+  const handleSelect = (f: PhotonFeature) => {
+    const p = f.properties
+    const city = p.city || p.town || p.village || ''
+    const street = [p.street, p.housenumber].filter(Boolean).join(' ')
+    const name = p.name || ''
+
+    if (name) onChange(name)
+
+    onAddressSelect({
+      name,
       street,
-      postalCode: a.postcode || '',
+      postalCode: p.postcode || '',
       city,
-      state: a.state || '',
-      country: a.country || '',
-    }
-    if (withLatLon) {
-      result.latitude = r.lat
-      result.longitude = r.lon
-    }
-    onSelect(result)
-    setQuery('')
-    setResults([])
+      state: p.state || '',
+      country: p.country || '',
+      ...(withLatLon ? {
+        latitude: String(f.geometry.coordinates[1]),
+        longitude: String(f.geometry.coordinates[0]),
+      } : {}),
+    })
+
+    setSuggestions([])
     setOpen(false)
   }
 
-  // Close on outside click
+  const formatSuggestion = (f: PhotonFeature) => {
+    const p = f.properties
+    const parts = [
+      p.name,
+      p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street,
+      p.postcode,
+      p.city || p.town || p.village,
+      p.country,
+    ].filter(Boolean)
+    return parts.join(', ')
+  }
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -108,31 +127,41 @@ export function AddressAutocomplete({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const labelClass = variant === 'modal'
+    ? 'form-label'
+    : 'block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5'
+
+  const inputClass = variant === 'modal'
+    ? 'form-input w-full'
+    : 'w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white'
+
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
-      <div className="relative flex items-center">
-        <Search className="absolute left-2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+    <div ref={containerRef} className="relative">
+      <label className={labelClass}>{label}</label>
+      <div className="relative">
         <input
           type="text"
-          value={query}
+          value={value}
           onChange={e => handleChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full text-sm border border-blue-200 bg-blue-50 rounded px-2 py-1 pl-7 focus:outline-none focus:border-blue-400 focus:bg-white placeholder:text-blue-300"
-          onFocus={() => results.length > 0 && setOpen(true)}
+          autoFocus={autoFocus}
+          className={inputClass}
         />
-        {loading && <Loader2 className="absolute right-2 w-3.5 h-3.5 text-blue-400 animate-spin" />}
+        {loading && (
+          <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-400 animate-spin pointer-events-none" />
+        )}
       </div>
 
-      {open && results.length > 0 && (
+      {open && suggestions.length > 0 && (
         <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm">
-          {results.map(r => (
+          {suggestions.map((f, i) => (
             <li
-              key={r.place_id}
+              key={i}
               className="flex items-start gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0"
-              onMouseDown={e => { e.preventDefault(); handleSelect(r) }}
+              onMouseDown={e => { e.preventDefault(); handleSelect(f) }}
             >
               <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-              <span className="leading-snug text-gray-700">{r.display_name}</span>
+              <span className="leading-snug text-gray-700">{formatSuggestion(f)}</span>
             </li>
           ))}
         </ul>

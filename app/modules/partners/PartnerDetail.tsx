@@ -6,7 +6,7 @@ import {
   isEditorRole, getEffectiveRole,
   getPartner, updatePartner, type Partner, type PartnerFormData,
 } from '@/lib/api-client'
-import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -135,7 +135,21 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
             {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'allgemein' ? (
               <div className="space-y-2">
-                <IField label="Firma *" value={inlineForm.companyName ?? ''} onChange={v => iF('companyName', v)} />
+                <NameAddressAutocomplete
+                  label="Firma *"
+                  variant="inline"
+                  value={inlineForm.companyName ?? ''}
+                  onChange={v => iF('companyName', v)}
+                  onAddressSelect={a => setInlineForm(prev => ({
+                    ...prev,
+                    ...(a.name ? { companyName: a.name } : {}),
+                    ...(a.street ? { street: a.street } : {}),
+                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                    ...(a.city ? { city: a.city } : {}),
+                    ...(a.state ? { state: a.state } : {}),
+                    ...(a.country ? { country: a.country } : {}),
+                  }))}
+                />
                 <ISelect label="Art" value={inlineForm.type ?? ''} onChange={v => iF('type', v)} options={PARTNER_TYPES} />
                 <IField label="Ansprechpartner" value={inlineForm.contactPerson ?? ''} onChange={v => iF('contactPerson', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
@@ -160,8 +174,13 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'adresse' ? (
               <div className="space-y-2">
-                <AddressAutocomplete
-                  onSelect={a => setInlineForm(prev => ({
+                <NameAddressAutocomplete
+                  label="Straße"
+                  variant="inline"
+                  placeholder="Straße oder Ort suchen…"
+                  value={inlineForm.street ?? ''}
+                  onChange={v => iF('street', v)}
+                  onAddressSelect={a => setInlineForm(prev => ({
                     ...prev,
                     ...(a.street ? { street: a.street } : {}),
                     ...(a.postalCode ? { postalCode: a.postalCode } : {}),
@@ -170,7 +189,6 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
                     ...(a.country ? { country: a.country } : {}),
                   }))}
                 />
-                <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
                   <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
                   <IField label="Ort" value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />

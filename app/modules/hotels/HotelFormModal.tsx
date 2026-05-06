@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Trash2, Save, X } from 'lucide-react'
 import { createHotel, updateHotel, deleteHotel, type Hotel, type HotelFormData } from '@/lib/api-client'
-import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 const EMPTY_FORM: HotelFormData = {
   name: '',
@@ -97,19 +97,14 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Linke Spalte */}
             <div className="space-y-3">
-              <div>
-                <label className="form-label">Name des Hotels</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => set({ name: e.target.value })}
-                  className="form-input"
-                  placeholder="Hotelname"
-                />
-              </div>
-
-              <AddressAutocomplete
-                onSelect={a => set({
+              <NameAddressAutocomplete
+                label="Name des Hotels"
+                variant="modal"
+                value={formData.name}
+                onChange={v => set({ name: v })}
+                placeholder="Hotelname"
+                onAddressSelect={a => set({
+                  ...(a.name ? { name: a.name } : {}),
                   ...(a.street ? { street: a.street } : {}),
                   ...(a.postalCode ? { postalCode: a.postalCode } : {}),
                   ...(a.city ? { city: a.city } : {}),

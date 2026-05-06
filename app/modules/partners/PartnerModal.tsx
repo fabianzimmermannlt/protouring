@@ -11,7 +11,7 @@ import {
   type PartnerFormData,
   type PartnerType,
 } from '@/lib/api-client'
-import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 const EMPTY: PartnerFormData = {
   type: '', companyName: '', street: '', postalCode: '', city: '', state: '',
@@ -136,21 +136,16 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
                 </select>
               </div>
 
-              <div>
-                <label className="form-label">Firmenname *</label>
-                <input
-                  type="text"
-                  value={form.companyName}
-                  onChange={e => f('companyName', e.target.value)}
-                  className="form-input"
-                  autoFocus
-                  placeholder="z.B. Jolly Roger Concerts"
-                />
-              </div>
-
-              <AddressAutocomplete
-                onSelect={a => setForm(prev => ({
+              <NameAddressAutocomplete
+                label="Firmenname *"
+                variant="modal"
+                autoFocus
+                value={form.companyName}
+                onChange={v => f('companyName', v)}
+                placeholder="z.B. Jolly Roger Concerts"
+                onAddressSelect={a => setForm(prev => ({
                   ...prev,
+                  ...(a.name ? { companyName: a.name } : {}),
                   ...(a.street ? { street: a.street } : {}),
                   ...(a.postalCode ? { postalCode: a.postalCode } : {}),
                   ...(a.city ? { city: a.city } : {}),
