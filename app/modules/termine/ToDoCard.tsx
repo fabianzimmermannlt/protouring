@@ -206,7 +206,7 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
       getTodos(terminId).catch(() => []).then(setTodos),
     ]
     if (canAssign) {
-      fetches.push(getContacts().catch(() => []).then(setContacts))
+      fetches.push(getContacts().catch(() => []).then(cs => setContacts(cs.filter(c => c.contactType !== 'artist'))))
     }
     if (!canSeeAll) {
       fetches.push(getMyContact().then(c => setMyContactId(Number(c.id))).catch(() => {}))

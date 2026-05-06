@@ -213,6 +213,7 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                   )}
                   {role && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{role}</span>}
                   {contact!.invitePending && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Einladung ausstehend</span>}
+                  {contact!.contactType === 'artist' && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Artist</span>}
                   {contact!.contactType === 'guest' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Manuell</span>}
                 </div>
               </>

@@ -2508,7 +2508,7 @@ app.get('/api/contacts', authenticateToken, requireTenant, async (req, res) => {
       FROM contacts c
       LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
       LEFT JOIN users u ON u.id = c.user_id
-      WHERE c.tenant_id = ? AND (c.contact_type IS NULL OR c.contact_type != 'artist')
+      WHERE c.tenant_id = ?
         AND (u.is_superadmin IS NULL OR u.is_superadmin = 0)
       ORDER BY c.last_name, c.first_name
     `, [req.tenant.id]);

@@ -440,6 +440,7 @@ export function L3Layout({
   // ── Contacts list ─────────────────────────────────────────────────────────
   const [contactsList, setContactsList] = useState<Contact[]>([])
   const [contactsSearch, setContactsSearch] = useState('')
+  const [contactsFilter, setContactsFilter] = useState<'all' | 'crew' | 'artist'>('all')
   const [contactsMenuOpenId, setContactsMenuOpenId] = useState<string | null>(null)
   const [contactsPlusOpen, setContactsPlusOpen] = useState(false)
   const [activeContactId, setActiveContactId] = useState<string | null>(() => {
@@ -978,6 +979,11 @@ export function L3Layout({
     if (activeTab === 'contacts') {
       const q = contactsSearch.toLowerCase()
       const filtered = contactsList
+        .filter(c => {
+          if (contactsFilter === 'artist') return c.contactType === 'artist'
+          if (contactsFilter === 'crew') return c.contactType !== 'artist'
+          return true
+        })
         .filter(c => !q || `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) || (c.function1 || '').toLowerCase().includes(q))
         .sort((a, b) => (a.lastName ?? '').localeCompare(b.lastName ?? '', 'de') || (a.firstName ?? '').localeCompare(b.firstName ?? '', 'de'))
 
@@ -1024,6 +1030,23 @@ export function L3Layout({
             )}
           </div>
 
+          {/* Filter-Chips */}
+          <div className="px-2 pb-1.5 pt-0.5 flex gap-1 flex-shrink-0">
+            {(['all', 'crew', 'artist'] as const).map(f => (
+              <button
+                key={f}
+                onClick={e => { e.stopPropagation(); setContactsFilter(f) }}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  contactsFilter === f
+                    ? f === 'artist' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {f === 'all' ? 'Alle' : f === 'crew' ? 'Crew' : 'Artist'}
+              </button>
+            ))}
+          </div>
+
           {/* Liste */}
           <div className="flex-1 overflow-y-auto py-1 scrollbar-light">
             {filtered.length === 0 ? (
@@ -1035,6 +1058,7 @@ export function L3Layout({
               const menuOpen = contactsMenuOpenId === cid
               const fn = [c.function1, c.function2, c.function3].filter(Boolean).join(' · ')
               const isActiveContact = activeContactId === cid
+              const isArtist = c.contactType === 'artist'
               return (
                 <div
                   key={c.id}
@@ -1054,6 +1078,9 @@ export function L3Layout({
                       <p className={`text-xs leading-snug truncate font-medium ${isActiveContact ? 'text-gray-900' : 'text-gray-700'}`}>
                         {c.lastName}{c.firstName ? `, ${c.firstName}` : ''}
                       </p>
+                      {isArtist && (
+                        <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-purple-100 text-purple-600 leading-none">Artist</span>
+                      )}
                       {c.contactType === 'guest' && (
                         <span className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded bg-gray-200 text-gray-400 leading-none">manuell</span>
                       )}
