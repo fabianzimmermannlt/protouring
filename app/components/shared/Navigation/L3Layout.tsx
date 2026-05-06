@@ -627,6 +627,7 @@ export function L3Layout({
         const numId = parseInt(lastId, 10)
         setActiveTerminId(numId)
         setTermineInDetail(true)
+        setAdvancingView('details2')
         history.pushState(null, '', `/?tab=events&id=${lastId}&view=details2`)
         window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: numId, view: 'details2' } }))
       } else {
