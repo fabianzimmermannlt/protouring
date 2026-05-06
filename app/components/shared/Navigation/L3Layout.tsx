@@ -66,6 +66,12 @@ import {
 import { parseCSV, col } from '@/lib/csvParser'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
+import { QuickCreateEventModal } from '@/app/components/shared/modals/QuickCreateEventModal'
+import { QuickCreateVenueModal } from '@/app/components/shared/modals/QuickCreateVenueModal'
+import { QuickCreateHotelModal } from '@/app/components/shared/modals/QuickCreateHotelModal'
+import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
+import { QuickCreateVehicleModal } from '@/app/components/shared/modals/QuickCreateVehicleModal'
+import { QuickCreateContactModal } from '@/app/components/shared/modals/QuickCreateContactModal'
 import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import GlobalTopBar from './GlobalTopBar'
@@ -377,21 +383,12 @@ export function L3Layout({
   // ── Venues list ───────────────────────────────────────────────────────────
   const [venuesList, setVenuesList] = useState<Venue[]>([])
   const [venuesSearch, setVenuesSearch] = useState('')
-  const [venueInlineNew, setVenueInlineNew] = useState(false)
-  const [venueNewName, setVenueNewName] = useState('')
-  const [venueCreating, setVenueCreating] = useState(false)
-
-  const [partnerInlineNew, setPartnerInlineNew] = useState(false)
-  const [partnerNewName, setPartnerNewName] = useState('')
-  const [partnerCreating, setPartnerCreating] = useState(false)
-
-  const [hotelInlineNew, setHotelInlineNew] = useState(false)
-  const [hotelNewName, setHotelNewName] = useState('')
-  const [hotelCreating, setHotelCreating] = useState(false)
-
-  const [vehicleInlineNew, setVehicleInlineNew] = useState(false)
-  const [vehicleNewName, setVehicleNewName] = useState('')
-  const [vehicleCreating, setVehicleCreating] = useState(false)
+  const [showCreateEvent, setShowCreateEvent] = useState(false)
+  const [showCreateVenue, setShowCreateVenue] = useState(false)
+  const [showCreateHotel, setShowCreateHotel] = useState(false)
+  const [showCreatePartner, setShowCreatePartner] = useState(false)
+  const [showCreateVehicle, setShowCreateVehicle] = useState(false)
+  const [showCreateContact, setShowCreateContact] = useState(false)
   const [venueMenuOpenId, setVenueMenuOpenId] = useState<string | null>(null)
   const [venuesCsvMenuOpen, setVenuesCsvMenuOpen] = useState(false)
   const venuesCsvInputRef = useRef<HTMLInputElement>(null)
@@ -572,19 +569,13 @@ export function L3Layout({
     })
   }
 
-  const handleCreateNewTermin = async () => {
-    const today = new Date().toISOString().slice(0, 10)
-    try {
-      const newTermin = await createTermin({ date: today, title: 'Neues Event' })
-      setTermineList(prev => [newTermin, ...prev])
-      setActiveTerminId(newTermin.id)
-      localStorage.setItem('pt_events_last_id', String(newTermin.id))
-      // Erst das neue Objekt in TermineModule einspeisen, dann navigieren
-      window.dispatchEvent(new CustomEvent('termin-added', { detail: { termin: newTermin } }))
-      window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: newTermin.id, view: 'details2' } }))
-    } catch (e) {
-      console.error('Failed to create event', e)
-    }
+  const handleTerminCreated = (newTermin: Termin) => {
+    setTermineList(prev => [newTermin, ...prev])
+    setActiveTerminId(newTermin.id)
+    setTermineInDetail(true)
+    localStorage.setItem('pt_events_last_id', String(newTermin.id))
+    window.dispatchEvent(new CustomEvent('termin-added', { detail: { termin: newTermin } }))
+    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: newTermin.id, view: 'details2' } }))
   }
 
   const handleNav = (id: string) => {
@@ -608,52 +599,40 @@ export function L3Layout({
     setShowUserMenu(false)
   }
 
-  const handleCreateNewPartner = async () => {
-    if (!partnerNewName.trim() || partnerCreating) return
-    setPartnerCreating(true)
-    try {
-      const created = await createPartner({ companyName: partnerNewName.trim() } as any)
-      setPartnersList(prev => [created, ...prev])
-      setActivePartnerId(created.id)
-      setPartnerInlineNew(false)
-      setPartnerNewName('')
-      localStorage.setItem('pt_partners_last_id', created.id)
-      history.pushState(null, '', `/partners/${created.id}`)
-      window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: created.id } }))
-    } catch (e) { console.error('Failed to create partner', e) }
-    finally { setPartnerCreating(false) }
+  const handlePartnerCreated = (created: Partner) => {
+    setPartnersList(prev => [created, ...prev])
+    setActivePartnerId(created.id)
+    localStorage.setItem('pt_partners_last_id', created.id)
+    history.pushState(null, '', `/partners/${created.id}`)
+    window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: created.id } }))
   }
 
-  const handleCreateNewHotel = async () => {
-    if (!hotelNewName.trim() || hotelCreating) return
-    setHotelCreating(true)
-    try {
-      const created = await createHotel({ name: hotelNewName.trim() } as any)
-      setHotelsList(prev => [created, ...prev])
-      setActiveHotelId(created.id)
-      setHotelInlineNew(false)
-      setHotelNewName('')
-      localStorage.setItem('pt_hotels_last_id', created.id)
-      history.pushState(null, '', `/hotels/${created.id}`)
-      window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: created.id } }))
-    } catch (e) { console.error('Failed to create hotel', e) }
-    finally { setHotelCreating(false) }
+  const handleHotelCreated = (created: Hotel) => {
+    setHotelsList(prev => [created, ...prev])
+    setActiveHotelId(created.id)
+    localStorage.setItem('pt_hotels_last_id', created.id)
+    history.pushState(null, '', `/hotels/${created.id}`)
+    window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: created.id } }))
   }
 
-  const handleCreateNewVehicle = async () => {
-    if (!vehicleNewName.trim() || vehicleCreating) return
-    setVehicleCreating(true)
-    try {
-      const created = await createVehicle({ designation: vehicleNewName.trim() } as any)
-      setVehiclesList(prev => [created, ...prev])
-      setActiveVehicleId(created.id)
-      setVehicleInlineNew(false)
-      setVehicleNewName('')
-      localStorage.setItem('pt_vehicles_last_id', created.id)
-      history.pushState(null, '', `/vehicles/${created.id}`)
-      window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: created.id } }))
-    } catch (e) { console.error('Failed to create vehicle', e) }
-    finally { setVehicleCreating(false) }
+  const handleVehicleCreated = (created: Vehicle) => {
+    setVehiclesList(prev => [created, ...prev])
+    setActiveVehicleId(created.id)
+    localStorage.setItem('pt_vehicles_last_id', created.id)
+    history.pushState(null, '', `/vehicles/${created.id}`)
+    window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: created.id } }))
+  }
+
+  const handleContactCreated = (created: Contact) => {
+    window.dispatchEvent(new CustomEvent('contact-created', { detail: created }))
+  }
+
+  const handleVenueCreated = (created: Venue) => {
+    setVenuesList(prev => [created, ...prev])
+    setActiveVenueId(String(created.id))
+    localStorage.setItem('pt_venues_last_id', String(created.id))
+    history.pushState(null, '', `/venues/${created.id}`)
+    window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: String(created.id) } }))
   }
 
   const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string }) => {
@@ -913,7 +892,7 @@ export function L3Layout({
             />
             {isEditor && (
               <button
-                onClick={handleCreateNewTermin}
+                onClick={() => setShowCreateEvent(true)}
                 className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white transition-colors text-sm font-bold"
                 title="Neues Event"
               >+</button>
@@ -1034,7 +1013,7 @@ export function L3Layout({
                       + Einladen
                     </button>
                     <button
-                      onClick={() => { setContactsPlusOpen(false); window.dispatchEvent(new CustomEvent('contact-sidebar-create')) }}
+                      onClick={() => { setContactsPlusOpen(false); setShowCreateContact(true) }}
                       className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                     >
                       + Manuell anlegen
@@ -1185,30 +1164,6 @@ export function L3Layout({
         .filter(v => !q || v.name?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q))
         .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
 
-      const handleCreateVenue = async () => {
-        if (!venueNewName.trim() || venueCreating) return
-        setVenueCreating(true)
-        try {
-          const created = await createVenue({
-            name: venueNewName.trim(), street: '', postalCode: '', city: '', state: '',
-            country: '', website: '', arrival: '', arrivalStreet: '', arrivalPostalCode: '',
-            arrivalCity: '', capacity: '', capacitySeated: '', stageDimensions: '',
-            clearanceHeight: '', merchandiseFee: '', merchandiseStand: '', wardrobe: '',
-            showers: '', wifi: '', parking: '', nightlinerParking: '', loadingPath: '',
-            notes: '', latitude: '', longitude: '',
-          })
-          setVenuesList(prev => [...prev, created])
-          const newId = String(created.id)
-          setActiveVenueId(newId)
-          setVenueInlineNew(false)
-          setVenueNewName('')
-          localStorage.setItem('pt_venues_last_id', newId)
-          history.pushState(null, '', `/venues/${newId}`)
-          window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: newId } }))
-        } catch { /* silent */ }
-        finally { setVenueCreating(false) }
-      }
-
       return (
         <div className="flex flex-col h-full">
           {/* Suche + Neu-Button */}
@@ -1222,7 +1177,7 @@ export function L3Layout({
             />
             {isEditor && (
               <button
-                onClick={() => { setVenueInlineNew(true); setVenueNewName('') }}
+                onClick={() => setShowCreateVenue(true)}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors"
                 title="Neue Venue"
               >
@@ -1230,39 +1185,6 @@ export function L3Layout({
               </button>
             )}
           </div>
-
-          {/* Inline-Anlegen */}
-          {venueInlineNew && (
-            <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0">
-              <input
-                autoFocus
-                type="text"
-                value={venueNewName}
-                onChange={e => setVenueNewName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateVenue()
-                  if (e.key === 'Escape') { setVenueInlineNew(false); setVenueNewName('') }
-                }}
-                placeholder="Name der Venue…"
-                className="w-full px-2.5 py-1.5 bg-white border border-blue-500 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none"
-              />
-              <div className="flex gap-1.5 mt-1.5">
-                <button
-                  onClick={handleCreateVenue}
-                  disabled={!venueNewName.trim() || venueCreating}
-                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-gray-900 rounded disabled:opacity-50 transition-colors"
-                >
-                  {venueCreating ? '…' : 'Anlegen'}
-                </button>
-                <button
-                  onClick={() => { setVenueInlineNew(false); setVenueNewName('') }}
-                  className="px-2 py-1 text-xs text-gray-400 hover:text-gray-900"
-                >
-                  Abbrechen
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Liste */}
           <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setVenueMenuOpenId(null)}>
@@ -1366,36 +1288,12 @@ export function L3Layout({
               className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
-              <button onClick={() => { setPartnerInlineNew(true); setPartnerNewName('') }}
+              <button onClick={() => setShowCreatePartner(true)}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neuer Partner">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          {partnerInlineNew && (
-            <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0">
-              <input
-                autoFocus
-                type="text"
-                value={partnerNewName}
-                onChange={e => setPartnerNewName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateNewPartner()
-                  if (e.key === 'Escape') { setPartnerInlineNew(false); setPartnerNewName('') }
-                }}
-                placeholder="Firmenname…"
-                className="w-full px-2.5 py-1.5 bg-white border border-blue-500 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none"
-              />
-              <div className="flex gap-1.5 mt-1.5">
-                <button onClick={handleCreateNewPartner} disabled={!partnerNewName.trim() || partnerCreating}
-                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors">
-                  {partnerCreating ? '…' : 'Anlegen'}
-                </button>
-                <button onClick={() => { setPartnerInlineNew(false); setPartnerNewName('') }}
-                  className="px-2 py-1 text-xs text-gray-400 hover:text-gray-900">Abbrechen</button>
-              </div>
-            </div>
-          )}
           <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setPartnerMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{partnersList.length === 0 ? 'Keine Partner' : 'Keine Treffer'}</p>
@@ -1459,36 +1357,12 @@ export function L3Layout({
               className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
-              <button onClick={() => { setHotelInlineNew(true); setHotelNewName('') }}
+              <button onClick={() => setShowCreateHotel(true)}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neues Hotel">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          {hotelInlineNew && (
-            <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0">
-              <input
-                autoFocus
-                type="text"
-                value={hotelNewName}
-                onChange={e => setHotelNewName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateNewHotel()
-                  if (e.key === 'Escape') { setHotelInlineNew(false); setHotelNewName('') }
-                }}
-                placeholder="Name des Hotels…"
-                className="w-full px-2.5 py-1.5 bg-white border border-blue-500 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none"
-              />
-              <div className="flex gap-1.5 mt-1.5">
-                <button onClick={handleCreateNewHotel} disabled={!hotelNewName.trim() || hotelCreating}
-                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors">
-                  {hotelCreating ? '…' : 'Anlegen'}
-                </button>
-                <button onClick={() => { setHotelInlineNew(false); setHotelNewName('') }}
-                  className="px-2 py-1 text-xs text-gray-400 hover:text-gray-900">Abbrechen</button>
-              </div>
-            </div>
-          )}
           <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setHotelMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{hotelsList.length === 0 ? 'Keine Hotels' : 'Keine Treffer'}</p>
@@ -1552,36 +1426,12 @@ export function L3Layout({
               className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {isEditor && (
-              <button onClick={() => { setVehicleInlineNew(true); setVehicleNewName('') }}
+              <button onClick={() => setShowCreateVehicle(true)}
                 className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-900 transition-colors" title="Neues Fahrzeug">
                 <PlusIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
-          {vehicleInlineNew && (
-            <div className="px-2 py-2 border-b border-gray-200 flex-shrink-0">
-              <input
-                autoFocus
-                type="text"
-                value={vehicleNewName}
-                onChange={e => setVehicleNewName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateNewVehicle()
-                  if (e.key === 'Escape') { setVehicleInlineNew(false); setVehicleNewName('') }
-                }}
-                placeholder="Bezeichnung (z.B. Tourbus)…"
-                className="w-full px-2.5 py-1.5 bg-white border border-blue-500 rounded-md text-xs text-gray-900 placeholder-gray-400 focus:outline-none"
-              />
-              <div className="flex gap-1.5 mt-1.5">
-                <button onClick={handleCreateNewVehicle} disabled={!vehicleNewName.trim() || vehicleCreating}
-                  className="flex-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors">
-                  {vehicleCreating ? '…' : 'Anlegen'}
-                </button>
-                <button onClick={() => { setVehicleInlineNew(false); setVehicleNewName('') }}
-                  className="px-2 py-1 text-xs text-gray-400 hover:text-gray-900">Abbrechen</button>
-              </div>
-            </div>
-          )}
           <div className="flex-1 overflow-y-auto py-1 scrollbar-light" onClick={() => setVehicleMenuOpenId(null)}>
             {filtered.length === 0
               ? <p className="px-3 py-4 text-xs text-gray-600 text-center">{vehiclesList.length === 0 ? 'Keine Fahrzeuge' : 'Keine Treffer'}</p>
@@ -1713,6 +1563,7 @@ export function L3Layout({
   }
 
   return (
+    <>
     <div className="hidden md:flex flex-col h-screen bg-gray-100">
 
       {/* ── GLOBAL TOP BAR ──────────────────────────────────────────────────── */}
@@ -2119,6 +1970,15 @@ export function L3Layout({
       </div>
       </div> {/* end BODY */}
     </div>
+
+    {/* Quick Create Modals */}
+    {showCreateEvent && <QuickCreateEventModal onClose={() => setShowCreateEvent(false)} onCreated={handleTerminCreated} />}
+    {showCreateVenue && <QuickCreateVenueModal onClose={() => setShowCreateVenue(false)} onCreated={handleVenueCreated} />}
+    {showCreateHotel && <QuickCreateHotelModal onClose={() => setShowCreateHotel(false)} onCreated={handleHotelCreated} />}
+    {showCreatePartner && <QuickCreatePartnerModal onClose={() => setShowCreatePartner(false)} onCreated={handlePartnerCreated} />}
+    {showCreateVehicle && <QuickCreateVehicleModal onClose={() => setShowCreateVehicle(false)} onCreated={handleVehicleCreated} />}
+    {showCreateContact && <QuickCreateContactModal onClose={() => setShowCreateContact(false)} onCreated={handleContactCreated} />}
+    </>
   )
 }
 
