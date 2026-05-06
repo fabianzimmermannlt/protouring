@@ -45,7 +45,6 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
   const inputRef      = useRef<HTMLInputElement>(null)
   const dropdownRef   = useRef<HTMLDivElement>(null)
   const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   // ── Preview state ───────────────────────────────────────────────────────────
   const [previewRole, setPreviewRoleState] = useState<string | null>(null)
@@ -85,12 +84,6 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
   }, [])
 
   // ── Search logic ────────────────────────────────────────────────────────────
-  const updateDropdownPos = useCallback(() => {
-    if (!inputRef.current) return
-    const rect = inputRef.current.getBoundingClientRect()
-    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
-  }, [])
-
   const runSearch = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setResults([]); setOpen(false); return }
     setLoading(true)
@@ -98,7 +91,6 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
     try {
       const data = await searchGlobal(q)
       setResults(data)
-      updateDropdownPos()
       setOpen(true)
       setFocused(-1)
     } catch (err) {
@@ -183,7 +175,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
       </div>
 
       {/* ── CENTER: Search (absolute centered) ────────────────────────────── */}
-      <div className="absolute left-1/2 -translate-x-1/2 w-full max-w-sm px-2">
+      <div className="absolute left-1/2 -translate-x-1/2 w-full max-w-lg px-4">
         <form onSubmit={async e => {
           e.preventDefault()
           if (results.length > 0) {
@@ -202,7 +194,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
               value={query}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => { if (results.length > 0) { updateDropdownPos(); setOpen(true) } }}
+              onFocus={() => { if (results.length > 0) setOpen(true) }}
               placeholder="Suchen… (⌘K)"
               className="w-full h-7 text-gray-100 text-xs rounded-md pl-8 pr-7 outline-none transition-all"
               style={{
@@ -230,12 +222,12 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
           </div>
         </form>
 
-        {/* Dropdown (fixed position) */}
-        {open && (results.length > 0 || (query.length >= 2 && !loading)) && dropdownPos && (
+        {/* Dropdown — absolute unter dem Suchfeld, zentriert mit dem Container */}
+        {open && (results.length > 0 || (query.length >= 2 && !loading)) && (
           <div
             ref={dropdownRef}
-            style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
-            className="bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden max-h-80 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden max-h-80 overflow-y-auto"
+            style={{ zIndex: 9999 }}
           >
             {results.length > 0
               ? results.map((r, i) => (
