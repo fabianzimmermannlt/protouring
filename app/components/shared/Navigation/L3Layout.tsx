@@ -311,9 +311,19 @@ export function L3Layout({
     const sorted = [...partnersList].sort((a, b) => (a.companyName ?? '').localeCompare(b.companyName ?? '', 'de'))
     const target = (lastId && partnersList.find(p => p.id === lastId)) ? lastId : sorted[0].id
     setActivePartnerId(target)
+    localStorage.setItem('pt_partners_last_id', target)
     history.pushState(null, '', `/partners/${target}`)
     window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: target } }))
   }, [activeTab, partnersList, activePartnerId])
+
+  // Re-sync: wenn zurück zu partners gewechselt wird und activePartnerId schon gesetzt ist
+  useEffect(() => {
+    if (activeTab !== 'partners' || !activePartnerId) return
+    const t = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: activePartnerId } }))
+    }, 50)
+    return () => clearTimeout(t)
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Hotels list ───────────────────────────────────────────────────────────
   const [hotelsList, setHotelsList] = useState<Hotel[]>([])
@@ -348,9 +358,19 @@ export function L3Layout({
     const sorted = [...hotelsList].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
     const target = (lastId && hotelsList.find(h => h.id === lastId)) ? lastId : sorted[0].id
     setActiveHotelId(target)
+    localStorage.setItem('pt_hotels_last_id', target)
     history.pushState(null, '', `/hotels/${target}`)
     window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: target } }))
   }, [activeTab, hotelsList, activeHotelId])
+
+  // Re-sync: wenn zurück zu hotels gewechselt wird und activeHotelId schon gesetzt ist
+  useEffect(() => {
+    if (activeTab !== 'hotels' || !activeHotelId) return
+    const t = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: activeHotelId } }))
+    }, 50)
+    return () => clearTimeout(t)
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Vehicles list ─────────────────────────────────────────────────────────
   const [vehiclesList, setVehiclesList] = useState<Vehicle[]>([])
@@ -376,9 +396,19 @@ export function L3Layout({
     const sorted = [...vehiclesList].sort((a, b) => (a.designation ?? '').localeCompare(b.designation ?? '', 'de'))
     const target = (lastId && vehiclesList.find(v => v.id === lastId)) ? lastId : sorted[0].id
     setActiveVehicleId(target)
+    localStorage.setItem('pt_vehicles_last_id', target)
     history.pushState(null, '', `/vehicles/${target}`)
     window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: target } }))
   }, [activeTab, vehiclesList, activeVehicleId])
+
+  // Re-sync: wenn zurück zu vehicles gewechselt wird und activeVehicleId schon gesetzt ist
+  useEffect(() => {
+    if (activeTab !== 'vehicles' || !activeVehicleId) return
+    const t = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: activeVehicleId } }))
+    }, 50)
+    return () => clearTimeout(t)
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Venues list ───────────────────────────────────────────────────────────
   const [venuesList, setVenuesList] = useState<Venue[]>([])
@@ -433,9 +463,19 @@ export function L3Layout({
     const sorted = [...venuesList].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'de'))
     const target = (lastId && venuesList.find(v => String(v.id) === lastId)) ? lastId : String(sorted[0].id)
     setActiveVenueId(target)
+    localStorage.setItem('pt_venues_last_id', target)
     history.pushState(null, '', `/venues/${target}`)
     window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: target } }))
   }, [activeTab, venuesList, activeVenueId])
+
+  // Re-sync: wenn zurück zu venues gewechselt wird und activeVenueId schon gesetzt ist
+  useEffect(() => {
+    if (activeTab !== 'venues' || !activeVenueId) return
+    const t = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: activeVenueId } }))
+    }, 50)
+    return () => clearTimeout(t)
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Contacts list ─────────────────────────────────────────────────────────
   const [contactsList, setContactsList] = useState<Contact[]>([])
