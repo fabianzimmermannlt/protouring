@@ -73,7 +73,6 @@ import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCre
 import { QuickCreateVehicleModal } from '@/app/components/shared/modals/QuickCreateVehicleModal'
 import { QuickCreateContactModal } from '@/app/components/shared/modals/QuickCreateContactModal'
 import { useT, useLanguage } from '@/app/lib/i18n/LanguageContext'
-import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import GlobalTopBar from './GlobalTopBar'
 import type { SearchResult } from '@/lib/api-client'
 import type { TermineDetailView, TermineListFilter, TermineListView } from './TermineSubNavigation'
@@ -2020,10 +2019,6 @@ export function L3Layout({
             })()}
           </div>
 
-          {/* Right: Preview Banner */}
-          <div className="flex items-center gap-3">
-            <PreviewBanner />
-          </div>
         </header>
 
         {/* Content */}
