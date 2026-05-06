@@ -339,8 +339,12 @@ export interface Contact {
   createdAt?: string; updatedAt?: string;
   userId?: number | null;
   tenantRole?: string | null;
-  contactType?: 'crew' | 'guest';
+  contactType?: 'crew' | 'guest' | 'artist';
   invitePending?: boolean;
+  // Artist member fields (when contact_type='artist')
+  alwaysInTravelparty?: boolean;
+  memberRoles?: string[];
+  memberSortOrder?: number;
 }
 export type ContactFormData = Omit<Contact, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'contactType' | 'tenantRole' | 'invitePending'>;
 
@@ -1035,6 +1039,9 @@ export interface ArtistMember {
   notes: string;
   always_in_travelparty: boolean;
   sort_order: number;
+  // Now backed by contacts table — these fields available for invite flow
+  user_id?: number | null;
+  contact_type?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -1313,7 +1320,7 @@ export interface TravelPartyPickerContact {
   function2: string;
   function3: string;
   userId: number | null;
-  contactType: 'crew' | 'guest';
+  contactType: 'crew' | 'guest' | 'artist';
   availabilityStatus: AvailabilityStatus;
   alreadyAdded: boolean;
 }
@@ -1409,7 +1416,7 @@ function pickerContactFromRow(r: Record<string, unknown>): TravelPartyPickerCont
     function2: (r.function2 as string) ?? '',
     function3: (r.function3 as string) ?? '',
     userId: (r.user_id as number) ?? null,
-    contactType: ((r.contact_type as string) ?? 'crew') as 'crew' | 'guest',
+    contactType: ((r.contact_type as string) ?? 'crew') as 'crew' | 'guest' | 'artist',
     availabilityStatus: (r.availability_status as AvailabilityStatus) ?? null,
     alreadyAdded: Boolean(r.already_added),
   };

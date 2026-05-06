@@ -907,6 +907,36 @@ async function initDatabase() {
   // invite_pending: Kontakt wurde eingeladen aber hat noch nicht angenommen
   try { await db.run(`ALTER TABLE contacts ADD COLUMN invite_pending INTEGER NOT NULL DEFAULT 0`) } catch {}
 
+  // Artist member fields merged into contacts (contact_type='artist')
+  try { await db.run(`ALTER TABLE contacts ADD COLUMN always_in_travelparty INTEGER NOT NULL DEFAULT 0`) } catch {}
+  try { await db.run(`ALTER TABLE contacts ADD COLUMN member_roles TEXT NOT NULL DEFAULT '[]'`) } catch {}
+  try { await db.run(`ALTER TABLE contacts ADD COLUMN member_sort_order INTEGER NOT NULL DEFAULT 0`) } catch {}
+  // Migration tracking: which contact was created from an artist_member row
+  try { await db.run(`ALTER TABLE artist_members ADD COLUMN contact_id INTEGER REFERENCES contacts(id)`) } catch {}
+  // termin_artist_members: contact_id as new primary reference (replaces artist_member_id join)
+  try { await db.run(`ALTER TABLE termin_artist_members ADD COLUMN contact_id INTEGER REFERENCES contacts(id)`) } catch {}
+
+  // One-time migration: copy artist_members → contacts, set contact_id back-reference
+  {
+    const unmigrated = await db.all(`SELECT * FROM artist_members WHERE contact_id IS NULL`)
+    for (const am of unmigrated) {
+      const r = await db.run(
+        `INSERT INTO contacts (tenant_id, first_name, last_name, email, phone, notes,
+           contact_type, always_in_travelparty, member_roles, member_sort_order, crew_tool_active)
+         VALUES (?, ?, ?, ?, ?, ?, 'artist', ?, ?, ?, 1)`,
+        [am.tenant_id, am.first_name, am.last_name, am.email || '', am.phone || '',
+         am.notes || '', am.always_in_travelparty, am.roles || '[]', am.sort_order || 0]
+      )
+      await db.run(`UPDATE artist_members SET contact_id=? WHERE id=?`, [r.lastID, am.id])
+    }
+    // Populate termin_artist_members.contact_id from artist_members.contact_id
+    await db.run(`
+      UPDATE termin_artist_members SET contact_id = (
+        SELECT contact_id FROM artist_members WHERE artist_members.id = termin_artist_members.artist_member_id
+      ) WHERE contact_id IS NULL AND artist_member_id IS NOT NULL
+    `)
+  }
+
   // Tabelle für deaktivierte Funktionen pro Tenant
   await db.run(`
     CREATE TABLE IF NOT EXISTS tenant_disabled_functions (
@@ -2396,6 +2426,9 @@ const contactFromRow = (r) => ({
   tenantRole: r.tenant_role || null,
   contactType: r.contact_type || 'crew',
   invitePending: !!r.invite_pending,
+  alwaysInTravelparty: !!r.always_in_travelparty,
+  memberRoles: JSON.parse(r.member_roles || '[]'),
+  memberSortOrder: r.member_sort_order || 0,
 });
 
 // Globale User-Felder die in users-Tabelle gespeichert werden (Quelle der Wahrheit)
@@ -3615,21 +3648,21 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
     const { terminId } = req.params;
     const tenantId = req.tenant.id;
 
-    // Auto-sync: artist members with always_in_travelparty=1 not yet in termin_artist_members
+    // Auto-sync: artist contacts (contact_type='artist', always_in_travelparty=1) not yet in termin_artist_members
     const missingArtists = await db.all(`
-      SELECT am.* FROM artist_members am
-      WHERE am.tenant_id = ? AND am.always_in_travelparty = 1
-        AND am.id NOT IN (
-          SELECT artist_member_id FROM termin_artist_members
-          WHERE termin_id = ? AND tenant_id = ?
+      SELECT c.* FROM contacts c
+      WHERE c.tenant_id = ? AND c.contact_type = 'artist' AND c.always_in_travelparty = 1
+        AND c.id NOT IN (
+          SELECT contact_id FROM termin_artist_members
+          WHERE termin_id = ? AND tenant_id = ? AND contact_id IS NOT NULL
         )
     `, [tenantId, terminId, tenantId]);
     for (const am of missingArtists) {
-      const roles = JSON.parse(am.roles || '[]');
+      const roles = JSON.parse(am.member_roles || '[]');
       await db.run(
-        `INSERT OR IGNORE INTO termin_artist_members (termin_id, tenant_id, artist_member_id, role1, role2, role3, sort_order)
+        `INSERT OR IGNORE INTO termin_artist_members (termin_id, tenant_id, contact_id, role1, role2, role3, sort_order)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [terminId, tenantId, am.id, roles[0] || '', roles[1] || '', roles[2] || '', am.sort_order]
+        [terminId, tenantId, am.id, roles[0] || '', roles[1] || '', roles[2] || '', am.member_sort_order || 0]
       );
     }
 
@@ -3658,24 +3691,24 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
     const artistRows = await db.all(`
       SELECT
         tam.id, tam.termin_id, tam.tenant_id,
-        NULL AS contact_id,
+        tam.contact_id,
         tam.role1, tam.role2, tam.role3,
         '' AS specification, tam.sort_order,
-        am.first_name, am.last_name, am.email, am.phone,
+        c.first_name, c.last_name, c.email, c.phone,
         '' AS mobile, '' AS postal_code, '' AS residence,
-        am.roles AS _roles_json,
-        NULL AS user_id, 'artist_member' AS contact_type,
+        c.member_roles AS _roles_json,
+        c.user_id, 'artist_member' AS contact_type,
         'available' AS availability_status,
         1 AS is_artist_member,
         tam.excluded,
-        am.id AS artist_member_id
+        tam.contact_id AS artist_member_id
       FROM termin_artist_members tam
-      JOIN artist_members am ON am.id = tam.artist_member_id
-      WHERE tam.termin_id = ? AND tam.tenant_id = ?
-      ORDER BY tam.sort_order ASC, am.last_name COLLATE NOCASE ASC
+      JOIN contacts c ON c.id = tam.contact_id
+      WHERE tam.termin_id = ? AND tam.tenant_id = ? AND tam.contact_id IS NOT NULL
+      ORDER BY tam.sort_order ASC, c.last_name COLLATE NOCASE ASC
     `, [terminId, tenantId]);
 
-    // Parse roles for artist rows → function1/2/3
+    // Parse member_roles → function1/2/3
     const parsedArtistRows = artistRows.map(r => {
       const roles = JSON.parse(r._roles_json || '[]');
       const { _roles_json, ...rest } = r;
@@ -3757,10 +3790,11 @@ app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTen
         [role1, role2, role3, sort_order ?? null, req.params.id, req.tenant.id]
       );
       const tam = await db.get(`
-        SELECT tam.*, am.first_name, am.last_name, am.email, am.phone, am.roles AS _roles_json,
-               1 AS is_artist_member, am.id AS artist_member_id
+        SELECT tam.*, c.first_name, c.last_name, c.email, c.phone, c.user_id,
+               c.member_roles AS _roles_json,
+               1 AS is_artist_member, tam.contact_id AS artist_member_id
         FROM termin_artist_members tam
-        JOIN artist_members am ON am.id = tam.artist_member_id
+        JOIN contacts c ON c.id = tam.contact_id
         WHERE tam.id = ?
       `, [req.params.id]);
       if (!tam) return res.status(404).json({ error: 'Not found' });
@@ -5872,9 +5906,28 @@ app.delete('/api/partner-types/:id', authenticateToken, requireTenant, async (re
 
 /// ── Artist Members ────────────────────────────────────────────────────────────
 
+// Helper: format contact row as ArtistMember response shape
+function fmtArtistMember(row) {
+  return {
+    ...row,
+    roles: JSON.parse(row.roles || row.member_roles || '[]'),
+    sort_order: row.sort_order ?? row.member_sort_order ?? 0,
+    always_in_travelparty: !!row.always_in_travelparty,
+  }
+}
+
+const ARTIST_MEMBER_SELECT = `
+  SELECT id, tenant_id, first_name, last_name, email, phone, notes,
+         always_in_travelparty, member_roles AS roles, member_sort_order AS sort_order,
+         user_id, contact_type, created_at, updated_at
+  FROM contacts WHERE contact_type = 'artist'`
+
 app.get('/api/artist-members', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const rows = await db.all('SELECT * FROM artist_members WHERE tenant_id = ? ORDER BY sort_order, last_name, first_name', [req.tenant.id])
+    const rows = await db.all(
+      `${ARTIST_MEMBER_SELECT} AND tenant_id = ? ORDER BY member_sort_order, last_name, first_name`,
+      [req.tenant.id]
+    )
     res.json({ members: rows.map(r => ({ ...r, roles: JSON.parse(r.roles || '[]'), always_in_travelparty: !!r.always_in_travelparty })) })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -5883,11 +5936,14 @@ app.post('/api/artist-members', authenticateToken, requireTenant, async (req, re
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   const { first_name = '', last_name = '', roles = [], email = '', phone = '', notes = '', always_in_travelparty = true, sort_order = 0 } = req.body
   try {
+    const rolesJson = JSON.stringify(Array.isArray(roles) ? roles : [])
     const r = await db.run(
-      'INSERT INTO artist_members (tenant_id, first_name, last_name, roles, email, phone, notes, always_in_travelparty, sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
-      [req.tenant.id, first_name, last_name, JSON.stringify(roles), email, phone, notes, always_in_travelparty ? 1 : 0, sort_order]
+      `INSERT INTO contacts (tenant_id, first_name, last_name, email, phone, notes,
+         contact_type, always_in_travelparty, member_roles, member_sort_order, crew_tool_active)
+       VALUES (?,?,?,?,?,?,'artist',?,?,?,1)`,
+      [req.tenant.id, first_name, last_name, email, phone, notes, always_in_travelparty ? 1 : 0, rolesJson, sort_order]
     )
-    const row = await db.get('SELECT * FROM artist_members WHERE id = ?', [r.lastID])
+    const row = await db.get(`${ARTIST_MEMBER_SELECT} AND id = ?`, [r.lastID])
     res.json({ member: { ...row, roles: JSON.parse(row.roles || '[]'), always_in_travelparty: !!row.always_in_travelparty } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -5896,11 +5952,15 @@ app.put('/api/artist-members/:id', authenticateToken, requireTenant, async (req,
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   const { first_name, last_name, roles, email, phone, notes, always_in_travelparty, sort_order } = req.body
   try {
+    const rolesJson = JSON.stringify(Array.isArray(roles) ? roles : [])
     await db.run(
-      'UPDATE artist_members SET first_name=?, last_name=?, roles=?, email=?, phone=?, notes=?, always_in_travelparty=?, sort_order=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
-      [first_name, last_name, JSON.stringify(roles || []), email, phone, notes, always_in_travelparty ? 1 : 0, sort_order ?? 0, req.params.id, req.tenant.id]
+      `UPDATE contacts SET first_name=?, last_name=?, email=?, phone=?, notes=?,
+         always_in_travelparty=?, member_roles=?, member_sort_order=?,
+         updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND tenant_id=? AND contact_type='artist'`,
+      [first_name, last_name, email, phone, notes, always_in_travelparty ? 1 : 0, rolesJson, sort_order ?? 0, req.params.id, req.tenant.id]
     )
-    const row = await db.get('SELECT * FROM artist_members WHERE id = ?', [req.params.id])
+    const row = await db.get(`${ARTIST_MEMBER_SELECT} AND id = ?`, [req.params.id])
     res.json({ member: { ...row, roles: JSON.parse(row.roles || '[]'), always_in_travelparty: !!row.always_in_travelparty } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -5908,7 +5968,10 @@ app.put('/api/artist-members/:id', authenticateToken, requireTenant, async (req,
 app.delete('/api/artist-members/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    await db.run('DELETE FROM artist_members WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    // Remove from all termin_artist_members
+    await db.run('DELETE FROM termin_artist_members WHERE contact_id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    // Delete contact row
+    await db.run(`DELETE FROM contacts WHERE id = ? AND tenant_id = ? AND contact_type = 'artist'`, [req.params.id, req.tenant.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
