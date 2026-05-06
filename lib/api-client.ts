@@ -1614,6 +1614,66 @@ export async function deleteTerminSchedule(terminId: number, id: number): Promis
 }
 
 // ============================================
+// SCHEDULE TEMPLATES
+// ============================================
+
+export interface ScheduleTemplate {
+  id: number;
+  tenantId: number;
+  name: string;
+  content: string;
+  notFinal: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ScheduleTemplateFormData = Pick<ScheduleTemplate, 'name' | 'content' | 'notFinal' | 'sortOrder'>;
+
+function scheduleTemplateFromRow(r: Record<string, unknown>): ScheduleTemplate {
+  return {
+    id: r.id as number,
+    tenantId: r.tenant_id as number,
+    name: (r.name as string) ?? '',
+    content: (r.content as string) ?? '',
+    notFinal: Boolean(r.not_final),
+    sortOrder: (r.sort_order as number) ?? 0,
+    createdAt: (r.created_at as string) ?? '',
+    updatedAt: (r.updated_at as string) ?? '',
+  };
+}
+
+export async function getScheduleTemplates(): Promise<ScheduleTemplate[]> {
+  const res = await request<{ templates: Record<string, unknown>[] }>('/api/templates/schedules');
+  return res.templates.map(scheduleTemplateFromRow);
+}
+
+export async function createScheduleTemplate(data: ScheduleTemplateFormData): Promise<ScheduleTemplate> {
+  const res = await request<{ template: Record<string, unknown> }>('/api/templates/schedules', {
+    method: 'POST',
+    body: { name: data.name, content: data.content, not_final: data.notFinal ? 1 : 0, sort_order: data.sortOrder },
+  });
+  return scheduleTemplateFromRow(res.template);
+}
+
+export async function updateScheduleTemplate(id: number, data: Partial<ScheduleTemplateFormData>): Promise<ScheduleTemplate> {
+  const res = await request<{ template: Record<string, unknown> }>(`/api/templates/schedules/${id}`, {
+    method: 'PUT',
+    body: {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.content !== undefined && { content: data.content }),
+      ...(data.notFinal !== undefined && { not_final: data.notFinal ? 1 : 0 }),
+      ...(data.sortOrder !== undefined && { sort_order: data.sortOrder }),
+    },
+  });
+  return scheduleTemplateFromRow(res.template);
+}
+
+export async function deleteScheduleTemplate(id: number): Promise<void> {
+  await request(`/api/templates/schedules/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
 // BOARDS — generische ContentBoard API
 // ============================================
 

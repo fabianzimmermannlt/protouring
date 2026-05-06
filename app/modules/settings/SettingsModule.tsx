@@ -21,6 +21,7 @@ import {
 import { Loader2 } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
 import GewerkSettings from './GewerkSettings'
+import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
 import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
@@ -524,12 +525,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
         )
 
       case 'vorlagen':
-        return (
-          <div className="text-center py-8">
-            <div className="text-gray-500">VORLAGEN</div>
-            <div className="text-sm text-gray-400 mt-2">Bald verfügbar…</div>
-          </div>
-        )
+        return <ScheduleTemplatesSettings />
 
       case 'partners':
         return <PartnerTypesSettings />

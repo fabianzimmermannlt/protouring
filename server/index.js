@@ -504,6 +504,18 @@ async function initDatabase() {
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_schedules_termin ON termin_schedules(termin_id);
+    CREATE TABLE IF NOT EXISTS schedule_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      name TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      not_final BOOLEAN NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_schedule_templates_tenant ON schedule_templates(tenant_id);
     CREATE TABLE IF NOT EXISTS boards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
@@ -4854,6 +4866,68 @@ app.delete('/api/termine/:terminId/schedules/:id', authenticateToken, requireTen
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete schedule' });
+  }
+});
+
+// ============================================
+// SCHEDULE TEMPLATES
+// ============================================
+
+app.get('/api/templates/schedules', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const templates = await db.all(
+      'SELECT * FROM schedule_templates WHERE tenant_id = ? ORDER BY sort_order ASC, id ASC',
+      [req.tenant.id]
+    );
+    res.json({ templates });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load schedule templates' });
+  }
+});
+
+app.post('/api/templates/schedules', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name = '', content = '', not_final = 0, sort_order = 0 } = req.body;
+    const result = await db.run(
+      'INSERT INTO schedule_templates (tenant_id, name, content, not_final, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [req.tenant.id, name, content, not_final ? 1 : 0, sort_order]
+    );
+    const template = await db.get('SELECT * FROM schedule_templates WHERE id = ?', [result.lastID]);
+    res.json({ template });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create schedule template' });
+  }
+});
+
+app.put('/api/templates/schedules/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { name, content, not_final, sort_order } = req.body;
+    await db.run(
+      `UPDATE schedule_templates SET
+        name = COALESCE(?, name),
+        content = COALESCE(?, content),
+        not_final = COALESCE(?, not_final),
+        sort_order = COALESCE(?, sort_order),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND tenant_id = ?`,
+      [name ?? null, content ?? null, not_final != null ? (not_final ? 1 : 0) : null, sort_order ?? null, req.params.id, req.tenant.id]
+    );
+    const template = await db.get('SELECT * FROM schedule_templates WHERE id = ?', [req.params.id]);
+    res.json({ template });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update schedule template' });
+  }
+});
+
+app.delete('/api/templates/schedules/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run(
+      'DELETE FROM schedule_templates WHERE id = ? AND tenant_id = ?',
+      [req.params.id, req.tenant.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete schedule template' });
   }
 });
 
