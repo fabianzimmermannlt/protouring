@@ -207,6 +207,7 @@ export function L3Layout({
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
   const [termineSearch, setTermineSearch] = useState('')
   const [advancingSearch, setAdvancingSearch] = useState('')
+  const [vorlagenTab, setVorlagenTab] = useState<string>('schedule')
 
   useEffect(() => {
     const onViewChanged = (e: Event) => {
@@ -1940,6 +1941,29 @@ export function L3Layout({
                 <button className="px-3 py-1.5 rounded-md text-sm bg-gray-100 text-gray-900 font-medium">
                   Details
                 </button>
+              </div>
+            )}
+            {activeTab === 'settings' && activeSubTab === 'vorlagen' && (
+              <div className="flex items-center gap-0.5">
+                {[
+                  { id: 'schedule', label: 'Schedule' },
+                  // weitere Vorlagen-Typen hier ergänzen
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setVorlagenTab(tab.id)
+                      window.dispatchEvent(new CustomEvent('settings-vorlagen-tab', { detail: { tab: tab.id } }))
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      vorlagenTab === tab.id
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             )}
             {activeTab === 'contacts' && (
