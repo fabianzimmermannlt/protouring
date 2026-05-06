@@ -9,21 +9,9 @@ export default function PreviewBanner() {
   const [realRole, setRealRole]            = useState<string | null>(null)
   const [open, setOpen]                    = useState(false)
 
-  const BANNER_HEIGHT = '32px'
-
   useEffect(() => {
-    const preview = getPreviewRole()
-    setPreviewRoleState(preview)
+    setPreviewRoleState(getPreviewRole())
     setRealRole(getRealTenantRole())
-    // CSS-Variable setzen damit mobile 100dvh-Container die Höhe abziehen können
-    if (preview) {
-      document.body.style.paddingTop = BANNER_HEIGHT
-      document.documentElement.style.setProperty('--pt-preview-height', BANNER_HEIGHT)
-    }
-    return () => {
-      document.body.style.paddingTop = ''
-      document.documentElement.style.removeProperty('--pt-preview-height')
-    }
   }, [])
 
   // Nur für Rollen 1–3 sichtbar (4–7 brauchen keinen Preview)
@@ -49,26 +37,6 @@ export default function PreviewBanner() {
 
   return (
     <>
-      {/* Aktiver Preview-Banner */}
-      {previewRole && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-          background: '#f59e0b', color: '#000',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '0.75rem', padding: '0.4rem 1rem',
-          fontSize: '0.8rem', fontWeight: 600,
-        }}>
-          <Eye size={14} />
-          Vorschau als: {(ROLE_LABELS as Record<string, string>)[previewRole ?? ''] ?? previewRole}
-          <button
-            onClick={deactivate}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(0,0,0,0.15)', border: 'none', borderRadius: '0.25rem', padding: '0.15rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-          >
-            <X size={12} /> Beenden
-          </button>
-        </div>
-      )}
-
       {/* Toggle-Button (nur wenn kein Preview aktiv) */}
       {!previewRole && (
         <div style={{ position: 'relative', display: 'inline-block' }}>

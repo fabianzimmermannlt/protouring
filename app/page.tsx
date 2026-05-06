@@ -157,7 +157,7 @@ function ProTouringAppInner() {
   return (
     <>
       {/* ── MOBILE: Flex-Column mit 100dvh, kein fixed positioning ── */}
-      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: 'calc(100dvh - var(--pt-preview-height, 0px))' }}>
+      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: '100dvh' }}>
         {/* Slim Header + Sub-Nav */}
         <Navigation
           activeTab={activeTab}
