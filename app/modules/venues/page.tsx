@@ -138,8 +138,9 @@ export default function VenuesPage() {
     )
   }
 
-  // Desktop (L3): render venue detail inline, no route change
-  if (!isMobile && selectedVenueId) {
+  // Desktop (L3): render venue detail inline, never show list (wait for auto-select)
+  if (!isMobile) {
+    if (!selectedVenueId) return null
     return <VenueDetailContent venueId={selectedVenueId} />
   }
 

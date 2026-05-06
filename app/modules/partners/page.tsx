@@ -180,8 +180,9 @@ export default function PartnersPage() {
   }
 
 
-  // Desktop SPA: show detail inline
-  if (!isMobile && selectedPartnerId) {
+  // Desktop SPA: show detail inline, or wait for auto-select (never show list on desktop)
+  if (!isMobile) {
+    if (!selectedPartnerId) return null
     return <PartnerDetailContent partnerId={selectedPartnerId} onNotFound={() => {
       localStorage.removeItem('pt_partners_last_id')
       setSelectedPartnerId(null)

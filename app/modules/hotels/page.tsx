@@ -130,8 +130,9 @@ export default function HotelsPage() {
     `${h.name} ${h.city} ${h.state} ${h.country} ${h.website}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Desktop SPA: show detail inline
-  if (!isMobile && selectedHotelId) {
+  // Desktop SPA: show detail inline, or wait for auto-select (never show list on desktop)
+  if (!isMobile) {
+    if (!selectedHotelId) return null
     return <HotelDetailContent hotelId={selectedHotelId} onNotFound={() => {
       localStorage.removeItem('pt_hotels_last_id')
       setSelectedHotelId(null)

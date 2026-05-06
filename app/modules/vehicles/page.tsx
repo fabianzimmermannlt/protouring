@@ -79,8 +79,9 @@ export default function VehiclesPage() {
     `${v.designation} ${v.vehicleType} ${v.driver} ${v.licensePlate}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Desktop SPA: show detail inline
-  if (!isMobile && selectedVehicleId) {
+  // Desktop SPA: show detail inline, never show list (wait for auto-select)
+  if (!isMobile) {
+    if (!selectedVehicleId) return null
     return <VehicleDetailContent vehicleId={selectedVehicleId} onNotFound={() => {
       localStorage.removeItem('pt_vehicles_last_id')
       setSelectedVehicleId(null)
