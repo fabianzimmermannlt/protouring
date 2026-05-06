@@ -261,32 +261,35 @@ export function FeedbackButton() {
                 </div>
               )}
 
-              {view === 'list' && (
-                <div>
-                  {loadingList ? (
-                    <div className="flex items-center justify-center gap-2 text-gray-500 text-sm py-10">
-                      <Loader2 className="animate-spin w-4 h-4" /> Wird geladen…
-                    </div>
-                  ) : items.length === 0 ? (
-                    <div className="text-center text-gray-400 text-sm py-10">
-                      Noch kein Feedback vorhanden
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-gray-100">
-                      {items.map(item => (
-                        <FeedbackItemRow
-                          key={item.id}
-                          item={item}
-                          isSuperadmin={isSuperadmin}
-                          currentUserId={currentUser?.id}
-                          onStatusChange={handleStatusChange}
-                          onDelete={handleDelete}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {view === 'list' && (() => {
+                const visibleItems = items.filter(i => i.status !== 'done')
+                return (
+                  <div>
+                    {loadingList ? (
+                      <div className="flex items-center justify-center gap-2 text-gray-500 text-sm py-10">
+                        <Loader2 className="animate-spin w-4 h-4" /> Wird geladen…
+                      </div>
+                    ) : visibleItems.length === 0 ? (
+                      <div className="text-center text-gray-400 text-sm py-10">
+                        Noch kein Feedback vorhanden
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {visibleItems.map(item => (
+                          <FeedbackItemRow
+                            key={item.id}
+                            item={item}
+                            isSuperadmin={isSuperadmin}
+                            currentUserId={currentUser?.id}
+                            onStatusChange={handleStatusChange}
+                            onDelete={handleDelete}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>
