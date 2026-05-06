@@ -95,14 +95,14 @@ function TemplateRow({
 
   return (
     <>
-      <div className={`flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 ${open ? 'rounded-t-lg border-b-0' : 'rounded-lg'} group`}>
+      <div
+        className={`flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 ${open ? 'rounded-t-lg border-b-0' : 'rounded-lg'} group cursor-pointer select-none`}
+        onClick={() => !editingName && setOpen(v => !v)}
+      >
         {/* Collapse toggle */}
-        <button
-          onClick={() => setOpen(v => !v)}
-          className="text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
-        >
+        <span className="text-gray-400 flex-shrink-0">
           {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-        </button>
+        </span>
 
         <BookTemplate size={14} className="text-gray-400 flex-shrink-0" />
 
@@ -115,15 +115,18 @@ function TemplateRow({
           />
         ) : (
           <span
-            className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate cursor-pointer hover:text-gray-600"
-            onDoubleClick={() => setEditingName(true)}
+            className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate"
+            onDoubleClick={e => { e.stopPropagation(); setEditingName(true) }}
           >
             {template.name || <span className="italic text-gray-400 font-normal">Ohne Namen</span>}
           </span>
         )}
 
         {/* Aktionen */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div
+          className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          onClick={e => e.stopPropagation()}
+        >
           <button
             onClick={() => setEditingName(true)}
             className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
