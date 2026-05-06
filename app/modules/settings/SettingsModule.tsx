@@ -1933,7 +1933,7 @@ function PartnerTypesSettings() {
   return (
     <div className="space-y-5 max-w-md">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Partner Types</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Partner-Typen</h3>
         <p className="text-sm text-gray-500">
           Aktiviere die Typen, die beim Anlegen eines Partners zur Auswahl stehen sollen.
         </p>
@@ -2058,7 +2058,7 @@ function ArtistMembersSettings() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <UsersIcon className="w-5 h-5" /> Band-Mitglieder
+          <UsersIcon className="w-5 h-5" /> Artists
         </h3>
         {editing === null && (
           <button onClick={startNew} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
@@ -2098,6 +2098,13 @@ function ArtistMembersSettings() {
                   )}
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-contact', { detail: { contactId: m.id } }))}
+                    className="p-1 text-gray-400 hover:text-purple-600"
+                    title="Vollprofil öffnen"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  </button>
                   <button onClick={() => startEdit(m)} className="p-1 text-gray-400 hover:text-blue-600">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                   </button>
@@ -2117,7 +2124,7 @@ function ArtistMembersSettings() {
           )}
 
           {members.length === 0 && editing === null && (
-            <p className="text-sm text-gray-400 py-2">Noch keine Band-Mitglieder erfasst.</p>
+            <p className="text-sm text-gray-400 py-2">Noch keine Artists erfasst.</p>
           )}
         </div>
       )}

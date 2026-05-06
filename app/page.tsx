@@ -87,6 +87,22 @@ function ProTouringAppInner() {
     return () => window.removeEventListener('navigate-to-feedback', handler)
   }, [])
 
+  // Globales Event: zu einem Kontakt navigieren (z.B. aus Settings → Artists)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const contactId = (e as CustomEvent<{ contactId: number | string }>).detail?.contactId
+      if (!contactId) return
+      setActiveTab('contacts')
+      activeTabRef.current = 'contacts'
+      sessionStorage.setItem(STORAGE_TAB, 'contacts')
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('select-contact', { detail: { id: String(contactId) } }))
+      }, 80)
+    }
+    window.addEventListener('navigate-to-contact', handler)
+    return () => window.removeEventListener('navigate-to-contact', handler)
+  }, [])
+
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">

@@ -389,7 +389,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       case 'overview':
         // Desktop SPA: show detail inline
         if (!isMobile && selectedContactId) {
-          return <ContactDetailContent contactId={selectedContactId} />
+          return <ContactDetailContent contactId={selectedContactId} onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)} />
         }
         return (
           <div className="space-y-4">

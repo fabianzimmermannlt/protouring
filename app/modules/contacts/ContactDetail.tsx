@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Pencil, AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText } from 'lucide-react'
+import { Pencil, AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText, Mail } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole, ROLE_LABELS,
   getContact, updateContact, getActiveFunctions,
@@ -115,7 +115,7 @@ const DIET_OPTIONS = [
 
 type Section = 'persoenlich' | 'kontakt' | 'beruflich' | 'reise' | 'ernaehrung' | 'kleider' | 'finanzen' | 'bemerkung'
 
-export function ContactDetailContent({ contactId }: { contactId: string }) {
+export function ContactDetailContent({ contactId, onInvite }: { contactId: string; onInvite?: (contact: Contact) => void }) {
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [contact, setContact] = useState<Contact | null>(null)
@@ -215,6 +215,16 @@ export function ContactDetailContent({ contactId }: { contactId: string }) {
                   {contact!.invitePending && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Einladung ausstehend</span>}
                   {contact!.contactType === 'artist' && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Artist</span>}
                   {contact!.contactType === 'guest' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Manuell</span>}
+                  {/* Einladen-Button: für Guest + Artist ohne Account, nur für Editors */}
+                  {isEditor && onInvite && !contact!.userId && (contact!.contactType === 'guest' || contact!.contactType === 'artist') && (
+                    <button
+                      onClick={() => onInvite(contact!)}
+                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                    >
+                      <Mail className="w-3 h-3" />
+                      {contact!.invitePending ? 'Link erneuern' : 'Einladen'}
+                    </button>
+                  )}
                 </div>
               </>
           }
