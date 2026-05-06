@@ -9,6 +9,7 @@ import {
   type Venue,
   type VenueFormData,
 } from '@/lib/api-client'
+import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 const EMPTY_FORM: VenueFormData = {
   name: '', street: '', postalCode: '', city: '', state: '', country: '',
@@ -131,6 +132,19 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
               {/* Left */}
               <div className="space-y-4">
                 <Field label="Name *" value={form.name} onChange={v => f('name', v)} />
+                <AddressAutocomplete
+                  withLatLon
+                  onSelect={a => setForm(prev => ({
+                    ...prev,
+                    ...(a.street ? { street: a.street } : {}),
+                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                    ...(a.city ? { city: a.city } : {}),
+                    ...(a.state ? { state: a.state } : {}),
+                    ...(a.country ? { country: a.country } : {}),
+                    ...(a.latitude ? { latitude: a.latitude } : {}),
+                    ...(a.longitude ? { longitude: a.longitude } : {}),
+                  }))}
+                />
                 <Field label="Straße" value={form.street} onChange={v => f('street', v)} />
                 <div className="grid grid-cols-[auto_1fr] gap-2">
                   <Field label="PLZ" value={form.postalCode} onChange={v => f('postalCode', v)} maxLength={10} className="!w-24" />

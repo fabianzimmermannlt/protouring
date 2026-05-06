@@ -14,6 +14,7 @@ import {
 } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
+import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 // ─── API Base ─────────────────────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
@@ -353,6 +354,19 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
             : editingSection === 'spielstaette' ? (
               <div className="space-y-2">
                 <IField label="Name *" value={inlineForm.name ?? ''} onChange={v => iF('name', v)} />
+                <AddressAutocomplete
+                  withLatLon
+                  onSelect={a => setInlineForm(prev => ({
+                    ...prev,
+                    ...(a.street ? { street: a.street } : {}),
+                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                    ...(a.city ? { city: a.city } : {}),
+                    ...(a.state ? { state: a.state } : {}),
+                    ...(a.country ? { country: a.country } : {}),
+                    ...(a.latitude ? { latitude: a.latitude } : {}),
+                    ...(a.longitude ? { longitude: a.longitude } : {}),
+                  }))}
+                />
                 <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
                   <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />

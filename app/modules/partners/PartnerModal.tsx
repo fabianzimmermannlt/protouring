@@ -11,6 +11,7 @@ import {
   type PartnerFormData,
   type PartnerType,
 } from '@/lib/api-client'
+import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 const EMPTY: PartnerFormData = {
   type: '', companyName: '', street: '', postalCode: '', city: '', state: '',
@@ -146,6 +147,17 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
                   placeholder="z.B. Jolly Roger Concerts"
                 />
               </div>
+
+              <AddressAutocomplete
+                onSelect={a => setForm(prev => ({
+                  ...prev,
+                  ...(a.street ? { street: a.street } : {}),
+                  ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                  ...(a.city ? { city: a.city } : {}),
+                  ...(a.state ? { state: a.state } : {}),
+                  ...(a.country ? { country: a.country } : {}),
+                }))}
+              />
 
               <div>
                 <label className="form-label">Straße</label>

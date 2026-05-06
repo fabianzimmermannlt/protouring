@@ -6,6 +6,7 @@ import {
   isEditorRole, getEffectiveRole,
   getPartner, updatePartner, type Partner, type PartnerFormData,
 } from '@/lib/api-client'
+import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -158,6 +159,16 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'adresse' ? (
               <div className="space-y-2">
+                <AddressAutocomplete
+                  onSelect={a => setInlineForm(prev => ({
+                    ...prev,
+                    ...(a.street ? { street: a.street } : {}),
+                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                    ...(a.city ? { city: a.city } : {}),
+                    ...(a.state ? { state: a.state } : {}),
+                    ...(a.country ? { country: a.country } : {}),
+                  }))}
+                />
                 <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
                   <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />

@@ -6,6 +6,7 @@ import {
   isEditorRole, getEffectiveRole,
   getHotel, updateHotel, type Hotel, type HotelFormData,
 } from '@/lib/api-client'
+import { AddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -149,6 +150,16 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
             : editingSection === 'allgemein' ? (
               <div className="space-y-2">
                 <IField label="Name *" value={inlineForm.name ?? ''} onChange={v => iF('name', v)} />
+                <AddressAutocomplete
+                  onSelect={a => setInlineForm(prev => ({
+                    ...prev,
+                    ...(a.street ? { street: a.street } : {}),
+                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                    ...(a.city ? { city: a.city } : {}),
+                    ...(a.state ? { state: a.state } : {}),
+                    ...(a.country ? { country: a.country } : {}),
+                  }))}
+                />
                 <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
                   <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
