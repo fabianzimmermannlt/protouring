@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MapPin, Loader2 } from 'lucide-react'
+import { buildPhotonUrl } from '@/lib/photon'
 
 export interface AddressResult {
   name?: string
@@ -61,7 +62,7 @@ export function NameAddressAutocomplete({
     if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
     setLoading(true)
     try {
-      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=de`
+      const url = buildPhotonUrl(q, 6)
       const res = await fetch(url)
       const data = await res.json()
       const features: PhotonFeature[] = data.features ?? []

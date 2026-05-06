@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createTermin, getVenues, TERMIN_ART, type Termin, type Venue } from '@/lib/api-client'
 import { QuickCreateModal, QField, inputCls, selectCls } from '@/app/components/shared/QuickCreateModal'
 import { MapPin, Loader2, Search } from 'lucide-react'
+import { buildPhotonUrl } from '@/lib/photon'
 
 // Venue search with existing venues + Photon fallback
 function VenueSearch({ onSelect }: { onSelect: (v: { id?: number; name: string; city?: string }) => void }) {
@@ -31,7 +32,7 @@ function VenueSearch({ onSelect }: { onSelect: (v: { id?: number; name: string; 
     // Photon for new venues not yet in DB
     let osmMatches: typeof suggestions = []
     try {
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=4&lang=de`)
+      const res = await fetch(buildPhotonUrl(q, 4))
       const data = await res.json()
       osmMatches = (data.features ?? [])
         .filter((f: any) => f.properties?.name)
