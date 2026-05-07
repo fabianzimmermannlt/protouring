@@ -3,22 +3,23 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { getHotels, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import HotelFormModal from './HotelFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { HotelDetailContent } from '@/app/modules/hotels/HotelDetail'
 
-const HOTEL_COLS: [string, keyof Hotel][] = [
-  ['Name', 'name'],
-  ['Straße', 'street'],
-  ['PLZ', 'postalCode'],
-  ['Ort', 'city'],
-  ['Bundesland', 'state'],
-  ['Land', 'country'],
-  ['Website', 'website'],
-]
-
 function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) => void }) {
+  const t = useT()
+  const HOTEL_COLS: [string, keyof Hotel][] = [
+    [t('general.name'), 'name'],
+    [t('table.street'), 'street'],
+    [t('table.postalCode'), 'postalCode'],
+    [t('table.city'), 'city'],
+    [t('table.state'), 'state'],
+    [t('table.country'), 'country'],
+    [t('table.website'), 'website'],
+  ]
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     hotels as unknown as Record<string, unknown>[],
     'name'
@@ -71,6 +72,7 @@ function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) =>
 }
 
 export default function HotelsPage() {
+  const t = useT()
   const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [hotels, setHotels] = useState<Hotel[]>([])
@@ -143,13 +145,13 @@ export default function HotelsPage() {
     <div className="module-content">
       {isMobile && isEditor && (
         <div className="flex items-center gap-2">
-          <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+          <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
         </div>
       )}
 
       <input
         type="text"
-        placeholder="Hotels durchsuchen..."
+        placeholder={t('hotels.searchPlaceholder')}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="search-input"
@@ -157,8 +159,8 @@ export default function HotelsPage() {
 
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg mb-2">{hotels.length === 0 ? 'Keine Hotels vorhanden' : 'Keine Treffer'}</p>
-          {hotels.length === 0 && <p className="text-sm">Klicken Sie auf „Neues Hotel" um zu beginnen.</p>}
+          <p className="text-lg mb-2">{hotels.length === 0 ? t('hotels.noHotels') : t('general.noResults')}</p>
+          {hotels.length === 0 && <p className="text-sm">{t('hotels.addHint')}</p>}
         </div>
       ) : isMobile ? (
         <div className="flex flex-col gap-2">

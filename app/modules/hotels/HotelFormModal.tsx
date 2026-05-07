@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Trash2, Save, X } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import { createHotel, updateHotel, deleteHotel, type Hotel, type HotelFormData } from '@/lib/api-client'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
@@ -33,6 +34,7 @@ interface HotelFormModalProps {
 }
 
 export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: HotelFormModalProps) {
+  const t = useT()
   const [formData, setFormData] = useState<HotelFormData>(
     hotel
       ? {
@@ -60,7 +62,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
   const set = (patch: Partial<HotelFormData>) => setFormData(prev => ({ ...prev, ...patch }))
 
   const handleSave = async () => {
-    if (!formData.name.trim()) { alert('Bitte einen Hotelnamen eingeben.'); return }
+    if (!formData.name.trim()) { alert(t('hotels.hotelNameRequired')); return }
     try {
       if (hotel) {
         const updated = await updateHotel(hotel.id, formData)
@@ -70,24 +72,24 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
         onSaved(created)
       }
       onClose()
-    } catch { alert('Speichern fehlgeschlagen.') }
+    } catch { alert(t('hotels.saveFailed')) }
   }
 
   const handleDelete = async () => {
     if (!hotel) return
-    if (!confirm('Möchten Sie dieses Hotel wirklich löschen?')) return
+    if (!confirm(t('hotels.deleteConfirm'))) return
     try {
       await deleteHotel(hotel.id)
       onDeleted?.(hotel.id)
       onClose()
-    } catch { alert('Löschen fehlgeschlagen.') }
+    } catch { alert(t('hotels.deleteFailed')) }
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-container max-w-4xl">
         <div className="modal-header">
-          <h2 className="modal-title">{hotel ? 'Hotel bearbeiten' : 'Neues Hotel'}</h2>
+          <h2 className="modal-title">{hotel ? t('hotels.editHotel') : t('hotels.newHotelShort')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X className="h-6 w-6" />
           </button>
@@ -98,7 +100,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
             {/* Linke Spalte */}
             <div className="space-y-3">
               <NameAddressAutocomplete
-                label="Name des Hotels"
+                label={t('hotels.hotelNameLabel')}
                 variant="modal"
                 value={formData.name}
                 onChange={v => set({ name: v })}
@@ -114,7 +116,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               />
 
               <div>
-                <label className="form-label">Straße</label>
+                <label className="form-label">{t('address.street')}</label>
                 <input
                   type="text"
                   value={formData.street}
@@ -125,7 +127,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">PLZ</label>
+                <label className="form-label">{t('address.postalCode')}</label>
                 <input
                   type="text"
                   value={formData.postalCode}
@@ -136,7 +138,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Ort</label>
+                <label className="form-label">{t('address.city')}</label>
                 <input
                   type="text"
                   value={formData.city}
@@ -147,7 +149,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Bundesland</label>
+                <label className="form-label">{t('address.state')}</label>
                 <input
                   type="text"
                   value={formData.state}
@@ -158,7 +160,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Land</label>
+                <label className="form-label">{t('address.country')}</label>
                 <input
                   type="text"
                   value={formData.country}
@@ -169,7 +171,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">E-Mail</label>
+                <label className="form-label">{t('general.email')}</label>
                 <input
                   type="email"
                   value={formData.email}
@@ -180,7 +182,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Telefon</label>
+                <label className="form-label">{t('general.phone')}</label>
                 <input
                   type="tel"
                   value={formData.phone}
@@ -191,7 +193,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Website</label>
+                <label className="form-label">{t('general.website')}</label>
                 <input
                   type="url"
                   value={formData.website}
@@ -205,7 +207,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
             {/* Rechte Spalte */}
             <div className="space-y-3">
               <div>
-                <label className="form-label">Rezeption</label>
+                <label className="form-label">{t('hotels.reception')}</label>
                 <input
                   type="text"
                   value={formData.reception}
@@ -216,7 +218,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Check-in</label>
+                <label className="form-label">{t('hotels.checkin')}</label>
                 <input
                   type="text"
                   value={formData.checkIn}
@@ -227,7 +229,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Check-out</label>
+                <label className="form-label">{t('hotels.checkout')}</label>
                 <input
                   type="text"
                   value={formData.checkOut}
@@ -238,7 +240,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Early Check-in</label>
+                <label className="form-label">{t('hotels.earlyCheckin')}</label>
                 <input
                   type="text"
                   value={formData.earlyCheckIn}
@@ -249,7 +251,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Late Check-out</label>
+                <label className="form-label">{t('hotels.lateCheckout')}</label>
                 <input
                   type="text"
                   value={formData.lateCheckOut}
@@ -260,7 +262,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Frühstück</label>
+                <label className="form-label">{t('hotels.breakfast')}</label>
                 <input
                   type="text"
                   value={formData.breakfast}
@@ -271,7 +273,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Frühstück WE</label>
+                <label className="form-label">{t('hotels.breakfastWeekendShort')}</label>
                 <input
                   type="text"
                   value={formData.breakfastWeekend}
@@ -282,7 +284,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
               </div>
 
               <div>
-                <label className="form-label">Weitere Informationen</label>
+                <label className="form-label">{t('hotels.furtherInfo')}</label>
                 <textarea
                   value={formData.additionalInfo}
                   onChange={e => set({ additionalInfo: e.target.value })}
@@ -300,15 +302,15 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
             {hotel && (
               <button onClick={handleDelete} className="btn btn-danger">
                 <Trash2 className="h-4 w-4" />
-                Löschen
+                {t('general.delete')}
               </button>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
             <button onClick={handleSave} className="btn btn-primary">
               <Save className="h-4 w-4" />
-              Speichern
+              {t('general.save')}
             </button>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Save, Trash2, Loader2, Check } from 'lucide-react'
 import { getActiveFunctions, type ActiveFunction } from '@/lib/api-client'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 export interface ProfileData {
   firstName: string
@@ -65,6 +66,7 @@ interface ProfileEditorProps {
 }
 
 export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, isAdmin = false, isSelf = false, inline = false, hasUserAccount = false }: ProfileEditorProps) {
+  const t = useT()
   const [formData, setFormData] = useState<ProfileData>(profileData)
   const [activeFunctions, setActiveFunctions] = useState<ActiveFunction[]>([])
   const [saving, setSaving] = useState(false)
@@ -102,9 +104,10 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
   }
 
   const handleDelete = () => {
+    const name = `${profileData.firstName} ${profileData.lastName}`
     const msg = hasUserAccount
-      ? `${profileData.firstName} ${profileData.lastName} wirklich aus diesem Artist entfernen? Der App-Account bleibt erhalten, der Zugang zu diesem Artist wird entzogen.`
-      : `${profileData.firstName} ${profileData.lastName} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`
+      ? `${name} ${t('profile.removeConfirm')}`
+      : `${name} ${t('profile.deleteConfirm')}`
     if (confirm(msg)) {
       if (onDelete) {
         onDelete()
@@ -121,32 +124,32 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
 
             {/* Persönliche Daten */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Persönliche Daten</h3>
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.personalData')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Vorname</label>
+                  <label className="form-label">{t('profile.firstName')}</label>
                   <input type="text" value={formData.firstName} onChange={(e) => handleChange('firstName', e.target.value)} className="form-input" />
                 </div>
                 <div>
-                  <label className="form-label">Nachname</label>
+                  <label className="form-label">{t('profile.lastName')}</label>
                   <input type="text" value={formData.lastName} onChange={(e) => handleChange('lastName', e.target.value)} className="form-input" />
                 </div>
                 <div>
-                  <label className="form-label">Geburtstag</label>
+                  <label className="form-label">{t('profile.birthDate')}</label>
                   <input type="date" value={formData.birthDate} onChange={(e) => handleChange('birthDate', e.target.value)} className="form-input" />
                 </div>
                 <div>
-                  <label className="form-label">Geschlecht</label>
+                  <label className="form-label">{t('profile.gender')}</label>
                   <select value={formData.gender} onChange={(e) => handleChange('gender', e.target.value)} className="form-input">
-                    <option value="">Bitte wählen...</option>
-                    <option value="männlich">Männlich</option>
-                    <option value="weiblich">Weiblich</option>
-                    <option value="divers">Divers</option>
-                    <option value="keine_angabe">Keine Angabe</option>
+                    <option value="">{t('general.selectOption')}</option>
+                    <option value="männlich">{t('profile.gender.male')}</option>
+                    <option value="weiblich">{t('profile.gender.female')}</option>
+                    <option value="divers">{t('profile.gender.diverse')}</option>
+                    <option value="keine_angabe">{t('profile.gender.noStatement')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Pronomen</label>
+                  <label className="form-label">{t('profile.pronouns')}</label>
                   <input type="text" value={formData.pronouns} onChange={(e) => handleChange('pronouns', e.target.value)} className="form-input" placeholder="er/ihm, sie/ihr, divers" />
                 </div>
               </div>
@@ -154,28 +157,28 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
 
             {/* Kontaktdaten */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kontaktdaten</h3>
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.contactData')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Email</label>
+                  <label className="form-label">{t('profile.email')}</label>
                   <input type="email" value={formData.email} readOnly className="form-input bg-gray-50 text-gray-500 cursor-not-allowed" title="E-Mail kann nur von einem Admin geändert werden" />
                 </div>
                 <div>
-                  <label className="form-label">Telefon</label>
+                  <label className="form-label">{t('profile.phone')}</label>
                   <input type="tel" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} className="form-input" />
                 </div>
                 <div className="grid grid-cols-[auto_1fr] gap-1">
                   <div>
-                    <label className="form-label">PLZ</label>
+                    <label className="form-label">{t('profile.postalCode')}</label>
                     <input type="text" value={formData.postalCode} onChange={(e) => handleChange('postalCode', e.target.value)} maxLength={5} className="form-input !w-20" placeholder="12345" />
                   </div>
                   <div>
-                    <label className="form-label">Wohnort</label>
+                    <label className="form-label">{t('profile.residence')}</label>
                     <input type="text" value={formData.residence} onChange={(e) => handleChange('residence', e.target.value)} className="form-input" />
                   </div>
                 </div>
                 <div>
-                  <label className="form-label">Adresse</label>
+                  <label className="form-label">{t('profile.address')}</label>
                   <input type="text" value={formData.address} onChange={(e) => handleChange('address', e.target.value)} className="form-input" />
                 </div>
               </div>
@@ -183,7 +186,7 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
 
             {/* Berufliche Daten */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Berufliche Daten</h3>
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.professionalData')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {(['function1', 'function2', 'function3'] as const).map((field, i) => {
                   const currentVal = formData[field]
@@ -191,10 +194,10 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
                   const showLegacy = currentVal && !activeNames.has(currentVal)
                   return (
                     <div key={field}>
-                      <label className="form-label">{i + 1}. Funktion</label>
+                      <label className="form-label">{i + 1}. {t('profile.function')}</label>
                       <select value={currentVal} onChange={(e) => handleChange(field, e.target.value)} className="form-input">
-                        <option value="">– keine –</option>
-                        {showLegacy && <option value={currentVal}>{currentVal} ⚠ (deaktiviert)</option>}
+                        <option value="">{t('general.none')}</option>
+                        {showLegacy && <option value={currentVal}>{currentVal} ⚠ {t('profile.deactivated')}</option>}
                         {activeFunctions.map(fn => <option key={fn.name} value={fn.name}>{fn.name}</option>)}
                       </select>
                     </div>
@@ -203,11 +206,11 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Spezifikation</label>
+                  <label className="form-label">{t('profile.specification')}</label>
                   <input type="text" value={formData.specification} onChange={(e) => handleChange('specification', e.target.value)} className="form-input" placeholder="z.B. Schlagzeug" />
                 </div>
                 <div>
-                  <label className="form-label">Sprachen</label>
+                  <label className="form-label">{t('profile.languages')}</label>
                   <input type="text" value={formData.languages} onChange={(e) => handleChange('languages', e.target.value)} className="form-input" placeholder="Deutsch, Englisch, Französisch" />
                 </div>
               </div>
@@ -215,26 +218,26 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
 
             {/* Reisedaten */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Reisedaten</h3>
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.travelData')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Führerschein</label>
+                  <label className="form-label">{t('profile.driversLicense')}</label>
                   <input type="text" value={formData.driversLicense} onChange={(e) => handleChange('driversLicense', e.target.value)} className="form-input" placeholder="z.B. Klasse B, Klasse C, Internationaler Führerschein..." />
                 </div>
                 <div>
-                  <label className="form-label">Bahncard</label>
+                  <label className="form-label">{t('profile.railcard')}</label>
                   <input type="text" value={formData.railcard} onChange={(e) => handleChange('railcard', e.target.value)} className="form-input" placeholder="z.B. Bahncard 25, Bahncard 50, Business..." />
                 </div>
                 <div>
-                  <label className="form-label">Vielfliegernummer</label>
+                  <label className="form-label">{t('profile.frequentFlyer')}</label>
                   <input type="text" value={formData.frequentFlyer} onChange={(e) => handleChange('frequentFlyer', e.target.value)} className="form-input" placeholder="z.B. Lufthansa Miles & More, Emirates Skywards..." />
                 </div>
                 <div>
-                  <label className="form-label">Hotel Deckname</label>
+                  <label className="form-label">{t('profile.hotelAlias')}</label>
                   <input type="text" value={formData.hotelAlias} onChange={(e) => handleChange('hotelAlias', e.target.value)} className="form-input" placeholder="z.B. John Smith, Mike Johnson..." />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="form-label">Hotelwünsche</label>
+                  <label className="form-label">{t('profile.hotelPreferences')}</label>
                   <textarea value={formData.hotelInfo} onChange={(e) => handleChange('hotelInfo', e.target.value)} className="form-input" rows={2} placeholder="z.B. Einzelzimmer bevorzugt, ruhiges Zimmer, hohe Etage, Suite wenn möglich..." />
                 </div>
               </div>
@@ -242,36 +245,36 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
 
             {/* Ernährung */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Ernährung</h3>
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.diet')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Ernährungsweise</label>
+                  <label className="form-label">{t('profile.dietType')}</label>
                   <select value={formData.diet} onChange={(e) => handleChange('diet', e.target.value)} className="form-input">
-                    <option value="">Bitte wählen...</option>
-                    <option value="alles">Alles</option>
-                    <option value="vegetarisch">Vegetarisch</option>
-                    <option value="vegan">Vegan</option>
+                    <option value="">{t('general.selectOption')}</option>
+                    <option value="alles">{t('profile.diet.all')}</option>
+                    <option value="vegetarisch">{t('profile.diet.vegetarian')}</option>
+                    <option value="vegan">{t('profile.diet.vegan')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="form-label">Allergien</label>
+                  <label className="form-label">{t('profile.allergies')}</label>
                   <input type="text" value={formData.allergies} onChange={(e) => handleChange('allergies', e.target.value)} className="form-input" placeholder="z.B. Nüsse, Erdnüsse, Fisch..." />
                 </div>
                 <div>
-                  <label className="form-label block text-xs text-gray-500 mb-1">Unverträglichkeiten</label>
+                  <label className="form-label block text-xs text-gray-500 mb-1">{t('profile.intolerances')}</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input type="checkbox" checked={formData.glutenFree} onChange={(e) => handleChange('glutenFree', e.target.checked)} />
-                      Glutenfrei
+                      {t('profile.glutenFree')}
                     </label>
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                       <input type="checkbox" checked={formData.lactoseFree} onChange={(e) => handleChange('lactoseFree', e.target.checked)} />
-                      Laktosefrei
+                      {t('profile.lactoseFree')}
                     </label>
                   </div>
                 </div>
                 <div>
-                  <label className="form-label">Besonderheiten</label>
+                  <label className="form-label">{t('profile.specialNotes')}</label>
                   <input type="text" value={formData.specialNotes} onChange={(e) => handleChange('specialNotes', e.target.value)} className="form-input" placeholder="z.B. scharf essen, kein Koffein..." />
                 </div>
               </div>
@@ -279,22 +282,22 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
 
             {/* Kleidergrößen */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Kleidergrößen</h3>
+              <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.clothing')}</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="form-label">Shirt</label>
+                  <label className="form-label">{t('profile.shirt')}</label>
                   <input type="text" value={formData.shirtSize} onChange={(e) => handleChange('shirtSize', e.target.value)} className="form-input" placeholder="S, M, L, XL" />
                 </div>
                 <div>
-                  <label className="form-label">Hoodie</label>
+                  <label className="form-label">{t('profile.hoodie')}</label>
                   <input type="text" value={formData.hoodieSize} onChange={(e) => handleChange('hoodieSize', e.target.value)} className="form-input" placeholder="S, M, L, XL" />
                 </div>
                 <div>
-                  <label className="form-label">Hose</label>
+                  <label className="form-label">{t('profile.pants')}</label>
                   <input type="text" value={formData.pantsSize} onChange={(e) => handleChange('pantsSize', e.target.value)} className="form-input" placeholder="32, 34, 36" />
                 </div>
                 <div>
-                  <label className="form-label">Schuhe</label>
+                  <label className="form-label">{t('profile.shoes')}</label>
                   <input type="text" value={formData.shoeSize} onChange={(e) => handleChange('shoeSize', e.target.value)} className="form-input" placeholder="42, 43, 44" />
                 </div>
               </div>
@@ -311,7 +314,7 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
               className="mr-2"
             />
             <label htmlFor="crewToolActive" className="text-sm text-gray-700">
-              Crew Tool aktiv
+              {t('profile.crewToolActive')}
             </label>
           </div>
 
@@ -322,19 +325,19 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
           {!inline && (onDelete ? (
             <button onClick={handleDelete} className="btn btn-danger">
               <Trash2 className="h-4 w-4" />
-              {hasUserAccount ? 'Entfernen' : 'Löschen'}
+              {hasUserAccount ? t('general.remove') : t('general.delete')}
             </button>
           ) : <div />)}
           <div className="flex space-x-3">
             {!inline && (
-              <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+              <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
             )}
             <button onClick={handleSave} disabled={saving} className="btn btn-primary">
               {saving
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Speichern…</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('general.saving')}</>
                 : saved
-                ? <><Check className="h-4 w-4" /> Gespeichert</>
-                : <><Save className="h-4 w-4" /> Speichern</>
+                ? <><Check className="h-4 w-4" /> {t('general.saved')}</>
+                : <><Save className="h-4 w-4" /> {t('general.save')}</>
               }
             </button>
           </div>
@@ -349,7 +352,7 @@ export function ProfileEditor({ isOpen, onClose, profileData, onSave, onDelete, 
       <div className="modal-container max-w-2xl">
         {/* Header */}
         <div className="modal-header">
-          <h2 className="modal-title">Profil bearbeiten</h2>
+          <h2 className="modal-title">{t('profile.editProfile')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X className="h-5 w-5" />
           </button>

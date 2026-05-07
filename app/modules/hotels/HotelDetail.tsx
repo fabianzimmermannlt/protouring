@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Pencil, AlertCircle, Save, Loader2, Building2, Clock, Coffee } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   isEditorRole, getEffectiveRole,
   getHotel, updateHotel, type Hotel, type HotelFormData,
@@ -51,15 +52,16 @@ function ITextarea({ label, value, onChange, placeholder = '' }: {
 function InlineSaveBar({ onSave, onCancel, saving, error }: {
   onSave: () => void; onCancel: () => void; saving: boolean; error?: string
 }) {
+  const t = useT()
   return (
     <div className="pt-2 border-t border-gray-100 mt-2">
       {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving}
           className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          Speichern
+          {t('general.save')}
         </button>
       </div>
     </div>
@@ -67,6 +69,7 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: {
 }
 
 export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; onNotFound?: () => void }) {
+  const t = useT()
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [hotel, setHotel] = useState<Hotel | null>(null)
@@ -87,11 +90,11 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
       setInlineForm(h as any)
     } catch {
       if (onNotFound) { onNotFound(); return }
-      setError('Hotel nicht gefunden')
+      setError(t('hotels.notFound'))
     } finally {
       setLoading(false)
     }
-  }, [hotelId, onNotFound])
+  }, [hotelId, onNotFound, t])
 
   useEffect(() => { loadHotel() }, [loadHotel])
 
@@ -118,7 +121,7 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
       setEditingSection(null)
       window.dispatchEvent(new CustomEvent('hotel-updated', { detail: updated }))
     } catch (e) {
-      setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
+      setInlineError((e as Error).message || t('general.saveFailed'))
     } finally {
       setSavingInline(false)
     }
@@ -139,7 +142,7 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         {/* Allgemein */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Building2 className="w-3.5 h-3.5 inline mr-1" />Allgemein</span>
+            <span className="pt-card-title"><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardGeneral')}</span>
             {isEditor && hotel && editingSection !== 'allgemein' && (
               <button onClick={() => startEditSection('allgemein')} className="text-gray-400 hover:text-blue-600 transition-colors">
                 <Pencil className="w-3.5 h-3.5" />
@@ -151,7 +154,7 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
             : editingSection === 'allgemein' ? (
               <div className="space-y-2">
                 <NameAddressAutocomplete
-                  label="Name *"
+                  label={`${t('general.name')} *`}
                   variant="inline"
                   value={inlineForm.name ?? ''}
                   onChange={v => iF('name', v)}
@@ -165,37 +168,37 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
                     ...(a.country ? { country: a.country } : {}),
                   }))}
                 />
-                <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
+                <IField label={t('address.street')} value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
-                  <IField label="Ort" value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                  <IField label={t('address.postalCode')} value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
+                  <IField label={t('address.city')} value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
                 </div>
-                <IField label="Land" value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
+                <IField label={t('address.country')} value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Telefon" value={inlineForm.phone ?? ''} onChange={v => iF('phone', v)} />
-                  <IField label="E-Mail" value={inlineForm.email ?? ''} onChange={v => iF('email', v)} />
+                  <IField label={t('general.phone')} value={inlineForm.phone ?? ''} onChange={v => iF('phone', v)} />
+                  <IField label={t('general.email')} value={inlineForm.email ?? ''} onChange={v => iF('email', v)} />
                 </div>
-                <IField label="Website" value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
-                <IField label="Rezeption" value={inlineForm.reception ?? ''} onChange={v => iF('reception', v)} placeholder="Direkte Rezeptionsnummer" />
+                <IField label={t('general.website')} value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
+                <IField label={t('hotels.reception')} value={inlineForm.reception ?? ''} onChange={v => iF('reception', v)} placeholder={t('hotels.receptionPlaceholder')} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : hotel ? (
               <>
                 {hotel.name && (
                   <div className="grid grid-cols-[160px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Name</span>
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('general.name')}</span>
                     <span className="text-gray-800 font-semibold">{hotel.name}</span>
                   </div>
                 )}
-                <KV label="Straße" value={hotel.street || undefined} />
-                <KV label="PLZ / Ort" value={[hotel.postalCode, hotel.city].filter(Boolean).join(' ') || undefined} />
-                <KV label="Land" value={hotel.country || undefined} />
-                <KV label="Telefon" value={hotel.phone || undefined} />
-                <KV label="E-Mail" value={hotel.email || undefined} />
-                <KV label="Website" value={hotel.website || undefined} />
-                <KV label="Rezeption" value={hotel.reception || undefined} />
+                <KV label={t('address.street')} value={hotel.street || undefined} />
+                <KV label={t('address.postalCodeCity')} value={[hotel.postalCode, hotel.city].filter(Boolean).join(' ') || undefined} />
+                <KV label={t('address.country')} value={hotel.country || undefined} />
+                <KV label={t('general.phone')} value={hotel.phone || undefined} />
+                <KV label={t('general.email')} value={hotel.email || undefined} />
+                <KV label={t('general.website')} value={hotel.website || undefined} />
+                <KV label={t('hotels.reception')} value={hotel.reception || undefined} />
                 {!hotel.name && !hotel.street && !hotel.city && !hotel.phone && !hotel.email && (
-                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('hotels.noData')}</p>
                 )}
               </>
             ) : null}
@@ -205,7 +208,7 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         {/* Check-in / Check-out */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Clock className="w-3.5 h-3.5 inline mr-1" />Check-in / Check-out</span>
+            <span className="pt-card-title"><Clock className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardCheckin')}</span>
             {isEditor && hotel && editingSection !== 'checkin' && (
               <button onClick={() => startEditSection('checkin')} className="text-gray-400 hover:text-blue-600 transition-colors">
                 <Pencil className="w-3.5 h-3.5" />
@@ -217,21 +220,21 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
             : editingSection === 'checkin' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Check-in" value={inlineForm.checkIn ?? ''} onChange={v => iF('checkIn', v)} placeholder="z.B. 15:00" />
-                  <IField label="Check-out" value={inlineForm.checkOut ?? ''} onChange={v => iF('checkOut', v)} placeholder="z.B. 11:00" />
+                  <IField label={t('hotels.checkin')} value={inlineForm.checkIn ?? ''} onChange={v => iF('checkIn', v)} placeholder={t('hotels.checkinPlaceholder')} />
+                  <IField label={t('hotels.checkout')} value={inlineForm.checkOut ?? ''} onChange={v => iF('checkOut', v)} placeholder={t('hotels.checkoutPlaceholder')} />
                 </div>
-                <IField label="Früh-Check-in" value={inlineForm.earlyCheckIn ?? ''} onChange={v => iF('earlyCheckIn', v)} placeholder="z.B. ab 10:00 möglich" />
-                <IField label="Spät-Check-out" value={inlineForm.lateCheckOut ?? ''} onChange={v => iF('lateCheckOut', v)} placeholder="z.B. bis 14:00 möglich" />
+                <IField label={t('hotels.earlyCheckin')} value={inlineForm.earlyCheckIn ?? ''} onChange={v => iF('earlyCheckIn', v)} placeholder={t('hotels.earlyCheckinPlaceholder')} />
+                <IField label={t('hotels.lateCheckout')} value={inlineForm.lateCheckOut ?? ''} onChange={v => iF('lateCheckOut', v)} placeholder={t('hotels.lateCheckoutPlaceholder')} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : hotel ? (
               <>
-                <KV label="Check-in" value={hotel.checkIn || undefined} />
-                <KV label="Check-out" value={hotel.checkOut || undefined} />
-                <KV label="Früh-Check-in" value={hotel.earlyCheckIn || undefined} />
-                <KV label="Spät-Check-out" value={hotel.lateCheckOut || undefined} />
+                <KV label={t('hotels.checkin')} value={hotel.checkIn || undefined} />
+                <KV label={t('hotels.checkout')} value={hotel.checkOut || undefined} />
+                <KV label={t('hotels.earlyCheckin')} value={hotel.earlyCheckIn || undefined} />
+                <KV label={t('hotels.lateCheckout')} value={hotel.lateCheckOut || undefined} />
                 {!hotel.checkIn && !hotel.checkOut && !hotel.earlyCheckIn && !hotel.lateCheckOut && (
-                  <p className="text-sm text-gray-400 py-2">Keine Zeiten hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('hotels.noCheckInData')}</p>
                 )}
               </>
             ) : null}
@@ -241,7 +244,7 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         {/* Services */}
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Coffee className="w-3.5 h-3.5 inline mr-1" />Services</span>
+            <span className="pt-card-title"><Coffee className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardServices')}</span>
             {isEditor && hotel && editingSection !== 'services' && (
               <button onClick={() => startEditSection('services')} className="text-gray-400 hover:text-blue-600 transition-colors">
                 <Pencil className="w-3.5 h-3.5" />
@@ -252,18 +255,18 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
             {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'services' ? (
               <div className="space-y-2">
-                <IField label="Frühstück" value={inlineForm.breakfast ?? ''} onChange={v => iF('breakfast', v)} placeholder="z.B. inkl., 15€ p.P." />
-                <IField label="Frühstück Wochenende" value={inlineForm.breakfastWeekend ?? ''} onChange={v => iF('breakfastWeekend', v)} />
-                <ITextarea label="Zusätzliche Infos" value={inlineForm.additionalInfo ?? ''} onChange={v => iF('additionalInfo', v)} />
+                <IField label={t('hotels.breakfast')} value={inlineForm.breakfast ?? ''} onChange={v => iF('breakfast', v)} placeholder={t('hotels.breakfastPlaceholder')} />
+                <IField label={t('hotels.breakfastWeekend')} value={inlineForm.breakfastWeekend ?? ''} onChange={v => iF('breakfastWeekend', v)} />
+                <ITextarea label={t('hotels.additionalInfo')} value={inlineForm.additionalInfo ?? ''} onChange={v => iF('additionalInfo', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : hotel ? (
               <>
-                <KV label="Frühstück" value={hotel.breakfast || undefined} />
-                <KV label="Frühstück WE" value={hotel.breakfastWeekend || undefined} />
-                <KV label="Zusatzinfo" value={hotel.additionalInfo || undefined} />
+                <KV label={t('hotels.breakfast')} value={hotel.breakfast || undefined} />
+                <KV label={t('hotels.breakfastWeekendShort')} value={hotel.breakfastWeekend || undefined} />
+                <KV label={t('hotels.additionalInfoShort')} value={hotel.additionalInfo || undefined} />
                 {!hotel.breakfast && !hotel.breakfastWeekend && !hotel.additionalInfo && (
-                  <p className="text-sm text-gray-400 py-2">Keine Service-Infos hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('hotels.noServices')}</p>
                 )}
               </>
             ) : null}

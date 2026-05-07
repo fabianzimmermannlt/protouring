@@ -12,6 +12,7 @@ import {
   type PartnerType,
 } from '@/lib/api-client'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 const EMPTY: PartnerFormData = {
   type: '', companyName: '', street: '', postalCode: '', city: '', state: '',
@@ -35,6 +36,7 @@ interface PartnerModalProps {
 }
 
 export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: PartnerModalProps) {
+  const t = useT()
   const isEdit = !!partner
 
   const [partnerTypes, setPartnerTypes] = useState<string[]>(FALLBACK_TYPES)
@@ -84,20 +86,20 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
         : await createPartner(form)
       onSaved(saved)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
+      setError(e instanceof Error ? e.message : t('partners.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Partner „${partner!.companyName}" wirklich löschen?`)) return
+    if (!confirm(t('partners.deleteConfirm').replace('{name}', partner!.companyName))) return
     setDeleting(true)
     try {
       await deletePartner(partner!.id)
       onDeleted?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Löschen')
+      setError(e instanceof Error ? e.message : t('partners.deleteFailed'))
     } finally {
       setDeleting(false)
     }
@@ -110,7 +112,7 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
         {/* Header */}
         <div className="modal-header">
           <h2 className="modal-title">
-            {isEdit ? 'Partner bearbeiten' : 'Neuen Partner anlegen'}
+            {isEdit ? t('partners.editPartner') : t('partners.newPartner')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X className="h-5 w-5" />
@@ -129,15 +131,15 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
             {/* Linke Spalte */}
             <div className="space-y-4">
               <div>
-                <label className="form-label">Art</label>
+                <label className="form-label">{t('partners.type')}</label>
                 <select value={form.type} onChange={e => f('type', e.target.value)} className="form-select">
-                  <option value="">– wählen –</option>
-                  {partnerTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="">{t('partners.selectType')}</option>
+                  {partnerTypes.map(pt => <option key={pt} value={pt}>{pt}</option>)}
                 </select>
               </div>
 
               <NameAddressAutocomplete
-                label="Firmenname *"
+                label={t('partners.companyRequired')}
                 variant="modal"
                 autoFocus
                 value={form.companyName}
@@ -155,32 +157,32 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
               />
 
               <div>
-                <label className="form-label">Straße</label>
+                <label className="form-label">{t('address.street')}</label>
                 <input type="text" value={form.street} onChange={e => f('street', e.target.value)}
                   className="form-input" />
               </div>
 
               <div className="grid grid-cols-[auto_1fr] gap-2">
                 <div>
-                  <label className="form-label">PLZ</label>
+                  <label className="form-label">{t('address.postalCode')}</label>
                   <input type="text" value={form.postalCode} onChange={e => f('postalCode', e.target.value)}
                     maxLength={10} className="form-input !w-20" placeholder="12345" />
                 </div>
                 <div>
-                  <label className="form-label">Ort</label>
+                  <label className="form-label">{t('address.city')}</label>
                   <input type="text" value={form.city} onChange={e => f('city', e.target.value)}
                     className="form-input" />
                 </div>
               </div>
 
               <div>
-                <label className="form-label">Bundesland</label>
+                <label className="form-label">{t('address.state')}</label>
                 <input type="text" value={form.state} onChange={e => f('state', e.target.value)}
                   className="form-input" />
               </div>
 
               <div>
-                <label className="form-label">Land</label>
+                <label className="form-label">{t('address.country')}</label>
                 <input type="text" value={form.country} onChange={e => f('country', e.target.value)}
                   className="form-input" />
               </div>
@@ -189,37 +191,37 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
             {/* Rechte Spalte */}
             <div className="space-y-4">
               <div>
-                <label className="form-label">Ansprechpartner</label>
+                <label className="form-label">{t('partners.contactPerson')}</label>
                 <input type="text" value={form.contactPerson} onChange={e => f('contactPerson', e.target.value)}
                   className="form-input" placeholder="Max Mustermann" />
               </div>
 
               <div>
-                <label className="form-label">E-Mail</label>
+                <label className="form-label">{t('general.email')}</label>
                 <input type="email" value={form.email} onChange={e => f('email', e.target.value)}
                   className="form-input" placeholder="info@example.com" />
               </div>
 
               <div>
-                <label className="form-label">Telefon</label>
+                <label className="form-label">{t('general.phone')}</label>
                 <input type="tel" value={form.phone} onChange={e => f('phone', e.target.value)}
                   className="form-input" placeholder="+49 40 …" />
               </div>
 
               <div>
-                <label className="form-label">Steuer-ID</label>
+                <label className="form-label">{t('partners.taxId')}</label>
                 <input type="text" value={form.taxId} onChange={e => f('taxId', e.target.value)}
                   className="form-input" />
               </div>
 
               <div>
-                <label className="form-label">Abweichende Rechnungsanschrift</label>
+                <label className="form-label">{t('partners.billingAddressFull')}</label>
                 <textarea value={form.billingAddress} onChange={e => f('billingAddress', e.target.value)}
-                  rows={3} className="form-textarea" placeholder="Falls abweichend von der Hauptadresse…" />
+                  rows={3} className="form-textarea" placeholder={t('partners.billingAddressPlaceholder')} />
               </div>
 
               <div>
-                <label className="form-label">Bemerkung</label>
+                <label className="form-label">{t('partners.notes')}</label>
                 <textarea value={form.notes} onChange={e => f('notes', e.target.value)}
                   rows={3} className="form-textarea" />
               </div>
@@ -232,15 +234,15 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
           {isEdit ? (
             <button onClick={handleDelete} disabled={deleting} className="btn btn-danger disabled:opacity-50">
               {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-              Löschen
+              {t('general.delete')}
             </button>
           ) : <div />}
           <div className="flex gap-3">
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
             <button onClick={handleSave} disabled={saving || !form.companyName.trim()}
               className="btn btn-primary disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Speichern
+              {t('general.save')}
             </button>
           </div>
         </div>

@@ -7,19 +7,10 @@ import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
-
-const VEHICLE_COLS: [string, keyof Vehicle][] = [
-  ['Bezeichnung', 'designation'],
-  ['Fahrzeugart', 'vehicleType'],
-  ['Driver', 'driver'],
-  ['Kennzeichen', 'licensePlate'],
-  ['Maße', 'dimensions'],
-  ['Stromanschluss', 'powerConnection'],
-  ['Sitzplätze', 'seats'],
-  ['Schlafplätze', 'sleepingPlaces'],
-]
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 export default function VehiclesPage() {
+  const t = useT()
   const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -93,14 +84,14 @@ export default function VehiclesPage() {
       {/* Mobile: Neu-Button */}
       {isMobile && isEditor && (
         <div className="flex items-center gap-2">
-          <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+          <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
         </div>
       )}
 
       {/* Search */}
       <input
         type="text"
-        placeholder="Fahrzeuge durchsuchen..."
+        placeholder={t('vehicles.searchPlaceholder')}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="search-input"
@@ -109,8 +100,8 @@ export default function VehiclesPage() {
       {/* Vehicles List / Mobile Cards */}
       {filteredVehicles.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg mb-2">{vehicles.length === 0 ? 'Keine Fahrzeuge vorhanden' : 'Keine Treffer'}</p>
-          {vehicles.length === 0 && <p className="text-sm">Klicken Sie auf &quot;Neues Fahrzeug&quot; um zu beginnen.</p>}
+          <p className="text-lg mb-2">{vehicles.length === 0 ? t('vehicles.noVehicles') : t('general.noResults')}</p>
+          {vehicles.length === 0 && <p className="text-sm">{t('vehicles.addHint')}</p>}
         </div>
       ) : isMobile ? (
         <div className="flex flex-col gap-2">
@@ -154,6 +145,17 @@ export default function VehiclesPage() {
 }
 
 function VehicleTable({ vehicles, onEdit }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void }) {
+  const t = useT()
+  const VEHICLE_COLS: [string, keyof Vehicle][] = [
+    [t('table.designation'), 'designation'],
+    [t('table.vehicleType'), 'vehicleType'],
+    [t('table.driver'), 'driver'],
+    [t('table.licensePlate'), 'licensePlate'],
+    [t('table.dimensions'), 'dimensions'],
+    [t('table.powerConnection'), 'powerConnection'],
+    [t('table.seats'), 'seats'],
+    [t('table.sleepingPlaces'), 'sleepingPlaces'],
+  ]
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     vehicles as unknown as Record<string, unknown>[],
     'designation'

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getContacts, getTermine, getActiveFunctions, getTravelParty,
   addTravelPartyRole, removeTravelPartyRole,
@@ -82,6 +83,7 @@ function BookedToggle({
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
 export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
+  const translate = useT()
   const [functions, setFunctions]   = useState<ActiveFunction[]>([])
   const [contacts, setContacts]     = useState<Contact[]>([])
   const [termine, setTermine]       = useState<Termin[]>([])
@@ -209,7 +211,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
       {/* Funktions-Dropdown */}
       <div className="flex items-center gap-3">
         <label className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
-          Funktion
+          {translate('contacts.form.function')}
         </label>
         <select
           value={selectedFn}
@@ -222,13 +224,13 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
         </select>
         {crewMembers.length === 0 && selectedFn && (
           <span className="text-xs text-gray-400 italic">
-            Keine Kontakte mit dieser Funktion gefunden
+            {translate('contacts.booking.noCrewForFunction')}
           </span>
         )}
       </div>
 
       {termine.length === 0 ? (
-        <p className="text-sm text-gray-400 italic py-4">Keine anstehenden Termine</p>
+        <p className="text-sm text-gray-400 italic py-4">{translate('appointments.empty')}</p>
       ) : (
         // Zwei separate Tabellen nebeneinander – fixe Zeilenhöhe synchronisiert sie
         <div style={{ display: 'flex', width: 'fit-content', maxWidth: '100%', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
@@ -243,10 +245,10 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   </th>
                 </tr>
                 <tr>
-                  <th style={{ width: 80,  height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>Datum</th>
-                  <th style={{ width: 144, height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>Titel</th>
-                  <th style={{ width: 112, height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>Spielstätte</th>
-                  <th style={{ width: 96,  height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>Ort</th>
+                  <th style={{ width: 80,  height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>{translate('table.date')}</th>
+                  <th style={{ width: 144, height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>{translate('table.title')}</th>
+                  <th style={{ width: 112, height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>{translate('appointments.card.venue')}</th>
+                  <th style={{ width: 96,  height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 500, fontSize: 11, color: '#6b7280', textTransform: 'uppercase', background: '#f3f4f6', borderBottom: '2px solid #d1d5db' }}>{translate('table.city')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -280,7 +282,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                 <tr>
                   {crewMembers.length > 0 ? (
                     <th colSpan={crewMembers.length * 2} style={{ height: 30, padding: '0 12px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.08em', background: '#f0f4ff', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>
-                      Crew · {selectedFn}
+                      {translate('contacts.booking.crewFunction').replace('{function}', selectedFn)}
                     </th>
                   ) : (
                     <th style={{ height: 30, background: '#f0f4ff', borderBottom: '1px solid #e5e7eb' }} />
@@ -289,7 +291,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                 <tr>
                   {crewMembers.map((c, ci) => (
                     <React.Fragment key={c.id}>
-                      <th style={{ width: 40, height: 30, padding: '0 4px', textAlign: 'center', fontWeight: 500, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined }}>Verf</th>
+                      <th style={{ width: 40, height: 30, padding: '0 4px', textAlign: 'center', fontWeight: 500, fontSize: 11, color: '#818cf8', textTransform: 'uppercase', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined }}>{translate('table.availability')}</th>
                       <th style={{ width: 84, minHeight: 30, padding: '2px 8px', textAlign: 'center', background: '#f0f4ff', borderBottom: '2px solid #c7d2fe', borderRight: '1px solid #e0e7ff', overflow: 'hidden' }}>
                         <div style={{ fontWeight: 600, fontSize: 11, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.firstName} {c.lastName}</div>
                         {c.specification && <div style={{ fontWeight: 400, fontSize: 10, color: '#818cf8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.specification}</div>}
@@ -310,7 +312,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                           <React.Fragment key={c.id}>
                             <td style={{ width: 40, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderLeft: ci > 0 ? '1px solid #e0e7ff' : undefined, textAlign: 'center', padding: '0 4px' }}>
                               {c.contactType === 'guest'
-                                ? <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#22c55e', color:'white', fontSize:8, fontWeight:700, letterSpacing:'-0.02em' }} title="Manuell — kein Login">M</span>
+                                ? <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#22c55e', color:'white', fontSize:8, fontWeight:700, letterSpacing:'-0.02em' }} title={translate('contacts.tooltip.manualNoLogin')}>M</span>
                                 : availIcon(getAvailStatus(t, uid))}
                             </td>
                             <td style={{ width: 84, height: 32, background: bgC, borderBottom: '1px solid #e0e7ff', borderRight: '1px solid #e0e7ff', textAlign: 'center', padding: '0 4px' }}>
@@ -337,9 +339,9 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
 
       {/* Legende */}
       <div className="flex items-center gap-4 text-xs text-gray-400 pt-1">
-        <span className="font-medium text-gray-500">Legende:</span>
-        <span className="flex items-center gap-1.5">Verfügbarkeit: {(['available','maybe','unavailable','null'] as const).map(s => { const c = AVAIL_CFG[s]; return <span key={s} className="flex items-center gap-0.5"><span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:c.color, color:'white', fontSize:8, fontWeight:700 }}>{c.symbol}</span> {c.label}</span> })}</span>
-        <span>Buchung: <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#3b82f6', color:'white', fontSize:9, fontWeight:700 }}>✓</span> gebucht · <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#ef4444', color:'white', fontSize:9, fontWeight:700 }}>✗</span> abgesagt · <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#e5e7eb', color:'#9ca3af', fontSize:9, fontWeight:700 }}>–</span> offen</span>
+        <span className="font-medium text-gray-500">{translate('contacts.booking.legend')}:</span>
+        <span className="flex items-center gap-1.5">{translate('table.availability')}: {(['available','maybe','unavailable','null'] as const).map(s => { const c = AVAIL_CFG[s]; return <span key={s} className="flex items-center gap-0.5"><span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:c.color, color:'white', fontSize:8, fontWeight:700 }}>{c.symbol}</span> {c.label}</span> })}</span>
+        <span>{translate('contacts.booking.bookingLegend')}: <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#3b82f6', color:'white', fontSize:9, fontWeight:700 }}>✓</span> gebucht · <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#ef4444', color:'white', fontSize:9, fontWeight:700 }}>✗</span> abgesagt · <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:14, height:14, borderRadius:'50%', background:'#e5e7eb', color:'#9ca3af', fontSize:9, fontWeight:700 }}>–</span> offen</span>
       </div>
     </div>
   )

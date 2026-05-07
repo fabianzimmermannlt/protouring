@@ -3,11 +3,20 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Check } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import type { TranslationKey } from '@/app/lib/i18n/translations/de'
 import {
   getFunctionCatalog,
   saveFunctionCatalog,
   type FunctionCatalogGroup,
 } from '@/lib/api-client'
+
+const GROUP_KEY_MAP: Record<string, TranslationKey> = {
+  'Talente & Akteure': 'settings.funktionen.group.talente',
+  'Management':        'settings.funktionen.group.management',
+  'Technik':           'settings.funktionen.group.technik',
+  'Driver':            'settings.funktionen.group.driver',
+  'Sonstige':          'settings.funktionen.group.sonstige',
+}
 
 export default function FunktionenSettings() {
   const t = useT()
@@ -94,7 +103,9 @@ export default function FunktionenSettings() {
           return (
             <div key={group.group} className="pt-fn-group">
               <div className="pt-fn-group-header">
-                <span className="pt-fn-group-name">{group.group}</span>
+                <span className="pt-fn-group-name">
+                  {GROUP_KEY_MAP[group.group] ? t(GROUP_KEY_MAP[group.group]) : group.group}
+                </span>
                 <div className="pt-fn-group-actions">
                   <button className="pt-fn-group-toggle" onClick={() => toggleGroup(gi, true)}>{t('settings.funktionen.allOn')}</button>
                   <span className="pt-fn-group-divider">·</span>

@@ -6,6 +6,7 @@ import {
   isEditorRole, getEffectiveRole,
   getVehicle, updateVehicle, type Vehicle, type VehicleFormData,
 } from '@/lib/api-client'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -50,15 +51,16 @@ function ITextarea({ label, value, onChange, placeholder = '' }: {
 function InlineSaveBar({ onSave, onCancel, saving, error }: {
   onSave: () => void; onCancel: () => void; saving: boolean; error?: string
 }) {
+  const t = useT()
   return (
     <div className="pt-2 border-t border-gray-100 mt-2">
       {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving}
           className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          Speichern
+          {t('general.save')}
         </button>
       </div>
     </div>
@@ -66,6 +68,7 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: {
 }
 
 export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: string; onNotFound?: () => void }) {
+  const t = useT()
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
@@ -86,11 +89,11 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
       setInlineForm(v as any)
     } catch {
       if (onNotFound) { onNotFound(); return }
-      setError('Fahrzeug nicht gefunden')
+      setError(t('vehicles.notFound'))
     } finally {
       setLoading(false)
     }
-  }, [vehicleId, onNotFound])
+  }, [vehicleId, onNotFound, t])
 
   useEffect(() => { loadVehicle() }, [loadVehicle])
 
@@ -116,7 +119,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
       setInlineForm({ ...updated as any })
       setEditingSection(null)
     } catch (e) {
-      setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
+      setInlineError((e as Error).message || t('general.saveFailed'))
     } finally {
       setSavingInline(false)
     }
@@ -139,7 +142,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
         {/* Fahrzeug */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />Fahrzeug</span>
+            <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardVehicle')}</span>
             {isEditor && vehicle && editingSection !== 'fahrzeug' && (
               <button onClick={() => startEditSection('fahrzeug')} className="text-gray-400 hover:text-blue-600 transition-colors">
                 <Pencil className="w-3.5 h-3.5" />
@@ -150,29 +153,29 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'fahrzeug' ? (
               <div className="space-y-2">
-                <IField label="Bezeichnung *" value={String(inlineForm.designation ?? '')} onChange={v => iF('designation', v)} placeholder="z.B. Tourbus Mercedes Sprinter" />
-                <IField label="Fahrzeugtyp" value={String(inlineForm.vehicleType ?? '')} onChange={v => iF('vehicleType', v)} placeholder="z.B. Tourbus, Nightliner, Sprinter" />
-                <IField label="Fahrer" value={String(inlineForm.driver ?? '')} onChange={v => iF('driver', v)} />
-                <IField label="Kennzeichen" value={String(inlineForm.licensePlate ?? '')} onChange={v => iF('licensePlate', v)} />
-                <IField label="Abmessungen" value={String(inlineForm.dimensions ?? '')} onChange={v => iF('dimensions', v)} placeholder="z.B. 12m × 2,5m × 4m" />
-                <IField label="Stromanschluss" value={String(inlineForm.powerConnection ?? '')} onChange={v => iF('powerConnection', v)} placeholder="z.B. CEE 32A" />
+                <IField label={t('vehicles.designationRequired')} value={String(inlineForm.designation ?? '')} onChange={v => iF('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} />
+                <IField label={t('vehicles.vehicleType')} value={String(inlineForm.vehicleType ?? '')} onChange={v => iF('vehicleType', v)} placeholder={t('vehicles.vehicleTypePlaceholder')} />
+                <IField label={t('vehicles.driver')} value={String(inlineForm.driver ?? '')} onChange={v => iF('driver', v)} />
+                <IField label={t('vehicles.licensePlate')} value={String(inlineForm.licensePlate ?? '')} onChange={v => iF('licensePlate', v)} />
+                <IField label={t('vehicles.dimensions')} value={String(inlineForm.dimensions ?? '')} onChange={v => iF('dimensions', v)} placeholder={t('vehicles.dimensionsPlaceholder')} />
+                <IField label={t('vehicles.powerConnection')} value={String(inlineForm.powerConnection ?? '')} onChange={v => iF('powerConnection', v)} placeholder={t('vehicles.powerConnectionPlaceholder')} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : vehicle ? (
               <>
                 {vehicle.designation && (
                   <div className="grid grid-cols-[160px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Bezeichnung</span>
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('vehicles.designation')}</span>
                     <span className="text-gray-800 font-semibold">{vehicle.designation}</span>
                   </div>
                 )}
-                <KV label="Typ" value={vehicle.vehicleType || undefined} />
-                <KV label="Fahrer" value={vehicle.driver || undefined} />
-                <KV label="Kennzeichen" value={vehicle.licensePlate || undefined} />
-                <KV label="Abmessungen" value={vehicle.dimensions || undefined} />
-                <KV label="Stromanschluss" value={vehicle.powerConnection || undefined} />
+                <KV label={t('vehicles.vehicleTypeShort')} value={vehicle.vehicleType || undefined} />
+                <KV label={t('vehicles.driver')} value={vehicle.driver || undefined} />
+                <KV label={t('vehicles.licensePlate')} value={vehicle.licensePlate || undefined} />
+                <KV label={t('vehicles.dimensions')} value={vehicle.dimensions || undefined} />
+                <KV label={t('vehicles.powerConnection')} value={vehicle.powerConnection || undefined} />
                 {!vehicle.designation && !vehicle.vehicleType && !vehicle.driver && !vehicle.licensePlate && (
-                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('vehicles.noData')}</p>
                 )}
               </>
             ) : null}
@@ -182,7 +185,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
         {/* Anhänger */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />Anhänger</span>
+            <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardTrailer')}</span>
             {isEditor && vehicle && editingSection !== 'anhaenger' && (
               <button onClick={() => startEditSection('anhaenger')} className="text-gray-400 hover:text-blue-600 transition-colors">
                 <Pencil className="w-3.5 h-3.5" />
@@ -197,23 +200,23 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
                   <input type="checkbox" id="hasTrailer" checked={hasTrailer}
                     onChange={e => iF('hasTrailer', e.target.checked)}
                     className="rounded border-gray-300" />
-                  <label htmlFor="hasTrailer" className="text-sm text-gray-700">Anhänger vorhanden</label>
+                  <label htmlFor="hasTrailer" className="text-sm text-gray-700">{t('vehicles.hasTrailer')}</label>
                 </div>
                 {hasTrailer && (
                   <>
-                    <IField label="Abmessungen Anhänger" value={String(inlineForm.trailerDimensions ?? '')} onChange={v => iF('trailerDimensions', v)} />
-                    <IField label="Kennzeichen Anhänger" value={String(inlineForm.trailerLicensePlate ?? '')} onChange={v => iF('trailerLicensePlate', v)} />
+                    <IField label={t('vehicles.trailerDimensions')} value={String(inlineForm.trailerDimensions ?? '')} onChange={v => iF('trailerDimensions', v)} />
+                    <IField label={t('vehicles.trailerLicensePlate')} value={String(inlineForm.trailerLicensePlate ?? '')} onChange={v => iF('trailerLicensePlate', v)} />
                   </>
                 )}
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : vehicle ? (
               <>
-                <KV label="Anhänger" value={vehicle.hasTrailer ? 'Ja' : undefined} />
-                <KV label="Abmessungen" value={vehicle.trailerDimensions || undefined} />
-                <KV label="Kennzeichen" value={vehicle.trailerLicensePlate || undefined} />
+                <KV label={t('vehicles.cardTrailer')} value={vehicle.hasTrailer ? t('vehicles.trailerYes') : undefined} />
+                <KV label={t('vehicles.dimensions')} value={vehicle.trailerDimensions || undefined} />
+                <KV label={t('vehicles.licensePlate')} value={vehicle.trailerLicensePlate || undefined} />
                 {!vehicle.hasTrailer && !vehicle.trailerDimensions && !vehicle.trailerLicensePlate && (
-                  <p className="text-sm text-gray-400 py-2">Kein Anhänger hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('vehicles.noTrailer')}</p>
                 )}
               </>
             ) : null}
@@ -223,7 +226,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
         {/* Kapazität */}
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />Kapazität & Notizen</span>
+            <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardCapacity')}</span>
             {isEditor && vehicle && editingSection !== 'kapazitaet' && (
               <button onClick={() => startEditSection('kapazitaet')} className="text-gray-400 hover:text-blue-600 transition-colors">
                 <Pencil className="w-3.5 h-3.5" />
@@ -235,19 +238,19 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
             : editingSection === 'kapazitaet' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Sitzplätze" value={String(inlineForm.seats ?? '')} onChange={v => iF('seats', v)} placeholder="z.B. 12" />
-                  <IField label="Schlafplätze" value={String(inlineForm.sleepingPlaces ?? '')} onChange={v => iF('sleepingPlaces', v)} placeholder="z.B. 10" />
+                  <IField label={t('vehicles.seats')} value={String(inlineForm.seats ?? '')} onChange={v => iF('seats', v)} placeholder={t('vehicles.seatsPlaceholder')} />
+                  <IField label={t('vehicles.sleepingPlaces')} value={String(inlineForm.sleepingPlaces ?? '')} onChange={v => iF('sleepingPlaces', v)} placeholder={t('vehicles.sleepingPlacesPlaceholder')} />
                 </div>
-                <ITextarea label="Notizen" value={String(inlineForm.notes ?? '')} onChange={v => iF('notes', v)} />
+                <ITextarea label={t('vehicles.notes')} value={String(inlineForm.notes ?? '')} onChange={v => iF('notes', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : vehicle ? (
               <>
-                <KV label="Sitzplätze" value={vehicle.seats || undefined} />
-                <KV label="Schlafplätze" value={vehicle.sleepingPlaces || undefined} />
-                <KV label="Notizen" value={vehicle.notes || undefined} />
+                <KV label={t('vehicles.seats')} value={vehicle.seats || undefined} />
+                <KV label={t('vehicles.sleepingPlaces')} value={vehicle.sleepingPlaces || undefined} />
+                <KV label={t('vehicles.notes')} value={vehicle.notes || undefined} />
                 {!vehicle.seats && !vehicle.sleepingPlaces && !vehicle.notes && (
-                  <p className="text-sm text-gray-400 py-2">Keine Kapazitätsdaten hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('vehicles.noCapacity')}</p>
                 )}
               </>
             ) : null}

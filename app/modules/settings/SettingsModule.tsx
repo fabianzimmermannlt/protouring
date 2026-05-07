@@ -788,7 +788,7 @@ function UserProfil() {
       {/* Sprache / Language */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-          {language === 'de' ? t('settings.language.label') : 'Language / Sprache'}
+          {t('settings.language.label')}
         </h3>
         <div className="flex gap-2">
           <button

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, Save, Loader2, Trash2 } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   createVenue,
   updateVenue,
@@ -71,6 +72,7 @@ interface VenueModalProps {
 }
 
 export default function VenueModal({ venue, onClose, onSaved, onDeleted }: VenueModalProps) {
+  const t = useT()
   const isEdit = !!venue
   const [form, setForm] = useState<VenueFormData>(isEdit ? venueToForm(venue!) : { ...EMPTY_FORM })
   const [saving, setSaving] = useState(false)
@@ -93,20 +95,20 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
       onSaved(saved)
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen')
+      setError(e instanceof Error ? e.message : t('general.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!venue || !confirm(`Spielstätte "${venue.name}" wirklich löschen?`)) return
+    if (!venue || !confirm(t('venues.deleteVenueConfirm').replace('{name}', venue.name))) return
     try {
       await deleteVenue(venue.id)
       onDeleted?.(venue.id)
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Löschen fehlgeschlagen')
+      setError(e instanceof Error ? e.message : t('general.deleteFailed'))
     }
   }
 
@@ -117,7 +119,7 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
         {/* Header */}
         <div className="modal-header">
           <h2 className="modal-title">
-            {isEdit ? 'Spielstätte bearbeiten' : 'Neue Spielstätte anlegen'}
+            {isEdit ? t('venues.editVenue') : t('venues.newVenue')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X className="h-5 w-5" /></button>
         </div>
@@ -132,7 +134,7 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
               {/* Left */}
               <div className="space-y-4">
                 <NameAddressAutocomplete
-                  label="Name *"
+                  label={`${t('general.name')} *`}
                   variant="modal"
                   withLatLon
                   value={form.name}
@@ -149,45 +151,45 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
                     ...(a.longitude ? { longitude: a.longitude } : {}),
                   }))}
                 />
-                <Field label="Straße" value={form.street} onChange={v => f('street', v)} />
+                <Field label={t('address.street')} value={form.street} onChange={v => f('street', v)} />
                 <div className="grid grid-cols-[auto_1fr] gap-2">
-                  <Field label="PLZ" value={form.postalCode} onChange={v => f('postalCode', v)} maxLength={10} className="!w-24" />
-                  <Field label="Ort" value={form.city} onChange={v => f('city', v)} />
+                  <Field label={t('address.postalCode')} value={form.postalCode} onChange={v => f('postalCode', v)} maxLength={10} className="!w-24" />
+                  <Field label={t('address.city')} value={form.city} onChange={v => f('city', v)} />
                 </div>
-                <Field label="Bundesland" value={form.state} onChange={v => f('state', v)} />
-                <Field label="Land" value={form.country} onChange={v => f('country', v)} />
-                <Field label="Website" value={form.website} onChange={v => f('website', v)} type="url" placeholder="https://..." />
+                <Field label={t('address.state')} value={form.state} onChange={v => f('state', v)} />
+                <Field label={t('address.country')} value={form.country} onChange={v => f('country', v)} />
+                <Field label={t('general.website')} value={form.website} onChange={v => f('website', v)} type="url" placeholder="https://..." />
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Latitude" value={form.latitude} onChange={v => f('latitude', v)} placeholder="48.137154" />
-                  <Field label="Longitude" value={form.longitude} onChange={v => f('longitude', v)} placeholder="11.576124" />
+                  <Field label={t('address.latitude')} value={form.latitude} onChange={v => f('latitude', v)} placeholder="48.137154" />
+                  <Field label={t('address.longitude')} value={form.longitude} onChange={v => f('longitude', v)} placeholder="11.576124" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Kapazität" value={form.capacity} onChange={v => f('capacity', v)} placeholder="z.B. 5000" />
-                  <Field label="Kapazität (bestuhlt)" value={form.capacitySeated} onChange={v => f('capacitySeated', v)} placeholder="z.B. 3000" />
+                  <Field label={t('venues.capacity')} value={form.capacity} onChange={v => f('capacity', v)} placeholder={t('venues.capacityPlaceholder')} />
+                  <Field label={t('venues.capacitySeated')} value={form.capacitySeated} onChange={v => f('capacitySeated', v)} placeholder={t('venues.capacitySeatedPlaceholder')} />
                 </div>
-                <TextareaField label="W-LAN" value={form.wifi} onChange={v => f('wifi', v)} placeholder="SSID / Passwort..." />
-                <TextareaField label="Garderoben" value={form.wardrobe} onChange={v => f('wardrobe', v)} />
-                <Field label="Duschen" value={form.showers} onChange={v => f('showers', v)} placeholder="z.B. 4 im Backstage" />
+                <TextareaField label={t('venues.wifi')} value={form.wifi} onChange={v => f('wifi', v)} placeholder={t('venues.wifiPlaceholder')} />
+                <TextareaField label={t('venues.wardrobe')} value={form.wardrobe} onChange={v => f('wardrobe', v)} />
+                <Field label={t('venues.showers')} value={form.showers} onChange={v => f('showers', v)} placeholder={t('venues.showersPlaceholder')} />
               </div>
 
               {/* Right */}
               <div className="space-y-4">
-                <Field label="Anfahrt" value={form.arrival} onChange={v => f('arrival', v)} placeholder="z.B. Auto / Bahn..." />
-                <Field label="Anfahrt – Straße" value={form.arrivalStreet} onChange={v => f('arrivalStreet', v)} />
+                <Field label={t('address.arrival')} value={form.arrival} onChange={v => f('arrival', v)} placeholder={t('venues.arrivalPlaceholder')} />
+                <Field label={t('address.arrivalStreet')} value={form.arrivalStreet} onChange={v => f('arrivalStreet', v)} />
                 <div className="grid grid-cols-[auto_1fr] gap-2">
-                  <Field label="Anfahrt – PLZ" value={form.arrivalPostalCode} onChange={v => f('arrivalPostalCode', v)} maxLength={10} className="!w-24" />
-                  <Field label="Anfahrt – Ort" value={form.arrivalCity} onChange={v => f('arrivalCity', v)} />
+                  <Field label={t('address.arrivalPostalCode')} value={form.arrivalPostalCode} onChange={v => f('arrivalPostalCode', v)} maxLength={10} className="!w-24" />
+                  <Field label={t('address.arrivalCity')} value={form.arrivalCity} onChange={v => f('arrivalCity', v)} />
                 </div>
                 <div className="grid grid-cols-[2fr_1fr] gap-2">
-                  <Field label="Bühnenmaße" value={form.stageDimensions} onChange={v => f('stageDimensions', v)} placeholder="z.B. 12x8m" />
-                  <Field label="Lichte Höhe" value={form.clearanceHeight} onChange={v => f('clearanceHeight', v)} placeholder="z.B. 6m" />
+                  <Field label={t('venues.stageDimensions')} value={form.stageDimensions} onChange={v => f('stageDimensions', v)} placeholder={t('venues.stageDimensionsPlaceholder')} />
+                  <Field label={t('venues.clearanceHeight')} value={form.clearanceHeight} onChange={v => f('clearanceHeight', v)} placeholder={t('venues.clearanceHeightPlaceholder')} />
                 </div>
-                <Field label="Merchandise-Fee" value={form.merchandiseFee} onChange={v => f('merchandiseFee', v)} placeholder="z.B. 15% oder 500€" />
-                <TextareaField label="Merchandise-Stand" value={form.merchandiseStand} onChange={v => f('merchandiseStand', v)} />
-                <TextareaField label="Parkplatz" value={form.parking} onChange={v => f('parking', v)} />
-                <TextareaField label="Nightliner-Stellplatz" value={form.nightlinerParking} onChange={v => f('nightlinerParking', v)} />
-                <TextareaField label="Ladeweg" value={form.loadingPath} onChange={v => f('loadingPath', v)} />
-                <TextareaField label="Bemerkung" value={form.notes} onChange={v => f('notes', v)} />
+                <Field label={t('venues.merchandiseFee')} value={form.merchandiseFee} onChange={v => f('merchandiseFee', v)} placeholder={t('venues.merchandiseFeePlaceholder')} />
+                <TextareaField label={t('venues.merchandiseStand')} value={form.merchandiseStand} onChange={v => f('merchandiseStand', v)} />
+                <TextareaField label={t('venues.parking')} value={form.parking} onChange={v => f('parking', v)} />
+                <TextareaField label={t('venues.nightlinerParking')} value={form.nightlinerParking} onChange={v => f('nightlinerParking', v)} />
+                <TextareaField label={t('venues.loadingPath')} value={form.loadingPath} onChange={v => f('loadingPath', v)} />
+                <TextareaField label={t('venues.notes')} value={form.notes} onChange={v => f('notes', v)} />
               </div>
             </div>
           </div>
@@ -197,14 +199,14 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
         <div className="modal-footer">
           {isEdit ? (
             <button onClick={handleDelete} className="btn btn-danger">
-              <Trash2 size={14} /> Löschen
+              <Trash2 size={14} /> {t('general.delete')}
             </button>
           ) : <div />}
           <div className="flex gap-3">
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
             <button onClick={handleSave} disabled={saving || !form.name.trim()} className="btn btn-primary disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Speichern
+              {t('general.save')}
             </button>
           </div>
         </div>

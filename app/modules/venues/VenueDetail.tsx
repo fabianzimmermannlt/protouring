@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   Pencil, Upload, Trash2, X, AlertCircle, Plus, Save, Check,
   File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
@@ -98,6 +99,7 @@ function KV({ label, value }: { label: string; value?: string }) {
 
 // ─── Main Detail Component ────────────────────────────────────────────────────
 export function VenueDetailContent({ venueId }: { venueId: string }) {
+  const t = useT()
   const isMobile = useIsMobile()
 
   const isEditor = isEditorRole(getEffectiveRole())
@@ -144,7 +146,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/venues/${venueId}`, { headers: authHeaders() })
-      if (!res.ok) throw new Error('Venue nicht gefunden')
+      if (!res.ok) throw new Error(t('venues.notFound'))
       const data = await res.json()
       setVenue(data.venue)
       setInlineForm(data.venue)
@@ -221,7 +223,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         `${API_BASE}/api/files/venue/${venueId}?category=${encodeURIComponent(category)}`,
         { method: 'POST', headers: authHeaders(), body: form }
       )
-      if (!res.ok) throw new Error('Upload fehlgeschlagen')
+      if (!res.ok) throw new Error(t('general.uploadFailed'))
       await loadFiles()
       setShowUploadModal(false)
     } catch (e) {
@@ -232,11 +234,11 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
   }
 
   async function handleDeleteFile(fileId: string) {
-    if (!confirm('Datei löschen?')) return
+    if (!confirm(t('general.fileDeleteConfirm'))) return
     try {
       await fetch(`${API_BASE}/api/files/${fileId}`, { method: 'DELETE', headers: authHeaders() })
       setFiles(prev => prev.filter(f => f.id !== fileId))
-    } catch { alert('Löschen fehlgeschlagen') }
+    } catch { alert(t('general.deleteFailed')) }
   }
 
   async function openFile(file: FileItem) {
@@ -251,7 +253,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         const a = document.createElement('a'); a.href = url; a.download = file.originalName; a.click()
       }
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    } catch { alert('Datei konnte nicht geöffnet werden') }
+    } catch { alert(t('general.fileOpenError')) }
   }
 
   // ─── Contact handlers ─────────────────────────────────────────────────────
@@ -286,7 +288,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
   }
 
   async function handleDeleteContact(id: string) {
-    if (!confirm('Ansprechpartner löschen?')) return
+    if (!confirm(t('venues.deleteContactConfirm'))) return
     try {
       await deleteVenueContact(venueId, id)
       setVenueContacts(prev => prev.filter(c => c.id !== id))
@@ -316,7 +318,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(inlineForm),
       })
-      if (!res.ok) throw new Error('Speichern fehlgeschlagen')
+      if (!res.ok) throw new Error(t('general.saveFailed'))
       const data = await res.json()
       setVenue(data.venue)
       setInlineForm({ ...data.venue })
@@ -345,7 +347,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Spielstätte */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Spielstätte</span>
+            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardVenue')}</span>
             {isEditor && venue && editingSection !== 'spielstaette' && (
               <button onClick={() => startEditSection('spielstaette')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
             )}
@@ -355,7 +357,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
             : editingSection === 'spielstaette' ? (
               <div className="space-y-2">
                 <NameAddressAutocomplete
-                  label="Name *"
+                  label={`${t('general.name')} *`}
                   variant="inline"
                   withLatLon
                   value={String(inlineForm.name ?? '')}
@@ -372,30 +374,30 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
                     ...(a.longitude ? { longitude: a.longitude } : {}),
                   }))}
                 />
-                <IField label="Straße" value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
+                <IField label={t('address.street')} value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
-                  <IField label="Ort" value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                  <IField label={t('address.postalCode')} value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
+                  <IField label={t('address.city')} value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
                 </div>
-                <IField label="Bundesland" value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
-                <IField label="Land" value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
-                <IField label="Website" value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
+                <IField label={t('address.state')} value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
+                <IField label={t('address.country')} value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
+                <IField label={t('general.website')} value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Latitude" value={inlineForm.latitude ?? ''} onChange={v => iF('latitude', v)} placeholder="48.137154" />
-                  <IField label="Longitude" value={inlineForm.longitude ?? ''} onChange={v => iF('longitude', v)} placeholder="11.576124" />
+                  <IField label={t('address.latitude')} value={inlineForm.latitude ?? ''} onChange={v => iF('latitude', v)} placeholder="48.137154" />
+                  <IField label={t('address.longitude')} value={inlineForm.longitude ?? ''} onChange={v => iF('longitude', v)} placeholder="11.576124" />
                 </div>
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : venue ? (
               <>
-                {venue.name && <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50"><span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Name</span><span className="text-gray-800 font-semibold">{venue.name}</span></div>}
-                <KV label="Straße" value={venue.street || undefined} />
-                <KV label="PLZ / Ort" value={[venue.postalCode, venue.city].filter(Boolean).join(' ') || undefined} />
-                <KV label="Bundesland" value={venue.state || undefined} />
-                <KV label="Land" value={venue.country || undefined} />
+                {venue.name && <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50"><span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('general.name')}</span><span className="text-gray-800 font-semibold">{venue.name}</span></div>}
+                <KV label={t('address.street')} value={venue.street || undefined} />
+                <KV label={t('address.postalCodeCity')} value={[venue.postalCode, venue.city].filter(Boolean).join(' ') || undefined} />
+                <KV label={t('address.state')} value={venue.state || undefined} />
+                <KV label={t('address.country')} value={venue.country || undefined} />
                 {venue.website && (
                   <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Website</span>
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('general.website')}</span>
                     <a href={venue.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 truncate">
                       <Globe className="w-3 h-3 shrink-0" />{venue.website.replace(/^https?:\/\//, '')}
                     </a>
@@ -403,14 +405,14 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
                 )}
                 {(venue.latitude || venue.longitude) && (
                   <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">GPS</span>
+                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('address.gps')}</span>
                     <a href={`https://maps.google.com/?q=${venue.latitude},${venue.longitude}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
                       <Navigation className="w-3 h-3 shrink-0" />{venue.latitude}, {venue.longitude}
                     </a>
                   </div>
                 )}
                 {!venue.name && !venue.street && !venue.city && !venue.country && !venue.website && !venue.latitude && (
-                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('general.noDataEntered')}</p>
                 )}
               </>
             ) : null}
@@ -420,7 +422,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Backstage & Logistics */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />Backstage & Logistics</span>
+            <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardBackstage')}</span>
             {isEditor && venue && editingSection !== 'backstage' && (
               <button onClick={() => startEditSection('backstage')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
             )}
@@ -429,27 +431,27 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : editingSection === 'backstage' ? (
               <div className="space-y-2">
-                <IField label="Anfahrt (Notiz)" value={inlineForm.arrival ?? ''} onChange={v => iF('arrival', v)} />
-                <IField label="Anfahrt – Straße" value={inlineForm.arrivalStreet ?? ''} onChange={v => iF('arrivalStreet', v)} />
+                <IField label={t('address.arrivalNote')} value={inlineForm.arrival ?? ''} onChange={v => iF('arrival', v)} />
+                <IField label={t('address.arrivalStreet')} value={inlineForm.arrivalStreet ?? ''} onChange={v => iF('arrivalStreet', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label="PLZ" value={inlineForm.arrivalPostalCode ?? ''} onChange={v => iF('arrivalPostalCode', v)} />
-                  <IField label="Ort" value={inlineForm.arrivalCity ?? ''} onChange={v => iF('arrivalCity', v)} />
+                  <IField label={t('address.arrivalPostalCode')} value={inlineForm.arrivalPostalCode ?? ''} onChange={v => iF('arrivalPostalCode', v)} />
+                  <IField label={t('address.arrivalCity')} value={inlineForm.arrivalCity ?? ''} onChange={v => iF('arrivalCity', v)} />
                 </div>
-                <ITextarea label="Parkplatz" value={inlineForm.parking ?? ''} onChange={v => iF('parking', v)} />
-                <ITextarea label="Nightliner" value={inlineForm.nightlinerParking ?? ''} onChange={v => iF('nightlinerParking', v)} />
-                <ITextarea label="Ladeweg" value={inlineForm.loadingPath ?? ''} onChange={v => iF('loadingPath', v)} />
+                <ITextarea label={t('venues.parking')} value={inlineForm.parking ?? ''} onChange={v => iF('parking', v)} />
+                <ITextarea label={t('venues.nightliner')} value={inlineForm.nightlinerParking ?? ''} onChange={v => iF('nightlinerParking', v)} />
+                <ITextarea label={t('venues.loadingPath')} value={inlineForm.loadingPath ?? ''} onChange={v => iF('loadingPath', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : venue ? (
               <>
-                <KV label="Anfahrt" value={venue.arrival || undefined} />
-                <KV label="Anfahrt – Straße" value={venue.arrivalStreet || undefined} />
-                <KV label="Anfahrt – PLZ / Ort" value={[venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ') || undefined} />
-                <KV label="Parkplatz" value={venue.parking || undefined} />
-                <KV label="Nightliner" value={venue.nightlinerParking || undefined} />
-                <KV label="Ladeweg" value={venue.loadingPath || undefined} />
+                <KV label={t('address.arrival')} value={venue.arrival || undefined} />
+                <KV label={t('address.arrivalStreet')} value={venue.arrivalStreet || undefined} />
+                <KV label={t('address.arrivalPostalCodeCity')} value={[venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ') || undefined} />
+                <KV label={t('venues.parking')} value={venue.parking || undefined} />
+                <KV label={t('venues.nightliner')} value={venue.nightlinerParking || undefined} />
+                <KV label={t('venues.loadingPath')} value={venue.loadingPath || undefined} />
                 {!venue.arrival && !venue.arrivalStreet && !venue.parking && !venue.nightlinerParking && !venue.loadingPath && (
-                  <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('general.noDataEntered')}</p>
                 )}
               </>
             ) : null}
@@ -459,7 +461,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Technische Specs */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />Technische Specs</span>
+            <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardTech')}</span>
             {isEditor && venue && editingSection !== 'technik' && (
               <button onClick={() => startEditSection('technik')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
             )}
@@ -469,35 +471,35 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
             : editingSection === 'technik' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Kapazität (stehend)" value={inlineForm.capacity ?? ''} onChange={v => iF('capacity', v)} placeholder="z.B. 5000" />
-                  <IField label="Kapazität (bestuhlt)" value={inlineForm.capacitySeated ?? ''} onChange={v => iF('capacitySeated', v)} placeholder="z.B. 3000" />
+                  <IField label={t('venues.capacityStanding')} value={inlineForm.capacity ?? ''} onChange={v => iF('capacity', v)} placeholder="z.B. 5000" />
+                  <IField label={t('venues.capacitySeated')} value={inlineForm.capacitySeated ?? ''} onChange={v => iF('capacitySeated', v)} placeholder="z.B. 3000" />
                 </div>
                 <div className="grid grid-cols-[2fr_1fr] gap-2">
-                  <IField label="Bühnenmaße" value={inlineForm.stageDimensions ?? ''} onChange={v => iF('stageDimensions', v)} placeholder="z.B. 12x8m" />
-                  <IField label="Lichte Höhe" value={inlineForm.clearanceHeight ?? ''} onChange={v => iF('clearanceHeight', v)} placeholder="z.B. 6m" />
+                  <IField label={t('venues.stageDimensions')} value={inlineForm.stageDimensions ?? ''} onChange={v => iF('stageDimensions', v)} placeholder="z.B. 12x8m" />
+                  <IField label={t('venues.clearanceHeight')} value={inlineForm.clearanceHeight ?? ''} onChange={v => iF('clearanceHeight', v)} placeholder="z.B. 6m" />
                 </div>
-                <ITextarea label="WLAN" value={inlineForm.wifi ?? ''} onChange={v => iF('wifi', v)} placeholder="SSID / Passwort..." />
-                <ITextarea label="Garderoben" value={inlineForm.wardrobe ?? ''} onChange={v => iF('wardrobe', v)} />
-                <IField label="Duschen" value={inlineForm.showers ?? ''} onChange={v => iF('showers', v)} placeholder="z.B. 4 im Backstage" />
-                <IField label="Merchandise Fee" value={inlineForm.merchandiseFee ?? ''} onChange={v => iF('merchandiseFee', v)} placeholder="z.B. 15%" />
-                <ITextarea label="Merch-Stand" value={inlineForm.merchandiseStand ?? ''} onChange={v => iF('merchandiseStand', v)} />
-                <ITextarea label="Notizen" value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
+                <ITextarea label={t('venues.wifiShort')} value={inlineForm.wifi ?? ''} onChange={v => iF('wifi', v)} placeholder="SSID / Passwort..." />
+                <ITextarea label={t('venues.wardrobe')} value={inlineForm.wardrobe ?? ''} onChange={v => iF('wardrobe', v)} />
+                <IField label={t('venues.showers')} value={inlineForm.showers ?? ''} onChange={v => iF('showers', v)} placeholder="z.B. 4 im Backstage" />
+                <IField label={t('venues.merchandiseFeeShort')} value={inlineForm.merchandiseFee ?? ''} onChange={v => iF('merchandiseFee', v)} placeholder="z.B. 15%" />
+                <ITextarea label={t('venues.merchandiseStandShort')} value={inlineForm.merchandiseStand ?? ''} onChange={v => iF('merchandiseStand', v)} />
+                <ITextarea label={t('venues.notesTitle')} value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : venue ? (
               <>
-                <KV label="Kapazität stehend" value={venue.capacity || undefined} />
-                <KV label="Kapazität bestuhlt" value={venue.capacitySeated || undefined} />
-                <KV label="Bühnenmaße" value={venue.stageDimensions || undefined} />
-                <KV label="Lichte Höhe" value={venue.clearanceHeight || undefined} />
-                <KV label="WLAN" value={venue.wifi || undefined} />
-                <KV label="Garderoben" value={venue.wardrobe || undefined} />
-                <KV label="Duschen" value={venue.showers || undefined} />
-                <KV label="Merchandise Fee" value={venue.merchandiseFee || undefined} />
-                <KV label="Merch-Stand" value={venue.merchandiseStand || undefined} />
-                <KV label="Notizen" value={venue.notes || undefined} />
+                <KV label={t('venues.capacityStandingKV')} value={venue.capacity || undefined} />
+                <KV label={t('venues.capacitySeatedKV')} value={venue.capacitySeated || undefined} />
+                <KV label={t('venues.stageDimensions')} value={venue.stageDimensions || undefined} />
+                <KV label={t('venues.clearanceHeight')} value={venue.clearanceHeight || undefined} />
+                <KV label={t('venues.wifiShort')} value={venue.wifi || undefined} />
+                <KV label={t('venues.wardrobe')} value={venue.wardrobe || undefined} />
+                <KV label={t('venues.showers')} value={venue.showers || undefined} />
+                <KV label={t('venues.merchandiseFeeShort')} value={venue.merchandiseFee || undefined} />
+                <KV label={t('venues.merchandiseStandShort')} value={venue.merchandiseStand || undefined} />
+                <KV label={t('venues.notesTitle')} value={venue.notes || undefined} />
                 {!venue.capacity && !venue.stageDimensions && !venue.wifi && !venue.wardrobe && !venue.notes && (
-                  <p className="text-sm text-gray-400 py-2">Keine technischen Daten hinterlegt.</p>
+                  <p className="text-sm text-gray-400 py-2">{t('venues.noTechData')}</p>
                 )}
               </>
             ) : null}
@@ -507,12 +509,12 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Ansprechpartner */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><UserCircle className="w-3.5 h-3.5 inline mr-1" />Ansprechpartner</span>
+            <span className="pt-card-title"><UserCircle className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardContacts')}</span>
             {isEditor && <button onClick={startAddContact} className="text-gray-400 hover:text-blue-600 transition-colors"><Plus className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
             {contactsLoading ? (
-              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…</div>
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : (
               <>
                 {venueContacts.map(c => (
@@ -548,7 +550,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
                 {venueContacts.length === 0 && !addingContact && (
                   <div className="flex flex-col items-center justify-center h-16 text-gray-400">
                     <UserCircle className="w-5 h-5 mb-1" />
-                    <span className="text-xs">Noch keine Ansprechpartner</span>
+                    <span className="text-xs">{t('venues.noContactsYet')}</span>
                   </div>
                 )}
               </>
@@ -559,14 +561,14 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Fotos */}
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
-            <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />Fotos</span>
+            <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardPhotos')}</span>
             {isEditor && <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
             {filesLoading ? (
-              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…</div>
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : photos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-20 text-gray-400"><ImageIcon className="w-6 h-6 mb-1" /><span className="text-xs">Noch keine Fotos hochgeladen</span></div>
+              <div className="flex flex-col items-center justify-center h-20 text-gray-400"><ImageIcon className="w-6 h-6 mb-1" /><span className="text-xs">{t('venues.noPhotos')}</span></div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2">
                 {photos.map((photo, idx) => (
@@ -588,14 +590,14 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Dokumente */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><File className="w-3.5 h-3.5 inline mr-1" />Dokumente</span>
+            <span className="pt-card-title"><File className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardDocs')}</span>
             {isEditor && <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
             {filesLoading ? (
-              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…</div>
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : Object.keys(docsByCategory).length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-20 text-gray-400"><File className="w-6 h-6 mb-1" /><span className="text-xs">Keine Dokumente hinterlegt</span></div>
+              <div className="flex flex-col items-center justify-center h-20 text-gray-400"><File className="w-6 h-6 mb-1" /><span className="text-xs">{t('venues.noDocs')}</span></div>
             ) : (
               Object.entries(docsByCategory).map(([cat, catFiles]) => (
                 <DocCategorySection key={cat} category={cat} files={catFiles}
@@ -608,13 +610,13 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         {/* Shows */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />Shows an diesem Venue</span>
+            <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardShows')}</span>
           </div>
           <div className="pt-card-body">
             {showsLoading ? (
-              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lade…</div>
+              <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : shows.length === 0 ? (
-              <p className="text-sm text-gray-400 py-2">Noch keine Shows an diesem Venue.</p>
+              <p className="text-sm text-gray-400 py-2">{t('venues.noShows')}</p>
             ) : (
               <div className="space-y-0.5">
                 {shows.map(show => (
@@ -640,13 +642,13 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         <div className="modal-overlay">
           <div className="modal-container max-w-md">
             <div className="modal-header">
-              <span className="modal-title">{uploadType === 'photos' ? 'Foto hochladen' : 'Dokument hochladen'}</span>
+              <span className="modal-title">{uploadType === 'photos' ? t('venues.photoUpload') : t('venues.docUpload')}</span>
               <button onClick={() => setShowUploadModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
             </div>
             <div className="modal-body space-y-4">
               {uploadType === 'files' && (
                 <div>
-                  <label className="form-label">Kategorie</label>
+                  <label className="form-label">{t('venues.category')}</label>
                   <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="form-select">
                     {VENUE_FILE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
@@ -660,13 +662,13 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Dateien hierher ziehen oder klicken</p>
-                <p className="text-xs text-gray-400 mt-1">Max. 50 MB pro Datei</p>
+                <p className="text-sm text-gray-600">{t('general.uploadHint')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('general.uploadMaxSize')}</p>
                 <input ref={fileInputRef} type="file" multiple
                   accept={uploadType === 'photos' ? 'image/*' : undefined}
                   className="hidden" onChange={e => handleUpload(e.target.files)} />
               </div>
-              {uploading && <div className="flex items-center gap-2 text-sm text-blue-600"><div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />Wird hochgeladen…</div>}
+              {uploading && <div className="flex items-center gap-2 text-sm text-blue-600"><div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />{t('general.uploading')}</div>}
               {uploadError && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{uploadError}</div>}
             </div>
           </div>
@@ -721,15 +723,16 @@ function ITextarea({ label, value, onChange, placeholder = '' }: { label: string
 }
 
 function InlineSaveBar({ onSave, onCancel, saving, error }: { onSave: () => void; onCancel: () => void; saving: boolean; error?: string }) {
+  const t = useT()
   return (
     <div className="pt-2 border-t border-gray-100 mt-2">
       {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving}
           className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          Speichern
+          {t('general.save')}
         </button>
       </div>
     </div>
@@ -740,22 +743,23 @@ function ContactForm({ form, onChange, onSave, onCancel, saving }: {
   form: { name: string; role: string; phone: string; email: string; notes: string }
   onChange: (f: any) => void; onSave: () => void; onCancel: () => void; saving: boolean
 }) {
+  const t = useT()
   const f = (key: string, value: string) => onChange((prev: any) => ({ ...prev, [key]: value }))
   return (
     <div className="py-2 border-b border-gray-100 space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        <input value={form.name} onChange={e => f('name', e.target.value)} placeholder="Name *" className="form-input text-xs py-1" />
-        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder="Funktion" className="form-input text-xs py-1" />
+        <input value={form.name} onChange={e => f('name', e.target.value)} placeholder={`${t('general.name')} *`} className="form-input text-xs py-1" />
+        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder={t('venues.contactRole')} className="form-input text-xs py-1" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <input value={form.phone} onChange={e => f('phone', e.target.value)} placeholder="Telefon" className="form-input text-xs py-1" />
-        <input value={form.email} onChange={e => f('email', e.target.value)} placeholder="E-Mail" className="form-input text-xs py-1" />
+        <input value={form.phone} onChange={e => f('phone', e.target.value)} placeholder={t('general.phone')} className="form-input text-xs py-1" />
+        <input value={form.email} onChange={e => f('email', e.target.value)} placeholder={t('general.email')} className="form-input text-xs py-1" />
       </div>
-      <input value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Notiz" className="form-input text-xs py-1 w-full" />
+      <input value={form.notes} onChange={e => f('notes', e.target.value)} placeholder={t('venues.contactNote')} className="form-input text-xs py-1 w-full" />
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="btn btn-ghost text-xs py-1 px-2">Abbrechen</button>
+        <button onClick={onCancel} className="btn btn-ghost text-xs py-1 px-2">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving || !form.name.trim()} className="btn btn-primary text-xs py-1 px-2 disabled:opacity-50">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Speichern
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} {t('general.save')}
         </button>
       </div>
     </div>

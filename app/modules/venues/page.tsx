@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Download, Upload, Loader2, AlertCircle, X } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getVenues,
   createVenue,
@@ -15,16 +16,6 @@ import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 import { VenueDetailContent } from '@/app/modules/venues/VenueDetail'
 
-const VENUE_COLS: [string, keyof Venue][] = [
-  ['Name', 'name'],
-  ['Straße', 'street'],
-  ['PLZ', 'postalCode'],
-  ['Ort', 'city'],
-  ['Bundesland', 'state'],
-  ['Land', 'country'],
-  ['Kapazität', 'capacity'],
-]
-
 const EMPTY_FORM = {
   name: '', street: '', postalCode: '', city: '', state: '', country: '',
   website: '', arrival: '', arrivalStreet: '', arrivalPostalCode: '', arrivalCity: '',
@@ -34,6 +25,7 @@ const EMPTY_FORM = {
 }
 
 export default function VenuesPage() {
+  const t = useT()
   const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [venues, setVenues] = useState<Venue[]>([])
@@ -80,7 +72,15 @@ export default function VenuesPage() {
 
   // CSV Export
   const exportToCSV = () => {
-    const headers = ['Name', 'Straße', 'PLZ', 'Ort', 'Bundesland', 'Land', 'Kapazität']
+    const headers = [
+      t('general.name'),
+      t('table.street'),
+      t('table.postalCode'),
+      t('table.city'),
+      t('table.state'),
+      t('table.country'),
+      t('table.capacity'),
+    ]
     const csvContent = [
       headers.join(';'),
       ...venues.map(v => [v.name, v.street, v.postalCode, v.city, v.state, v.country, v.capacity]
@@ -117,7 +117,7 @@ export default function VenuesPage() {
           successCount++
         } catch { /* skip invalid rows */ }
       }
-      if (successCount > 0) alert(`${successCount} Venue(s) importiert.`)
+      if (successCount > 0) alert(t('venues.importSuccess').replace('{count}', String(successCount)))
     }
     reader.readAsText(file)
     event.target.value = ''
@@ -128,10 +128,10 @@ export default function VenuesPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nicht eingeloggt</h3>
-          <p className="text-gray-500 text-sm mb-4">Bitte erst einloggen um Venues zu verwalten.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('general.notLoggedIn')}</h3>
+          <p className="text-gray-500 text-sm mb-4">{t('venues.loginRequired')}</p>
           <a href="/login" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-            Zum Login
+            {t('general.toLogin')}
           </a>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function VenuesPage() {
       {/* Search */}
       <input
         type="text"
-        placeholder="Venues durchsuchen..."
+        placeholder={t('venues.searchPlaceholder')}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="search-input"
@@ -184,7 +184,7 @@ export default function VenuesPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-gray-400 mr-2" />
-          <span className="text-gray-500">Venues werden geladen...</span>
+          <span className="text-gray-500">{t('venues.loading')}</span>
         </div>
       ) : (() => {
         const filtered = venues.filter(v =>
@@ -194,10 +194,10 @@ export default function VenuesPage() {
         if (filtered.length === 0) return (
           <div className="text-center py-12 text-gray-500">
             <div className="text-lg mb-2">
-              {venues.length === 0 ? 'Keine Venues vorhanden' : 'Keine Treffer'}
+              {venues.length === 0 ? t('venues.noVenues') : t('general.noResults')}
             </div>
             {venues.length === 0 && (
-              <div className="text-sm">Neue Venue über das + in der Seitenleiste anlegen</div>
+              <div className="text-sm">{t('venues.addHint')}</div>
             )}
           </div>
         )
@@ -212,7 +212,7 @@ export default function VenuesPage() {
                 <p className="text-sm font-semibold text-gray-900">{item.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{item.city}</p>
                 {item.capacity && parseInt(item.capacity) > 0 && (
-                  <p className="text-xs text-gray-400 mt-0.5">Kapazität: {item.capacity}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t('venues.capacity')}: {item.capacity}</p>
                 )}
               </div>
             ))}
@@ -231,6 +231,16 @@ function VenueTable({ venues, onDetail }: {
   venues: Venue[]
   onDetail: (id: string) => void
 }) {
+  const t = useT()
+  const VENUE_COLS: [string, keyof Venue][] = [
+    [t('general.name'), 'name'],
+    [t('table.street'), 'street'],
+    [t('table.postalCode'), 'postalCode'],
+    [t('table.city'), 'city'],
+    [t('table.state'), 'state'],
+    [t('table.country'), 'country'],
+    [t('table.capacity'), 'capacity'],
+  ]
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     venues as unknown as Record<string, unknown>[],
     'name'

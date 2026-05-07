@@ -6,18 +6,10 @@ import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole,
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { PartnerDetailContent } from '@/app/modules/partners/PartnerDetail'
-
-const PARTNER_COLS: [string, keyof Partner][] = [
-  ['Firmenname', 'companyName'],
-  ['Straße', 'street'],
-  ['PLZ', 'postalCode'],
-  ['Ort', 'city'],
-  ['Bundesland', 'state'],
-  ['Land', 'country'],
-  ['Art', 'type'],
-]
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 export default function PartnersPage() {
+  const t = useT()
   const isMobile = useIsMobile()
   const isEditor = isEditorRole(getEffectiveRole())
   const [partners, setPartners] = useState<Partner[]>([])
@@ -123,16 +115,16 @@ export default function PartnersPage() {
         setPartners(prev => [...prev, created])
       }
       setIsModalOpen(false); setEditingPartner(null)
-    } catch { alert('Speichern fehlgeschlagen.') }
+    } catch { alert(t('general.saveFailed')) }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Möchten Sie diesen Partner wirklich löschen?')) return
+    if (!confirm(t('partners.deleteConfirmFull').replace('{name}', formData.companyName))) return
     try {
       await deletePartner(id)
       setPartners(prev => prev.filter(p => p.id !== id))
       setIsModalOpen(false); setEditingPartner(null)
-    } catch { alert('Löschen fehlgeschlagen.') }
+    } catch { alert(t('general.deleteFailed')) }
   }
 
   const openNewPartnerModal = () => {
@@ -201,7 +193,7 @@ export default function PartnersPage() {
       {/* Search */}
       <input
         type="text"
-        placeholder="Partner durchsuchen..."
+        placeholder={t('partners.searchPlaceholder')}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="search-input"
@@ -214,7 +206,7 @@ export default function PartnersPage() {
         )
         if (filtered.length === 0) return (
           <div className="text-center py-12 text-gray-500">
-            <div className="text-lg mb-2">{partners.length === 0 ? 'Keine Partner vorhanden' : 'Keine Treffer'}</div>
+            <div className="text-lg mb-2">{partners.length === 0 ? 'Keine Partner vorhanden' : t('general.noResults')}</div>
             {partners.length === 0 && <div className="text-sm">Klicken Sie auf &quot;Neuer Partner&quot; um den ersten Partner anzulegen</div>}
           </div>
         )
@@ -246,7 +238,7 @@ export default function PartnersPage() {
             {/* Header */}
             <div className="modal-header">
               <h2 className="modal-title">
-                {editingPartner ? 'Partner bearbeiten' : 'Neuen Partner anlegen'}
+                {editingPartner ? t('partners.editPartner') : t('partners.newPartner')}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -265,7 +257,7 @@ export default function PartnersPage() {
                   {/* Left Column */}
                   <div className="space-y-4">
                     <div>
-                      <label className="form-label">Art</label>
+                      <label className="form-label">{t('partners.type')}</label>
                       <select
                         value={formData.type}
                         onChange={(e) => handleInputChange('type', e.target.value)}
@@ -279,7 +271,7 @@ export default function PartnersPage() {
                     </div>
 
                     <div>
-                      <label className="form-label">Firmenname</label>
+                      <label className="form-label">{t('partners.companyName')}</label>
                       <input
                         type="text"
                         value={formData.companyName}
@@ -289,7 +281,7 @@ export default function PartnersPage() {
                     </div>
 
                     <div>
-                      <label className="form-label">Straße</label>
+                      <label className="form-label">{t('address.street')}</label>
                       <input
                         type="text"
                         value={formData.street}
@@ -300,7 +292,7 @@ export default function PartnersPage() {
 
                     <div className="grid grid-cols-[auto_1fr] gap-1">
                       <div>
-                        <label className="form-label">PLZ</label>
+                        <label className="form-label">{t('address.postalCode')}</label>
                         <input
                           type="text"
                           value={formData.postalCode}
@@ -311,7 +303,7 @@ export default function PartnersPage() {
                         />
                       </div>
                       <div>
-                        <label className="form-label">Ort</label>
+                        <label className="form-label">{t('address.city')}</label>
                         <input
                           type="text"
                           value={formData.city}
@@ -325,7 +317,7 @@ export default function PartnersPage() {
                   {/* Right Column */}
                   <div className="space-y-4">
                     <div>
-                      <label className="form-label">Bundesland</label>
+                      <label className="form-label">{t('address.state')}</label>
                       <input
                         type="text"
                         value={formData.state}
@@ -335,7 +327,7 @@ export default function PartnersPage() {
                     </div>
 
                     <div>
-                      <label className="form-label">Land</label>
+                      <label className="form-label">{t('address.country')}</label>
                       <input
                         type="text"
                         value={formData.country}
@@ -345,7 +337,7 @@ export default function PartnersPage() {
                     </div>
 
                     <div>
-                      <label className="form-label">Ansprechpartner</label>
+                      <label className="form-label">{t('partners.contactPerson')}</label>
                       <input
                         type="text"
                         value={formData.contactPerson}
@@ -355,7 +347,7 @@ export default function PartnersPage() {
                     </div>
 
                     <div>
-                      <label className="form-label">E-Mail</label>
+                      <label className="form-label">{t('general.email')}</label>
                       <input
                         type="email"
                         value={formData.email}
@@ -372,7 +364,7 @@ export default function PartnersPage() {
                   {/* Left Column */}
                   <div className="space-y-4">
                     <div>
-                      <label className="form-label">Telefon</label>
+                      <label className="form-label">{t('general.phone')}</label>
                       <input
                         type="tel"
                         value={formData.phone}
@@ -382,7 +374,7 @@ export default function PartnersPage() {
                     </div>
 
                     <div>
-                      <label className="form-label">Steuer-ID</label>
+                      <label className="form-label">{t('partners.taxId')}</label>
                       <input
                         type="text"
                         value={formData.taxId}
@@ -395,18 +387,18 @@ export default function PartnersPage() {
                   {/* Right Column - Text Areas */}
                   <div className="space-y-4">
                     <div>
-                      <label className="form-label">Abweichende Rechnungsanschrift</label>
+                      <label className="form-label">{t('partners.billingAddressFull')}</label>
                       <textarea
                         value={formData.billingAddress}
                         onChange={(e) => handleInputChange('billingAddress', e.target.value)}
                         rows={3}
                         className="form-input"
-                        placeholder="Falls abweichend von der Hauptadresse..."
+                        placeholder={t('partners.billingAddressPlaceholder')}
                       />
                     </div>
 
                     <div>
-                      <label className="form-label">Bemerkung</label>
+                      <label className="form-label">{t('partners.notes')}</label>
                       <textarea
                         value={formData.notes}
                         onChange={(e) => handleInputChange('notes', e.target.value)}
@@ -425,7 +417,7 @@ export default function PartnersPage() {
               {editingPartner && (
                 <button
                   onClick={() => {
-                    if (confirm(`Möchten Sie den Partner "${formData.companyName}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+                    if (confirm(t('partners.deleteConfirmFull').replace('{name}', formData.companyName))) {
                       handleDelete(editingPartner.id)
                       setIsModalOpen(false)
                     }
@@ -433,7 +425,7 @@ export default function PartnersPage() {
                   className="btn btn-danger"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Löschen
+                  {t('general.delete')}
                 </button>
               )}
               <div className={`flex space-x-4 ${editingPartner ? '' : 'ml-auto'}`}>
@@ -441,14 +433,14 @@ export default function PartnersPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="btn btn-ghost"
                 >
-                  Abbrechen
+                  {t('general.cancel')}
                 </button>
                 <button
                   onClick={savePartner}
                   className="btn btn-primary"
                 >
                   <Save className="h-4 w-4" />
-                  Speichern
+                  {t('general.save')}
                 </button>
               </div>
             </div>
@@ -460,6 +452,17 @@ export default function PartnersPage() {
 }
 
 function PartnerTable({ partners, onEdit }: { partners: Partner[]; onEdit: (p: Partner) => void }) {
+  const t = useT()
+  const PARTNER_COLS: [string, keyof Partner][] = [
+    [t('table.companyName'), 'companyName'],
+    [t('table.street'), 'street'],
+    [t('table.postalCode'), 'postalCode'],
+    [t('table.city'), 'city'],
+    [t('table.state'), 'state'],
+    [t('table.country'), 'country'],
+    [t('table.type'), 'type'],
+  ]
+
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     partners as unknown as Record<string, unknown>[],
     'companyName'

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Trash2, Save, X } from 'lucide-react'
 import { createVehicle, updateVehicle, deleteVehicle, type Vehicle, type VehicleFormData } from '@/lib/api-client'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 const VEHICLE_TYPES = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
 
@@ -34,6 +35,7 @@ interface VehicleFormModalProps {
 }
 
 export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted }: VehicleFormModalProps) {
+  const t = useT()
   const [formData, setFormData] = useState<VehicleFormData>(
     vehicle
       ? {
@@ -56,7 +58,7 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
   const set = (patch: Partial<VehicleFormData>) => setFormData(prev => ({ ...prev, ...patch }))
 
   const handleSave = async () => {
-    if (!formData.designation.trim()) { alert('Bitte eine Bezeichnung eingeben.'); return }
+    if (!formData.designation.trim()) { alert(t('vehicles.designationRequired2')); return }
     try {
       if (vehicle) {
         const updated = await updateVehicle(vehicle.id, formData)
@@ -66,24 +68,24 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
         onSaved(created)
       }
       onClose()
-    } catch { alert('Speichern fehlgeschlagen.') }
+    } catch { alert(t('vehicles.saveFailed')) }
   }
 
   const handleDelete = async () => {
     if (!vehicle) return
-    if (!confirm('Möchten Sie dieses Fahrzeug wirklich löschen?')) return
+    if (!confirm(t('vehicles.deleteConfirm'))) return
     try {
       await deleteVehicle(vehicle.id)
       onDeleted?.(vehicle.id)
       onClose()
-    } catch { alert('Löschen fehlgeschlagen.') }
+    } catch { alert(t('vehicles.deleteFailed')) }
   }
 
   return (
     <div className="modal-overlay">
       <div className="modal-container max-w-4xl">
         <div className="modal-header">
-          <h2 className="modal-title">{vehicle ? 'Fahrzeug bearbeiten' : 'Neues Fahrzeug'}</h2>
+          <h2 className="modal-title">{vehicle ? t('vehicles.editVehicle') : t('vehicles.newVehicleShort')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X className="h-6 w-6" />
           </button>
@@ -94,42 +96,42 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
             {/* Linke Spalte */}
             <div className="space-y-3">
               <div>
-                <label className="form-label">Bezeichnung</label>
+                <label className="form-label">{t('vehicles.designation')}</label>
                 <input
                   type="text"
                   value={formData.designation}
                   onChange={e => set({ designation: e.target.value })}
                   className="form-input"
-                  placeholder="z.B. Tourbus 1"
+                  placeholder={t('vehicles.designationFullPlaceholder')}
                 />
               </div>
 
               <div>
-                <label className="form-label">Fahrzeugart</label>
+                <label className="form-label">{t('vehicles.vehicleType')}</label>
                 <select
                   value={formData.vehicleType}
                   onChange={e => set({ vehicleType: e.target.value })}
                   className="form-input"
                 >
-                  <option value="">Bitte wählen</option>
-                  {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="">{t('vehicles.selectPlaceholder')}</option>
+                  {VEHICLE_TYPES.map(vehicleType => <option key={vehicleType} value={vehicleType}>{vehicleType}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="form-label">Driver</label>
+                <label className="form-label">{t('vehicles.driver')}</label>
                 <select
                   value={formData.driver}
                   onChange={e => set({ driver: e.target.value })}
                   className="form-input"
                 >
-                  <option value="">Bitte wählen</option>
+                  <option value="">{t('vehicles.selectPlaceholder')}</option>
                   {MOCK_USERS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="form-label">Kennzeichen</label>
+                <label className="form-label">{t('vehicles.licensePlate')}</label>
                 <input
                   type="text"
                   value={formData.licensePlate}
@@ -140,13 +142,13 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
               </div>
 
               <div>
-                <label className="form-label">Maße</label>
+                <label className="form-label">{t('vehicles.dimensionsShort')}</label>
                 <input
                   type="text"
                   value={formData.dimensions}
                   onChange={e => set({ dimensions: e.target.value })}
                   className="form-input"
-                  placeholder="z.B. 12m x 2.5m x 3.5m"
+                  placeholder={t('vehicles.dimensionsPlaceholder')}
                 />
               </div>
             </div>
@@ -154,18 +156,18 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
             {/* Rechte Spalte */}
             <div className="space-y-3">
               <div>
-                <label className="form-label">Stromanschluss</label>
+                <label className="form-label">{t('vehicles.powerConnection')}</label>
                 <input
                   type="text"
                   value={formData.powerConnection}
                   onChange={e => set({ powerConnection: e.target.value })}
                   className="form-input"
-                  placeholder="z.B. 32A, 230V"
+                  placeholder={t('vehicles.powerConnectionPlaceholder')}
                 />
               </div>
 
               <div>
-                <label className="form-label">Anhänger</label>
+                <label className="form-label">{t('vehicles.cardTrailer')}</label>
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -173,14 +175,14 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
                     onChange={e => set({ hasTrailer: e.target.checked })}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Anhänger vorhanden</span>
+                  <span className="ml-2 text-sm text-gray-700">{t('vehicles.hasTrailer')}</span>
                 </div>
               </div>
 
               {formData.hasTrailer && (
                 <>
                   <div>
-                    <label className="form-label">Anhängermaße</label>
+                    <label className="form-label">{t('vehicles.trailerDimensionsShort')}</label>
                     <input
                       type="text"
                       value={formData.trailerDimensions}
@@ -191,7 +193,7 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
                   </div>
 
                   <div>
-                    <label className="form-label">Anhänger-Kennzeichen</label>
+                    <label className="form-label">{t('vehicles.trailerLicensePlateShort')}</label>
                     <input
                       type="text"
                       value={formData.trailerLicensePlate}
@@ -204,31 +206,31 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
               )}
 
               <div>
-                <label className="form-label">Sitzplätze</label>
+                <label className="form-label">{t('vehicles.seats')}</label>
                 <input
                   type="text"
                   value={formData.seats}
                   onChange={e => set({ seats: e.target.value })}
                   className="form-input"
-                  placeholder="z.B. 8"
+                  placeholder={t('vehicles.seatsPlaceholder')}
                 />
               </div>
 
               <div>
-                <label className="form-label">Schlafplätze</label>
+                <label className="form-label">{t('vehicles.sleepingPlaces')}</label>
                 <input
                   type="text"
                   value={formData.sleepingPlaces}
                   onChange={e => set({ sleepingPlaces: e.target.value })}
                   className="form-input"
-                  placeholder="z.B. 4"
+                  placeholder={t('vehicles.sleepingPlacesPlaceholder')}
                 />
               </div>
             </div>
           </div>
 
           <div className="mt-6">
-            <label className="form-label">Bemerkung</label>
+            <label className="form-label">{t('vehicles.notesShort')}</label>
             <textarea
               value={formData.notes}
               onChange={e => set({ notes: e.target.value })}
@@ -244,15 +246,15 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
             {vehicle && (
               <button onClick={handleDelete} className="btn btn-danger">
                 <Trash2 className="h-4 w-4" />
-                Löschen
+                {t('general.delete')}
               </button>
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
             <button onClick={handleSave} className="btn btn-primary">
               <Save className="h-4 w-4" />
-              Speichern
+              {t('general.save')}
             </button>
           </div>
         </div>

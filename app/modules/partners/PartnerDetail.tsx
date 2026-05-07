@@ -7,6 +7,7 @@ import {
   getPartner, updatePartner, type Partner, type PartnerFormData,
 } from '@/lib/api-client'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -35,13 +36,13 @@ function IField({ label, value, onChange, placeholder = '' }: { label: string; v
   )
 }
 
-function ISelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+function ISelect({ label, value, onChange, options, placeholder = '– bitte wählen –' }: { label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
   return (
     <div>
       <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
         className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white">
-        <option value="">– bitte wählen –</option>
+        <option value="">{placeholder}</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
@@ -59,15 +60,16 @@ function ITextarea({ label, value, onChange, placeholder = '' }: { label: string
 }
 
 function InlineSaveBar({ onSave, onCancel, saving, error }: { onSave: () => void; onCancel: () => void; saving: boolean; error?: string }) {
+  const t = useT()
   return (
     <div className="pt-2 border-t border-gray-100 mt-2">
       {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving}
           className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          Speichern
+          {t('general.save')}
         </button>
       </div>
     </div>
@@ -75,6 +77,7 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: { onSave: () => void
 }
 
 export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: string; onNotFound?: () => void }) {
+  const t = useT()
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [partner, setPartner] = useState<Partner | null>(null)
@@ -95,11 +98,11 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
       setInlineForm(p as any)
     } catch {
       if (onNotFound) { onNotFound(); return }
-      setError('Partner nicht gefunden')
+      setError(t('partners.notFound'))
     } finally {
       setLoading(false)
     }
-  }, [partnerId, onNotFound])
+  }, [partnerId, onNotFound, t])
 
   useEffect(() => { loadPartner() }, [loadPartner])
 
@@ -114,7 +117,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
       setPartner(updated); setInlineForm({ ...updated as any }); setEditingSection(null)
       window.dispatchEvent(new CustomEvent('partner-updated', { detail: updated }))
     } catch (e) {
-      setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
+      setInlineError((e as Error).message || t('general.saveFailed'))
     } finally { setSavingInline(false) }
   }
 
@@ -128,7 +131,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
 
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Building2 className="w-3.5 h-3.5 inline mr-1" />Allgemein</span>
+            <span className="pt-card-title"><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardGeneral')}</span>
             {isEditor && partner && editingSection !== 'allgemein' && <button onClick={() => startEditSection('allgemein')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
@@ -136,7 +139,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
             : editingSection === 'allgemein' ? (
               <div className="space-y-2">
                 <NameAddressAutocomplete
-                  label="Firma *"
+                  label={t('partners.companyRequired2')}
                   variant="inline"
                   value={inlineForm.companyName ?? ''}
                   onChange={v => iF('companyName', v)}
@@ -150,16 +153,16 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
                     ...(a.country ? { country: a.country } : {}),
                   }))}
                 />
-                <ISelect label="Art" value={inlineForm.type ?? ''} onChange={v => iF('type', v)} options={PARTNER_TYPES} />
-                <IField label="Ansprechpartner" value={inlineForm.contactPerson ?? ''} onChange={v => iF('contactPerson', v)} />
+                <ISelect label={t('partners.type')} value={inlineForm.type ?? ''} onChange={v => iF('type', v)} options={PARTNER_TYPES} placeholder={t('partners.selectTypeOption')} />
+                <IField label={t('partners.contactPerson')} value={inlineForm.contactPerson ?? ''} onChange={v => iF('contactPerson', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : partner ? (
               <>
-                {partner.companyName && <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50"><span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">Firma</span><span className="text-gray-800 font-semibold">{partner.companyName}</span></div>}
-                <KV label="Typ" value={partner.type || undefined} />
-                <KV label="Ansprechpartner" value={partner.contactPerson || undefined} />
-                {!partner.companyName && !partner.type && !partner.contactPerson && <p className="text-sm text-gray-400 py-2">Keine Angaben hinterlegt.</p>}
+                {partner.companyName && <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50"><span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('partners.company')}</span><span className="text-gray-800 font-semibold">{partner.companyName}</span></div>}
+                <KV label={t('partners.type')} value={partner.type || undefined} />
+                <KV label={t('partners.contactPerson')} value={partner.contactPerson || undefined} />
+                {!partner.companyName && !partner.type && !partner.contactPerson && <p className="text-sm text-gray-400 py-2">{t('partners.noData')}</p>}
               </>
             ) : null}
           </div>
@@ -167,7 +170,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
 
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />Adresse</span>
+            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardAddress')}</span>
             {isEditor && partner && editingSection !== 'adresse' && <button onClick={() => startEditSection('adresse')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
@@ -175,7 +178,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
             : editingSection === 'adresse' ? (
               <div className="space-y-2">
                 <NameAddressAutocomplete
-                  label="Straße"
+                  label={t('address.street')}
                   variant="inline"
                   placeholder="Straße oder Ort suchen…"
                   value={inlineForm.street ?? ''}
@@ -190,20 +193,20 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
                   }))}
                 />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label="PLZ" value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
-                  <IField label="Ort" value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                  <IField label={t('address.postalCode')} value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
+                  <IField label={t('address.city')} value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
                 </div>
-                <IField label="Bundesland" value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
-                <IField label="Land" value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
+                <IField label={t('address.state')} value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
+                <IField label={t('address.country')} value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : partner ? (
               <>
-                <KV label="Straße" value={partner.street || undefined} />
-                <KV label="PLZ / Ort" value={[partner.postalCode, partner.city].filter(Boolean).join(' ') || undefined} />
-                <KV label="Bundesland" value={partner.state || undefined} />
-                <KV label="Land" value={partner.country || undefined} />
-                {!partner.street && !partner.postalCode && !partner.city && !partner.country && <p className="text-sm text-gray-400 py-2">Keine Adresse hinterlegt.</p>}
+                <KV label={t('address.street')} value={partner.street || undefined} />
+                <KV label={t('address.postalCodeCity')} value={[partner.postalCode, partner.city].filter(Boolean).join(' ') || undefined} />
+                <KV label={t('address.state')} value={partner.state || undefined} />
+                <KV label={t('address.country')} value={partner.country || undefined} />
+                {!partner.street && !partner.postalCode && !partner.city && !partner.country && <p className="text-sm text-gray-400 py-2">{t('partners.noAddress')}</p>}
               </>
             ) : null}
           </div>
@@ -211,7 +214,7 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
 
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />Kontakt & Details</span>
+            <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardContact')}</span>
             {isEditor && partner && editingSection !== 'kontakt' && <button onClick={() => startEditSection('kontakt')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
@@ -219,22 +222,22 @@ export function PartnerDetailContent({ partnerId, onNotFound }: { partnerId: str
             : editingSection === 'kontakt' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="E-Mail" value={inlineForm.email ?? ''} onChange={v => iF('email', v)} />
-                  <IField label="Telefon" value={inlineForm.phone ?? ''} onChange={v => iF('phone', v)} />
+                  <IField label={t('general.email')} value={inlineForm.email ?? ''} onChange={v => iF('email', v)} />
+                  <IField label={t('general.phone')} value={inlineForm.phone ?? ''} onChange={v => iF('phone', v)} />
                 </div>
-                <IField label="Steuer-ID / USt-IdNr." value={inlineForm.taxId ?? ''} onChange={v => iF('taxId', v)} />
-                <ITextarea label="Rechnungsadresse" value={inlineForm.billingAddress ?? ''} onChange={v => iF('billingAddress', v)} />
-                <ITextarea label="Notizen" value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
+                <IField label={t('partners.taxIdFull')} value={inlineForm.taxId ?? ''} onChange={v => iF('taxId', v)} />
+                <ITextarea label={t('partners.billingAddress')} value={inlineForm.billingAddress ?? ''} onChange={v => iF('billingAddress', v)} />
+                <ITextarea label={t('venues.notesTitle')} value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
                 <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
             ) : partner ? (
               <>
-                <KV label="E-Mail" value={partner.email || undefined} />
-                <KV label="Telefon" value={partner.phone || undefined} />
-                <KV label="Steuer-ID" value={partner.taxId || undefined} />
-                <KV label="Rechnungsadresse" value={partner.billingAddress || undefined} />
-                <KV label="Notizen" value={partner.notes || undefined} />
-                {!partner.email && !partner.phone && !partner.taxId && !partner.billingAddress && !partner.notes && <p className="text-sm text-gray-400 py-2">Keine Kontaktdaten hinterlegt.</p>}
+                <KV label={t('general.email')} value={partner.email || undefined} />
+                <KV label={t('general.phone')} value={partner.phone || undefined} />
+                <KV label={t('partners.taxId')} value={partner.taxId || undefined} />
+                <KV label={t('partners.billingAddress')} value={partner.billingAddress || undefined} />
+                <KV label={t('venues.notesTitle')} value={partner.notes || undefined} />
+                {!partner.email && !partner.phone && !partner.taxId && !partner.billingAddress && !partner.notes && <p className="text-sm text-gray-400 py-2">{t('partners.noContact')}</p>}
               </>
             ) : null}
           </div>

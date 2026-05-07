@@ -7,6 +7,7 @@ import {
   UserIcon,
 } from '@heroicons/react/24/outline'
 import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
 import { ContactDetailContent } from './ContactDetail'
@@ -81,6 +82,7 @@ function contactToProfile(c: Contact): ProfileData {
 }
 
 export default function ContactsModule({ activeSubTab = 'overview' }: ContactsProps) {
+  const t = useT()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -171,7 +173,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       setContacts(data)
       setFunctionCatalog(catalog)
     } catch (e) {
-      setError('Kontakte konnten nicht geladen werden.')
+      setError(t('contacts.error.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -185,15 +187,15 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   }
 
   const handleAddInvite = async () => {
-    if (!addInviteEmail.trim()) { setAddInviteError('E-Mail fehlt'); return }
-    if (!addInviteFirstName.trim()) { setAddInviteError('Vorname fehlt'); return }
-    if (!addInviteLastName.trim()) { setAddInviteError('Nachname fehlt'); return }
+    if (!addInviteEmail.trim()) { setAddInviteError(t('contacts.error.emailRequired')); return }
+    if (!addInviteFirstName.trim()) { setAddInviteError(t('contacts.error.firstNameRequired')); return }
+    if (!addInviteLastName.trim()) { setAddInviteError(t('contacts.error.lastNameRequired')); return }
     setAddInviteSaving(true); setAddInviteError('')
     try {
       const result = await createInvite(addInviteEmail.trim(), addInviteRole, undefined, addInviteFirstName.trim(), addInviteLastName.trim())
       setAddInviteLink(`${window.location.origin}${result.invite_url}`)
     } catch (e: any) {
-      setAddInviteError(e?.message ?? 'Fehler beim Erstellen')
+      setAddInviteError(e?.message ?? t('contacts.error.createFailed'))
     } finally {
       setAddInviteSaving(false)
     }
@@ -213,9 +215,9 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const handleCreateInvite = async () => {
     if (!inviteContact) return
-    if (!inviteEmail) { setInviteError('E-Mail fehlt'); return }
-    if (!inviteFirstName.trim()) { setInviteError('Vorname fehlt'); return }
-    if (!inviteLastName.trim()) { setInviteError('Nachname fehlt'); return }
+    if (!inviteEmail) { setInviteError(t('contacts.error.emailRequired')); return }
+    if (!inviteFirstName.trim()) { setInviteError(t('contacts.error.firstNameRequired')); return }
+    if (!inviteLastName.trim()) { setInviteError(t('contacts.error.lastNameRequired')); return }
     setInviteSaving(true)
     setInviteError('')
     try {
@@ -224,7 +226,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       const baseUrl = window.location.origin
       setInviteLink(`${baseUrl}${result.invite_url}`)
     } catch (e: any) {
-      setInviteError(e?.message ?? 'Fehler beim Erstellen')
+      setInviteError(e?.message ?? t('contacts.error.createFailed'))
     } finally {
       setInviteSaving(false)
     }
@@ -257,7 +259,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       setInviteCopied(true)
       setTimeout(() => setInviteCopied(false), 2500)
     } else {
-      setInviteError('Kopieren fehlgeschlagen – Link manuell kopieren')
+      setInviteError(t('contacts.error.copyFailed'))
     }
   }
 
@@ -349,7 +351,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       }
       setShowGastModal(false)
     } catch (e) {
-      setError('Kontakt konnte nicht angelegt werden.')
+      setError(t('contacts.error.createFailed'))
     }
   }
 
@@ -368,7 +370,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
       setEditingContact(null)
     } catch (e) {
-      setError('Kontakt konnte nicht aktualisiert werden.')
+      setError(t('contacts.error.updateFailed'))
       throw e // re-throw damit ProfileEditor den Fehler kennt
     }
   }
@@ -380,7 +382,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       setContacts(prev => prev.filter(c => c.id !== editingContact.id))
       setEditingContact(null)
     } catch (e) {
-      setError('Kontakt konnte nicht entfernt werden.')
+      setError(t('contacts.error.deleteFailed'))
     }
   }
 
@@ -405,9 +407,9 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex gap-2">
                     <button onClick={openAddModal} className="btn btn-primary">
-                      <Plus className="w-4 h-4" /> Einladen
+                      <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                     </button>
-                    <button onClick={() => setShowGastModal(true)} title="Manuell anlegen" className="btn btn-ghost">
+                    <button onClick={() => setShowGastModal(true)} title={t('contacts.action.createManual')} className="btn btn-ghost">
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
@@ -428,10 +430,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <div className="flex justify-between items-center">
                   <div className="flex gap-2">
                     <button onClick={openAddModal} className="btn btn-primary">
-                      <Plus className="w-4 h-4" /> Einladen
+                      <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                     </button>
-                    <button onClick={() => setShowGastModal(true)} className="btn btn-ghost" title="Manuellen Kontakt anlegen (kein Login)">
-                      <Plus className="w-4 h-4" /> Manuell anlegen
+                    <button onClick={() => setShowGastModal(true)} className="btn btn-ghost" title={t('contacts.action.createManual')}>
+                      <Plus className="w-4 h-4" /> {t('contacts.action.createManual')}
                     </button>
                   </div>
                   <div className="flex gap-3">
@@ -449,16 +451,16 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
             <input
               type="text"
-              placeholder="Kontakte durchsuchen..."
+              placeholder={t('contacts.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
             />
 
             {loading ? (
-              <div className="text-center py-8 text-gray-500">Wird geladen...</div>
+              <div className="text-center py-8 text-gray-500">{t('general.loading')}</div>
             ) : filteredContacts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">Keine Kontakte gefunden</div>
+              <div className="text-center py-8 text-gray-500">{t('contacts.empty.noContacts')}</div>
             ) : isMobile ? (
               /* ── Mobile Card List ── */
               <div className="flex flex-col gap-2">
@@ -485,10 +487,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                             {contact.firstName} {contact.lastName}
                           </span>
                           {contact.contactType === 'guest' && (
-                            <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">Manuell</span>
+                            <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">{t('contacts.badge.manual')}</span>
                           )}
                           {contact.invitePending && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">Eingeladen</span>
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">{t('contacts.badge.invited')}</span>
                           )}
                         </div>
                         {functions && <div className="text-xs text-gray-500 mt-0.5">{functions}</div>}
@@ -500,11 +502,11 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                           {contact.contactType === 'guest' ? (
                             <UserIcon className="w-4 h-4 text-gray-300" />
                           ) : contact.userId ? (
-                            <button onClick={e => openInviteModal(contact, e)} title="Login aktiv">
+                            <button onClick={e => openInviteModal(contact, e)} title={t('contacts.tooltip.loginActive')}>
                               <CheckCircleIcon className="w-4 h-4 text-green-500" />
                             </button>
                           ) : (
-                            <button onClick={e => openInviteModal(contact, e)} title="Login einrichten">
+                            <button onClick={e => openInviteModal(contact, e)} title={t('contacts.tooltip.setupLogin')}>
                               <KeyIcon className="w-4 h-4 text-gray-300 hover:text-blue-500" />
                             </button>
                           )}
@@ -547,7 +549,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         )
 
       default:
-        return <div className="text-center py-8 text-gray-500">Bereich nicht gefunden</div>
+        return <div className="text-center py-8 text-gray-500">{t('settings.notFound')}</div>
     }
   }
 
@@ -560,7 +562,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">Crew einladen</h3>
+              <h3 className="text-base font-semibold text-gray-900">{t('contacts.modal.inviteCrew')}</h3>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
@@ -568,7 +570,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
             <div className="px-6 py-5 space-y-4">
               <p className="text-xs text-gray-500">
-                Person erhält einen Einladungslink. Existiert der Account bereits, wird er automatisch verknüpft.
+                {t('contacts.modal.inviteHint')}
               </p>
               {addInviteError && (
                 <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{addInviteError}</div>
@@ -577,7 +579,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Vorname *</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.firstName')} *</label>
                       <input
                         type="text"
                         value={addInviteFirstName}
@@ -588,7 +590,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Nachname *</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.lastName')} *</label>
                       <input
                         type="text"
                         value={addInviteLastName}
@@ -599,7 +601,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">E-Mail *</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.email')} *</label>
                     <input
                       type="email"
                       value={addInviteEmail}
@@ -610,7 +612,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Rolle</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('contacts.form.function')}</label>
                     <select
                       value={addInviteRole}
                       onChange={e => setAddInviteRole(e.target.value as TenantRole)}
@@ -624,7 +626,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 </>
               ) : (
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-gray-600">Einladungslink</label>
+                  <label className="block text-xs font-medium text-gray-600">{t('contacts.modal.inviteLink')}</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -644,17 +646,17 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                         addInviteCopied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
                       }`}
                     >
-                      {addInviteCopied ? 'Kopiert ✓' : 'Kopieren'}
+                      {addInviteCopied ? 'Kopiert ✓' : t('general.copy')}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400">Gültig 7 Tage. Manuell verschicken.</p>
+                  <p className="text-xs text-gray-400">{t('contacts.modal.linkValidity')}</p>
                 </div>
               )}
             </div>
 
             <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
               <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
-                {addInviteLink ? 'Schließen' : 'Abbrechen'}
+                {addInviteLink ? t('general.close') : t('general.cancel')}
               </button>
               {!addInviteLink && (
                 <button
@@ -662,7 +664,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                   disabled={addInviteSaving}
                   className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {addInviteSaving ? 'Erstelle...' : 'Link erstellen'}
+                  {addInviteSaving ? t('contacts.action.creating') : t('contacts.action.createLink')}
                 </button>
               )}
             </div>
@@ -676,7 +678,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         <div className="modal-overlay">
           <div className="modal-container max-w-3xl">
             <div className="modal-header">
-              <h2 className="modal-title">Manuellen Kontakt anlegen</h2>
+              <h2 className="modal-title">{t('contacts.modal.createManualContact')}</h2>
               <button onClick={() => setShowGastModal(false)} className="text-gray-400 hover:text-white">
                 <X size={18} />
               </button>
@@ -722,7 +724,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         <div className="modal-overlay">
           <div className="modal-container max-w-md">
             <div className="modal-header">
-              <h2 className="modal-title">Zugang einrichten</h2>
+              <h2 className="modal-title">{t('contacts.modal.setupAccess')}</h2>
               <button onClick={() => setInviteContact(null)} className="text-gray-400 hover:text-white">
                 <X size={18} />
               </button>
@@ -730,7 +732,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
             <div className="modal-body space-y-4">
               <p className="text-sm text-gray-500">
-                Einladungs-Link (7 Tage gültig). Name und Rolle sind sofort in den Berechtigungen sichtbar.
+                {t('contacts.modal.accessHint')}
               </p>
 
               {inviteError && (
@@ -741,7 +743,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="form-label">Vorname *</label>
+                      <label className="form-label">{t('profile.firstName')} *</label>
                       <input
                         type="text"
                         value={inviteFirstName}
@@ -751,7 +753,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       />
                     </div>
                     <div>
-                      <label className="form-label">Nachname *</label>
+                      <label className="form-label">{t('profile.lastName')} *</label>
                       <input
                         type="text"
                         value={inviteLastName}
@@ -762,7 +764,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">E-Mail-Adresse *</label>
+                    <label className="form-label">{t('contacts.form.emailAddress')} *</label>
                     <input
                       type="email"
                       value={inviteEmail}
@@ -772,7 +774,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     />
                   </div>
                   <div>
-                    <label className="form-label">Rolle</label>
+                    <label className="form-label">{t('contacts.form.function')}</label>
                     <select
                       value={inviteRole}
                       onChange={e => setInviteRole(e.target.value as TenantRole)}
@@ -786,7 +788,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 </>
               ) : (
                 <div className="space-y-2">
-                  <label className="form-label">Einladungs-Link</label>
+                  <label className="form-label">{t('contacts.modal.inviteLink')}</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -799,10 +801,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       className={`btn flex-shrink-0 ${inviteCopied ? 'btn-success' : 'btn-primary'}`}
                     >
                       {inviteCopied ? <CheckCircleIcon className="w-4 h-4" /> : <Save size={13} />}
-                      {inviteCopied ? 'Kopiert' : 'Kopieren'}
+                      {inviteCopied ? t('general.copied') : t('general.copy')}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">Link an {inviteEmail} schicken. Gültig 7 Tage.</p>
+                  <p className="text-xs text-gray-500">{t('contacts.modal.sendLinkHint').replace('{email}', inviteEmail)}</p>
                 </div>
               )}
             </div>
@@ -811,12 +813,12 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               <div />
               <div className="flex gap-2">
                 <button onClick={() => setInviteContact(null)} className="btn btn-ghost">
-                  {inviteLink ? 'Schließen' : 'Abbrechen'}
+                  {inviteLink ? t('general.close') : t('general.cancel')}
                 </button>
                 {!inviteLink && (
                   <button onClick={handleCreateInvite} disabled={inviteSaving} className="btn btn-primary disabled:opacity-50">
                     {inviteSaving ? <Loader2 size={13} className="animate-spin" /> : <KeyIcon className="w-4 h-4" />}
-                    Link erstellen
+                    {t('contacts.action.createLink')}
                   </button>
                 )}
               </div>
@@ -841,6 +843,7 @@ function ContactTable({
   onEdit: (c: Contact) => void
   onInviteModal: (c: Contact, e: React.MouseEvent) => void
 }) {
+  const t = useT()
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     contacts as unknown as Record<string, unknown>[],
     'lastName'
@@ -869,12 +872,12 @@ function ContactTable({
               {contact.firstName}
               {contact.contactType === 'guest' && (
                 <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#9ca3af', letterSpacing: '0.04em' }}>
-                  Manuell
+                  {t('contacts.badge.manual')}
                 </span>
               )}
               {contact.invitePending && (
                 <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
-                  Eingeladen
+                  {t('contacts.badge.invited')}
                 </span>
               )}
             </td>
@@ -887,14 +890,14 @@ function ContactTable({
             {isAdmin && (
               <td className="text-center" onClick={e => e.stopPropagation()}>
                 {contact.contactType === 'guest' ? (
-                  <span title="Manueller Kontakt – kein Login" className="inline-flex items-center justify-center text-gray-300">
+                  <span title={t('contacts.tooltip.manualNoLogin')} className="inline-flex items-center justify-center text-gray-300">
                     <UserIcon className="w-4 h-4" />
                   </span>
                 ) : contact.userId ? (
                   <button
                     onClick={e => onInviteModal(contact, e)}
                     className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-800 transition-colors"
-                    title="Login aktiv – Passwort zurücksetzen"
+                    title={t('contacts.tooltip.loginActive')}
                   >
                     <CheckCircleIcon className="w-4 h-4" />
                   </button>
@@ -902,7 +905,7 @@ function ContactTable({
                   <button
                     onClick={e => onInviteModal(contact, e)}
                     className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
-                    title="Login einrichten"
+                    title={t('contacts.tooltip.setupLogin')}
                   >
                     <KeyIcon className="w-4 h-4" />
                   </button>

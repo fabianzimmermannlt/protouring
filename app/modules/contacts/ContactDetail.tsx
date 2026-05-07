@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Pencil, AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText, Mail } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   isEditorRole, getEffectiveRole, ROLE_LABELS,
   getContact, updateContact, getActiveFunctions,
@@ -70,18 +71,18 @@ function ICheckbox({ label, checked, onChange }: { label: string; checked: boole
   )
 }
 
-function SaveBar({ onSave, onCancel, saving, error }: {
-  onSave: () => void; onCancel: () => void; saving: boolean; error?: string
+function SaveBar({ onSave, onCancel, saving, error, t }: {
+  onSave: () => void; onCancel: () => void; saving: boolean; error?: string; t: ReturnType<typeof useT>
 }) {
   return (
     <div className="pt-2 border-t border-gray-100 mt-2">
       {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
+        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving}
           className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          Speichern
+          {t('general.save')}
         </button>
       </div>
     </div>
@@ -94,7 +95,7 @@ const SKELETON = (
   </div>
 )
 
-const EMPTY = (msg = 'Keine Angaben hinterlegt.') => (
+const EMPTY = (msg?: string) => (
   <p className="text-sm text-gray-400 py-2">{msg}</p>
 )
 
@@ -116,6 +117,7 @@ const DIET_OPTIONS = [
 type Section = 'persoenlich' | 'kontakt' | 'beruflich' | 'reise' | 'ernaehrung' | 'kleider' | 'finanzen' | 'bemerkung'
 
 export function ContactDetailContent({ contactId, onInvite }: { contactId: string; onInvite?: (contact: Contact) => void }) {
+  const t = useT()
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [contact, setContact] = useState<Contact | null>(null)
@@ -139,7 +141,7 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
       const c = await getContact(parseInt(contactId))
       setContact(c); setDraft({ ...c })
     } catch {
-      setError('Kontakt nicht gefunden')
+      setError(t('contacts.error.notFound'))
     } finally { setLoading(false) }
   }, [contactId])
 
@@ -158,7 +160,7 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
       const updated = await updateContact(String(contact.id), draft as unknown as ContactFormData)
       setContact(updated); setDraft({ ...updated }); setEditSection(null)
     } catch (e) {
-      setSaveError((e as Error).message || 'Speichern fehlgeschlagen')
+      setSaveError((e as Error).message || t('contacts.error.saveFailed'))
     } finally { setSaving(false) }
   }
 
@@ -166,7 +168,7 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
   const db = (k: keyof Contact) => Boolean(draft[k])
   const set = (k: keyof Contact, v: unknown) => setDraft(p => ({ ...p, [k]: v }))
 
-  const bar = <SaveBar onSave={saveSection} onCancel={cancelEdit} saving={saving} error={saveError} />
+  const bar = <SaveBar onSave={saveSection} onCancel={cancelEdit} saving={saving} error={saveError} t={t} />
 
   const editBtn = (s: Section) =>
     isEditor && contact && editSection !== s
@@ -212,9 +214,9 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
                     </p>
                   )}
                   {role && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{role}</span>}
-                  {contact!.invitePending && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Einladung ausstehend</span>}
-                  {contact!.contactType === 'artist' && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Artist</span>}
-                  {contact!.contactType === 'guest' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Manuell</span>}
+                  {contact!.invitePending && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{t('contacts.badge.invitationPending')}</span>}
+                  {contact!.contactType === 'artist' && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{t('contacts.badge.artist')}</span>}
+                  {contact!.contactType === 'guest' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{t('contacts.badge.manual')}</span>}
                   {/* Einladen-Button: für Guest + Artist ohne Account, nur für Editors */}
                   {isEditor && onInvite && !contact!.userId && (contact!.contactType === 'guest' || contact!.contactType === 'artist') && (
                     <button
@@ -222,7 +224,7 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
                       className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
                       <Mail className="w-3 h-3" />
-                      {contact!.invitePending ? 'Link erneuern' : 'Einladen'}
+                      {contact!.invitePending ? t('contacts.action.renewLink') : t('contacts.action.invite')}
                     </button>
                   )}
                 </div>
@@ -236,41 +238,46 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 1. Persönliche Daten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><User className="w-3.5 h-3.5 inline mr-1" />Persönliche Daten</span>
+            <span className="pt-card-title"><User className="w-3.5 h-3.5 inline mr-1" />{t('profile.personalData')}</span>
             {editBtn('persoenlich')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'persoenlich' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Vorname" value={d('firstName')} onChange={v => set('firstName', v)} />
-                  <IField label="Nachname" value={d('lastName')} onChange={v => set('lastName', v)} />
+                  <IField label={t('profile.firstName')} value={d('firstName')} onChange={v => set('firstName', v)} />
+                  <IField label={t('profile.lastName')} value={d('lastName')} onChange={v => set('lastName', v)} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Geburtsdatum" value={d('birthDate')} onChange={v => set('birthDate', v)} type="date" />
-                  <IField label="Geburtsort" value={d('birthPlace')} onChange={v => set('birthPlace', v)} />
+                  <IField label={t('profile.birthDate')} value={d('birthDate')} onChange={v => set('birthDate', v)} type="date" />
+                  <IField label={t('contacts.form.birthPlace')} value={d('birthPlace')} onChange={v => set('birthPlace', v)} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <ISelect label="Geschlecht" value={d('gender')} onChange={v => set('gender', v)} options={GENDER_OPTIONS} />
-                  <IField label="Pronomen" value={d('pronouns')} onChange={v => set('pronouns', v)} placeholder="er/ihm, sie/ihr…" />
+                  <ISelect label={t('profile.gender')} value={d('gender')} onChange={v => set('gender', v)} options={[
+                    { value: 'männlich', label: t('profile.gender.male') },
+                    { value: 'weiblich', label: t('profile.gender.female') },
+                    { value: 'divers', label: t('profile.gender.diverse') },
+                    { value: 'keine_angabe', label: t('profile.gender.noStatement') },
+                  ]} />
+                  <IField label={t('profile.pronouns')} value={d('pronouns')} onChange={v => set('pronouns', v)} placeholder={t('contacts.form.pronounsPlaceholder')} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Nationalität" value={d('nationality')} onChange={v => set('nationality', v)} />
-                  <IField label="Ausweis-Nr." value={d('idNumber')} onChange={v => set('idNumber', v)} />
+                  <IField label={t('contacts.form.nationality')} value={d('nationality')} onChange={v => set('nationality', v)} />
+                  <IField label={t('contacts.form.idNumber')} value={d('idNumber')} onChange={v => set('idNumber', v)} />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="Vorname" value={contact.firstName} />
-                <KV label="Nachname" value={contact.lastName} />
-                <KV label="Geburtsdatum" value={contact.birthDate} />
-                <KV label="Geburtsort" value={contact.birthPlace} />
-                <KV label="Geschlecht" value={contact.gender} />
-                <KV label="Pronomen" value={contact.pronouns} />
-                <KV label="Nationalität" value={contact.nationality} />
-                <KV label="Ausweis-Nr." value={contact.idNumber} />
-                {!contact.birthDate && !contact.gender && !contact.nationality && !contact.idNumber && EMPTY()}
+                <KV label={t('profile.firstName')} value={contact.firstName} />
+                <KV label={t('profile.lastName')} value={contact.lastName} />
+                <KV label={t('profile.birthDate')} value={contact.birthDate} />
+                <KV label={t('contacts.form.birthPlace')} value={contact.birthPlace} />
+                <KV label={t('profile.gender')} value={contact.gender} />
+                <KV label={t('profile.pronouns')} value={contact.pronouns} />
+                <KV label={t('contacts.form.nationality')} value={contact.nationality} />
+                <KV label={t('contacts.form.idNumber')} value={contact.idNumber} />
+                {!contact.birthDate && !contact.gender && !contact.nationality && !contact.idNumber && EMPTY(t('contacts.empty.noInfo'))}
               </>
             ) : null}
           </div>
@@ -279,7 +286,7 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 2. Kontaktdaten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />Kontaktdaten</span>
+            <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />{t('profile.contactData')}</span>
             {editBtn('kontakt')}
           </div>
           <div className="pt-card-body">
@@ -288,37 +295,37 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
                 {contact?.userId
                   ? (
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">E-Mail</label>
+                      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{t('profile.email')}</label>
                       <input type="email" value={d('email')} readOnly
                         className="w-full text-sm border border-gray-100 rounded px-2 py-1 bg-gray-50 text-gray-400 cursor-not-allowed"
-                        title="E-Mail kann nur vom Nutzer selbst oder einem Admin geändert werden" />
+                        title={t('contacts.form.emailReadOnlyHint')} />
                     </div>
                   ) : (
-                    <IField label="E-Mail" value={d('email')} onChange={v => set('email', v)} type="email" />
+                    <IField label={t('profile.email')} value={d('email')} onChange={v => set('email', v)} type="email" />
                   )
                 }
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Telefon" value={d('phone')} onChange={v => set('phone', v)} type="tel" />
-                  <IField label="Mobil" value={d('mobile')} onChange={v => set('mobile', v)} type="tel" />
+                  <IField label={t('profile.phone')} value={d('phone')} onChange={v => set('phone', v)} type="tel" />
+                  <IField label={t('contacts.form.mobile')} value={d('mobile')} onChange={v => set('mobile', v)} type="tel" />
                 </div>
-                <IField label="Website" value={d('website')} onChange={v => set('website', v)} />
-                <IField label="Straße" value={d('address')} onChange={v => set('address', v)} />
+                <IField label={t('contacts.form.website')} value={d('website')} onChange={v => set('website', v)} />
+                <IField label={t('contacts.form.street')} value={d('address')} onChange={v => set('address', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label="PLZ" value={d('postalCode')} onChange={v => set('postalCode', v)} placeholder="12345" />
-                  <IField label="Wohnort" value={d('residence')} onChange={v => set('residence', v)} />
+                  <IField label={t('profile.postalCode')} value={d('postalCode')} onChange={v => set('postalCode', v)} placeholder="12345" />
+                  <IField label={t('profile.residence')} value={d('residence')} onChange={v => set('residence', v)} />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="E-Mail" value={contact.email} />
-                <KV label="Telefon" value={contact.phone} />
-                <KV label="Mobil" value={contact.mobile} />
-                <KV label="Website" value={contact.website} />
-                <KV label="Straße" value={contact.address} />
-                <KV label="PLZ" value={contact.postalCode} />
-                <KV label="Wohnort" value={contact.residence} />
-                {!contact.email && !contact.phone && !contact.mobile && !contact.address && EMPTY()}
+                <KV label={t('profile.email')} value={contact.email} />
+                <KV label={t('profile.phone')} value={contact.phone} />
+                <KV label={t('contacts.form.mobile')} value={contact.mobile} />
+                <KV label={t('contacts.form.website')} value={contact.website} />
+                <KV label={t('contacts.form.street')} value={contact.address} />
+                <KV label={t('profile.postalCode')} value={contact.postalCode} />
+                <KV label={t('profile.residence')} value={contact.residence} />
+                {!contact.email && !contact.phone && !contact.mobile && !contact.address && EMPTY(t('contacts.empty.noInfo'))}
               </>
             ) : null}
           </div>
@@ -327,27 +334,27 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 3. Berufliche Daten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Briefcase className="w-3.5 h-3.5 inline mr-1" />Berufliche Daten</span>
+            <span className="pt-card-title"><Briefcase className="w-3.5 h-3.5 inline mr-1" />{t('profile.professionalData')}</span>
             {editBtn('beruflich')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'beruflich' ? (
               <div className="space-y-2">
                 {(['function1', 'function2', 'function3'] as const).map((field, i) => (
-                  <ISelect key={field} label={`${i + 1}. Funktion`} value={d(field)} onChange={v => set(field, v)} options={funcOpts(d(field))} />
+                  <ISelect key={field} label={`${i + 1}. ${t('contacts.form.function')}`} value={d(field)} onChange={v => set(field, v)} options={funcOpts(d(field))} />
                 ))}
-                <IField label="Spezifikation" value={d('specification')} onChange={v => set('specification', v)} placeholder="z.B. FOH, Monitor, Backline…" />
-                <IField label="Sprachen" value={d('languages')} onChange={v => set('languages', v)} placeholder="Deutsch, Englisch…" />
+                <IField label={t('contacts.form.specification')} value={d('specification')} onChange={v => set('specification', v)} placeholder={t('contacts.form.specificationPlaceholder')} />
+                <IField label={t('contacts.form.languages')} value={d('languages')} onChange={v => set('languages', v)} placeholder="Deutsch, Englisch…" />
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="1. Funktion" value={contact.function1} />
-                <KV label="2. Funktion" value={contact.function2} />
-                <KV label="3. Funktion" value={contact.function3} />
-                <KV label="Spezifikation" value={contact.specification} />
-                <KV label="Sprachen" value={contact.languages} />
-                {!contact.function1 && !contact.specification && !contact.languages && EMPTY()}
+                <KV label={`1. ${t('contacts.form.function')}`} value={contact.function1} />
+                <KV label={`2. ${t('contacts.form.function')}`} value={contact.function2} />
+                <KV label={`3. ${t('contacts.form.function')}`} value={contact.function3} />
+                <KV label={t('contacts.form.specification')} value={contact.specification} />
+                <KV label={t('contacts.form.languages')} value={contact.languages} />
+                {!contact.function1 && !contact.specification && !contact.languages && EMPTY(t('contacts.empty.noInfo'))}
               </>
             ) : null}
           </div>
@@ -356,35 +363,35 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 4. Reisedaten ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Globe className="w-3.5 h-3.5 inline mr-1" />Reisedaten</span>
+            <span className="pt-card-title"><Globe className="w-3.5 h-3.5 inline mr-1" />{t('profile.travelData')}</span>
             {editBtn('reise')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'reise' ? (
               <div className="space-y-2">
-                <IField label="Führerschein" value={d('driversLicense')} onChange={v => set('driversLicense', v)} placeholder="B, BE, C…" />
+                <IField label={t('contacts.form.driversLicense')} value={d('driversLicense')} onChange={v => set('driversLicense', v)} placeholder="B, BE, C…" />
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="BahnCard" value={d('railcard')} onChange={v => set('railcard', v)} placeholder="25, 50, 100…" />
-                  <IField label="Vielfliegerprogramm" value={d('frequentFlyer')} onChange={v => set('frequentFlyer', v)} />
+                  <IField label={t('contacts.form.railcard')} value={d('railcard')} onChange={v => set('railcard', v)} placeholder="25, 50, 100…" />
+                  <IField label={t('contacts.form.frequentFlyer')} value={d('frequentFlyer')} onChange={v => set('frequentFlyer', v)} />
                 </div>
-                <IField label="Hotel Deckname" value={d('hotelAlias')} onChange={v => set('hotelAlias', v)} placeholder="Name für Buchung" />
-                <ITextarea label="Hotelwünsche" value={d('hotelInfo')} onChange={v => set('hotelInfo', v)} placeholder="z.B. Einzelzimmer, EG bevorzugt…" />
+                <IField label={t('contacts.form.hotelAlias')} value={d('hotelAlias')} onChange={v => set('hotelAlias', v)} placeholder={t('contacts.form.hotelAliasPlaceholder')} />
+                <ITextarea label={t('contacts.form.hotelWishes')} value={d('hotelInfo')} onChange={v => set('hotelInfo', v)} placeholder={t('contacts.form.hotelWishesPlaceholder')} />
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Notfallkontakt" value={d('emergencyContact')} onChange={v => set('emergencyContact', v)} />
-                  <IField label="Notfall-Telefon" value={d('emergencyPhone')} onChange={v => set('emergencyPhone', v)} type="tel" />
+                  <IField label={t('contacts.form.emergencyContact')} value={d('emergencyContact')} onChange={v => set('emergencyContact', v)} />
+                  <IField label={t('contacts.form.emergencyPhone')} value={d('emergencyPhone')} onChange={v => set('emergencyPhone', v)} type="tel" />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="Führerschein" value={contact.driversLicense} />
-                <KV label="BahnCard" value={contact.railcard} />
-                <KV label="Vielfliegerprogramm" value={contact.frequentFlyer} />
-                <KV label="Hotel Deckname" value={contact.hotelAlias} />
-                <KV label="Hotelwünsche" value={contact.hotelInfo} />
-                <KV label="Notfallkontakt" value={contact.emergencyContact} />
-                <KV label="Notfall-Tel." value={contact.emergencyPhone} />
-                {!contact.driversLicense && !contact.railcard && !contact.frequentFlyer && !contact.hotelAlias && !contact.emergencyContact && EMPTY()}
+                <KV label={t('contacts.form.driversLicense')} value={contact.driversLicense} />
+                <KV label={t('contacts.form.railcard')} value={contact.railcard} />
+                <KV label={t('contacts.form.frequentFlyer')} value={contact.frequentFlyer} />
+                <KV label={t('contacts.form.hotelAlias')} value={contact.hotelAlias} />
+                <KV label={t('contacts.form.hotelWishes')} value={contact.hotelInfo} />
+                <KV label={t('contacts.form.emergencyContact')} value={contact.emergencyContact} />
+                <KV label={t('contacts.form.emergencyPhone')} value={contact.emergencyPhone} />
+                {!contact.driversLicense && !contact.railcard && !contact.frequentFlyer && !contact.hotelAlias && !contact.emergencyContact && EMPTY(t('contacts.empty.noInfo'))}
               </>
             ) : null}
           </div>
@@ -393,27 +400,31 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 5. Ernährung ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Utensils className="w-3.5 h-3.5 inline mr-1" />Ernährung</span>
+            <span className="pt-card-title"><Utensils className="w-3.5 h-3.5 inline mr-1" />{t('profile.diet')}</span>
             {editBtn('ernaehrung')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'ernaehrung' ? (
               <div className="space-y-2">
-                <ISelect label="Ernährungsweise" value={d('diet')} onChange={v => set('diet', v)} options={DIET_OPTIONS} />
-                <IField label="Allergien" value={d('allergies')} onChange={v => set('allergies', v)} placeholder="z.B. Nüsse, Fisch…" />
+                <ISelect label={t('contacts.form.diet')} value={d('diet')} onChange={v => set('diet', v)} options={[
+                  { value: 'alles', label: t('profile.diet.all') },
+                  { value: 'vegetarisch', label: t('profile.diet.vegetarian') },
+                  { value: 'vegan', label: t('profile.diet.vegan') },
+                ]} />
+                <IField label={t('contacts.form.allergies')} value={d('allergies')} onChange={v => set('allergies', v)} placeholder="z.B. Nüsse, Fisch…" />
                 <div className="flex gap-4 pt-1">
-                  <ICheckbox label="Glutenfrei" checked={db('glutenFree')} onChange={v => set('glutenFree', v)} />
-                  <ICheckbox label="Laktosefrei" checked={db('lactoseFree')} onChange={v => set('lactoseFree', v)} />
+                  <ICheckbox label={t('contacts.form.glutenFree')} checked={db('glutenFree')} onChange={v => set('glutenFree', v)} />
+                  <ICheckbox label={t('contacts.form.lactoseFree')} checked={db('lactoseFree')} onChange={v => set('lactoseFree', v)} />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="Ernährung" value={contact.diet} />
-                <KV label="Allergien" value={contact.allergies} />
-                {contact.glutenFree && <KV label="Glutenfrei" value={true} />}
-                {contact.lactoseFree && <KV label="Laktosefrei" value={true} />}
-                {!contact.diet && !contact.allergies && !contact.glutenFree && !contact.lactoseFree && EMPTY()}
+                <KV label={t('contacts.form.diet')} value={contact.diet} />
+                <KV label={t('contacts.form.allergies')} value={contact.allergies} />
+                {contact.glutenFree && <KV label={t('contacts.form.glutenFree')} value={true} />}
+                {contact.lactoseFree && <KV label={t('contacts.form.lactoseFree')} value={true} />}
+                {!contact.diet && !contact.allergies && !contact.glutenFree && !contact.lactoseFree && EMPTY(t('contacts.empty.noInfo'))}
               </>
             ) : null}
           </div>
@@ -422,29 +433,29 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 6. Kleidergrößen ── */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><Shirt className="w-3.5 h-3.5 inline mr-1" />Kleidergrößen</span>
+            <span className="pt-card-title"><Shirt className="w-3.5 h-3.5 inline mr-1" />{t('profile.clothing')}</span>
             {editBtn('kleider')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'kleider' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="T-Shirt" value={d('shirtSize')} onChange={v => set('shirtSize', v)} placeholder="S, M, L…" />
-                  <IField label="Hoodie" value={d('hoodieSize')} onChange={v => set('hoodieSize', v)} placeholder="S, M, L…" />
+                  <IField label={t('contacts.form.shirtSize')} value={d('shirtSize')} onChange={v => set('shirtSize', v)} placeholder="S, M, L…" />
+                  <IField label={t('contacts.form.hoodieSize')} value={d('hoodieSize')} onChange={v => set('hoodieSize', v)} placeholder="S, M, L…" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label="Hose (W/L)" value={d('pantsSize')} onChange={v => set('pantsSize', v)} placeholder="32/32…" />
-                  <IField label="Schuhgröße" value={d('shoeSize')} onChange={v => set('shoeSize', v)} placeholder="42, 43…" />
+                  <IField label={t('contacts.form.pantsLabel')} value={d('pantsSize')} onChange={v => set('pantsSize', v)} placeholder="32/32…" />
+                  <IField label={t('contacts.form.shoeSize')} value={d('shoeSize')} onChange={v => set('shoeSize', v)} placeholder="42, 43…" />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
               <>
-                <KV label="T-Shirt" value={contact.shirtSize} />
-                <KV label="Hoodie" value={contact.hoodieSize} />
-                <KV label="Hose" value={contact.pantsSize} />
-                <KV label="Schuhgröße" value={contact.shoeSize} />
-                {!contact.shirtSize && !contact.hoodieSize && !contact.pantsSize && !contact.shoeSize && EMPTY()}
+                <KV label={t('contacts.form.shirtSize')} value={contact.shirtSize} />
+                <KV label={t('contacts.form.hoodieSize')} value={contact.hoodieSize} />
+                <KV label={t('contacts.form.pantsSize')} value={contact.pantsSize} />
+                <KV label={t('contacts.form.shoeSize')} value={contact.shoeSize} />
+                {!contact.shirtSize && !contact.hoodieSize && !contact.pantsSize && !contact.shoeSize && EMPTY(t('contacts.empty.noInfo'))}
               </>
             ) : null}
           </div>
@@ -453,38 +464,38 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 7. Finanzen ── */}
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
-            <span className="pt-card-title"><CreditCard className="w-3.5 h-3.5 inline mr-1" />Finanzen</span>
+            <span className="pt-card-title"><CreditCard className="w-3.5 h-3.5 inline mr-1" />{t('profile.financial')}</span>
             {editBtn('finanzen')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'finanzen' ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <IField label="Kontoinhaber" value={d('bankAccount')} onChange={v => set('bankAccount', v)} />
-                  <IField label="IBAN" value={d('bankIban')} onChange={v => set('bankIban', v)} />
-                  <IField label="BIC" value={d('bankBic')} onChange={v => set('bankBic', v)} />
+                  <IField label={t('contacts.form.accountHolder')} value={d('bankAccount')} onChange={v => set('bankAccount', v)} />
+                  <IField label={t('contacts.form.iban')} value={d('bankIban')} onChange={v => set('bankIban', v)} />
+                  <IField label={t('contacts.form.bic')} value={d('bankBic')} onChange={v => set('bankBic', v)} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <IField label="Steuer-ID" value={d('taxId')} onChange={v => set('taxId', v)} />
-                  <IField label="Steuernummer" value={d('taxNumber')} onChange={v => set('taxNumber', v)} />
-                  <IField label="USt-IdNr." value={d('vatId')} onChange={v => set('vatId', v)} />
+                  <IField label={t('contacts.form.taxId')} value={d('taxId')} onChange={v => set('taxId', v)} />
+                  <IField label={t('contacts.form.taxNumber')} value={d('taxNumber')} onChange={v => set('taxNumber', v)} />
+                  <IField label={t('contacts.form.vatId')} value={d('vatId')} onChange={v => set('vatId', v)} />
                 </div>
                 {bar}
               </div>
             ) : contact ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
                 <div>
-                  <KV label="Kontoinhaber" value={contact.bankAccount} />
-                  <KV label="IBAN" value={contact.bankIban} />
-                  <KV label="BIC" value={contact.bankBic} />
+                  <KV label={t('contacts.form.accountHolder')} value={contact.bankAccount} />
+                  <KV label={t('contacts.form.iban')} value={contact.bankIban} />
+                  <KV label={t('contacts.form.bic')} value={contact.bankBic} />
                 </div>
                 <div>
-                  <KV label="Steuer-ID" value={contact.taxId} />
-                  <KV label="Steuernummer" value={contact.taxNumber} />
-                  <KV label="USt-IdNr." value={contact.vatId} />
+                  <KV label={t('contacts.form.taxId')} value={contact.taxId} />
+                  <KV label={t('contacts.form.taxNumber')} value={contact.taxNumber} />
+                  <KV label={t('contacts.form.vatId')} value={contact.vatId} />
                 </div>
                 {!contact.bankAccount && !contact.bankIban && !contact.taxId && !contact.taxNumber && (
-                  <div className="md:col-span-2">{EMPTY()}</div>
+                  <div className="md:col-span-2">{EMPTY(t('contacts.empty.noInfo'))}</div>
                 )}
               </div>
             ) : null}
@@ -494,13 +505,13 @@ export function ContactDetailContent({ contactId, onInvite }: { contactId: strin
         {/* ── 8. Bemerkung ── */}
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
-            <span className="pt-card-title"><FileText className="w-3.5 h-3.5 inline mr-1" />Bemerkung</span>
+            <span className="pt-card-title"><FileText className="w-3.5 h-3.5 inline mr-1" />{t('contacts.form.notes')}</span>
             {editBtn('bemerkung')}
           </div>
           <div className="pt-card-body">
             {loading ? SKELETON : editSection === 'bemerkung' ? (
               <div className="space-y-2">
-                <ITextarea label="Notizen" value={d('notes')} onChange={v => set('notes', v)} rows={4} />
+                <ITextarea label={t('contacts.form.notesField')} value={d('notes')} onChange={v => set('notes', v)} rows={4} />
                 {bar}
               </div>
             ) : contact ? (

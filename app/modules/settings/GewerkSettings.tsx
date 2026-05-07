@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Plus, Trash2, ChevronDown, ChevronUp, Check, X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import type { TranslationKey } from '@/app/lib/i18n/translations/de'
 import {
   getGewerke,
   createGewerk,
@@ -12,6 +13,14 @@ import {
   type Gewerk,
   type FunctionCatalogGroup,
 } from '@/lib/api-client'
+
+const GROUP_KEY_MAP: Record<string, TranslationKey> = {
+  'Talente & Akteure': 'settings.funktionen.group.talente',
+  'Management':        'settings.funktionen.group.management',
+  'Technik':           'settings.funktionen.group.technik',
+  'Driver':            'settings.funktionen.group.driver',
+  'Sonstige':          'settings.funktionen.group.sonstige',
+}
 
 const PRESET_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
@@ -254,7 +263,7 @@ export default function GewerkSettings() {
                       onClick={() => setExpandedCatalog(prev => ({ ...prev, [group.group]: !prev[group.group] }))}
                       className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100"
                     >
-                      <span>{group.group}</span>
+                      <span>{GROUP_KEY_MAP[group.group] ? t(GROUP_KEY_MAP[group.group]) : group.group}</span>
                       {expandedCatalog[group.group]
                         ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
                         : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}

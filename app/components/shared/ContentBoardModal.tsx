@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { X, Save, Trash2, Loader2 } from 'lucide-react'
 import { RichTextEditorField, type RichTextEditorFieldHandle } from '@/app/components/shared/RichTextEditor'
 import type { BoardItem, BoardItemFormData } from '@/lib/api-client'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 // ============================================================
 // ContentBoardModal
@@ -39,12 +40,15 @@ export default function ContentBoardModal({
   onDelete,
   showLRSeparator = false,
   showNotFinal = false,
-  modalTitle = { new: 'Neuer Eintrag', edit: 'Eintrag bearbeiten' },
-  titlePlaceholder = 'Titel',
+  modalTitle,
+  titlePlaceholder,
   deleteConfirmText,
   showTitleField = true,
 }: ContentBoardModalProps) {
+  const t = useT()
   const isEdit = !!item
+  const resolvedModalTitle = modalTitle ?? { new: t('general.newEntry'), edit: t('general.editEntry') }
+  const resolvedTitlePlaceholder = titlePlaceholder ?? t('general.title')
   const [title, setTitle] = useState(item?.title ?? '')
   const [notFinal, setNotFinal] = useState(item?.notFinal ?? false)
   const [saving, setSaving] = useState(false)
@@ -65,7 +69,7 @@ export default function ContentBoardModal({
         sortOrder: item?.sortOrder ?? 0,
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
+      setError(e instanceof Error ? e.message : t('general.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -78,7 +82,7 @@ export default function ContentBoardModal({
     try {
       await onDelete!()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Löschen')
+      setError(e instanceof Error ? e.message : t('general.deleteFailed'))
     } finally {
       setDeleting(false)
     }
@@ -100,7 +104,7 @@ export default function ContentBoardModal({
 
         <div className="modal-header">
           <h2 className="modal-title">
-            {isEdit ? modalTitle.edit : modalTitle.new}
+            {isEdit ? resolvedModalTitle.edit : resolvedModalTitle.new}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X size={18} />
@@ -114,12 +118,12 @@ export default function ContentBoardModal({
 
           {showTitleField && (
             <div>
-              <label className="form-label">Bezeichnung</label>
+              <label className="form-label">{t('general.label')}</label>
               <input
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder={titlePlaceholder}
+                placeholder={resolvedTitlePlaceholder}
                 className="form-input"
               />
             </div>
@@ -140,7 +144,7 @@ export default function ContentBoardModal({
                 onChange={e => setNotFinal(e.target.checked)}
                 className="rounded border-gray-300 text-orange-500 focus:ring-orange-400"
               />
-              <span className="text-sm text-gray-600">noch nicht final</span>
+              <span className="text-sm text-gray-600">{t('general.notFinal')}</span>
             </label>
           )}
         </div>
@@ -149,14 +153,14 @@ export default function ContentBoardModal({
           {isEdit && onDelete ? (
             <button onClick={handleDelete} disabled={deleting} className="btn btn-danger disabled:opacity-50">
               {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-              <span className="hidden md:inline">Löschen</span>
+              <span className="hidden md:inline">{t('general.delete')}</span>
             </button>
           ) : <div />}
           <div className="flex gap-2">
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
             <button onClick={handleSave} disabled={saving} className="btn btn-primary disabled:opacity-50">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-              Speichern
+              {t('general.save')}
             </button>
           </div>
         </div>
