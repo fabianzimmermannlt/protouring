@@ -22,7 +22,7 @@ import { Loader2 } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
 import GewerkSettings from './GewerkSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
-import { useLanguage } from '@/app/lib/i18n/LanguageContext'
+import { useLanguage, useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
   adminSetUserEmail, adminSetUserPassword, adminToggleUserStatus,
@@ -49,9 +49,10 @@ export interface SettingsProps {
 }
 
 export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProps) {
+  const t = useT()
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null)
-  const showSaved = (label = 'Gespeichert') => {
-    setSavedFeedback(label)
+  const showSaved = (label?: string) => {
+    setSavedFeedback(label || t('general.saved'))
     setTimeout(() => setSavedFeedback(null), 2000)
   }
   // Load data from API on mount
@@ -188,51 +189,51 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Area 1: Rechnungsanschrift */}
                 <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">RECHNUNGSANSCHRIFT</h4>
+                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.billingAddress')}</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Firma</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.company')}</label>
                       <input
                         type="text"
                         value={billingData.company}
                         onChange={(e) => saveBillingData({...billingData, company: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Firmenname"
+                        placeholder={t('settings.artist.companyPlaceholder')}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Vorname</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.firstName')}</label>
                       <input
                         type="text"
                         value={billingData.firstName}
                         onChange={(e) => saveBillingData({...billingData, firstName: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Max"
+                        placeholder={t('settings.artist.firstName')}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Nachname</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.lastName')}</label>
                       <input
                         type="text"
                         value={billingData.lastName}
                         onChange={(e) => saveBillingData({...billingData, lastName: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Mustermann"
+                        placeholder={t('settings.artist.lastName')}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Anschrift</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.address')}</label>
                       <input
                         type="text"
                         value={billingData.address}
                         onChange={(e) => saveBillingData({...billingData, address: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Straße Hausnummer"
+                        placeholder={t('settings.artist.addressPlaceholder')}
                       />
                     </div>
                     <div className="flex gap-2">
                       <div className="w-20">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">PLZ</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.postalCode')}</label>
                         <input
                           type="text"
                           value={billingData.postalCode}
@@ -242,28 +243,28 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Ort</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.city')}</label>
                         <input
                           type="text"
                           value={billingData.city}
                           onChange={(e) => saveBillingData({...billingData, city: e.target.value})}
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          placeholder="Berlin"
+                          placeholder={t('settings.artist.cityPlaceholder')}
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Telefon</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.phone')}</label>
                       <input
                         type="tel"
                         value={billingData.phone}
                         onChange={(e) => saveBillingData({...billingData, phone: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="+49 30 12345678"
+                        placeholder={t('settings.artist.phonePlaceholder')}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Steuer-ID</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.taxId')}</label>
                       <input
                         type="text"
                         value={billingData.taxId}
@@ -273,13 +274,13 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">E-Mail</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('general.email')}</label>
                       <input
                         type="email"
                         value={billingData.email}
                         onChange={(e) => saveBillingData({...billingData, email: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="rechnung@beispiel.de"
+                        placeholder={t('settings.artist.emailPlaceholder')}
                       />
                     </div>
                   </div>
@@ -287,26 +288,26 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
                 {/* Area 2: Subscription */}
                 <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">SUBSCRIPTION</h4>
+                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.subscription')}</h4>
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm font-medium text-blue-600">{subscriptionData.plan}</p>
-                      <p className="text-xs text-gray-600">Status: {subscriptionData.status}</p>
+                      <p className="text-xs text-gray-600">{t('settings.artist.subscriptionStatus')}: {subscriptionData.status}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-900">
                         {new Date(subscriptionData.nextBilling).toLocaleDateString('de-DE')}
                       </p>
                       <p className="text-xs text-gray-600">
-                        {subscriptionData.status === 'Trial' ? 'Trial endet' : 'Nächste Abbuchung'}
+                        {subscriptionData.status === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
                       </p>
                     </div>
                     <div className="space-y-2">
                       <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                        Plan Upgraden
+                        {t('settings.artist.upgradePlan')}
                       </button>
                       <button className="w-full px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
-                        Zahlung ändern
+                        {t('settings.artist.changePayment')}
                       </button>
                     </div>
                   </div>
@@ -314,10 +315,10 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
                 {/* Area 3: Format & Region */}
                 <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">FORMAT & REGION</h4>
+                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.formatRegion')}</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Sprache</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.language.label')}</label>
                       <select
                         value={formatData.language}
                         onChange={(e) => saveFormatData({...formatData, language: e.target.value})}
@@ -328,7 +329,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Zeitzone</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.timezone')}</label>
                       <select
                         value={formatData.timezone}
                         onChange={(e) => saveFormatData({...formatData, timezone: e.target.value})}
@@ -339,7 +340,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Währung</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.currency')}</label>
                       <select
                         value={formatData.currency}
                         onChange={(e) => saveFormatData({...formatData, currency: e.target.value})}
@@ -354,47 +355,47 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
                 {/* Area 4: Artist Information */}
                 <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">ARTIST INFORMATION</h4>
+                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.information')}</h4>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Anzeigename</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.displayName')}</label>
                       <input
                         type="text"
                         value={artistData.displayName}
                         onChange={(e) => setArtistData({...artistData, displayName: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Artist Name"
+                        placeholder={t('settings.artist.displayNamePlaceholder')}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Kürzel</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.shortCode')}</label>
                       <input
                         type="text"
                         value={artistData.shortCode}
                         onChange={(e) => setArtistData({...artistData, shortCode: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="ABC"
+                        placeholder={t('settings.artist.shortCodePlaceholder')}
                         maxLength={5}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Homebase</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.homebase')}</label>
                       <input
                         type="text"
                         value={artistData.homebase}
                         onChange={(e) => setArtistData({...artistData, homebase: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Stadt, Land"
+                        placeholder={t('settings.artist.homebasePlaceholder')}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Genre</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.genre')}</label>
                       <input
                         type="text"
                         value={artistData.genre}
                         onChange={(e) => setArtistData({...artistData, genre: e.target.value})}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Rock, Pop"
+                        placeholder={t('settings.artist.genrePlaceholder')}
                       />
                     </div>
                   </div>
@@ -423,11 +424,11 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
                         currency: formatData.currency,
                       }),
                     ])
-                    showSaved()
+                    showSaved(t('settings.artist.saveAll'))
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Alle speichern
+                  {t('settings.artist.saveAll')}
                 </button>
                 {savedFeedback && (
                   <span className="text-sm text-green-600 font-medium flex items-center gap-1">
@@ -457,10 +458,10 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <PaintBrushIcon className="w-5 h-5" />
-                Darstellung
+                {t('settings.appearance.title')}
               </h3>
               <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-gray-600">Aussehen & Layout-Einstellungen werden hier implementiert...</p>
+                <p className="text-gray-600">{t('settings.appearance.placeholder')}</p>
               </div>
             </div>
           </div>
@@ -472,10 +473,10 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <BellIcon className="w-5 h-5" />
-                Benachrichtigungen
+                {t('settings.notifications.title')}
               </h3>
               <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-gray-600">Benachrichtigungseinstellungen werden hier implementiert...</p>
+                <p className="text-gray-600">{t('settings.notifications.placeholder')}</p>
               </div>
             </div>
           </div>
@@ -487,7 +488,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <UsersIcon className="w-5 h-5" />
-                Funktionen
+                {t('settings.contacts.title')}
               </h3>
               <FunktionenSettings />
             </div>
@@ -500,10 +501,10 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <UserPlusIcon className="w-5 h-5" />
-                Gästeliste
+                {t('settings.guestlist.title')}
               </h3>
               <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-gray-600">Gästenliste & VIPs werden hier implementiert...</p>
+                <p className="text-gray-600">{t('settings.guestlist.placeholder')}</p>
               </div>
             </div>
           </div>
@@ -515,10 +516,10 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <CalendarDaysIcon className="w-5 h-5" />
-                Daysheet
+                {t('settings.daysheet.title')}
               </h3>
               <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-gray-600">Tagespläne & Routinen werden hier implementiert...</p>
+                <p className="text-gray-600">{t('settings.daysheet.placeholder')}</p>
               </div>
             </div>
           </div>
@@ -542,7 +543,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
       default:
         return (
           <div className="text-center py-8">
-            <div className="text-gray-500">Bereich nicht gefunden</div>
+            <div className="text-gray-500">{t('settings.notFound')}</div>
           </div>
         )
     }
@@ -561,7 +562,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
 function UserProfil() {
   const currentUser = getCurrentUser()
-  const { language, setLanguage } = useLanguage()
+  const { language, setLanguage, t } = useLanguage()
   const [currentTenant, setCurrentTenant] = useState(getCurrentTenant())
   const isAdmin = isAdminRole(currentTenant?.role ?? '')
 
@@ -670,8 +671,8 @@ function UserProfil() {
     e.preventDefault()
     setPwError('')
     setPwSuccess(false)
-    if (pwForm.next !== pwForm.confirm) { setPwError('Passwörter stimmen nicht überein'); return }
-    if (pwForm.next.length < 6) { setPwError('Mindestens 6 Zeichen'); return }
+    if (pwForm.next !== pwForm.confirm) { setPwError(t('settings.profile.passwordMismatch')); return }
+    if (pwForm.next.length < 6) { setPwError(t('settings.profile.passwordMinLength')); return }
     setPwSaving(true)
     try {
       await changePassword(pwForm.current, pwForm.next)
@@ -679,7 +680,7 @@ function UserProfil() {
       setPwForm({ current: '', next: '', confirm: '' })
       setShowPwForm(false)
     } catch (e: any) {
-      setPwError(e?.message ?? 'Fehler')
+      setPwError(e?.message ?? t('general.error'))
     } finally {
       setPwSaving(false)
     }
@@ -691,7 +692,7 @@ function UserProfil() {
 
   if (profileLoading) return (
     <div className="flex items-center gap-2 text-gray-500 text-sm py-8">
-      <Loader2 className="animate-spin w-4 h-4" /> Wird geladen…
+      <Loader2 className="animate-spin w-4 h-4" /> {t('general.loading')}
     </div>
   )
 
@@ -725,7 +726,7 @@ function UserProfil() {
 
       {/* Passwort */}
       <div className="space-y-3" ref={pwAccordionRef}>
-        <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">Passwort</h3>
+        <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.password')}</h3>
 
         {/* Mobile: Akkordion */}
         <div className="md:hidden">
@@ -738,7 +739,7 @@ function UserProfil() {
             }}
             className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700"
           >
-            <span>Passwort ändern</span>
+            <span>{t('settings.profile.changePassword')}</span>
             <svg className={`w-4 h-4 text-gray-400 transition-transform${showPwForm ? ' rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -747,16 +748,16 @@ function UserProfil() {
             <div className="mt-2 bg-gray-50 border border-gray-200 rounded-xl p-4">
               <form onSubmit={handlePwChange} className="space-y-2.5">
                 {pwError && <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{pwError}</div>}
-                {pwSuccess && <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">Gespeichert.</div>}
+                {pwSuccess && <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">{t('settings.profile.savedSuccess')}</div>}
                 {(['current','next','confirm'] as const).map((key, i) => (
                   <div key={key}>
-                    <label className="block text-xs text-gray-500 mb-1">{['Aktuell','Neu','Bestätigen'][i]}</label>
+                    <label className="block text-xs text-gray-500 mb-1">{[t('settings.profile.currentPassword'), t('settings.profile.newPassword'), t('settings.profile.confirm')][i]}</label>
                     <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                 ))}
                 <button type="submit" disabled={pwSaving} className="w-full mt-1 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5">
                   {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
-                  Speichern
+                  {t('general.save')}
                 </button>
               </form>
             </div>
@@ -768,16 +769,16 @@ function UserProfil() {
           <form onSubmit={handlePwChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(['current','next','confirm'] as const).map((key, i) => (
               <div key={key}>
-                <label className="block text-xs text-gray-500 mb-1">{['Aktuelles Passwort','Neues Passwort','Bestätigen'][i]}</label>
+                <label className="block text-xs text-gray-500 mb-1">{[t('settings.profile.currentPasswordLabel'), t('settings.profile.newPasswordLabel'), t('settings.profile.confirm')][i]}</label>
                 <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             ))}
             {pwError && <div className="md:col-span-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{pwError}</div>}
-            {pwSuccess && <div className="md:col-span-3 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">Gespeichert.</div>}
+            {pwSuccess && <div className="md:col-span-3 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">{t('settings.profile.savedSuccess')}</div>}
             <div className="md:col-span-3 flex">
               <button type="submit" disabled={pwSaving} className="py-1.5 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
                 {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
-                Speichern
+                {t('general.save')}
               </button>
             </div>
           </form>
@@ -787,7 +788,7 @@ function UserProfil() {
       {/* Sprache / Language */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-          {language === 'de' ? 'Sprache / Language' : 'Language / Sprache'}
+          {language === 'de' ? t('settings.language.label') : 'Language / Sprache'}
         </h3>
         <div className="flex gap-2">
           <button
@@ -825,6 +826,7 @@ function UserProfil() {
 // ============================================================
 
 function IcalSection() {
+  const t = useT()
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -857,7 +859,7 @@ function IcalSection() {
   }
 
   const handleRegenerate = async () => {
-    if (!confirm('Den Link neu generieren? Der alte Link funktioniert dann nicht mehr.')) return
+    if (!confirm(t('settings.ical.regenerateConfirm'))) return
     setRegenerating(true)
     try {
       const newToken = await regenerateIcalToken()
@@ -869,13 +871,13 @@ function IcalSection() {
     <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
       <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
         <CalendarDaysIcon className="w-4 h-4 text-gray-400" />
-        Kalender-Abo (iCal)
+        {t('profile.calendar')}
       </h4>
       <p className="text-xs text-gray-500 mb-3">
-        Bestätigte Termine in Google Calendar, Apple Calendar oder Outlook abonnieren. Den Link einmalig einfügen — danach sync automatisch.
+        {t('settings.ical.description')}
       </p>
       {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-xs"><Loader2 className="animate-spin w-3 h-3" /> Wird geladen…</div>
+        <div className="flex items-center gap-2 text-gray-400 text-xs"><Loader2 className="animate-spin w-3 h-3" /> {t('general.loading')}</div>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -890,11 +892,11 @@ function IcalSection() {
               onClick={handleCopy}
               className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
             >
-              {copied ? '✓ Kopiert' : 'Kopieren'}
+              {copied ? `✓ ${t('settings.ical.copied')}` : t('settings.ical.copy')}
             </button>
           </div>
           <a href={httpsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-            Im Browser testen ↗
+            {t('settings.ical.testInBrowser')}
           </a>
           <button
             onClick={handleRegenerate}
@@ -902,7 +904,7 @@ function IcalSection() {
             className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 disabled:opacity-50"
           >
             {regenerating ? <Loader2 size={10} className="animate-spin" /> : null}
-            Link neu generieren (invalidiert alten Link)
+            {t('settings.ical.regenerate')}
           </button>
         </div>
       )}
@@ -913,13 +915,6 @@ function IcalSection() {
 // ============================================================
 // UserManagement Component
 // ============================================================
-
-const USER_COLS: [string, keyof TenantUser][] = [
-  ['Vorname', 'firstName'],
-  ['Nachname', 'lastName'],
-  ['E-Mail', 'email'],
-  ['Rolle', 'role'],
-]
 
 function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmail, onEditPassword, onToggleStatus, onRemove, onRoleChange }: {
   users: TenantUser[]
@@ -932,6 +927,15 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
   onRemove: (userId: number) => void
   onRoleChange: (userId: number, role: TenantRole) => void
 }) {
+  const t = useT()
+
+  const USER_COLS: [string, keyof TenantUser][] = [
+    [t('table.firstName'), 'firstName'],
+    [t('table.lastName'), 'lastName'],
+    [t('general.email'), 'email'],
+    [t('table.role'), 'role'],
+  ]
+
   const filtered = users.filter(u =>
     `${u.firstName} ${u.lastName} ${u.email} ${u.role}`
       .toLowerCase().includes(searchTerm.toLowerCase())
@@ -943,21 +947,21 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
 
   const actionButtons = (user: TenantUser) => (
     <div className="flex items-center gap-1">
-      <button onClick={e => { e.stopPropagation(); onEditEmail(user) }} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="E-Mail ändern">
+      <button onClick={e => { e.stopPropagation(); onEditEmail(user) }} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title={t('settings.users.editEmail')}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
       </button>
-      <button onClick={e => { e.stopPropagation(); onEditPassword(user) }} className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="Passwort setzen">
+      <button onClick={e => { e.stopPropagation(); onEditPassword(user) }} className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title={t('settings.users.setPassword')}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
       </button>
       {user.id !== currentUserId && (
         <>
-          <button onClick={e => { e.stopPropagation(); onToggleStatus(user.id) }} className={`p-1.5 transition-colors ${user.memberStatus === 'inactive' ? 'text-green-500 hover:text-green-600' : 'text-gray-400 hover:text-orange-500'}`} title={user.memberStatus === 'inactive' ? 'Aktivieren' : 'Deaktivieren'}>
+          <button onClick={e => { e.stopPropagation(); onToggleStatus(user.id) }} className={`p-1.5 transition-colors ${user.memberStatus === 'inactive' ? 'text-green-500 hover:text-green-600' : 'text-gray-400 hover:text-orange-500'}`} title={user.memberStatus === 'inactive' ? t('settings.users.activate') : t('settings.users.deactivate')}>
             {user.memberStatus === 'inactive'
               ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             }
           </button>
-          <button onClick={e => { e.stopPropagation(); onRemove(user.id) }} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Entfernen">
+          <button onClick={e => { e.stopPropagation(); onRemove(user.id) }} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors" title={t('general.remove')}>
             <TrashIcon className="w-4 h-4" />
           </button>
         </>
@@ -975,8 +979,8 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
               <div className="flex-1 min-w-0" onClick={() => onOpenProfile(user)}>
                 <p className="font-semibold text-gray-900 text-sm truncate">
                   {user.firstName} {user.lastName}
-                  {user.id === currentUserId && <span className="ml-1 text-xs text-blue-500">(du)</span>}
-                  {user.memberStatus === 'inactive' && <span className="ml-1 text-xs text-gray-400">inaktiv</span>}
+                  {user.id === currentUserId && <span className="ml-1 text-xs text-blue-500">{t('settings.users.you')}</span>}
+                  {user.memberStatus === 'inactive' && <span className="ml-1 text-xs text-gray-400">{t('settings.users.inactive')}</span>}
                 </p>
                 <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
               </div>
@@ -1002,7 +1006,7 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
           </div>
         ))}
         {filtered.length === 0 && (
-          <p className="text-center text-gray-400 text-xs py-4">Keine Ergebnisse</p>
+          <p className="text-center text-gray-400 text-xs py-4">{t('settings.users.noResults')}</p>
         )}
       </div>
 
@@ -1027,12 +1031,12 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
               <tr key={user.id} className={`clickable${user.memberStatus === 'inactive' ? ' opacity-50' : ''}`} onClick={() => onOpenProfile(user)}>
                 <td className="font-medium">
                   {user.firstName}
-                  {user.id === currentUserId && <span className="ml-1 text-xs text-blue-500">(du)</span>}
+                  {user.id === currentUserId && <span className="ml-1 text-xs text-blue-500">{t('settings.users.you')}</span>}
                 </td>
                 <td className="font-medium">
                   {user.lastName}
                   {user.memberStatus === 'inactive' && (
-                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">inaktiv</span>
+                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{t('settings.users.inactive')}</span>
                   )}
                 </td>
                 <td className="text-gray-500">{user.email}</td>
@@ -1056,7 +1060,7 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="text-center text-gray-400 text-xs py-4">Keine Ergebnisse</td></tr>
+              <tr><td colSpan={5} className="text-center text-gray-400 text-xs py-4">{t('settings.users.noResults')}</td></tr>
             )}
           </tbody>
         </table>
@@ -1068,6 +1072,7 @@ function UserTable({ users, currentUserId, searchTerm, onOpenProfile, onEditEmai
 interface ModalUser { userId: number; name: string; currentEmail: string }
 
 function UserManagement() {
+  const t = useT()
   const currentTenant = getCurrentTenant()
   const currentUser = getCurrentUser()
   const isAdmin = getEffectiveRole() === 'admin'
@@ -1112,15 +1117,15 @@ function UserManagement() {
 
   const handleEmailSave = async () => {
     if (!emailModal) return
-    if (!emailValue.includes('@')) { setEmailError('Ungültige E-Mail'); return }
-    if (emailValue.trim().toLowerCase() === emailModal.currentEmail.toLowerCase()) { setEmailError('Keine Änderung'); return }
+    if (!emailValue.includes('@')) { setEmailError(t('settings.users.invalidEmail')); return }
+    if (emailValue.trim().toLowerCase() === emailModal.currentEmail.toLowerCase()) { setEmailError(t('settings.users.noChange')); return }
     setEmailSaving(true); setEmailError(''); setEmailSuccess('')
     try {
       await adminSetUserEmail(emailModal.userId, emailValue.trim())
       setUsers(prev => prev.map(u => u.id === emailModal.userId ? { ...u, email: emailValue.trim() } : u))
-      setEmailSuccess('Gespeichert.')
+      setEmailSuccess(t('settings.profile.savedSuccess'))
       setEmailModal(m => m ? { ...m, currentEmail: emailValue.trim() } : m)
-    } catch (e: any) { setEmailError(e?.message ?? 'Fehler') } finally { setEmailSaving(false) }
+    } catch (e: any) { setEmailError(e?.message ?? t('general.error')) } finally { setEmailSaving(false) }
   }
 
   // Passwort Modal
@@ -1139,14 +1144,14 @@ function UserManagement() {
 
   const handlePwSave = async () => {
     if (!pwModal) return
-    if (pwValue.length < 6) { setPwError('Mindestens 6 Zeichen'); return }
-    if (pwValue !== pwConfirm) { setPwError('Passwörter stimmen nicht überein'); return }
+    if (pwValue.length < 6) { setPwError(t('settings.profile.passwordMinLength')); return }
+    if (pwValue !== pwConfirm) { setPwError(t('settings.profile.passwordMismatch')); return }
     setPwSaving(true); setPwError(''); setPwSuccess('')
     try {
       await adminSetUserPassword(pwModal.userId, pwValue)
-      setPwSuccess('Passwort gesetzt.')
+      setPwSuccess(t('settings.profile.passwordSet'))
       setPwValue(''); setPwConfirm('')
-    } catch (e: any) { setPwError(e?.message ?? 'Fehler') } finally { setPwSaving(false) }
+    } catch (e: any) { setPwError(e?.message ?? t('general.error')) } finally { setPwSaving(false) }
   }
 
   const load = useCallback(async () => {
@@ -1158,11 +1163,11 @@ function UserManagement() {
       setUsers(data.users)
       setPending(data.pending)
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Laden')
+      setError(e?.message ?? t('settings.users.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [isAdmin])
+  }, [isAdmin, t])
 
   useEffect(() => { load() }, [load])
 
@@ -1172,17 +1177,17 @@ function UserManagement() {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u))
       if (userId === currentUser?.id) updateCurrentTenantRole(role)
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Speichern')
+      setError(e?.message ?? t('settings.users.saveError'))
     }
   }
 
   const handleRemoveUser = async (userId: number) => {
-    if (!confirm('User wirklich entfernen?')) return
+    if (!confirm(t('settings.users.removeConfirm'))) return
     try {
       await removeUser(userId)
       setUsers(prev => prev.filter(u => u.id !== userId))
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Entfernen')
+      setError(e?.message ?? t('settings.users.removeError'))
     }
   }
 
@@ -1191,7 +1196,7 @@ function UserManagement() {
       const newStatus = await adminToggleUserStatus(userId)
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, memberStatus: newStatus } : u))
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Statuswechsel')
+      setError(e?.message ?? t('settings.users.statusError'))
     }
   }
 
@@ -1200,7 +1205,7 @@ function UserManagement() {
       await revokeInvite(tokenId)
       setPending(prev => prev.filter(p => p.id !== tokenId))
     } catch (e: any) {
-      setError(e?.message ?? 'Fehler beim Widerrufen')
+      setError(e?.message ?? t('settings.users.revokeError'))
     }
   }
 
@@ -1231,7 +1236,7 @@ function UserManagement() {
   if (!isAdmin) {
     return (
       <div className="bg-gray-50 rounded-lg p-6">
-        <p className="text-gray-500 text-sm">Nur Admins können Benutzer verwalten.</p>
+        <p className="text-gray-500 text-sm">{t('settings.users.adminOnly')}</p>
       </div>
     )
   }
@@ -1241,10 +1246,10 @@ function UserManagement() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
           <UserGroupIcon className="w-5 h-5" />
-          Benutzer-Verwaltung
+          {t('settings.users.management')}
         </h3>
         <p className="text-sm text-gray-500">
-          Neue Mitglieder über <strong>Kontakte → Zugang-Icon</strong> einladen.
+          {t('settings.users.inviteHint')}
         </p>
       </div>
 
@@ -1254,17 +1259,17 @@ function UserManagement() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
-          <Loader2 className="animate-spin w-4 h-4" /> Wird geladen…
+          <Loader2 className="animate-spin w-4 h-4" /> {t('general.loading')}
         </div>
       ) : (
         <>
           {/* Aktive User */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-semibold text-gray-700">Aktive Mitglieder</h4>
+              <h4 className="text-sm font-semibold text-gray-700">{t('settings.users.activeMembers')}</h4>
               <input
                 type="text"
-                placeholder="Suchen..."
+                placeholder={t('general.search')}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="search-input w-48"
@@ -1286,7 +1291,7 @@ function UserManagement() {
           {/* Offene Einladungen */}
           {pending.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">Offene Einladungen</h4>
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">{t('settings.users.pendingInvites')}</h4>
 
               {/* Mobile: Cards */}
               <div className="md:hidden space-y-2">
@@ -1295,21 +1300,21 @@ function UserManagement() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 text-sm truncate">
-                          {inv.firstName || inv.lastName ? `${inv.firstName ?? ''} ${inv.lastName ?? ''}`.trim() : <span className="text-gray-400 italic text-xs">Kein Name</span>}
+                          {inv.firstName || inv.lastName ? `${inv.firstName ?? ''} ${inv.lastName ?? ''}`.trim() : <span className="text-gray-400 italic text-xs">{t('settings.users.noName')}</span>}
                         </p>
                         <p className="text-xs text-gray-500 truncate">{inv.email}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded">
                             {ROLE_LABELS[inv.role] ?? inv.role}
                           </span>
-                          <span className="text-xs text-gray-400">bis {new Date(inv.expiresAt).toLocaleDateString('de-DE')}</span>
+                          <span className="text-xs text-gray-400">{t('settings.users.expiresAt').replace('{date}', new Date(inv.expiresAt).toLocaleDateString('de-DE'))}</span>
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }} className="p-1.5 text-gray-400 hover:text-blue-500" title="Link anzeigen">
+                        <button onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }} className="p-1.5 text-gray-400 hover:text-blue-500" title={t('settings.users.showLink')}>
                           <LinkIcon className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleRevokeInvite(inv.id)} className="p-1.5 text-gray-400 hover:text-red-500" title="Widerrufen">
+                        <button onClick={() => handleRevokeInvite(inv.id)} className="p-1.5 text-gray-400 hover:text-red-500" title={t('settings.users.revoke')}>
                           <TrashIcon className="w-4 h-4" />
                         </button>
                       </div>
@@ -1323,10 +1328,10 @@ function UserManagement() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Vorname</th>
-                      <th>Nachname</th>
-                      <th>E-Mail</th>
-                      <th>Rolle</th>
+                      <th>{t('table.firstName')}</th>
+                      <th>{t('table.lastName')}</th>
+                      <th>{t('general.email')}</th>
+                      <th>{t('table.role')}</th>
                       <th>Läuft ab</th>
                       <th className="text-center w-10"></th>
                     </tr>
@@ -1347,10 +1352,10 @@ function UserManagement() {
                         </td>
                         <td className="text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title="Einladungslink anzeigen">
+                            <button onClick={() => { setLinkPopup({ token: inv.token, email: inv.email }); setLinkCopied(false) }} className="p-1 text-gray-400 hover:text-blue-500 transition-colors" title={t('settings.users.showInviteLink')}>
                               <LinkIcon className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleRevokeInvite(inv.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Widerrufen">
+                            <button onClick={() => handleRevokeInvite(inv.id)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title={t('settings.users.revoke')}>
                               <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
@@ -1370,12 +1375,12 @@ function UserManagement() {
         <div className="modal-overlay" onClick={() => setLinkPopup(null)}>
           <div className="modal-container max-w-md" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Einladungslink</h2>
+              <h2 className="modal-title">{t('settings.users.inviteLink')}</h2>
               <button onClick={() => setLinkPopup(null)} className="text-gray-400 hover:text-white text-xl">✕</button>
             </div>
             <div className="p-4 space-y-3">
               <p className="text-sm text-gray-600">
-                Link für <span className="font-medium">{linkPopup.email}</span>
+                {t('settings.users.linkFor').replace('{email}', linkPopup.email)}
               </p>
               <div className="flex items-center gap-2">
                 <input
@@ -1396,7 +1401,7 @@ function UserManagement() {
                   }
                 </button>
               </div>
-              {linkCopied && <p className="text-xs text-green-600">Link kopiert!</p>}
+              {linkCopied && <p className="text-xs text-green-600">{t('settings.users.linkCopied')}</p>}
             </div>
           </div>
         </div>
@@ -1477,7 +1482,7 @@ function UserManagement() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeEmailModal}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">E-Mail — {emailModal.name}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{t('settings.users.editEmailTitle').replace('{name}', emailModal.name)}</h3>
               <button onClick={closeEmailModal} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -1485,7 +1490,7 @@ function UserManagement() {
             {emailError && <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{emailError}</div>}
             {emailSuccess && <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">{emailSuccess}</div>}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">E-Mail</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t('general.email')}</label>
               <input
                 type="email"
                 value={emailValue}
@@ -1496,10 +1501,10 @@ function UserManagement() {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={closeEmailModal} className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Abbrechen</button>
+              <button onClick={closeEmailModal} className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">{t('general.cancel')}</button>
               <button onClick={handleEmailSave} disabled={emailSaving} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5">
                 {emailSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
-                Speichern
+                {t('general.save')}
               </button>
             </div>
           </div>
@@ -1511,7 +1516,7 @@ function UserManagement() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closePwModal}>
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-900">Passwort — {pwModal.name}</h3>
+              <h3 className="text-base font-semibold text-gray-900">{t('settings.users.passwordTitle').replace('{name}', pwModal.name)}</h3>
               <button onClick={closePwModal} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -1520,21 +1525,21 @@ function UserManagement() {
             {pwSuccess && <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">{pwSuccess}</div>}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Neues Passwort</label>
-                <input type="password" value={pwValue} onChange={e => setPwValue(e.target.value)} autoFocus placeholder="Mindestens 6 Zeichen"
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.profile.newPasswordLabel')}</label>
+                <input type="password" value={pwValue} onChange={e => setPwValue(e.target.value)} autoFocus placeholder={t('settings.profile.passwordMinLength')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Bestätigen</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.profile.confirm')}</label>
                 <input type="password" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)} onKeyDown={e => e.key === 'Enter' && handlePwSave()}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={closePwModal} className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Abbrechen</button>
+              <button onClick={closePwModal} className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">{t('general.cancel')}</button>
               <button onClick={handlePwSave} disabled={pwSaving} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5">
                 {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
-                Speichern
+                {t('general.save')}
               </button>
             </div>
           </div>
@@ -1549,6 +1554,7 @@ function UserManagement() {
 // ============================================================
 
 function SuperadminPanel() {
+  const t = useT()
   const [users, setUsers] = useState<SuperadminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -1583,11 +1589,11 @@ function SuperadminPanel() {
 
   const handlePwSave = async () => {
     if (!pwModal) return
-    if (pwValue.length < 6) { setPwError('Mindestens 6 Zeichen'); return }
+    if (pwValue.length < 6) { setPwError(t('settings.profile.passwordMinLength')); return }
     setPwSaving(true); setPwError(''); setPwSuccess('')
     try {
       await superadminSetPassword(pwModal.id, pwValue)
-      setPwSuccess('Passwort gesetzt.')
+      setPwSuccess(t('settings.profile.passwordSet'))
       setTimeout(() => setPwModal(null), 1200)
     } catch (e: any) {
       setPwError(e.message)
@@ -1598,7 +1604,7 @@ function SuperadminPanel() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
-    if (deleteConfirmText !== deleteTarget.email) { setDeleteError('E-Mail stimmt nicht überein'); return }
+    if (deleteConfirmText !== deleteTarget.email) { setDeleteError(t('settings.superadmin.emailMismatch')); return }
     setDeleting(true); setDeleteError('')
     try {
       await superadminDeleteUser(deleteTarget.id)
@@ -1620,14 +1626,14 @@ function SuperadminPanel() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
           <UsersIcon className="w-5 h-5 text-red-500" />
-          Superadmin – Globale User-Verwaltung
+          {t('settings.superadmin.title')}
         </h3>
-        <p className="text-sm text-gray-500 mb-4">Alle User systemweit. Unabhängig von Tenant-Mitgliedschaft.</p>
+        <p className="text-sm text-gray-500 mb-4">{t('settings.superadmin.description')}</p>
       </div>
 
       <input
         type="text"
-        placeholder="Suchen …"
+        placeholder={t('general.search')}
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -1637,9 +1643,9 @@ function SuperadminPanel() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-3 py-2 text-gray-600 font-medium">Name</th>
-              <th className="text-left px-3 py-2 text-gray-600 font-medium">E-Mail</th>
-              <th className="text-left px-3 py-2 text-gray-600 font-medium">Tenants</th>
+              <th className="text-left px-3 py-2 text-gray-600 font-medium">{t('table.name')}</th>
+              <th className="text-left px-3 py-2 text-gray-600 font-medium">{t('general.email')}</th>
+              <th className="text-left px-3 py-2 text-gray-600 font-medium">{t('table.tenants')}</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
@@ -1655,7 +1661,7 @@ function SuperadminPanel() {
                 <td className="px-3 py-2 text-gray-600">{u.email}</td>
                 <td className="px-3 py-2 text-gray-500 text-xs">
                   {u.tenantCount === 0
-                    ? <span className="text-orange-500 font-medium">Kein Tenant</span>
+                    ? <span className="text-orange-500 font-medium">{t('settings.superadmin.noTenant')}</span>
                     : <span title={u.tenantNames}>{u.tenantCount} Tenant{u.tenantCount !== 1 ? 's' : ''}</span>
                   }
                 </td>
@@ -1665,14 +1671,14 @@ function SuperadminPanel() {
                       onClick={() => openPwModal(u)}
                       className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
                     >
-                      PW setzen
+                      {t('settings.superadmin.setPassword')}
                     </button>
                     {!u.isSuperadmin && (
                       <button
                         onClick={() => { setDeleteTarget(u); setDeleteConfirmText(''); setDeleteError('') }}
                         className="text-xs px-2 py-1 border border-red-200 rounded hover:bg-red-50 text-red-600"
                       >
-                        Löschen
+                        {t('general.delete')}
                       </button>
                     )}
                   </div>
@@ -1680,7 +1686,7 @@ function SuperadminPanel() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={4} className="text-center py-6 text-gray-400">Keine User gefunden</td></tr>
+              <tr><td colSpan={4} className="text-center py-6 text-gray-400">{t('settings.superadmin.noUsersFound')}</td></tr>
             )}
           </tbody>
         </table>
@@ -1691,36 +1697,36 @@ function SuperadminPanel() {
         <div className="modal-overlay" onClick={() => setPwModal(null)}>
           <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Passwort setzen</h2>
+              <h2 className="modal-title">{t('settings.superadmin.passwordTitle')}</h2>
               <button onClick={() => setPwModal(null)} className="text-gray-400 hover:text-white"><span className="text-xl">✕</span></button>
             </div>
             <div className="p-4 space-y-3">
               <p className="text-sm text-gray-600">
-                User: <span className="font-medium">{pwModal.firstName} {pwModal.lastName}</span> ({pwModal.email})
+                {t('settings.superadmin.userInfo').replace('{name}', `${pwModal.firstName} ${pwModal.lastName}`).replace('{email}', pwModal.email)}
               </p>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Neues Passwort</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.profile.newPasswordLabel')}</label>
                 <input
                   type="password"
                   autoFocus
                   value={pwValue}
                   onChange={e => setPwValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handlePwSave()}
-                  placeholder="Mindestens 6 Zeichen"
+                  placeholder={t('settings.profile.passwordMinLength')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               {pwError && <p className="text-xs text-red-600">{pwError}</p>}
               {pwSuccess && <p className="text-xs text-green-600">{pwSuccess}</p>}
               <div className="flex gap-2 justify-end pt-1">
-                <button onClick={() => setPwModal(null)} className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50">Abbrechen</button>
+                <button onClick={() => setPwModal(null)} className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50">{t('general.cancel')}</button>
                 <button
                   onClick={handlePwSave}
                   disabled={pwSaving}
                   className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
                 >
                   {pwSaving ? <Loader2 size={12} className="animate-spin" /> : null}
-                  Setzen
+                  {t('settings.superadmin.set')}
                 </button>
               </div>
             </div>
@@ -1733,7 +1739,7 @@ function SuperadminPanel() {
         <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
           <div className="modal-container max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">User löschen</h2>
+              <h2 className="modal-title">{t('settings.superadmin.deleteTitle')}</h2>
               <button onClick={() => setDeleteTarget(null)} className="text-gray-400 hover:text-white"><span className="text-xl">✕</span></button>
             </div>
             <div className="p-4 space-y-3">
@@ -1742,11 +1748,11 @@ function SuperadminPanel() {
                 Kontaktdaten bleiben in den Tenants erhalten, werden aber vom User-Account getrennt.
               </p>
               <div className="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                Diese Aktion kann nicht rückgängig gemacht werden.
+                {t('settings.superadmin.irreversible')}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Zur Bestätigung E-Mail eingeben: <span className="font-mono">{deleteTarget.email}</span>
+                  {t('settings.superadmin.confirmDelete').replace('{email}', deleteTarget.email)}
                 </label>
                 <input
                   type="text"
@@ -1758,14 +1764,14 @@ function SuperadminPanel() {
               </div>
               {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
               <div className="flex gap-2 justify-end pt-1">
-                <button onClick={() => setDeleteTarget(null)} className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50">Abbrechen</button>
+                <button onClick={() => setDeleteTarget(null)} className="text-sm px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50">{t('general.cancel')}</button>
                 <button
                   onClick={handleDelete}
                   disabled={deleting || deleteConfirmText !== deleteTarget.email}
                   className="text-sm px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
                 >
                   {deleting ? <Loader2 size={12} className="animate-spin" /> : null}
-                  Endgültig löschen
+                  {t('settings.superadmin.deleteConfirm')}
                 </button>
               </div>
             </div>
@@ -1781,71 +1787,73 @@ function SuperadminPanel() {
 // ============================================================
 
 function ErsteSchritte() {
+  const t = useT()
+
   const sections = [
     {
-      title: 'Schreibtisch',
-      roles: 'Alle Rollen',
-      edit: 'Admin, Agentur (Ankündigung)',
-      icon: '🖥️',
-      content: 'Der Schreibtisch ist die Startseite nach dem Login. Hier findet ihr die Ankündigung des Tourmanagements, persönliche Notizen, offene To-dos aus allen Terminen und den allgemeinen Chat. Crew-Mitglieder sehen ihre eigenen Notizen und können im Chat schreiben. Die Ankündigung kann nur von Admins und der Agentur bearbeitet werden.',
+      title: t('settings.ersteSchritte.desk.title'),
+      roles: t('settings.ersteSchritte.desk.roles'),
+      edit: t('settings.ersteSchritte.desk.edit'),
+      icon: t('settings.ersteSchritte.desk.icon'),
+      content: t('settings.ersteSchritte.desk.content'),
     },
     {
-      title: 'Termine',
-      roles: 'Alle Rollen',
-      edit: 'Admin, Agentur, Tourmanagement (anlegen & bearbeiten)',
-      icon: '📅',
-      content: 'Alle Konzerte, Festivals und sonstigen Termine der Tour. In der Listenansicht könnt ihr eure Verfügbarkeit eintragen (✓ verfügbar / ? vielleicht / ✗ nicht verfügbar). Ein Klick auf einen Termin öffnet die Detailansicht mit Spielstätte, Reisegruppe, Zeitplänen, Catering, Anreise, Hotel, Advancing, To-dos, Dateien und Chat. Der Advancing-Bereich dient zur Dokumentation abgesprochener Details mit der Venue (z.B. Technik, Catering-Abweichungen). Unter Sonstiges können freie Notizen hinterlegt werden. Aus allen Daten lassen sich Advance Sheet (für Venues) und Call Sheet (für die Crew) als PDF exportieren.',
+      title: t('settings.ersteSchritte.events.title'),
+      roles: t('settings.ersteSchritte.events.roles'),
+      edit: t('settings.ersteSchritte.events.edit'),
+      icon: t('settings.ersteSchritte.events.icon'),
+      content: t('settings.ersteSchritte.events.content'),
     },
     {
-      title: 'Kontakte',
-      roles: 'Alle außer Gast',
-      edit: 'Admin, Agentur, Tourmanagement',
-      icon: '👥',
-      content: 'Das Adressbuch der Tour. Hier sind alle Crew-Mitglieder, Techniker und sonstige Kontakte hinterlegt. Jeder kann sein eigenes Profil bearbeiten (Kontaktdaten, Ernährung, Kleidungsgrößen, Bankdaten, Hotel-Vorlieben). Admins sehen zusätzlich Funktionen für die Crew-Buchung: wer ist für welchen Termin verfügbar und gebucht? Ihr eigenes Profil findet ihr auch unter Einstellungen → Mein Profil.',
+      title: t('settings.ersteSchritte.contacts.title'),
+      roles: t('settings.ersteSchritte.contacts.roles'),
+      edit: t('settings.ersteSchritte.contacts.edit'),
+      icon: t('settings.ersteSchritte.contacts.icon'),
+      content: t('settings.ersteSchritte.contacts.content'),
     },
     {
-      title: 'Spielstätten',
-      roles: 'Admin, Agentur, Tourmanagement, Artist',
-      edit: 'Admin, Agentur, Tourmanagement',
-      icon: '🎪',
-      content: 'Datenbank aller Venues — Hallen, Clubs, Festivals. Hier werden Stammdaten wie Adresse, Kapazität, technische Infos und Kontakte gepflegt. Die Daten werden automatisch in die Termin-Detailansicht übernommen wenn ihr eine Spielstätte zuweist.',
+      title: t('settings.ersteSchritte.venues.title'),
+      roles: t('settings.ersteSchritte.venues.roles'),
+      edit: t('settings.ersteSchritte.venues.edit'),
+      icon: t('settings.ersteSchritte.venues.icon'),
+      content: t('settings.ersteSchritte.venues.content'),
     },
     {
-      title: 'Partner',
-      roles: 'Admin, Agentur, Tourmanagement',
-      edit: 'Admin, Agentur, Tourmanagement',
-      icon: '🤝',
-      content: 'Veranstalter, Promoter und andere Geschäftspartner. Ähnlich wie Spielstätten können Partner einem Termin zugewiesen werden und erscheinen dann in der Detailansicht.',
+      title: t('settings.ersteSchritte.partners.title'),
+      roles: t('settings.ersteSchritte.partners.roles'),
+      edit: t('settings.ersteSchritte.partners.edit'),
+      icon: t('settings.ersteSchritte.partners.icon'),
+      content: t('settings.ersteSchritte.partners.content'),
     },
     {
-      title: 'Hotels',
-      roles: 'Admin, Agentur, Tourmanagement, Artist',
-      edit: 'Admin, Agentur, Tourmanagement',
-      icon: '🏨',
-      content: 'Hotel-Stammdaten für die Unterkunftsplanung. Hotels können in der Anreise-Planung eines Termins zugewiesen werden. Zimmer-Zuweisungen für Crew-Mitglieder werden direkt im Termin verwaltet.',
+      title: t('settings.ersteSchritte.hotels.title'),
+      roles: t('settings.ersteSchritte.hotels.roles'),
+      edit: t('settings.ersteSchritte.hotels.edit'),
+      icon: t('settings.ersteSchritte.hotels.icon'),
+      content: t('settings.ersteSchritte.hotels.content'),
     },
     {
-      title: 'Fahrzeuge',
-      roles: 'Admin, Agentur, Tourmanagement',
-      edit: 'Admin, Agentur, Tourmanagement',
-      icon: '🚐',
-      content: 'Tourbusse, Sprinter, PKWs — alle Fahrzeuge des Tour-Fuhrparks. Fahrzeuge können in der Anreise-Planung eines Termins eingesetzt werden und erscheinen dann in der Reisegruppen-Ansicht.',
+      title: t('settings.ersteSchritte.vehicles.title'),
+      roles: t('settings.ersteSchritte.vehicles.roles'),
+      edit: t('settings.ersteSchritte.vehicles.edit'),
+      icon: t('settings.ersteSchritte.vehicles.icon'),
+      content: t('settings.ersteSchritte.vehicles.content'),
     },
     {
-      title: 'Einstellungen',
-      roles: 'Alle Rollen',
-      edit: 'Admin (alle), Agentur, Tourmanagement (eigenes Profil)',
-      icon: '⚙️',
-      content: 'Alle User sehen ihre persönlichen Einstellungen: Profil, Passwort und Kalender-Abo. Admins verwalten zusätzlich Berechtigungen (User einladen, Rollen vergeben, Einladungen widerrufen), Artist-Einstellungen (Name, Genre, Homebase) und den Funktionen-Katalog (welche Crew-Funktionen im System verfügbar sind). Beim Einladen von Crew-Mitgliedern werden Vor- und Nachname direkt vergeben — sie erscheinen sofort korrekt in der Berechtigungsliste, auch bevor die Einladung angenommen wurde.',
+      title: t('settings.ersteSchritte.settingsArea.title'),
+      roles: t('settings.ersteSchritte.settingsArea.roles'),
+      edit: t('settings.ersteSchritte.settingsArea.edit'),
+      icon: t('settings.ersteSchritte.settingsArea.icon'),
+      content: t('settings.ersteSchritte.settingsArea.content'),
     },
   ]
 
   return (
     <div className="space-y-1 max-w-3xl">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Willkommen bei ProTouring</h2>
+        <h2 className="text-xl font-bold text-gray-900">{t('settings.ersteSchritte.welcome')}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Hier findest du eine Übersicht aller Bereiche — was sie können und wer Zugriff hat.
+          {t('settings.ersteSchritte.intro')}
         </p>
       </div>
 
@@ -1857,10 +1865,10 @@ function ErsteSchritte() {
               <h3 className="font-semibold text-gray-900 text-sm">{s.title}</h3>
               <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                 <span className="text-xs text-gray-500">
-                  <span className="font-medium text-gray-600">Sichtbar für:</span> {s.roles}
+                  <span className="font-medium text-gray-600">{t('settings.ersteSchritte.visibleFor')}:</span> {s.roles}
                 </span>
                 <span className="text-xs text-gray-500">
-                  <span className="font-medium text-gray-600">Bearbeiten:</span> {s.edit}
+                  <span className="font-medium text-gray-600">{t('settings.ersteSchritte.editBy')}:</span> {s.edit}
                 </span>
               </div>
             </div>
@@ -1873,8 +1881,7 @@ function ErsteSchritte() {
 
       <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl">
         <p className="text-sm text-blue-700">
-          <span className="font-semibold">Fragen oder Feedback?</span>{' '}
-          Nutze den Feedback-Button unten rechts (Desktop) oder im Mehr-Menü (Mobile). Wir freuen uns über jeden Hinweis.
+          {t('settings.ersteSchritte.feedback')}
         </p>
       </div>
     </div>
@@ -1883,6 +1890,7 @@ function ErsteSchritte() {
 
 // ── Partner-Typen Settings ────────────────────────────────────────────────────
 function PartnerTypesSettings() {
+  const t = useT()
   const [types, setTypes] = useState<PartnerType[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -1914,12 +1922,12 @@ function PartnerTypesSettings() {
       setTypes(prev => [...prev, created])
       setNewName('')
     } catch (e) {
-      setError((e as Error).message || 'Fehler beim Speichern')
+      setError((e as Error).message || t('settings.users.saveError'))
     } finally { setAdding(false) }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('Diesen Partner-Typ wirklich löschen?')) return
+    if (!confirm(t('settings.partnerTypes.deleteConfirm'))) return
     try {
       await deletePartnerType(id)
       setTypes(prev => prev.filter(t => t.id !== id))
@@ -1929,15 +1937,15 @@ function PartnerTypesSettings() {
   return (
     <div className="space-y-5 max-w-md">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Partner-Typen</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">{t('settings.partnerTypes.title')}</h3>
         <p className="text-sm text-gray-500">
-          Aktiviere die Typen, die beim Anlegen eines Partners zur Auswahl stehen sollen.
+          {t('settings.partnerTypes.description')}
         </p>
       </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> Lade…
+          <Loader2 className="w-4 h-4 animate-spin" /> {t('settings.partnerTypes.loading')}
         </div>
       ) : (
         <>
@@ -1966,13 +1974,13 @@ function PartnerTypesSettings() {
             <input
               type="text" value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Neuer Typ…"
+              placeholder={t('settings.partnerTypes.newPlaceholder')}
               className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             <button onClick={handleAdd} disabled={adding || !newName.trim()}
               className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
               {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlusIcon className="w-3.5 h-3.5" />}
-              Add
+              {t('general.add')}
             </button>
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
@@ -1983,9 +1991,9 @@ function PartnerTypesSettings() {
 }
 
 // ─── Artist Members Settings ──────────────────────────────────────────────────
-const COMMON_ROLES = ['Gesang', 'Gitarre', 'Bass', 'Schlagzeug', 'Keyboard', 'Trompete', 'Saxofon', 'Posaune', 'Geige', 'DJ', 'Tourmanager', 'Artist Management', 'Backliner', 'Monitor Engineer', 'FOH Engineer']
 
 function ArtistMembersSettings() {
+  const { t, language } = useLanguage()
   const [members, setMembers] = useState<ArtistMember[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<number | null>(null)   // id or -1 for new
@@ -1995,6 +2003,10 @@ function ArtistMembersSettings() {
   const [roleInput, setRoleInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const COMMON_ROLES = language === 'en'
+    ? ['Vocals', 'Guitar', 'Bass', 'Drums', 'Keyboard', 'Trumpet', 'Saxophone', 'Trombone', 'Violin', 'DJ', 'Tour Manager', 'Artist Management', 'Backline', 'Monitor Engineer', 'FOH Engineer']
+    : ['Gesang', 'Gitarre', 'Bass', 'Schlagzeug', 'Keyboard', 'Trompete', 'Saxofon', 'Posaune', 'Geige', 'DJ', 'Tourmanager', 'Artist Management', 'Backliner', 'Monitor Engineer', 'FOH Engineer']
 
   useEffect(() => {
     getArtistMembers().then(setMembers).catch(() => {}).finally(() => setLoading(false))
@@ -2026,7 +2038,7 @@ function ArtistMembersSettings() {
   }
 
   async function save() {
-    if (!form.first_name.trim() && !form.last_name.trim()) { setError('Name erforderlich'); return }
+    if (!form.first_name.trim() && !form.last_name.trim()) { setError(t('settings.artistMembers.nameRequired')); return }
     setSaving(true); setError('')
     try {
       if (editing === -1) {
@@ -2037,12 +2049,12 @@ function ArtistMembersSettings() {
         setMembers(prev => prev.map(m => m.id === editing ? updated : m))
       }
       setEditing(null)
-    } catch (e) { setError((e as Error).message || 'Fehler') }
+    } catch (e) { setError((e as Error).message || t('general.error')) }
     finally { setSaving(false) }
   }
 
   async function remove(id: number, name: string) {
-    if (!confirm(`„${name}" wirklich löschen?`)) return
+    if (!confirm(t('settings.artistMembers.deleteConfirm').replace('{name}', name))) return
     try {
       await deleteArtistMember(id)
       setMembers(prev => prev.filter(m => m.id !== id))
@@ -2054,17 +2066,17 @@ function ArtistMembersSettings() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <UsersIcon className="w-5 h-5" /> Artists
+          <UsersIcon className="w-5 h-5" /> {t('settings.artistMembers.title')}
         </h3>
         {editing === null && (
           <button onClick={startNew} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-            <UserPlusIcon className="w-4 h-4" /> Hinzufügen
+            <UserPlusIcon className="w-4 h-4" /> {t('settings.artistMembers.add')}
           </button>
         )}
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Lade…</div>
+        <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> {t('settings.partnerTypes.loading')}</div>
       ) : (
         <div className="space-y-2">
           {/* Existing members */}
@@ -2072,14 +2084,14 @@ function ArtistMembersSettings() {
             editing === m.id ? (
               <MemberForm key={m.id} form={form} setForm={setForm} roleInput={roleInput} setRoleInput={setRoleInput}
                 onAddRole={addRole} onRemoveRole={removeRole} onSave={save} onCancel={() => setEditing(null)}
-                saving={saving} error={error} />
+                saving={saving} error={error} commonRoles={COMMON_ROLES} />
             ) : (
               <div key={m.id} className="flex items-start justify-between gap-3 p-3 bg-white border border-gray-200 rounded-lg group">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-gray-900">{m.first_name} {m.last_name}</span>
                     {m.always_in_travelparty && (
-                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">immer dabei</span>
+                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">{t('settings.artistMembers.alwaysAlong')}</span>
                     )}
                   </div>
                   {m.roles.length > 0 && (
@@ -2097,7 +2109,7 @@ function ArtistMembersSettings() {
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-contact', { detail: { contactId: m.id } }))}
                     className="p-1 text-gray-400 hover:text-purple-600"
-                    title="Vollprofil öffnen"
+                    title={t('settings.artistMembers.openProfile')}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                   </button>
@@ -2116,11 +2128,11 @@ function ArtistMembersSettings() {
           {editing === -1 && (
             <MemberForm form={form} setForm={setForm} roleInput={roleInput} setRoleInput={setRoleInput}
               onAddRole={addRole} onRemoveRole={removeRole} onSave={save} onCancel={() => setEditing(null)}
-              saving={saving} error={error} isNew />
+              saving={saving} error={error} isNew commonRoles={COMMON_ROLES} />
           )}
 
           {members.length === 0 && editing === null && (
-            <p className="text-sm text-gray-400 py-2">Noch keine Artists erfasst.</p>
+            <p className="text-sm text-gray-400 py-2">{t('settings.artistMembers.empty')}</p>
           )}
         </div>
       )}
@@ -2128,7 +2140,7 @@ function ArtistMembersSettings() {
   )
 }
 
-function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemoveRole, onSave, onCancel, saving, error, isNew }: {
+function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemoveRole, onSave, onCancel, saving, error, isNew, commonRoles = [] }: {
   form: ArtistMemberFormData
   setForm: (f: ArtistMemberFormData) => void
   roleInput: string
@@ -2140,19 +2152,21 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
   saving: boolean
   error: string
   isNew?: boolean
+  commonRoles?: string[]
 }) {
+  const t = useT()
   const f = (key: keyof ArtistMemberFormData, val: any) => setForm({ ...form, [key]: val })
   return (
     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">{isNew ? 'Neues Mitglied' : 'Bearbeiten'}</p>
+      <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">{isNew ? t('settings.artistMembers.new') : t('settings.artistMembers.edit')}</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Vorname</label>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.artist.firstName')}</label>
           <input autoFocus type="text" value={form.first_name} onChange={e => f('first_name', e.target.value)}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Nachname</label>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.artist.lastName')}</label>
           <input type="text" value={form.last_name} onChange={e => f('last_name', e.target.value)}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
@@ -2160,7 +2174,7 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
 
       {/* Rollen */}
       <div>
-        <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">Rollen / Funktionen</label>
+        <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">{t('settings.artistMembers.roles')}</label>
         <div className="flex flex-wrap gap-1 mb-2">
           {form.roles.map(r => (
             <span key={r} className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
@@ -2171,13 +2185,13 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
         </div>
         <div className="flex gap-1">
           <input type="text" value={roleInput} onChange={e => setRoleInput(e.target.value)}
-            placeholder="Rolle eingeben…"
+            placeholder={t('settings.artistMembers.rolePlaceholder')}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onAddRole(roleInput) } }}
             className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
           <button onClick={() => onAddRole(roleInput)} className="px-2 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded border border-gray-300">+</button>
         </div>
         <div className="flex flex-wrap gap-1 mt-1.5">
-          {COMMON_ROLES.filter(r => !form.roles.includes(r)).map(r => (
+          {commonRoles.filter(r => !form.roles.includes(r)).map(r => (
             <button key={r} onClick={() => onAddRole(r)}
               className="text-[11px] text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 px-1.5 py-0.5 rounded-full transition-colors">
               + {r}
@@ -2188,19 +2202,19 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">E-Mail</label>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('general.email')}</label>
           <input type="email" value={form.email} onChange={e => f('email', e.target.value)}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Telefon</label>
+          <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.artist.phone')}</label>
           <input type="tel" value={form.phone} onChange={e => f('phone', e.target.value)}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
         </div>
       </div>
 
       <div>
-        <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">Notizen</label>
+        <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">{t('settings.artistMembers.notes')}</label>
         <textarea value={form.notes} onChange={e => f('notes', e.target.value)} rows={2}
           className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
       </div>
@@ -2208,16 +2222,16 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={form.always_in_travelparty} onChange={e => f('always_in_travelparty', e.target.checked)}
           className="rounded border-gray-300" />
-        <span className="text-sm text-gray-700">Immer in der Reisegruppe</span>
+        <span className="text-sm text-gray-700">{t('settings.artistMembers.alwaysInParty')}</span>
       </label>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">Abbrechen</button>
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">{t('general.cancel')}</button>
         <button onClick={onSave} disabled={saving}
           className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-          Speichern
+          {t('general.save')}
         </button>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Loader2, Check } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getFunctionCatalog,
   saveFunctionCatalog,
@@ -9,6 +10,7 @@ import {
 } from '@/lib/api-client'
 
 export default function FunktionenSettings() {
+  const t = useT()
   const [catalog, setCatalog] = useState<FunctionCatalogGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -69,7 +71,7 @@ export default function FunktionenSettings() {
       <div className="pt-fn-header">
         <div>
           <p className="pt-fn-subtitle">
-            {totalActive} von {totalAll} Funktionen aktiv — diese erscheinen in allen Dropdowns der App.
+            {t('settings.funktionen.activeCount').replace('{active}', String(totalActive)).replace('{total}', String(totalAll))}
           </p>
         </div>
         <button
@@ -78,10 +80,10 @@ export default function FunktionenSettings() {
           disabled={saving}
         >
           {saving
-            ? <><Loader2 size={14} className="animate-spin" /> Speichern…</>
+            ? <><Loader2 size={14} className="animate-spin" /> {t('general.saving')}</>
             : saved
-            ? <><Check size={14} /> Gespeichert</>
-            : 'Speichern'}
+            ? <><Check size={14} /> {t('general.saved')}</>
+            : t('general.save')}
         </button>
       </div>
 
@@ -94,9 +96,9 @@ export default function FunktionenSettings() {
               <div className="pt-fn-group-header">
                 <span className="pt-fn-group-name">{group.group}</span>
                 <div className="pt-fn-group-actions">
-                  <button className="pt-fn-group-toggle" onClick={() => toggleGroup(gi, true)}>Alle an</button>
+                  <button className="pt-fn-group-toggle" onClick={() => toggleGroup(gi, true)}>{t('settings.funktionen.allOn')}</button>
                   <span className="pt-fn-group-divider">·</span>
-                  <button className="pt-fn-group-toggle" onClick={() => toggleGroup(gi, false)}>Alle aus</button>
+                  <button className="pt-fn-group-toggle" onClick={() => toggleGroup(gi, false)}>{t('settings.funktionen.allOff')}</button>
                 </div>
               </div>
               <div className="pt-fn-chips">

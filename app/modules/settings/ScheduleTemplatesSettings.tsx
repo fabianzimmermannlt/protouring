@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Pencil, Trash2, X, Loader2, ChevronDown, ChevronRight, BookTemplate } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getScheduleTemplates,
   updateScheduleTemplate,
@@ -60,6 +61,7 @@ function TemplateRow({
   onUpdate: (updated: ScheduleTemplate) => void
   onDelete: (id: number) => void
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [editingContent, setEditingContent] = useState(false)
@@ -83,7 +85,7 @@ function TemplateRow({
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Vorlage „${template.name}" wirklich löschen?`)) return
+    if (!confirm(t('settings.templates.schedule.deleteConfirm').replace('{name}', template.name))) return
     setDeleting(true)
     try {
       await deleteScheduleTemplate(template.id)
@@ -118,7 +120,7 @@ function TemplateRow({
             className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate"
             onDoubleClick={e => { e.stopPropagation(); setEditingName(true) }}
           >
-            {template.name || <span className="italic text-gray-400 font-normal">Ohne Namen</span>}
+            {template.name || <span className="italic text-gray-400 font-normal">{t('general.unnamed')}</span>}
           </span>
         )}
 
@@ -130,22 +132,22 @@ function TemplateRow({
           <button
             onClick={() => setEditingName(true)}
             className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-            title="Umbenennen"
+            title={t('settings.templates.schedule.rename')}
           >
             <Pencil size={13} />
           </button>
           <button
             onClick={() => setEditingContent(true)}
             className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors text-xs font-medium"
-            title="Inhalt bearbeiten"
+            title={t('settings.templates.schedule.editContent')}
           >
-            Inhalt
+            {t('settings.templates.schedule.editContent')}
           </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
             className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-            title="Löschen"
+            title={t('general.delete')}
           >
             {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
           </button>
@@ -160,13 +162,13 @@ function TemplateRow({
               {renderBoardContent(template.content)}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 italic">Kein Inhalt</p>
+            <p className="text-xs text-gray-400 italic">{t('settings.templates.schedule.noContent')}</p>
           )}
           <button
             onClick={() => setEditingContent(true)}
             className="mt-3 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
           >
-            Inhalt bearbeiten
+            {t('settings.templates.schedule.editContent')}
           </button>
         </div>
       )}
@@ -180,8 +182,8 @@ function TemplateRow({
           onSave={handleSaveContent}
           showLRSeparator
           showNotFinal
-          modalTitle={{ new: 'Vorlage bearbeiten', edit: 'Vorlage bearbeiten' }}
-          titlePlaceholder="Name der Vorlage"
+          modalTitle={{ new: t('settings.templates.schedule.edit'), edit: t('settings.templates.schedule.edit') }}
+          titlePlaceholder={t('settings.templates.schedule.namePlaceholder')}
         />
       )}
     </>
@@ -190,6 +192,7 @@ function TemplateRow({
 
 // ── Hauptkomponente ────────────────────────────────────────────────────────────
 export default function ScheduleTemplatesSettings() {
+  const t = useT()
   const [templates, setTemplates] = useState<ScheduleTemplate[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -212,7 +215,7 @@ export default function ScheduleTemplatesSettings() {
     return (
       <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
         <Loader2 size={16} className="animate-spin" />
-        <span className="text-sm">Wird geladen…</span>
+        <span className="text-sm">{t('general.loading')}</span>
       </div>
     )
   }
@@ -221,9 +224,9 @@ export default function ScheduleTemplatesSettings() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Zeitplan-Vorlagen</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('settings.templates.schedule.title')}</h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Vorlagen können im Events-Bereich unter Schedule gespeichert und wiederverwendet werden.
+            {t('settings.templates.schedule.description')}
           </p>
         </div>
       </div>
@@ -231,9 +234,9 @@ export default function ScheduleTemplatesSettings() {
       {templates.length === 0 ? (
         <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-lg">
           <BookTemplate size={24} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-sm text-gray-500">Noch keine Vorlagen vorhanden.</p>
+          <p className="text-sm text-gray-500">{t('settings.templates.schedule.empty')}</p>
           <p className="text-xs text-gray-400 mt-1">
-            Öffne einen Zeitplan im Events-Bereich und klicke auf das Buch-Symbol, um ihn als Vorlage zu speichern.
+            {t('settings.templates.schedule.emptyHint')}
           </p>
         </div>
       ) : (

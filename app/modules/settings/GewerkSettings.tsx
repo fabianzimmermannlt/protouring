@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Loader2, Plus, Trash2, ChevronDown, ChevronUp, Check, X } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getGewerke,
   createGewerk,
@@ -33,6 +34,7 @@ const EMPTY_FORM: GewerkFormState = {
 }
 
 export default function GewerkSettings() {
+  const t = useT()
   const [gewerke, setGewerke] = useState<Gewerk[]>([])
   const [catalog, setCatalog] = useState<FunctionCatalogGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -101,7 +103,7 @@ export default function GewerkSettings() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Gewerk wirklich löschen? Alle verknüpften Briefings werden ebenfalls gelöscht.')) return
+    if (!confirm(t('settings.gewerke.deleteConfirm'))) return
     try {
       await deleteGewerk(id)
       setGewerke(prev => prev.filter(g => g.id !== id))
@@ -112,6 +114,7 @@ export default function GewerkSettings() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        <span className="ml-2 text-sm text-gray-400">{t('general.loading')}</span>
       </div>
     )
   }
@@ -120,23 +123,23 @@ export default function GewerkSettings() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-sm font-semibold text-gray-900">Gewerke</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('settings.gewerke.title')}</h3>
           <button
             onClick={openCreate}
             className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
           >
             <Plus className="w-3.5 h-3.5" />
-            Neues Gewerk
+            {t('settings.gewerke.new')}
           </button>
         </div>
         <p className="text-xs text-gray-500 mb-4">
-          Gewerke gruppieren Crew-Mitglieder nach Funktion. Pro Gewerk kann ein separates Crew-Briefing pro Termin hinterlegt werden.
+          {t('settings.gewerke.description')}
         </p>
 
         {/* Liste bestehender Gewerke */}
         {gewerke.length === 0 && !showForm && (
           <div className="text-center py-8 text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg">
-            Noch keine Gewerke angelegt.
+            {t('settings.gewerke.empty')}
           </div>
         )}
 
@@ -154,11 +157,11 @@ export default function GewerkSettings() {
                 <div className="text-sm font-medium text-gray-900">{g.name}</div>
                 <div className="text-xs text-gray-500 truncate">
                   {g.funktionen.length === 0
-                    ? 'Keine Funktionen zugeordnet'
+                    ? t('settings.gewerke.noFunctions')
                     : g.funktionen.join(', ')}
                 </div>
                 {g.can_write === 1 && (
-                  <div className="text-xs text-indigo-600 mt-0.5">Crew darf schreiben</div>
+                  <div className="text-xs text-indigo-600 mt-0.5">{t('settings.gewerke.crewCanWrite')}</div>
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -166,11 +169,12 @@ export default function GewerkSettings() {
                   onClick={() => openEdit(g)}
                   className="px-2 py-1 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                 >
-                  Bearbeiten
+                  {t('general.edit')}
                 </button>
                 <button
                   onClick={() => handleDelete(g.id)}
                   className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                  title={t('general.delete')}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -184,7 +188,7 @@ export default function GewerkSettings() {
           <div className="mt-4 border border-blue-200 rounded-lg bg-blue-50/30 p-4 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-gray-800">
-                {editingId !== null ? 'Gewerk bearbeiten' : 'Neues Gewerk'}
+                {editingId !== null ? t('settings.gewerke.edit') : t('settings.gewerke.new')}
               </span>
               <button onClick={cancelForm} className="text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
@@ -193,20 +197,20 @@ export default function GewerkSettings() {
 
             {/* Name */}
             <div>
-              <label className="form-label">Name</label>
+              <label className="form-label">{t('general.name')}</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="form-input"
-                placeholder="z.B. Ton, Licht, Backline…"
+                placeholder={t('settings.gewerke.namePlaceholder')}
                 autoFocus
               />
             </div>
 
             {/* Farbe */}
             <div>
-              <label className="form-label">Farbe</label>
+              <label className="form-label">{t('settings.gewerke.color')}</label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {PRESET_COLORS.map(c => (
                   <button
@@ -229,17 +233,17 @@ export default function GewerkSettings() {
                 className="mt-0.5"
               />
               <label htmlFor="can_write" className="text-xs text-gray-700 cursor-pointer">
-                <span className="font-medium">Crew darf schreiben</span>
-                <span className="text-gray-500 block">Crew-Mitglieder dieses Gewerks können Briefings selbst bearbeiten</span>
+                <span className="font-medium">{t('settings.gewerke.crewWriteRight')}</span>
+                <span className="text-gray-500 block">{t('settings.gewerke.crewWriteRightDesc')}</span>
               </label>
             </div>
 
             {/* Funktionen zuweisen */}
             <div>
               <label className="form-label">
-                Funktionen
+                {t('settings.gewerke.functions')}
                 {form.funktionen.length > 0 && (
-                  <span className="ml-1.5 text-blue-600 font-normal">({form.funktionen.length} ausgewählt)</span>
+                  <span className="ml-1.5 text-blue-600 font-normal">({t('settings.gewerke.functionsSelected').replace('{count}', String(form.funktionen?.length ?? 0))})</span>
                 )}
               </label>
               <div className="space-y-2 mt-1">
@@ -292,13 +296,13 @@ export default function GewerkSettings() {
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                {editingId !== null ? 'Speichern' : 'Anlegen'}
+                {editingId !== null ? t('general.save') : t('general.create')}
               </button>
               <button
                 onClick={cancelForm}
                 className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                Abbrechen
+                {t('general.cancel')}
               </button>
             </div>
           </div>
