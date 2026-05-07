@@ -81,6 +81,16 @@ export function setAllTenants(tenants: object[]) {
   localStorage.setItem(ALL_TENANTS_KEY, JSON.stringify(tenants));
 }
 
+export function updateCurrentUserLanguage(lang: string) {
+  if (typeof window === 'undefined') return;
+  const raw = localStorage.getItem(CURRENT_USER_KEY);
+  if (!raw) return;
+  try {
+    const user = JSON.parse(raw);
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({ ...user, uiLanguage: lang }));
+  } catch { /* ignore */ }
+}
+
 export function updateCurrentTenantRole(role: string) {
   if (typeof window === 'undefined') return;
   const raw = localStorage.getItem(CURRENT_TENANT_KEY);

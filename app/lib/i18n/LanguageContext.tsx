@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import de, { TranslationKey } from './translations/de'
 import en from './translations/en'
-import { getCurrentUser, getUiLanguage, setUiLanguage, isAuthenticated } from '@/lib/api-client'
+import { getCurrentUser, getUiLanguage, setUiLanguage, isAuthenticated, updateCurrentUserLanguage } from '@/lib/api-client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,6 +72,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLanguage = async (lang: Language) => {
     setLanguageState(lang)
     localStorage.setItem(STORAGE_KEY, lang)
+    updateCurrentUserLanguage(lang)   // User-Cache in localStorage aktuell halten
     if (isAuthenticated()) {
       try {
         await setUiLanguage(lang)
