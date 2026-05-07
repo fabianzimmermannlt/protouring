@@ -1272,6 +1272,7 @@ function UserManagement() {
                 placeholder={t('general.search')}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
+                autoComplete="off"
                 className="search-input w-48"
               />
             </div>
@@ -1526,12 +1527,12 @@ function UserManagement() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.profile.newPasswordLabel')}</label>
-                <input type="password" value={pwValue} onChange={e => setPwValue(e.target.value)} autoFocus placeholder={t('settings.profile.passwordMinLength')}
+                <input type="password" value={pwValue} onChange={e => setPwValue(e.target.value)} autoFocus autoComplete="new-password" placeholder={t('settings.profile.passwordMinLength')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.profile.confirm')}</label>
-                <input type="password" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)} onKeyDown={e => e.key === 'Enter' && handlePwSave()}
+                <input type="password" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)} autoComplete="new-password" onKeyDown={e => e.key === 'Enter' && handlePwSave()}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
@@ -1709,6 +1710,7 @@ function SuperadminPanel() {
                 <input
                   type="password"
                   autoFocus
+                  autoComplete="new-password"
                   value={pwValue}
                   onChange={e => setPwValue(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handlePwSave()}
