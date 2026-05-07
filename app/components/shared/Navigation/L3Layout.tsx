@@ -1685,7 +1685,7 @@ export function L3Layout({
               <p className="px-4 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">{t('user.language')}</p>
               {(['de', 'en'] as const).map(lang => (
                 <button key={lang}
-                  onClick={() => { setLanguage(lang) }}
+                  onClick={() => { setLanguage(lang); setShowUserMenu(false) }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between gap-2"
                 >
                   <span>{lang === 'de' ? '🇩🇪 Deutsch' : '🇺🇸 English'}</span>
