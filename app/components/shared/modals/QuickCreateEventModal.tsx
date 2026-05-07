@@ -6,11 +6,24 @@ import { QuickCreateModal, QField, inputCls, selectCls } from '@/app/components/
 import { MapPin, Loader2, Search } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
 
+interface VenueSuggestion {
+  id?: number
+  name: string
+  city?: string
+  street?: string
+  postalCode?: string
+  state?: string
+  country?: string
+  lat?: string
+  lon?: string
+  source: 'db' | 'osm'
+}
+
 // Venue search with existing venues + Photon fallback
-function VenueSearch({ onSelect }: { onSelect: (v: { id?: number; name: string; city?: string }) => void }) {
+function VenueSearch({ onSelect }: { onSelect: (v: VenueSuggestion) => void }) {
   const [query, setQuery] = useState('')
   const [existingVenues, setExistingVenues] = useState<Venue[]>([])
-  const [suggestions, setSuggestions] = useState<{ id?: number; name: string; city?: string; source: 'db' | 'osm' }[]>([])
+  const [suggestions, setSuggestions] = useState<VenueSuggestion[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -30,18 +43,28 @@ function VenueSearch({ onSelect }: { onSelect: (v: { id?: number; name: string; 
       .map(v => ({ id: v.id ? parseInt(String(v.id)) : undefined, name: v.name, city: v.city, source: 'db' as const }))
 
     // Photon for new venues not yet in DB
-    let osmMatches: typeof suggestions = []
+    let osmMatches: VenueSuggestion[] = []
     try {
       const res = await fetch(buildPhotonUrl(q, 4))
       const data = await res.json()
       osmMatches = (data.features ?? [])
         .filter((f: any) => f.properties?.name)
-        .map((f: any) => ({
-          name: f.properties.name,
-          city: f.properties.city || f.properties.town || f.properties.village,
-          source: 'osm' as const,
-        }))
-        .filter((o: any) => !dbMatches.some(d => d.name.toLowerCase() === o.name.toLowerCase()))
+        .map((f: any) => {
+          const p = f.properties
+          const housenumber = p.housenumber ? ` ${p.housenumber}` : ''
+          return {
+            name: p.name,
+            city: p.city || p.town || p.village || '',
+            street: p.street ? `${p.street}${housenumber}` : '',
+            postalCode: p.postcode || '',
+            state: p.state || '',
+            country: p.country || '',
+            lat: f.geometry?.coordinates?.[1] != null ? String(f.geometry.coordinates[1]) : '',
+            lon: f.geometry?.coordinates?.[0] != null ? String(f.geometry.coordinates[0]) : '',
+            source: 'osm' as const,
+          }
+        })
+        .filter((o: VenueSuggestion) => !dbMatches.some(d => d.name.toLowerCase() === o.name.toLowerCase()))
         .slice(0, 3)
     } catch {}
 
@@ -59,7 +82,7 @@ function VenueSearch({ onSelect }: { onSelect: (v: { id?: number; name: string; 
 
   const handleSelect = (s: typeof suggestions[0]) => {
     setQuery(s.name)
-    onSelect({ id: s.id, name: s.name, city: s.city })
+    onSelect(s)
     setOpen(false)
   }
 
@@ -117,8 +140,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
   const [art, setArt] = useState('Konzert')
   const [title, setTitle] = useState('')
   const [venueId, setVenueId] = useState<number | undefined>()
-  const [venueName, setVenueName] = useState('')
-  const [venueCity, setVenueCity] = useState('')
+  const [venueData, setVenueData] = useState<VenueSuggestion | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -128,18 +150,24 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
     try {
       // OSM-Venue ausgewählt aber noch nicht in DB → erst anlegen
       let resolvedVenueId = venueId
+      const venueName = venueData?.name ?? ''
       if (!resolvedVenueId && venueName.trim()) {
         const empty = ''
         const newVenue = await createVenue({
-          name: venueName.trim(), city: venueCity.trim(),
-          street: empty, postalCode: empty, state: empty, country: empty,
+          name: venueName.trim(),
+          city: venueData?.city ?? empty,
+          street: venueData?.street ?? empty,
+          postalCode: venueData?.postalCode ?? empty,
+          state: venueData?.state ?? empty,
+          country: venueData?.country ?? empty,
+          latitude: venueData?.lat ?? empty,
+          longitude: venueData?.lon ?? empty,
           website: empty, arrival: empty, arrivalStreet: empty,
           arrivalPostalCode: empty, arrivalCity: empty,
           capacity: empty, capacitySeated: empty, stageDimensions: empty,
           clearanceHeight: empty, merchandiseFee: empty, merchandiseStand: empty,
           wardrobe: empty, showers: empty, wifi: empty, parking: empty,
           nightlinerParking: empty, loadingPath: empty, notes: empty,
-          latitude: empty, longitude: empty,
         })
         resolvedVenueId = parseInt(String(newVenue.id))
       }
@@ -187,7 +215,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
         </QField>
       </div>
 
-      <VenueSearch onSelect={v => { setVenueId(v.id); setVenueName(v.name); setVenueCity(v.city ?? '') }} />
+      <VenueSearch onSelect={v => { setVenueId(v.id); setVenueData(v) }} />
 
       <QField label="Titel (optional)">
         <input
@@ -195,7 +223,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder={venueName || 'z.B. Festival-Name, Tour-Leg…'}
+          placeholder={venueData?.name || 'z.B. Festival-Name, Tour-Leg…'}
           className={inputCls}
         />
       </QField>
