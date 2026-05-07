@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { createTermin, getVenues, TERMIN_ART, type Termin, type Venue } from '@/lib/api-client'
+import { createTermin, createVenue, getVenues, TERMIN_ART, type Termin, type Venue } from '@/lib/api-client'
 import { QuickCreateModal, QField, inputCls, selectCls } from '@/app/components/shared/QuickCreateModal'
 import { MapPin, Loader2, Search } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
@@ -118,6 +118,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
   const [title, setTitle] = useState('')
   const [venueId, setVenueId] = useState<number | undefined>()
   const [venueName, setVenueName] = useState('')
+  const [venueCity, setVenueCity] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -125,11 +126,29 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
     if (!date) { setError('Datum ist erforderlich'); return }
     setSaving(true); setError('')
     try {
+      // OSM-Venue ausgewählt aber noch nicht in DB → erst anlegen
+      let resolvedVenueId = venueId
+      if (!resolvedVenueId && venueName.trim()) {
+        const empty = ''
+        const newVenue = await createVenue({
+          name: venueName.trim(), city: venueCity.trim(),
+          street: empty, postalCode: empty, state: empty, country: empty,
+          website: empty, arrival: empty, arrivalStreet: empty,
+          arrivalPostalCode: empty, arrivalCity: empty,
+          capacity: empty, capacitySeated: empty, stageDimensions: empty,
+          clearanceHeight: empty, merchandiseFee: empty, merchandiseStand: empty,
+          wardrobe: empty, showers: empty, wifi: empty, parking: empty,
+          nightlinerParking: empty, loadingPath: empty, notes: empty,
+          latitude: empty, longitude: empty,
+        })
+        resolvedVenueId = parseInt(String(newVenue.id))
+      }
+
       const termin = await createTermin({
         date,
         title: title.trim() || venueName || art,
         art,
-        venue_id: venueId ?? null,
+        venue_id: resolvedVenueId ?? null,
         status_booking: 'noch nicht bestätigt',
         status_public: 'nicht öffentlich',
       })
@@ -168,7 +187,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
         </QField>
       </div>
 
-      <VenueSearch onSelect={v => { setVenueId(v.id); setVenueName(v.name) }} />
+      <VenueSearch onSelect={v => { setVenueId(v.id); setVenueName(v.name); setVenueCity(v.city ?? '') }} />
 
       <QField label="Titel (optional)">
         <input
