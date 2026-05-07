@@ -320,7 +320,7 @@ export default function TerminModal({
                           <button
                             key={v.id}
                             type="button"
-                            onClick={() => selectVenue(v)}
+                            onMouseDown={e => { e.preventDefault(); selectVenue(v) }}
                             className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left"
                           >
                             <Building2 size={13} className="text-gray-400 shrink-0" />
@@ -334,7 +334,7 @@ export default function TerminModal({
                       <div className="border-t border-gray-100">
                         <button
                           type="button"
-                          onClick={() => setQuickCreate(true)}
+                          onMouseDown={e => { e.preventDefault(); setQuickCreate(true) }}
                           className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50 text-indigo-600 text-sm font-medium"
                         >
                           <Plus size={14} />
