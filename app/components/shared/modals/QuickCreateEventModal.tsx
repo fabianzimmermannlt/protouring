@@ -5,6 +5,7 @@ import { createTermin, createVenue, getVenues, TERMIN_ART, type Termin, type Ven
 import { QuickCreateModal, QField, inputCls, selectCls } from '@/app/components/shared/QuickCreateModal'
 import { MapPin, Loader2, Search } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
+import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 
 interface VenueSuggestion {
   id?: number
@@ -21,6 +22,7 @@ interface VenueSuggestion {
 
 // Venue search with existing venues + Photon fallback
 function VenueSearch({ onSelect }: { onSelect: (v: VenueSuggestion) => void }) {
+  const { language } = useLanguage()
   const [query, setQuery] = useState('')
   const [existingVenues, setExistingVenues] = useState<Venue[]>([])
   const [suggestions, setSuggestions] = useState<VenueSuggestion[]>([])
@@ -45,7 +47,7 @@ function VenueSearch({ onSelect }: { onSelect: (v: VenueSuggestion) => void }) {
     // Photon for new venues not yet in DB
     let osmMatches: VenueSuggestion[] = []
     try {
-      const res = await fetch(buildPhotonUrl(q, 4))
+      const res = await fetch(buildPhotonUrl(q, 4, language))
       const data = await res.json()
       osmMatches = (data.features ?? [])
         .filter((f: any) => f.properties?.name)

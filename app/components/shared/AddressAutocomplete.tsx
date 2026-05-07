@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MapPin, Loader2 } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
+import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 
 export interface AddressResult {
   name?: string
@@ -52,6 +53,7 @@ export function NameAddressAutocomplete({
   variant = 'inline',
   autoFocus = false,
 }: NameAddressAutocompleteProps) {
+  const { language } = useLanguage()
   const [suggestions, setSuggestions] = useState<PhotonFeature[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -62,7 +64,7 @@ export function NameAddressAutocomplete({
     if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
     setLoading(true)
     try {
-      const url = buildPhotonUrl(q, 6)
+      const url = buildPhotonUrl(q, 6, language)
       const res = await fetch(url)
       const data = await res.json()
       const features: PhotonFeature[] = data.features ?? []

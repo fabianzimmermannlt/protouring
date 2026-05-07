@@ -40,8 +40,7 @@ function getBiasCoords(): [number, number] | null {
   return null
 }
 
-export function buildPhotonUrl(query: string, limit = 6): string {
-  const lang = document.documentElement.lang?.slice(0, 2) || 'de'
+export function buildPhotonUrl(query: string, limit = 6, lang = 'de'): string {
   const bias = getBiasCoords()
   const params = new URLSearchParams({
     q: query,
