@@ -191,17 +191,23 @@ export function L3Layout({
 
   // ── Termine state ──────────────────────────────────────────────────────────
   // Sofort aus URL ableiten — kein Event-Race-Condition
-  const [termineInDetail, setTermineInDetail] = useState(() =>
-    typeof window !== 'undefined' && /\/events\/\d+/.test(window.location.pathname)
-  )
+  const [termineInDetail, setTermineInDetail] = useState(() => {
+    if (typeof window === 'undefined') return false
+    if (/\/events\/\d+/.test(window.location.pathname)) return true
+    const params = new URLSearchParams(window.location.search)
+    return params.get('tab') === 'events' && params.get('id') != null
+  })
 
   // ── Events/Advancing state ─────────────────────────────────────────────────
   const [advancingView, setAdvancingView] = useState<TermineDetailView>(() => {
     if (typeof window === 'undefined') return 'details2'
-    const m = window.location.pathname.match(/\/events\/\d+\/(.+)/)
-    const v = m?.[1] as TermineDetailView | undefined
     const valid = ['details2','travel','schedule','catering','hospitality','advancing','agreements','travelparty','advance-sheet','guestlist','briefing']
-    return (valid.includes(v ?? '')) ? v! : 'details2'
+    const m = window.location.pathname.match(/\/events\/\d+\/(.+)/)
+    const pathView = m?.[1] as TermineDetailView | undefined
+    if (pathView && valid.includes(pathView)) return pathView
+    const paramView = new URLSearchParams(window.location.search).get('view') as TermineDetailView | undefined
+    if (paramView && valid.includes(paramView)) return paramView
+    return 'details2'
   })
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
