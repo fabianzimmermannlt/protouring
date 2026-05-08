@@ -643,6 +643,25 @@ const en = {
   'general.label':             'Label',
   'general.creating':          'Creating…',
 
+  // ── TerminModal ──────────────────────────────────────────────────────────────
+  'termin.new':                  'New Event',
+  'termin.edit':                 'Edit Event',
+  'termin.delete':               'Delete Event',
+  'termin.deleteConfirm':        'Really delete this event?',
+  'termin.type':                 'Type',
+  'termin.selectPlaceholder':    '– select –',
+  'termin.status':               'Status',
+  'termin.venue':                'Venue',
+  'termin.venueSearch':          'Search or add a venue…',
+  'termin.venueSearchPlaceholder': 'Name or city…',
+  'termin.venueNew':             'Add new venue',
+  'termin.venueNewLabel':        'New Venue',
+  'termin.venueName':            'Name *',
+  'termin.venueCity':            'City',
+  'termin.titlePlaceholder':     'e.g. Band Name Live',
+  'termin.showTitleAsHeader':    'Show custom title instead of venue in header',
+  'termin.saveAndNew':           'Save + New',
+
   // ── QuickCreate Event Modal ───────────────────────────────────────────────────
   'quickCreate.newEvent':          'New Event',
   'quickCreate.date':              'Date *',

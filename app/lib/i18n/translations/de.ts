@@ -644,6 +644,25 @@ const de = {
   'general.label':             'Bezeichnung',
   'general.creating':          'Wird angelegt…',
 
+  // ── TerminModal ──────────────────────────────────────────────────────────────
+  'termin.new':                  'Neuer Termin',
+  'termin.edit':                 'Termin bearbeiten',
+  'termin.delete':               'Termin löschen',
+  'termin.deleteConfirm':        'Termin wirklich löschen?',
+  'termin.type':                 'Art',
+  'termin.selectPlaceholder':    '– wählen –',
+  'termin.status':               'Status',
+  'termin.venue':                'Spielstätte',
+  'termin.venueSearch':          'Spielstätte suchen oder neu anlegen…',
+  'termin.venueSearchPlaceholder': 'Name oder Stadt…',
+  'termin.venueNew':             'Neue Spielstätte anlegen',
+  'termin.venueNewLabel':        'Neue Spielstätte',
+  'termin.venueName':            'Name *',
+  'termin.venueCity':            'Stadt',
+  'termin.titlePlaceholder':     'z.B. Bandname Live',
+  'termin.showTitleAsHeader':    'Eigenen Titel statt Spielstätte in der Überschrift anzeigen',
+  'termin.saveAndNew':           'Speichern + Weiterer',
+
   // ── QuickCreate Event Modal ───────────────────────────────────────────────────
   'quickCreate.newEvent':          'Neues Event',
   'quickCreate.date':              'Datum *',

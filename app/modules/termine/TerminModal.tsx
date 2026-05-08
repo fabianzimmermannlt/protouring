@@ -16,6 +16,7 @@ import {
   type TerminFormData,
   type Venue,
 } from '@/lib/api-client'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 interface TerminModalProps {
   /** null = Neuer Termin, Termin = Bearbeiten */
@@ -45,6 +46,7 @@ export default function TerminModal({
   onDeleted,
   allowAddAnother = false,
 }: TerminModalProps) {
+  const t = useT()
   const isEdit = !!termin
 
   const [form, setForm] = useState<TerminFormData>(
@@ -158,7 +160,6 @@ export default function TerminModal({
     try {
       let saved: Termin
       if (isEdit) {
-        // Preserve fields not in this form (city, partner_id, etc.)
         saved = await updateTermin(termin!.id, {
           ...form,
           city: termin!.city,
@@ -179,21 +180,21 @@ export default function TerminModal({
         onClose()
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen')
+      setError(e instanceof Error ? e.message : t('general.saveFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!termin || !confirm('Termin wirklich löschen?')) return
+    if (!termin || !confirm(t('termin.deleteConfirm'))) return
     setDeleting(true)
     try {
       await deleteTermin(termin.id)
       onDeleted?.(termin.id)
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Löschen fehlgeschlagen')
+      setError(e instanceof Error ? e.message : t('general.deleteFailed'))
     } finally {
       setDeleting(false)
     }
@@ -206,7 +207,7 @@ export default function TerminModal({
         {/* Header */}
         <div className="modal-header">
           <h2 className="modal-title">
-            {isEdit ? 'Termin bearbeiten' : 'Neuer Termin'}
+            {isEdit ? t('termin.edit') : t('termin.new')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X size={18} />
@@ -223,7 +224,7 @@ export default function TerminModal({
 
           {/* Datum */}
           <div>
-            <label className="form-label">Datum *</label>
+            <label className="form-label">{t('quickCreate.date')}</label>
             <input
               type="date"
               value={form.date}
@@ -234,16 +235,16 @@ export default function TerminModal({
 
           {/* Art */}
           <div>
-            <label className="form-label">Art</label>
+            <label className="form-label">{t('termin.type')}</label>
             <div className="grid grid-cols-2 gap-2">
               <select value={form.art || ''} onChange={e => field('art', e.target.value)}
                 className="form-select">
-                <option value="">– wählen –</option>
+                <option value="">{t('termin.selectPlaceholder')}</option>
                 {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
               <select value={form.art_sub || ''} onChange={e => field('art_sub', e.target.value)}
                 className="form-select">
-                <option value="">– wählen –</option>
+                <option value="">{t('termin.selectPlaceholder')}</option>
                 {TERMIN_ART_SUB.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
@@ -251,16 +252,16 @@ export default function TerminModal({
 
           {/* Status */}
           <div>
-            <label className="form-label">Status</label>
+            <label className="form-label">{t('termin.status')}</label>
             <div className="grid grid-cols-2 gap-2">
               <select value={form.status_booking || ''} onChange={e => field('status_booking', e.target.value)}
                 className="form-select">
-                <option value="">– wählen –</option>
+                <option value="">{t('termin.selectPlaceholder')}</option>
                 {TERMIN_STATUS_BOOKING.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <select value={form.status_public || ''} onChange={e => field('status_public', e.target.value)}
                 className="form-select">
-                <option value="">– wählen –</option>
+                <option value="">{t('termin.selectPlaceholder')}</option>
                 {TERMIN_STATUS_PUBLIC.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -268,7 +269,7 @@ export default function TerminModal({
 
           {/* Venue Picker */}
           <div>
-            <label className="form-label">Spielstätte</label>
+            <label className="form-label">{t('termin.venue')}</label>
             <div ref={venueRef} className="relative">
               {selectedVenue ? (
                 <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
@@ -294,7 +295,7 @@ export default function TerminModal({
                   className="w-full flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-400 hover:border-gray-300 hover:text-gray-600 bg-white text-left"
                 >
                   <Search size={14} />
-                  Spielstätte suchen oder neu anlegen…
+                  {t('termin.venueSearch')}
                 </button>
               )}
 
@@ -306,7 +307,7 @@ export default function TerminModal({
                         <input
                           autoFocus
                           type="text"
-                          placeholder="Name oder Stadt…"
+                          placeholder={t('termin.venueSearchPlaceholder')}
                           value={venueSearch}
                           onChange={e => setVenueSearch(e.target.value)}
                           className="w-full text-sm px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:border-indigo-400"
@@ -314,7 +315,7 @@ export default function TerminModal({
                       </div>
                       <div className="max-h-48 overflow-y-auto">
                         {filteredVenues.length === 0 && (
-                          <div className="px-3 py-2 text-xs text-gray-400">Keine Ergebnisse</div>
+                          <div className="px-3 py-2 text-xs text-gray-400">{t('general.noResults')}</div>
                         )}
                         {filteredVenues.map(v => (
                           <button
@@ -338,17 +339,17 @@ export default function TerminModal({
                           className="w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50 text-indigo-600 text-sm font-medium"
                         >
                           <Plus size={14} />
-                          Neue Spielstätte anlegen
+                          {t('termin.venueNew')}
                         </button>
                       </div>
                     </>
                   ) : (
                     <div className="p-3 space-y-2">
-                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Neue Spielstätte</div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('termin.venueNewLabel')}</div>
                       <input
                         autoFocus
                         type="text"
-                        placeholder="Name *"
+                        placeholder={t('termin.venueName')}
                         value={quickName}
                         onChange={e => setQuickName(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleQuickCreate()}
@@ -356,7 +357,7 @@ export default function TerminModal({
                       />
                       <input
                         type="text"
-                        placeholder="Stadt"
+                        placeholder={t('termin.venueCity')}
                         value={quickCity}
                         onChange={e => setQuickCity(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleQuickCreate()}
@@ -368,7 +369,7 @@ export default function TerminModal({
                           onClick={() => setQuickCreate(false)}
                           className="flex-1 text-xs py-1.5 border border-gray-200 rounded hover:bg-gray-50 text-gray-600"
                         >
-                          Zurück
+                          {t('general.back')}
                         </button>
                         <button
                           type="button"
@@ -377,7 +378,7 @@ export default function TerminModal({
                           className="flex-1 text-xs py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-1"
                         >
                           {quickCreating ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                          Anlegen
+                          {t('general.create')}
                         </button>
                       </div>
                     </div>
@@ -389,10 +390,10 @@ export default function TerminModal({
 
           {/* Titel */}
           <div>
-            <label className="form-label">Titel *</label>
+            <label className="form-label">{t('general.title')} *</label>
             <input
               type="text"
-              placeholder="z.B. Betontod Live"
+              placeholder={t('termin.titlePlaceholder')}
               value={form.title}
               onChange={e => field('title', e.target.value)}
               className="form-input"
@@ -409,7 +410,7 @@ export default function TerminModal({
                 className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700">
-                Eigenen Titel statt Spielstätte in der Überschrift anzeigen
+                {t('termin.showTitleAsHeader')}
               </span>
             </label>
           )}
@@ -425,13 +426,13 @@ export default function TerminModal({
                 className="btn btn-danger disabled:opacity-50"
               >
                 {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={13} />}
-                <span className="hidden md:inline">Termin löschen</span>
+                <span className="hidden md:inline">{t('termin.delete')}</span>
               </button>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="btn btn-ghost">
-              Abbrechen
+              {t('general.cancel')}
             </button>
             {!isEdit && allowAddAnother && (
               <button
@@ -439,7 +440,7 @@ export default function TerminModal({
                 disabled={saving || !form.date || !form.title}
                 className="btn btn-secondary disabled:opacity-50"
               >
-                Speichern + Weiterer
+                {t('termin.saveAndNew')}
               </button>
             )}
             <button
@@ -448,7 +449,7 @@ export default function TerminModal({
               className="btn btn-primary disabled:opacity-50"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-              Speichern
+              {t('general.save')}
             </button>
           </div>
         </div>
