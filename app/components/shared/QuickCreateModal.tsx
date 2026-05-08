@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useT } from '@/app/lib/i18n/LanguageContext'
 
 interface QuickCreateModalProps {
   title: string
@@ -18,12 +19,14 @@ export function QuickCreateModal({
   title,
   onClose,
   onSubmit,
-  submitLabel = 'Anlegen',
+  submitLabel,
   submitting = false,
   disabled = false,
   error,
   children,
 }: QuickCreateModalProps) {
+  const t = useT()
+
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -56,14 +59,14 @@ export function QuickCreateModal({
             onClick={onClose}
             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
           >
-            Abbrechen
+            {t('general.cancel')}
           </button>
           <button
             onClick={onSubmit}
             disabled={disabled || submitting}
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            {submitting ? 'Wird angelegt…' : submitLabel}
+            {submitting ? t('general.creating') : (submitLabel ?? t('general.create'))}
           </button>
         </div>
       </div>

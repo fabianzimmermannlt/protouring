@@ -642,6 +642,17 @@ const de = {
   'general.newEntry':          'Neuer Eintrag',
   'general.editEntry':         'Eintrag bearbeiten',
   'general.label':             'Bezeichnung',
+  'general.creating':          'Wird angelegt…',
+
+  // ── QuickCreate Event Modal ───────────────────────────────────────────────────
+  'quickCreate.newEvent':          'Neues Event',
+  'quickCreate.date':              'Datum *',
+  'quickCreate.type':              'Art',
+  'quickCreate.titleOptional':     'Titel (optional)',
+  'quickCreate.titleHint':         'Leer lassen → Titel wird aus Venue oder Art generiert',
+  'quickCreate.venuePlaceholder':  'Venue suchen oder neu eingeben…',
+  'quickCreate.dateRequired':      'Datum ist erforderlich',
+  'quickCreate.createFailed':      'Fehler beim Anlegen',
 
   // ── Address / shared form fields ──────────────────────────────────────────────
   'address.street':                'Straße',

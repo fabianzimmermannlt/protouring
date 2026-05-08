@@ -641,6 +641,17 @@ const en = {
   'general.newEntry':          'New Entry',
   'general.editEntry':         'Edit Entry',
   'general.label':             'Label',
+  'general.creating':          'Creating…',
+
+  // ── QuickCreate Event Modal ───────────────────────────────────────────────────
+  'quickCreate.newEvent':          'New Event',
+  'quickCreate.date':              'Date *',
+  'quickCreate.type':              'Type',
+  'quickCreate.titleOptional':     'Title (optional)',
+  'quickCreate.titleHint':         'Leave empty → title is generated from venue or type',
+  'quickCreate.venuePlaceholder':  'Search or enter a venue…',
+  'quickCreate.dateRequired':      'Date is required',
+  'quickCreate.createFailed':      'Failed to create event',
 
   // ── Address / shared form fields ──────────────────────────────────────────────
   'address.street':                'Street',

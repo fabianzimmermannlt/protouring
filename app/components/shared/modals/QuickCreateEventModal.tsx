@@ -5,7 +5,7 @@ import { createTermin, createVenue, getVenues, TERMIN_ART, type Termin, type Ven
 import { QuickCreateModal, QField, inputCls, selectCls } from '@/app/components/shared/QuickCreateModal'
 import { MapPin, Loader2, Search } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
-import { useLanguage } from '@/app/lib/i18n/LanguageContext'
+import { useLanguage, useT } from '@/app/lib/i18n/LanguageContext'
 
 interface VenueSuggestion {
   id?: number
@@ -23,6 +23,7 @@ interface VenueSuggestion {
 // Venue search with existing venues + Photon fallback
 function VenueSearch({ onSelect }: { onSelect: (v: VenueSuggestion) => void }) {
   const { language } = useLanguage()
+  const t = useT()
   const [query, setQuery] = useState('')
   const [existingVenues, setExistingVenues] = useState<Venue[]>([])
   const [suggestions, setSuggestions] = useState<VenueSuggestion[]>([])
@@ -74,7 +75,7 @@ function VenueSearch({ onSelect }: { onSelect: (v: VenueSuggestion) => void }) {
     setSuggestions(all)
     setOpen(all.length > 0)
     setLoading(false)
-  }, [existingVenues])
+  }, [existingVenues, language])
 
   const handleChange = (val: string) => {
     setQuery(val)
@@ -105,7 +106,7 @@ function VenueSearch({ onSelect }: { onSelect: (v: VenueSuggestion) => void }) {
           type="text"
           value={query}
           onChange={e => handleChange(e.target.value)}
-          placeholder="Venue suchen oder neu eingeben…"
+          placeholder={t('quickCreate.venuePlaceholder')}
           className={`${inputCls} pl-8`}
         />
         {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-400 animate-spin" />}
@@ -137,6 +138,7 @@ interface Props {
 }
 
 export function QuickCreateEventModal({ onClose, onCreated }: Props) {
+  const t = useT()
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
   const [art, setArt] = useState('Konzert')
@@ -147,7 +149,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
   const [error, setError] = useState('')
 
   const handleSubmit = async () => {
-    if (!date) { setError('Datum ist erforderlich'); return }
+    if (!date) { setError(t('quickCreate.dateRequired')); return }
     setSaving(true); setError('')
     try {
       // OSM-Venue ausgewählt aber noch nicht in DB → erst anlegen
@@ -185,7 +187,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
       onCreated(termin)
       onClose()
     } catch (e) {
-      setError((e as Error).message || 'Fehler beim Anlegen')
+      setError((e as Error).message || t('quickCreate.createFailed'))
     } finally {
       setSaving(false)
     }
@@ -193,7 +195,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
 
   return (
     <QuickCreateModal
-      title="Neues Event"
+      title={t('quickCreate.newEvent')}
       onClose={onClose}
       onSubmit={handleSubmit}
       submitting={saving}
@@ -201,7 +203,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
       error={error}
     >
       <div className="grid grid-cols-2 gap-3">
-        <QField label="Datum *">
+        <QField label={t('quickCreate.date')}>
           <input
             type="date"
             value={date}
@@ -210,7 +212,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
             autoFocus
           />
         </QField>
-        <QField label="Art">
+        <QField label={t('quickCreate.type')}>
           <select value={art} onChange={e => setArt(e.target.value)} className={selectCls}>
             {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
@@ -219,18 +221,18 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
 
       <VenueSearch onSelect={v => { setVenueId(v.id); setVenueData(v) }} />
 
-      <QField label="Titel (optional)">
+      <QField label={t('quickCreate.titleOptional')}>
         <input
           type="text"
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          placeholder={venueData?.name || 'z.B. Festival-Name, Tour-Leg…'}
+          placeholder={venueData?.name || ''}
           className={inputCls}
         />
       </QField>
       <p className="text-xs text-gray-400 -mt-2">
-        Leer lassen → Titel wird aus Venue oder Art generiert
+        {t('quickCreate.titleHint')}
       </p>
     </QuickCreateModal>
   )
