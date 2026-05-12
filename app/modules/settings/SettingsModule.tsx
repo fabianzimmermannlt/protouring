@@ -1874,7 +1874,7 @@ function ErsteSchritte() {
       {isAdmin && (
         <div className="border border-indigo-200 rounded-xl overflow-hidden">
           <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-200">
-            <h3 className="font-semibold text-indigo-900 text-sm">{t('settings.ersteSchritte.adminQuickstart.title')}</h3>
+            <h3 className="font-semibold text-indigo-900 text-sm">{t('settings.ersteSchritte.adminQuickstart.title' as any)}</h3>
           </div>
           <div className="divide-y divide-gray-100">
             {adminSteps.map((step, i) => (
@@ -1895,7 +1895,7 @@ function ErsteSchritte() {
       {/* Crew Quickstart */}
       <div className="border border-emerald-200 rounded-xl overflow-hidden">
         <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-200">
-          <h3 className="font-semibold text-emerald-900 text-sm">{t('settings.ersteSchritte.crewQuickstart.title')}</h3>
+          <h3 className="font-semibold text-emerald-900 text-sm">{t('settings.ersteSchritte.crewQuickstart.title' as any)}</h3>
         </div>
         <div className="divide-y divide-gray-100">
           {crewSteps.map((step, i) => (
@@ -1914,7 +1914,7 @@ function ErsteSchritte() {
 
       {/* Module Overview */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('settings.ersteSchritte.modulesTitle')}</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('settings.ersteSchritte.modulesTitle' as any)}</h3>
         <div className="space-y-1">
           {sections.map((s, i) => (
             <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
