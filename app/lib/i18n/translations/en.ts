@@ -381,10 +381,34 @@ const en = {
 
   // ── Settings — Erste Schritte / Getting Started ───────────────────────────
   'settings.ersteSchritte.welcome':          'Welcome to ProTouring',
-  'settings.ersteSchritte.intro':            'Here you\'ll find an overview of all sections — what they do and who has access.',
+  'settings.ersteSchritte.intro':            'Tour management for bands, artists, and production teams. Here you\'ll learn how to get the most out of the app.',
   'settings.ersteSchritte.visibleFor':       'Visible for:',
   'settings.ersteSchritte.editBy':           'Edit:',
-  'settings.ersteSchritte.feedback':         'Questions or feedback? Use the feedback button at the bottom right (desktop) or in the More menu (mobile). We appreciate every comment.',
+  'settings.ersteSchritte.feedback':         'Questions or feedback? Use the feedback button at the bottom right (desktop) or in the More menu (mobile).',
+  'settings.ersteSchritte.modulesTitle':     'All sections at a glance',
+
+  'settings.ersteSchritte.adminQuickstart.title':          'As Admin: Getting started',
+  'settings.ersteSchritte.adminQuickstart.step1.title':    'Set up your artist profile',
+  'settings.ersteSchritte.adminQuickstart.step1.desc':     'Go to Settings → Artist and enter name, genre, and home base. This will appear in PDFs and is the foundation for all exports.',
+  'settings.ersteSchritte.adminQuickstart.step2.title':    'Create venues and master data',
+  'settings.ersteSchritte.adminQuickstart.step2.desc':     'Add the venues, partners, hotels, and vehicles you\'ll need for the tour. This master data can be quickly assigned to an event later.',
+  'settings.ersteSchritte.adminQuickstart.step3.title':    'Create events',
+  'settings.ersteSchritte.adminQuickstart.step3.desc':     'Click "+" in the Events section to create new events. Assign a venue to each show — venue data is automatically imported.',
+  'settings.ersteSchritte.adminQuickstart.step4.title':    'Invite your team',
+  'settings.ersteSchritte.adminQuickstart.step4.desc':     'Under Settings → Permissions you can invite crew members by email and assign a role right away. The invitation link is valid for 7 days.',
+  'settings.ersteSchritte.adminQuickstart.step5.title':    'Book the travel party',
+  'settings.ersteSchritte.adminQuickstart.step5.desc':     'In each event under "Travel Party" you\'ll see all available crew members. Confirm who\'s coming — this is the basis for travel, hotel, and briefing.',
+  'settings.ersteSchritte.adminQuickstart.step6.title':    'Set up calendar subscription (optional)',
+  'settings.ersteSchritte.adminQuickstart.step6.desc':     'Under Settings → My Profile you\'ll find an iCal link. Add it to Google Calendar, Apple Calendar, or Outlook — confirmed events sync automatically.',
+
+  'settings.ersteSchritte.crewQuickstart.title':          'As Crew: What matters for you',
+  'settings.ersteSchritte.crewQuickstart.step1.title':    'Fill in your profile',
+  'settings.ersteSchritte.crewQuickstart.step1.desc':     'Under Settings → My Profile, enter your contact details, dietary needs, clothing sizes, and hotel preferences. This data applies automatically to all artists you\'re working with.',
+  'settings.ersteSchritte.crewQuickstart.step2.title':    'Enter your availability',
+  'settings.ersteSchritte.crewQuickstart.step2.desc':     'In the Events overview you can see all dates. Enter your availability (✓ available / ? maybe / ✗ unavailable) — tour management will see this when booking.',
+  'settings.ersteSchritte.crewQuickstart.step3.title':    'Subscribe to calendar',
+  'settings.ersteSchritte.crewQuickstart.step3.desc':     'Under Settings → My Profile you\'ll find your personal iCal link. Use it to have all confirmed events directly in your calendar app.',
+
   'settings.ersteSchritte.desk.title':       'Dashboard',
   'settings.ersteSchritte.desk.roles':       'All roles',
   'settings.ersteSchritte.desk.edit':        'Admin, Agency (announcement)',
@@ -424,7 +448,7 @@ const en = {
   'settings.ersteSchritte.settingsArea.roles':   'All roles',
   'settings.ersteSchritte.settingsArea.edit':    'Admin (all), Agency, Tour Management (own profile)',
   'settings.ersteSchritte.settingsArea.icon':    '⚙️',
-  'settings.ersteSchritte.settingsArea.content': 'All users see their personal settings: profile, password, and calendar subscription. Admins additionally manage permissions (invite users, assign roles, revoke invitations), artist settings, and the functions catalog. When inviting crew members, first and last name are assigned directly.',
+  'settings.ersteSchritte.settingsArea.content': 'Profile, password, and calendar subscription for everyone. Admins additionally manage: permissions (invite & assign roles), artist settings (name, genre, home base), functions catalog, crew types (for crew briefing), and schedule templates.',
 
   // ── Settings — Appearance/Notifications/Guestlist/Daysheet (placeholders) ───
   'settings.appearance.title':               'Appearance',

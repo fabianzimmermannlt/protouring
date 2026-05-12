@@ -1790,6 +1790,18 @@ function SuperadminPanel() {
 
 function ErsteSchritte() {
   const t = useT()
+  const role = getCurrentTenant()?.role ?? ''
+  const isAdmin = isAdminRole(role)
+
+  const adminSteps = [1, 2, 3, 4, 5, 6].map(n => ({
+    title: t(`settings.ersteSchritte.adminQuickstart.step${n}.title` as any),
+    desc:  t(`settings.ersteSchritte.adminQuickstart.step${n}.desc`  as any),
+  }))
+
+  const crewSteps = [1, 2, 3].map(n => ({
+    title: t(`settings.ersteSchritte.crewQuickstart.step${n}.title` as any),
+    desc:  t(`settings.ersteSchritte.crewQuickstart.step${n}.desc`  as any),
+  }))
 
   const sections = [
     {
@@ -1851,40 +1863,85 @@ function ErsteSchritte() {
   ]
 
   return (
-    <div className="space-y-1 max-w-3xl">
-      <div className="mb-6">
+    <div className="space-y-6 max-w-3xl">
+      {/* Header */}
+      <div>
         <h2 className="text-xl font-bold text-gray-900">{t('settings.ersteSchritte.welcome')}</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          {t('settings.ersteSchritte.intro')}
-        </p>
+        <p className="text-sm text-gray-500 mt-1">{t('settings.ersteSchritte.intro')}</p>
       </div>
 
-      {sections.map((s, i) => (
-        <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
-          <div className="bg-gray-50 px-4 py-3 flex items-start gap-3">
-            <span className="text-xl leading-none mt-0.5">{s.icon}</span>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-900 text-sm">{s.title}</h3>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                <span className="text-xs text-gray-500">
-                  <span className="font-medium text-gray-600">{t('settings.ersteSchritte.visibleFor')}:</span> {s.roles}
-                </span>
-                <span className="text-xs text-gray-500">
-                  <span className="font-medium text-gray-600">{t('settings.ersteSchritte.editBy')}:</span> {s.edit}
-                </span>
-              </div>
-            </div>
+      {/* Admin Quickstart */}
+      {isAdmin && (
+        <div className="border border-indigo-200 rounded-xl overflow-hidden">
+          <div className="bg-indigo-50 px-4 py-3 border-b border-indigo-200">
+            <h3 className="font-semibold text-indigo-900 text-sm">{t('settings.ersteSchritte.adminQuickstart.title')}</h3>
           </div>
-          <div className="px-4 py-3">
-            <p className="text-sm text-gray-600 leading-relaxed">{s.content}</p>
+          <div className="divide-y divide-gray-100">
+            {adminSteps.map((step, i) => (
+              <div key={i} className="px-4 py-3 flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{step.title}</p>
+                  <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      ))}
+      )}
 
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <p className="text-sm text-blue-700">
-          {t('settings.ersteSchritte.feedback')}
-        </p>
+      {/* Crew Quickstart */}
+      <div className="border border-emerald-200 rounded-xl overflow-hidden">
+        <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-200">
+          <h3 className="font-semibold text-emerald-900 text-sm">{t('settings.ersteSchritte.crewQuickstart.title')}</h3>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {crewSteps.map((step, i) => (
+            <div key={i} className="px-4 py-3 flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center mt-0.5">
+                {i + 1}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-gray-900">{step.title}</p>
+                <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Module Overview */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('settings.ersteSchritte.modulesTitle')}</h3>
+        <div className="space-y-1">
+          {sections.map((s, i) => (
+            <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-gray-50 px-4 py-3 flex items-start gap-3">
+                <span className="text-xl leading-none mt-0.5">{s.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-gray-900 text-sm">{s.title}</h4>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                    <span className="text-xs text-gray-500">
+                      <span className="font-medium text-gray-600">{t('settings.ersteSchritte.visibleFor')}:</span> {s.roles}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      <span className="font-medium text-gray-600">{t('settings.ersteSchritte.editBy')}:</span> {s.edit}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm text-gray-600 leading-relaxed">{s.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+        <p className="text-sm text-blue-700">{t('settings.ersteSchritte.feedback')}</p>
       </div>
     </div>
   )
