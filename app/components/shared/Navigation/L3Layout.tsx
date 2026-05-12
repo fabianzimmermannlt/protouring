@@ -54,6 +54,7 @@ import {
   canDo,
   getEffectiveRole,
   isEditorRole,
+  isModuleEnabled,
   CAN_SEE_KALENDER,
   type TenantRole,
   type Termin,
@@ -1796,10 +1797,10 @@ export function L3Layout({
           })}
 
           {/* Module divider */}
-          {canDo(role, NAV_VISIBLE['modules'] ?? []) && (
+          {canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_NAV.some(item => isModuleEnabled(item.id)) && (
             <>
               <div className="w-8 border-t border-gray-300 my-1" />
-              {MODULE_NAV.map(item => {
+              {MODULE_NAV.filter(item => isModuleEnabled(item.id)).map(item => {
                 const isActive = activeTab === item.id
                 return (
                   <button

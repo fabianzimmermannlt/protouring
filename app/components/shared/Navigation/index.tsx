@@ -24,7 +24,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useLayout } from './LayoutContext'
 import { MobileBottomNav } from './MobileBottomNav'
-import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole } from '@/lib/api-client'
+import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole, isModuleEnabled } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
@@ -221,7 +221,7 @@ export function Navigation({
 
   // Sichtbarkeit: Stammdaten zeigen wenn mindestens ein Kind sichtbar
   const canSeeStammdaten = STAMMDATEN_CHILDREN.some(c => canDo(role, NAV_VISIBLE[c.id] ?? []))
-  const canSeeModules = canDo(role, NAV_VISIBLE['modules'] ?? [])
+  const canSeeModules = canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_CHILDREN.some(c => isModuleEnabled(c.id))
 
   // Nav-Button Helper
   const NavButton = ({ item }: { item: NavigationItem }) => (
@@ -291,7 +291,7 @@ export function Navigation({
                   </button>
                   {showModulesDropdown && (
                     <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                      {MODULE_CHILDREN.map(child => (
+                      {MODULE_CHILDREN.filter(child => isModuleEnabled(child.id)).map(child => (
                         <button
                           key={child.id}
                           onClick={() => handleTabChange(child.id)}
