@@ -221,7 +221,7 @@ export function Navigation({
 
   // Sichtbarkeit: Stammdaten zeigen wenn mindestens ein Kind sichtbar
   const canSeeStammdaten = STAMMDATEN_CHILDREN.some(c => canDo(role, NAV_VISIBLE[c.id] ?? []))
-  const canSeeModules = canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_CHILDREN.some(c => isTenantModuleEnabled(c.id))
+  const canSeeModules = canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_CHILDREN.some(c => isTenantModuleEnabled(c.id as any))
 
   // Nav-Button Helper
   const NavButton = ({ item }: { item: NavigationItem }) => (
