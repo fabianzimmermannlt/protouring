@@ -166,17 +166,17 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   }, [])
 
   const loadContacts = async () => {
-    try {
-      setLoading(true)
-      setError('')
-      const [data, catalog] = await Promise.all([getContacts(), getFunctionCatalog()])
-      setContacts(data)
-      setFunctionCatalog(catalog)
-    } catch (e) {
+    setLoading(true)
+    setError('')
+    const [contactsResult, catalogResult] = await Promise.allSettled([getContacts(), getFunctionCatalog()])
+    if (contactsResult.status === 'fulfilled') {
+      setContacts(contactsResult.value)
+    } else {
+      setContacts([])
       setError(t('contacts.error.loadFailed'))
-    } finally {
-      setLoading(false)
     }
+    if (catalogResult.status === 'fulfilled') setFunctionCatalog(catalogResult.value)
+    setLoading(false)
   }
 
   const openAddModal = () => {
