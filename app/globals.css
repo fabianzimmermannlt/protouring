@@ -1542,10 +1542,9 @@ html.dark .form-textarea:focus {
 }
 
 /* PT-Cards */
-html.dark .pt-card { background: transparent; border-color: transparent; box-shadow: none; }
-html.dark .pt-card-header { background: transparent; border-color: transparent; padding-left: 0; padding-right: 0; }
-html.dark .pt-card-title { color: #6b7280; }
-html.dark .pt-card-body { padding-left: 0; padding-right: 0; }
+html.dark .pt-card { background: #161b22; border-color: #30363d; }
+html.dark .pt-card-header { background: #161b22; border-color: #30363d; }
+html.dark .pt-card-title { color: #8b949e; }
 html.dark .pt-card-new { background: #1c2128; border-color: #374151; }
 html.dark .pt-card-new:hover { background: #21262d; border-color: #4b5563; }
 
