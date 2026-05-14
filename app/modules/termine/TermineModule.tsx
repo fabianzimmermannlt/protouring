@@ -182,9 +182,9 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
   const iCls = "w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('appointments.card.event')}</span>
+    <div className="pt-card">
+      <div className="pt-card-header">
+        <span className="pt-card-title">{t('appointments.card.event')}</span>
         {isAdmin && !editing && (
           <button onClick={startEdit} className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors">
             <Edit2 size={12} />
@@ -202,7 +202,7 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
         </div>
       )}
 
-      <div className="px-5 py-4">
+      <div className="pt-card-body">
         {editing ? (
           <div className="space-y-3">
             <div>
