@@ -2060,11 +2060,7 @@ export function L3Layout({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="bg-gray-50 rounded-lg p-4 min-h-[600px]">
-              {children}
-            </div>
-          </div>
+          {children}
         </div>
       </div>
       </div> {/* end BODY */}
