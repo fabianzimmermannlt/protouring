@@ -366,9 +366,9 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
     : null
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('appointments.card.venue')}</span>
+    <div className="pt-card">
+      <div className="pt-card-header">
+        <span className="pt-card-title">{t('appointments.card.venue')}</span>
         {isAdmin && !selecting && (
           termin.venueId && currentVenue ? (
             <div className="flex items-center gap-3">
@@ -407,7 +407,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
         </div>
       )}
 
-      <div className="px-5 py-4">
+      <div className="pt-card-body">
         {selecting ? (
           <div className="space-y-2">
             <input
@@ -558,9 +558,9 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
     : null
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('partners.title')}</span>
+    <div className="pt-card">
+      <div className="pt-card-header">
+        <span className="pt-card-title">{t('partners.title')}</span>
         {isAdmin && !selecting && (
           termin.partnerId && currentPartner ? (
             <div className="flex items-center gap-3">
@@ -593,7 +593,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
         </div>
       )}
 
-      <div className="px-5 py-4">
+      <div className="pt-card-body">
         {selecting ? (
           <div className="space-y-2">
             <input type="text" autoFocus placeholder={t('general.search')}

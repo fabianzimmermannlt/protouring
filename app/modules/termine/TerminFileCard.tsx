@@ -240,7 +240,7 @@ function CategorySection({
                   <select
                     value={moveTarget}
                     onChange={e => setMoveTarget(e.target.value)}
-                    className="w-full text-xs border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="form-select w-full text-xs"
                     autoFocus
                   >
                     {TERMIN_FILE_CATEGORIES.map(cat => (
