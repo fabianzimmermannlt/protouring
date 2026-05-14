@@ -27,6 +27,7 @@ jobs:
             git pull origin main
 
             echo "── [2/5] Abhängigkeiten installieren ─────────"
+            rm -rf node_modules
             npm ci
 
             echo "── [3/5] Build ───────────────────────────────"
