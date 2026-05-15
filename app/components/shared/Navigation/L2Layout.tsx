@@ -306,7 +306,7 @@ export function L2Layout({
               }}
               className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                 termineView === v.id
-                  ? 'text-white font-medium bg-gray-700'
+                  ? 'text-blue-100 font-medium bg-blue-400/20'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
               }`}
             >
@@ -336,7 +336,7 @@ export function L2Layout({
             }}
             className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
               termineListView === 'list' && termineFilter === f.id
-                ? 'text-white font-medium bg-gray-700'
+                ? 'text-blue-100 font-medium bg-blue-400/20'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
             }`}
           >
@@ -351,7 +351,7 @@ export function L2Layout({
             }}
             className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
               termineListView === 'calendar'
-                ? 'text-white font-medium bg-gray-700'
+                ? 'text-blue-100 font-medium bg-blue-400/20'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
             }`}
           >
@@ -377,7 +377,7 @@ export function L2Layout({
           onClick={() => handleNav(item.id)}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
             isActive
-              ? 'bg-blue-600 text-white'
+              ? 'bg-blue-400/20 text-blue-100 font-medium'
               : 'text-gray-300 hover:text-white hover:bg-gray-800'
           }`}
         >
@@ -407,7 +407,7 @@ export function L2Layout({
                 onClick={() => onSubTabChange?.(sub.id)}
                 className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                   activeSubTab === sub.id
-                    ? 'text-white font-medium bg-gray-700'
+                    ? 'text-blue-100 font-medium bg-blue-400/20'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                 }`}
               >
