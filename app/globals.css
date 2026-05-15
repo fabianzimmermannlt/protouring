@@ -1553,6 +1553,18 @@ html.dark .pt-card-title { color: #8b949e; }
 html.dark .pt-card-new { background: #252526; border-color: #3c3c3c; }
 html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
+/* PT-Sidebar Nav Active */
+.pt-nav-active {
+  background-color: #bfdbfe;
+  color: #1e293b;
+  font-weight: 500;
+}
+.pt-nav-sub-active {
+  background-color: #bfdbfe;
+  color: #1e293b;
+  font-weight: 500;
+}
+
 /* PT-Chat */
 html.dark .pt-chat-wrapper { background: #1e1e1e; }
 html.dark .pt-chat-messages { background: #1e1e1e; }

@@ -377,7 +377,7 @@ export function L2Layout({
           onClick={() => handleNav(item.id)}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
             isActive
-              ? 'bg-blue-200 text-gray-900 font-medium'
+              ? 'pt-nav-active'
               : 'text-gray-300 hover:text-white hover:bg-gray-800'
           }`}
         >
@@ -407,7 +407,7 @@ export function L2Layout({
                 onClick={() => onSubTabChange?.(sub.id)}
                 className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                   activeSubTab === sub.id
-                    ? 'bg-blue-200 text-gray-900 font-medium'
+                    ? 'pt-nav-sub-active'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                 }`}
               >
