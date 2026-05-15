@@ -595,17 +595,7 @@ export function L2Layout({
 
         {/* Header */}
         <header className="h-12 bg-white border-b border-gray-200 flex items-center px-6 flex-shrink-0 gap-4">
-          {/* Left: Breadcrumb */}
-          <nav className="flex-1 flex items-center gap-1.5 text-sm min-w-0">
-            {breadcrumb.map((crumb, i) => (
-              <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-gray-300">/</span>}
-                <span className={i === breadcrumb.length - 1 ? 'font-medium text-gray-900' : 'text-gray-400'}>
-                  {crumb}
-                </span>
-              </span>
-            ))}
-          </nav>
+          <div className="flex-1" />
 
           {/* Center: Termine detail view tabs */}
           {activeTab === 'events' && termineInDetail && (
