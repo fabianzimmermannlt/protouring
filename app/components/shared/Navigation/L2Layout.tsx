@@ -290,7 +290,7 @@ export function L2Layout({
       ] as { id: string; label: string }[]
 
       return (
-        <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-300 space-y-0.5">
+        <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
             className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-1"
@@ -307,7 +307,7 @@ export function L2Layout({
               className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                 termineView === v.id
                   ? 'text-blue-100 font-medium bg-blue-400/20'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
+                  : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
               }`}
             >
               {v.label}
@@ -324,7 +324,7 @@ export function L2Layout({
       { id: 'alle',      label: 'Alle Termine' },
     ]
     return (
-      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-300 space-y-0.5">
+      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
         {filters.map(f => (
           <button
             key={f.id}
@@ -337,7 +337,7 @@ export function L2Layout({
             className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
               termineListView === 'list' && termineFilter === f.id
                 ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
+                : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             {f.label}
@@ -352,7 +352,7 @@ export function L2Layout({
             className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
               termineListView === 'calendar'
                 ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
+                : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             Kalender
@@ -378,7 +378,7 @@ export function L2Layout({
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
             isActive
               ? 'pt-nav-active'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+              : 'text-gray-400 hover:text-white hover:bg-[#2d2d2d]'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -400,7 +400,7 @@ export function L2Layout({
         {isActive && item.id === 'events' && renderTermineSubs()}
 
         {isActive && item.id !== 'appointments' && hasSubNav && (
-          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-gray-300 space-y-0.5">
+          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
             {subs.map(sub => (
               <button
                 key={sub.id}
@@ -408,7 +408,7 @@ export function L2Layout({
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'pt-nav-sub-active'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
+                    : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
                 }`}
               >
                 {sub.name}
@@ -450,10 +450,10 @@ export function L2Layout({
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
-      <aside className="w-56 flex-shrink-0 bg-gray-200 text-gray-800 flex flex-col border-r border-gray-300">
+      <aside className="w-56 flex-shrink-0 bg-[#1c1c1c] text-gray-200 flex flex-col border-r border-[#333]">
 
         {/* Identity */}
-        <div className="px-4 py-4 border-b border-gray-300">
+        <div className="px-4 py-4 border-b border-[#333]">
           <div className="flex items-center gap-2.5 mb-1">
             <div className="relative" ref={userMenuRef}>
               <button
@@ -550,7 +550,7 @@ export function L2Layout({
             </div>
           </div>
           {artistName && (
-            <p className="text-xs text-gray-500 truncate pl-[42px]">{artistName}</p>
+            <p className="text-xs text-gray-500 truncate pl-[42px]" style={{color:'#888'}}>{artistName}</p>
           )}
         </div>
 
@@ -564,7 +564,7 @@ export function L2Layout({
           {canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
             <>
               <div className="pt-2 pb-1">
-                <div className="border-t border-gray-300" />
+                <div className="border-t border-[#333]" />
               </div>
               <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                 Module
@@ -575,13 +575,13 @@ export function L2Layout({
         </nav>
 
         {/* Einstellungen – ganz unten */}
-        <div className="px-0 pb-3 border-t border-gray-300 pt-3">
+        <div className="px-0 pb-3 border-t border-[#333] pt-3">
           <button
             onClick={() => handleNav('settings')}
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
               activeTab === 'settings'
                 ? 'pt-nav-active'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                : 'text-gray-400 hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
