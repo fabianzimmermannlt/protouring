@@ -1786,7 +1786,7 @@ export function L3Layout({
                 title={item.name}
                 className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
                   isActive
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-blue-500/20 text-blue-300'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                 }`}
               >
@@ -1809,7 +1809,7 @@ export function L3Layout({
                     title={t(`nav.${item.id}` as any)}
                     className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
                       isActive
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-500/20 text-blue-300'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                     }`}
                   >
@@ -1829,7 +1829,7 @@ export function L3Layout({
             title="Einstellungen"
             className={`w-full flex flex-col items-center gap-1 py-2.5 px-1 rounded-md transition-colors ${
               activeTab === 'settings'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-blue-500/20 text-blue-300'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
             }`}
           >

@@ -1465,6 +1465,11 @@ html.dark .border-blue-100   { border-color: #1a4a82 !important; }
 html.dark .border-indigo-200 { border-color: #3730a3 !important; }
 html.dark .border-emerald-200{ border-color: #065f46 !important; }
 html.dark .text-blue-700     { color: #a8d0fd !important; }
+html.dark .text-blue-600     { color: #a8d0fd !important; }
+html.dark .text-blue-500     { color: #90c2fc !important; }
+html.dark .text-blue-400     { color: #74aef9 !important; }
+html.dark a { color: #90c2fc; }
+html.dark a:hover { color: #b8d8fd; }
 html.dark .text-indigo-900   { color: #c7d2fe !important; }
 html.dark .text-emerald-900  { color: #6ee7b7 !important; }
 
