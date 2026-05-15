@@ -1555,20 +1555,27 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
 /* L2 Content overrides */
 .l2-content .data-table-wrapper {
-  background: #f8f9fa;
-  border-color: #d1d5db;
+  background: #2d2d2d;
+  border-color: #3c3c3c;
+  box-shadow: none;
 }
 .l2-content .data-table thead tr {
-  background: #ffffff;
-  border-bottom-color: #e5e7eb;
+  background: #3a3a3a;
+  border-bottom-color: #444;
+}
+.l2-content .data-table thead th {
+  color: #b0b0b0;
 }
 .l2-content .data-table tbody tr {
-  background: #f8f9fa;
-  border-bottom-color: #e9ecef;
+  background: #2d2d2d;
+  border-bottom-color: #383838;
+}
+.l2-content .data-table tbody td {
+  color: #e0e0e0;
 }
 .l2-content .data-table tbody tr.clickable:hover,
 .l2-content .data-table tbody tr.hoverable:hover {
-  background-color: #e8f0fe;
+  background-color: #383838;
 }
 .l2-content .module-content {
   background: transparent;
