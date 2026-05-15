@@ -1,17 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ArrowLeft } from 'lucide-react'
 import { getVehicles, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 export default function VehiclesPage() {
   const t = useT()
   const isMobile = useIsMobile()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -70,8 +73,7 @@ export default function VehiclesPage() {
     `${v.designation} ${v.vehicleType} ${v.driver} ${v.licensePlate}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Desktop SPA: show detail inline, never show list (wait for auto-select)
-  if (!isMobile) {
+  if (!isMobile && !isL2) {
     if (!selectedVehicleId) return null
     return <VehicleDetailContent vehicleId={selectedVehicleId} onNotFound={() => {
       localStorage.removeItem('pt_vehicles_last_id')
@@ -79,23 +81,43 @@ export default function VehiclesPage() {
     }} />
   }
 
+  if (!isMobile && isL2 && selectedVehicleId) {
+    return (
+      <div>
+        <button onClick={() => { setSelectedVehicleId(null); localStorage.removeItem('pt_vehicles_last_id') }}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+        </button>
+        <VehicleDetailContent vehicleId={selectedVehicleId} onNotFound={() => {
+          localStorage.removeItem('pt_vehicles_last_id')
+          setSelectedVehicleId(null)
+        }} />
+      </div>
+    )
+  }
+
   return (
     <div className="module-content">
-      {/* Mobile: Neu-Button */}
-      {isMobile && isEditor && (
-        <div className="flex items-center gap-2">
-          <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
-        </div>
+      {isL2 ? (
+        <>
+          <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Fahrzeuge</h1>
+          <div className="flex items-center gap-2 mb-2">
+            {isEditor && <button onClick={openNewVehicleModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
+            <input type="text" placeholder={t('vehicles.searchPlaceholder')} value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
+          </div>
+        </>
+      ) : (
+        <>
+          {isMobile && isEditor && (
+            <div className="flex items-center gap-2">
+              <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
+            </div>
+          )}
+          <input type="text" placeholder={t('vehicles.searchPlaceholder')} value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
+        </>
       )}
-
-      {/* Search */}
-      <input
-        type="text"
-        placeholder={t('vehicles.searchPlaceholder')}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="search-input"
-      />
 
       {/* Vehicles List / Mobile Cards */}
       {filteredVehicles.length === 0 ? (
@@ -117,8 +139,8 @@ export default function VehiclesPage() {
       ) : (
         <div className="data-table-wrapper">
           <VehicleTable vehicles={filteredVehicles} onEdit={v => {
-            history.pushState(null, '', `/vehicles/${v.id}`)
-            window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: v.id } }))
+            if (isL2) { localStorage.setItem('pt_vehicles_last_id', v.id); setSelectedVehicleId(v.id) }
+            else { history.pushState(null, '', `/vehicles/${v.id}`); window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: v.id } })) }
           }} />
         </div>
       )}

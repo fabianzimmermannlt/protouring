@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Download, Upload, Loader2, AlertCircle, X } from 'lucide-react'
+import { Download, Upload, Loader2, AlertCircle, X, ArrowLeft, Plus } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getVenues,
@@ -15,6 +15,7 @@ import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 import { VenueDetailContent } from '@/app/modules/venues/VenueDetail'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 const EMPTY_FORM = {
   name: '', street: '', postalCode: '', city: '', state: '', country: '',
@@ -27,6 +28,8 @@ const EMPTY_FORM = {
 export default function VenuesPage() {
   const t = useT()
   const isMobile = useIsMobile()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
   const [venues, setVenues] = useState<Venue[]>([])
   const [loading, setLoading] = useState(true)
@@ -138,10 +141,21 @@ export default function VenuesPage() {
     )
   }
 
-  // Desktop (L3): render venue detail inline, never show list (wait for auto-select)
-  if (!isMobile) {
+  if (!isMobile && !isL2) {
     if (!selectedVenueId) return null
     return <VenueDetailContent venueId={selectedVenueId} />
+  }
+
+  if (!isMobile && isL2 && selectedVenueId) {
+    return (
+      <div>
+        <button onClick={() => setSelectedVenueId(null)}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+        </button>
+        <VenueDetailContent venueId={selectedVenueId} />
+      </div>
+    )
   }
 
   return (
@@ -156,29 +170,32 @@ export default function VenuesPage() {
         </div>
       )}
 
-      {/* CSV Buttons */}
-      {isEditor && (
-        <div className="flex justify-end gap-3 mb-2">
-          <button onClick={exportToCSV} className="btn btn-ghost">
-            <Download className="w-4 h-4" />
-            CSV
-          </button>
-          <label className="btn btn-ghost cursor-pointer">
-            <Upload className="w-4 h-4" />
-            CSV
-            <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
-          </label>
-        </div>
+      {isL2 ? (
+        <>
+          <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Venues</h1>
+          <div className="flex items-center gap-2 mb-2">
+            {isEditor && (
+              <label className="btn btn-primary flex-shrink-0 cursor-pointer" style={{borderRadius:'4px'}}>
+                <Plus className="w-4 h-4" /> Neu (CSV)
+                <input type="file" accept=".csv" onChange={importFromCSV} className="hidden" />
+              </label>
+            )}
+            <input type="text" placeholder={t('venues.searchPlaceholder')} value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
+          </div>
+        </>
+      ) : (
+        <>
+          {isEditor && (
+            <div className="flex justify-end gap-3 mb-2">
+              <button onClick={exportToCSV} className="btn btn-ghost"><Download className="w-4 h-4" />CSV</button>
+              <label className="btn btn-ghost cursor-pointer"><Upload className="w-4 h-4" />CSV<input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
+            </div>
+          )}
+          <input type="text" placeholder={t('venues.searchPlaceholder')} value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
+        </>
       )}
-
-      {/* Search */}
-      <input
-        type="text"
-        placeholder={t('venues.searchPlaceholder')}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="search-input"
-      />
 
       {/* List */}
       {loading ? (
@@ -219,7 +236,10 @@ export default function VenuesPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <VenueTable venues={filtered} onDetail={id => window.location.href = `/venues/${id}`} />
+            <VenueTable venues={filtered} onDetail={id => {
+              if (isL2) setSelectedVenueId(id)
+              else window.location.href = `/venues/${id}`
+            }} />
           </div>
         )
       })()}

@@ -1,16 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Save, X, ArrowLeft } from 'lucide-react'
 import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { PartnerDetailContent } from '@/app/modules/partners/PartnerDetail'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 export default function PartnersPage() {
   const t = useT()
   const isMobile = useIsMobile()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
   const [partners, setPartners] = useState<Partner[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -172,8 +175,7 @@ export default function PartnersPage() {
   }
 
 
-  // Desktop SPA: show detail inline, or wait for auto-select (never show list on desktop)
-  if (!isMobile) {
+  if (!isMobile && !isL2) {
     if (!selectedPartnerId) return null
     return <PartnerDetailContent partnerId={selectedPartnerId} onNotFound={() => {
       localStorage.removeItem('pt_partners_last_id')
@@ -181,23 +183,43 @@ export default function PartnersPage() {
     }} />
   }
 
+  if (!isMobile && isL2 && selectedPartnerId) {
+    return (
+      <div>
+        <button onClick={() => { setSelectedPartnerId(null); localStorage.removeItem('pt_partners_last_id') }}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+        </button>
+        <PartnerDetailContent partnerId={selectedPartnerId} onNotFound={() => {
+          localStorage.removeItem('pt_partners_last_id')
+          setSelectedPartnerId(null)
+        }} />
+      </div>
+    )
+  }
+
   return (
     <div className="module-content">
-      {/* Mobile: Neu-Button */}
-      {isMobile && isEditor && (
-        <div className="flex items-center gap-2">
-          <button onClick={openNewPartnerModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
-        </div>
+      {isL2 ? (
+        <>
+          <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Partner</h1>
+          <div className="flex items-center gap-2 mb-2">
+            {isEditor && <button onClick={openNewPartnerModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> Neu</button>}
+            <input type="text" placeholder={t('partners.searchPlaceholder')} value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
+          </div>
+        </>
+      ) : (
+        <>
+          {isMobile && isEditor && (
+            <div className="flex items-center gap-2">
+              <button onClick={openNewPartnerModal} className="btn btn-primary"><Plus className="w-4 h-4" /> Neu</button>
+            </div>
+          )}
+          <input type="text" placeholder={t('partners.searchPlaceholder')} value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
+        </>
       )}
-
-      {/* Search */}
-      <input
-        type="text"
-        placeholder={t('partners.searchPlaceholder')}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="search-input"
-      />
 
       {/* Partners Table / Mobile Cards */}
       {(() => {
@@ -224,8 +246,8 @@ export default function PartnersPage() {
         ) : (
           <div className="data-table-wrapper">
             <PartnerTable partners={filtered} onEdit={p => {
-              history.pushState(null, '', `/partners/${p.id}`)
-              window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: p.id } }))
+              if (isL2) { localStorage.setItem('pt_partners_last_id', p.id); setSelectedPartnerId(p.id) }
+              else { history.pushState(null, '', `/partners/${p.id}`); window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: p.id } })) }
             }} />
           </div>
         )
