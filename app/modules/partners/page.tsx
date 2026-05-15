@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Save, X, ArrowLeft } from 'lucide-react'
+import { Plus, Edit, Trash2, Save, X, ArrowLeft, Download, Upload } from 'lucide-react'
 import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
@@ -15,6 +15,7 @@ export default function PartnersPage() {
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
+  const isAdmin = getEffectiveRole() === 'admin'
   const [partners, setPartners] = useState<Partner[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null)
@@ -207,6 +208,10 @@ export default function PartnersPage() {
             {isEditor && <button onClick={openNewPartnerModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> Neu</button>}
             <input type="text" placeholder={t('partners.searchPlaceholder')} value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
+            {isAdmin && <>
+              <button className="btn btn-ghost flex-shrink-0" style={{borderRadius:'4px'}} title="CSV Export"><Download className="w-4 h-4" /></button>
+              <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{borderRadius:'4px'}} title="CSV Import"><Upload className="w-4 h-4" /><input type="file" accept=".csv" className="hidden" /></label>
+            </>}
           </div>
         </>
       ) : (

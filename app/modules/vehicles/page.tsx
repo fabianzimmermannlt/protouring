@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, ArrowLeft } from 'lucide-react'
+import { Plus, ArrowLeft, Download, Upload } from 'lucide-react'
 import { getVehicles, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
@@ -16,6 +16,7 @@ export default function VehiclesPage() {
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
+  const isAdmin = getEffectiveRole() === 'admin'
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
@@ -105,6 +106,10 @@ export default function VehiclesPage() {
             {isEditor && <button onClick={openNewVehicleModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
             <input type="text" placeholder={t('vehicles.searchPlaceholder')} value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
+            {isAdmin && <>
+              <button className="btn btn-ghost flex-shrink-0" style={{borderRadius:'4px'}} title="CSV Export"><Download className="w-4 h-4" /></button>
+              <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{borderRadius:'4px'}} title="CSV Import"><Upload className="w-4 h-4" /><input type="file" accept=".csv" className="hidden" /></label>
+            </>}
           </div>
         </>
       ) : (
