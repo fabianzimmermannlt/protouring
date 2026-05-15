@@ -375,10 +375,10 @@ export function L2Layout({
       <div key={item.id}>
         <button
           onClick={() => handleNav(item.id)}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
+          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
             isActive
               ? 'pt-nav-active'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+              : 'rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-300'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -555,7 +555,7 @@ export function L2Layout({
         </div>
 
         {/* Main Nav */}
-        <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
+        <nav className="flex-1 px-0 py-3 overflow-y-auto space-y-0.5">
           {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item =>
             renderNavItem(item)
           )}
@@ -575,13 +575,13 @@ export function L2Layout({
         </nav>
 
         {/* Einstellungen – ganz unten */}
-        <div className="px-2 pb-3 border-t border-gray-300 pt-3">
+        <div className="px-0 pb-3 border-t border-gray-300 pt-3">
           <button
             onClick={() => handleNav('settings')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
               activeTab === 'settings'
                 ? 'pt-nav-active'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                : 'rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-300'
             }`}
           >
             <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
