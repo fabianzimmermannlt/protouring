@@ -167,8 +167,8 @@ export default function HotelsPage() {
     <div className="module-content">
       {isL2 ? (
         <>
-          <h1 className="text-xl font-semibold mb-4" style={{color:'#e0e0e0'}}>Hotels</h1>
-          <div className="flex items-center gap-2 mb-4">
+          <h1 className="text-xl font-semibold mb-2" style={{color:'#e0e0e0'}}>Hotels</h1>
+          <div className="flex items-center gap-2 mb-2">
             {isEditor && (
               <button onClick={openNewHotelModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>
             )}
