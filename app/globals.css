@@ -1553,6 +1553,26 @@ html.dark .pt-card-title { color: #8b949e; }
 html.dark .pt-card-new { background: #252526; border-color: #3c3c3c; }
 html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
+/* L2 Content overrides */
+.l2-content .data-table-wrapper {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+.l2-content .module-content {
+  background: transparent;
+}
+.l2-content .search-input {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #e5e7eb;
+}
+.l2-content .search-input::placeholder {
+  color: #6b7280;
+}
+.l2-content .btn-primary {
+  /* bleibt wie gehabt */
+}
+
 /* PT-Sidebar Nav Active */
 .pt-nav-active {
   background-color: #60a5fa !important;

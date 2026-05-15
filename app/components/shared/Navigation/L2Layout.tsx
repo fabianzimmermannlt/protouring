@@ -641,7 +641,7 @@ export function L2Layout({
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-5 bg-[#1c1c1c] l2-content">
           {!isSettingsOpen && children}
         </div>
       </div>
