@@ -1558,10 +1558,11 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   background: #2d2d2d;
   border-color: #3c3c3c;
   box-shadow: none;
+  border-radius: 0.25rem;
 }
 .l2-content .data-table thead tr {
-  background: #3a3a3a;
-  border-bottom-color: #444;
+  background: #4a4a4a;
+  border-bottom-color: #555;
 }
 .l2-content .data-table thead th {
   color: #b0b0b0;
