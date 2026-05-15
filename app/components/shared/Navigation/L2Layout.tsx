@@ -377,7 +377,7 @@ export function L2Layout({
           onClick={() => handleNav(item.id)}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left ${
             isActive
-              ? 'bg-blue-400/20 text-blue-100 font-medium'
+              ? 'bg-blue-200 text-gray-900 font-medium'
               : 'text-gray-300 hover:text-white hover:bg-gray-800'
           }`}
         >
@@ -391,7 +391,7 @@ export function L2Layout({
           {hasSubNav && (
             <ChevronDownIcon
               className={`w-3 h-3 flex-shrink-0 transition-transform ${
-                isActive ? 'rotate-180 text-blue-200' : 'text-gray-500'
+                isActive ? 'rotate-180 text-gray-700' : 'text-gray-500'
               }`}
             />
           )}
@@ -407,7 +407,7 @@ export function L2Layout({
                 onClick={() => onSubTabChange?.(sub.id)}
                 className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
                   activeSubTab === sub.id
-                    ? 'text-blue-100 font-medium bg-blue-400/20'
+                    ? 'bg-blue-200 text-gray-900 font-medium'
                     : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                 }`}
               >
