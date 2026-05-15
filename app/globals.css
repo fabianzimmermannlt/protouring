@@ -1555,8 +1555,20 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
 /* L2 Content overrides */
 .l2-content .data-table-wrapper {
-  background: #f3f4f6;
+  background: #f8f9fa;
   border-color: #d1d5db;
+}
+.l2-content .data-table thead tr {
+  background: #ffffff;
+  border-bottom-color: #e5e7eb;
+}
+.l2-content .data-table tbody tr {
+  background: #f8f9fa;
+  border-bottom-color: #e9ecef;
+}
+.l2-content .data-table tbody tr.clickable:hover,
+.l2-content .data-table tbody tr.hoverable:hover {
+  background-color: #e8f0fe;
 }
 .l2-content .module-content {
   background: transparent;
