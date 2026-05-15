@@ -165,11 +165,20 @@ export default function HotelsPage() {
 
   return (
     <div className="module-content">
-      {(isMobile || isL2) && isEditor && (
+      {isL2 ? (
+        <>
+          <h1 className="text-xl font-semibold mb-4" style={{color:'#e0e0e0'}}>Hotels</h1>
+          {isEditor && (
+            <div className="flex items-center gap-2 mb-3">
+              <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
+            </div>
+          )}
+        </>
+      ) : isMobile && isEditor ? (
         <div className="flex items-center gap-2 mb-3">
           <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
         </div>
-      )}
+      ) : null}
 
       <input
         type="text"
