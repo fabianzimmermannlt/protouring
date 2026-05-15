@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, ArrowLeft } from 'lucide-react'
 import { getHotels, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import HotelFormModal from './HotelFormModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { HotelDetailContent } from '@/app/modules/hotels/HotelDetail'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) => void }) {
   const t = useT()
@@ -74,6 +75,8 @@ function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) =>
 export default function HotelsPage() {
   const t = useT()
   const isMobile = useIsMobile()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -132,8 +135,8 @@ export default function HotelsPage() {
     `${h.name} ${h.city} ${h.state} ${h.country} ${h.website}`.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Desktop SPA: show detail inline, or wait for auto-select (never show list on desktop)
-  if (!isMobile) {
+  // Desktop: L3 → Side-Panel zeigt Liste, Content zeigt Detail
+  if (!isMobile && !isL2) {
     if (!selectedHotelId) return null
     return <HotelDetailContent hotelId={selectedHotelId} onNotFound={() => {
       localStorage.removeItem('pt_hotels_last_id')
@@ -141,10 +144,29 @@ export default function HotelsPage() {
     }} />
   }
 
+  // Desktop L2: Detail-Ansicht wenn Hotel selektiert
+  if (!isMobile && isL2 && selectedHotelId) {
+    return (
+      <div>
+        <button
+          onClick={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id') }}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Zurück zur Übersicht
+        </button>
+        <HotelDetailContent hotelId={selectedHotelId} onNotFound={() => {
+          localStorage.removeItem('pt_hotels_last_id')
+          setSelectedHotelId(null)
+        }} />
+      </div>
+    )
+  }
+
   return (
     <div className="module-content">
-      {isMobile && isEditor && (
-        <div className="flex items-center gap-2">
+      {(isMobile || isL2) && isEditor && (
+        <div className="flex items-center gap-2 mb-3">
           <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
         </div>
       )}
@@ -176,9 +198,14 @@ export default function HotelsPage() {
       ) : (
         <div className="data-table-wrapper">
           <HotelTable hotels={filtered} onEdit={h => {
-          history.pushState(null, '', `/hotels/${h.id}`)
-          window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: h.id } }))
-        }} />
+            if (isL2) {
+              localStorage.setItem('pt_hotels_last_id', h.id)
+              setSelectedHotelId(h.id)
+            } else {
+              history.pushState(null, '', `/hotels/${h.id}`)
+              window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: h.id } }))
+            }
+          }} />
         </div>
       )}
 
