@@ -1581,6 +1581,8 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 }
 .l2-content .data-table tbody td {
   color: #e0e0e0 !important;
+  padding-top: 0.3rem !important;
+  padding-bottom: 0.3rem !important;
 }
 .l2-content .data-table tbody tr.clickable:hover,
 .l2-content .data-table tbody tr.hoverable:hover {
