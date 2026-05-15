@@ -307,7 +307,7 @@ export function L2Layout({
               className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                 termineView === v.id
                   ? 'text-blue-100 font-medium bg-blue-400/20'
-                  : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
+                  : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
               }`}
             >
               {v.label}
@@ -337,7 +337,7 @@ export function L2Layout({
             className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
               termineListView === 'list' && termineFilter === f.id
                 ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
+                : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             {f.label}
@@ -352,7 +352,7 @@ export function L2Layout({
             className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
               termineListView === 'calendar'
                 ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
+                : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             Kalender
@@ -378,7 +378,7 @@ export function L2Layout({
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
             isActive
               ? 'pt-nav-active'
-              : 'text-gray-400 hover:text-white hover:bg-[#2d2d2d]'
+              : 'hover:text-white hover:bg-[#2d2d2d]'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -408,7 +408,7 @@ export function L2Layout({
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'pt-nav-sub-active'
-                    : 'text-gray-500 hover:text-white hover:bg-[#2d2d2d]'
+                    : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
                 }`}
               >
                 {sub.name}
@@ -450,7 +450,7 @@ export function L2Layout({
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
-      <aside className="w-56 flex-shrink-0 bg-[#1c1c1c] text-gray-200 flex flex-col border-r border-[#333]">
+      <aside className="w-56 flex-shrink-0 bg-[#1c1c1c] flex flex-col border-r border-[#333] l2-sidebar">
 
         {/* Identity */}
         <div className="px-4 py-4 border-b border-[#333]">
@@ -581,7 +581,7 @@ export function L2Layout({
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
               activeTab === 'settings'
                 ? 'pt-nav-active'
-                : 'text-gray-400 hover:text-white hover:bg-[#2d2d2d]'
+                : 'hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />

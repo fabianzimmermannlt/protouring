@@ -1553,6 +1553,10 @@ html.dark .pt-card-title { color: #8b949e; }
 html.dark .pt-card-new { background: #252526; border-color: #3c3c3c; }
 html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
+/* L2 Sidebar */
+.l2-sidebar { color: #e0e0e0; }
+.l2-nav-sub-item { color: #d0d0d0; }
+
 /* L2 Content overrides */
 .l2-content .data-table-wrapper {
   background: #2d2d2d !important;
