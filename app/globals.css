@@ -1555,13 +1555,13 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
 /* PT-Sidebar Nav Active */
 .pt-nav-active {
-  background-color: #bfdbfe;
-  color: #1e293b;
+  background-color: #60a5fa;
+  color: #0f172a;
   font-weight: 500;
 }
 .pt-nav-sub-active {
-  background-color: #bfdbfe;
-  color: #1e293b;
+  background-color: #60a5fa;
+  color: #0f172a;
   font-weight: 500;
 }
 
