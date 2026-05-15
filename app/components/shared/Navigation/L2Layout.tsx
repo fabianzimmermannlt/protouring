@@ -304,10 +304,10 @@ export function L2Layout({
                 setTermineView(v.id as TermineDetailView)
                 window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
               }}
-              className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+              className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                 termineView === v.id
                   ? 'text-blue-100 font-medium bg-blue-400/20'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
               }`}
             >
               {v.label}
@@ -334,10 +334,10 @@ export function L2Layout({
               window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f.id } }))
               window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
             }}
-            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+            className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
               termineListView === 'list' && termineFilter === f.id
                 ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
             }`}
           >
             {f.label}
@@ -349,10 +349,10 @@ export function L2Layout({
               setTermineListView('calendar')
               window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
             }}
-            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+            className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
               termineListView === 'calendar'
                 ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
             }`}
           >
             Kalender
@@ -378,7 +378,7 @@ export function L2Layout({
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
             isActive
               ? 'pt-nav-active'
-              : 'rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -405,10 +405,10 @@ export function L2Layout({
               <button
                 key={sub.id}
                 onClick={() => onSubTabChange?.(sub.id)}
-                className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors ${
+                className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'pt-nav-sub-active'
-                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300'
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-300 rounded-none'
                 }`}
               >
                 {sub.name}
@@ -581,7 +581,7 @@ export function L2Layout({
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
               activeTab === 'settings'
                 ? 'pt-nav-active'
-                : 'rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
             }`}
           >
             <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
