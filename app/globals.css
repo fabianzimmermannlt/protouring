@@ -1589,16 +1589,21 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 .l2-content .module-content {
   background: transparent;
 }
-.l2-content .search-input {
+.l2-content .search-input,
+.l2-content .l2-search {
   background: #2d2d2d;
   border-color: #444;
   color: #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 0;
 }
-.l2-content .search-input::placeholder {
+.l2-content .search-input::placeholder,
+.l2-content .l2-search::placeholder {
   color: #6b7280;
 }
-.l2-content .btn-primary {
-  /* bleibt wie gehabt */
+.l2-content .btn-primary,
+.l2-content .btn-secondary {
+  border-radius: 4px;
 }
 
 /* PT-Sidebar Nav Active */

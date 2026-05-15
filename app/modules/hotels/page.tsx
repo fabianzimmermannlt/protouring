@@ -168,25 +168,36 @@ export default function HotelsPage() {
       {isL2 ? (
         <>
           <h1 className="text-xl font-semibold mb-4" style={{color:'#e0e0e0'}}>Hotels</h1>
-          {isEditor && (
+          <div className="flex items-center gap-2 mb-4">
+            {isEditor && (
+              <button onClick={openNewHotelModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>
+            )}
+            <input
+              type="text"
+              placeholder={t('hotels.searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input l2-search"
+              style={{marginBottom:0, borderRadius:'4px'}}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          {isMobile && isEditor && (
             <div className="flex items-center gap-2 mb-3">
               <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
             </div>
           )}
+          <input
+            type="text"
+            placeholder={t('hotels.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
         </>
-      ) : isMobile && isEditor ? (
-        <div className="flex items-center gap-2 mb-3">
-          <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
-        </div>
-      ) : null}
-
-      <input
-        type="text"
-        placeholder={t('hotels.searchPlaceholder')}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="search-input"
-      />
+      )}
 
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
