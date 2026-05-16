@@ -1553,6 +1553,71 @@ html.dark .pt-card-title { color: #8b949e; }
 html.dark .pt-card-new { background: #252526; border-color: #3c3c3c; }
 html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
+/* L2 Detail Cards */
+.l2-content .pt-card {
+  background: #2d2d2d !important;
+  border-color: #3c3c3c !important;
+  box-shadow: none !important;
+}
+.l2-content .pt-card-header {
+  background: #383838 !important;
+  border-bottom-color: #4a4a4a !important;
+}
+.l2-content .pt-card-title {
+  color: #b0b0b0 !important;
+}
+.l2-content .pt-card-title svg {
+  color: #b0b0b0 !important;
+}
+/* KV row dividers */
+.l2-content .pt-card-body [class*="border-gray-50"],
+.l2-content .pt-card-body [class*="border-b"] {
+  border-color: #3c3c3c !important;
+}
+/* KV label (text-gray-400) */
+.l2-content .pt-card-body [class*="text-gray-400"] {
+  color: #8b8b8b !important;
+}
+/* KV value (text-gray-800) */
+.l2-content .pt-card-body [class*="text-gray-800"] {
+  color: #e0e0e0 !important;
+}
+/* Empty-state text */
+.l2-content .pt-card-body [class*="text-gray-400"]:not([class*="uppercase"]) {
+  color: #6b7280 !important;
+}
+/* Inline edit inputs */
+.l2-content .pt-card-body input[type="text"],
+.l2-content .pt-card-body input[type="email"],
+.l2-content .pt-card-body input[type="tel"],
+.l2-content .pt-card-body textarea {
+  background: #3c3c3c !important;
+  border-color: #555 !important;
+  color: #e0e0e0 !important;
+}
+.l2-content .pt-card-body input::placeholder,
+.l2-content .pt-card-body textarea::placeholder {
+  color: #6b7280 !important;
+}
+/* InlineSaveBar border */
+.l2-content .pt-card-body [class*="border-gray-100"],
+.l2-content .pt-card-body [class*="border-t"] {
+  border-color: #4a4a4a !important;
+}
+/* Cancel button in save bar */
+.l2-content .pt-card-body [class*="text-gray-500"] {
+  color: #8b8b8b !important;
+}
+/* Loading skeletons */
+.l2-content .pt-card-body [class*="bg-gray-100"] {
+  background: #3c3c3c !important;
+}
+/* Pencil edit button */
+.l2-content .pt-card-header button [class*="text-gray-400"],
+.l2-content .pt-card-header [class*="text-gray-400"] {
+  color: #6b7280 !important;
+}
+
 /* L2 Sidebar */
 .l2-sidebar { color: #e0e0e0; }
 .l2-nav-sub-item { color: #d0d0d0; }
