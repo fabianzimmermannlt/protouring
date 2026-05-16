@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Pencil, AlertCircle, Save, Loader2, Building2, Clock, Coffee } from 'lucide-react'
+import { Pencil, AlertCircle, Save, Loader2, Building2, Clock, Coffee, X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   isEditorRole, getEffectiveRole,
   getHotel, updateHotel, type Hotel, type HotelFormData,
 } from '@/lib/api-client'
-import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 function KV({ label, value }: { label: string; value?: string }) {
   if (!value?.trim()) return null
@@ -49,48 +49,29 @@ function ITextarea({ label, value, onChange, placeholder = '' }: {
   )
 }
 
-function InlineSaveBar({ onSave, onCancel, saving, error }: {
-  onSave: () => void; onCancel: () => void; saving: boolean; error?: string
-}) {
-  const t = useT()
-  return (
-    <div className="pt-2 border-t border-gray-100 mt-2">
-      {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
-      <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
-        <button onClick={onSave} disabled={saving}
-          className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          {t('general.save')}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; onNotFound?: () => void }) {
   const t = useT()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [hotel, setHotel] = useState<Hotel | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  type EditSection = 'allgemein' | 'checkin' | 'services'
-  const [editingSection, setEditingSection] = useState<EditSection | null>(null)
-  const [inlineForm, setInlineForm] = useState<Record<string, string>>({})
-  const [savingInline, setSavingInline] = useState(false)
-  const [inlineError, setInlineError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const loadHotel = useCallback(async () => {
     setLoading(true)
     try {
       const h = await getHotel(hotelId)
       setHotel(h)
-      setInlineForm(h as any)
+      setForm(h as unknown as Record<string, string>)
     } catch {
       if (onNotFound) { onNotFound(); return }
-      setError(t('hotels.notFound'))
+      setLoadError(t('hotels.notFound'))
     } finally {
       setLoading(false)
     }
@@ -98,42 +79,64 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
 
   useEffect(() => { loadHotel() }, [loadHotel])
 
-  function startEditSection(section: EditSection) {
-    if (hotel) setInlineForm({ ...hotel as any })
-    setInlineError('')
-    setEditingSection(section)
+  const startEdit = () => {
+    if (hotel) setForm(hotel as unknown as Record<string, string>)
+    setSaveError('')
+    setIsEditing(true)
   }
 
-  function cancelEditSection() {
-    if (hotel) setInlineForm({ ...hotel as any })
-    setEditingSection(null)
-    setInlineError('')
+  const cancelEdit = () => {
+    if (hotel) setForm(hotel as unknown as Record<string, string>)
+    setIsEditing(false)
+    setSaveError('')
   }
 
-  async function saveInlineSection() {
+  const saveEdit = async () => {
     if (!hotel) return
-    setSavingInline(true)
-    setInlineError('')
+    setSaving(true); setSaveError('')
     try {
-      const updated = await updateHotel(hotelId, inlineForm as unknown as HotelFormData)
+      const updated = await updateHotel(hotelId, form as unknown as HotelFormData)
       setHotel(updated)
-      setInlineForm({ ...updated as any })
-      setEditingSection(null)
+      setForm(updated as unknown as Record<string, string>)
+      setIsEditing(false)
       window.dispatchEvent(new CustomEvent('hotel-updated', { detail: updated }))
     } catch (e) {
-      setInlineError((e as Error).message || t('general.saveFailed'))
+      setSaveError((e as Error).message || t('general.saveFailed'))
     } finally {
-      setSavingInline(false)
+      setSaving(false)
     }
   }
 
-  const iF = (key: string, value: string) => setInlineForm(prev => ({ ...prev, [key]: value }))
+  const f = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }))
+
+  const dark = isL2
+  const cardBg = dark ? '#2d2d2d' : undefined
+  const barBg = dark ? '#252525' : '#fff'
+  const barBorder = dark ? '#4a4a4a' : '#e5e7eb'
+  const titleColor = dark ? '#e0e0e0' : '#111827'
 
   return (
     <div className="module-content">
-      {error && (
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4" style={{ minHeight: '32px' }}>
+        <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600 }}>
+          {loading ? '' : hotel?.name || ''}
+        </h2>
+        {isEditor && hotel && !isEditing && (
+          <button
+            onClick={startEdit}
+            className="btn btn-ghost"
+            style={{ borderRadius: '4px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Pencil className="w-3.5 h-3.5" /> Bearbeiten
+          </button>
+        )}
+      </div>
+
+      {loadError && (
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">
-          <AlertCircle className="w-4 h-4 shrink-0" />{error}
+          <AlertCircle className="w-4 h-4 shrink-0" />{loadError}
         </div>
       )}
 
@@ -143,44 +146,25 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardGeneral')}</span>
-            {isEditor && hotel && editingSection !== 'allgemein' && (
-              <button onClick={() => startEditSection('allgemein')} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'allgemein' ? (
+            {loading ? (
+              <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
+            ) : isEditing ? (
               <div className="space-y-2">
-                <NameAddressAutocomplete
-                  label={`${t('general.name')} *`}
-                  variant="inline"
-                  value={inlineForm.name ?? ''}
-                  onChange={v => iF('name', v)}
-                  onAddressSelect={a => setInlineForm(prev => ({
-                    ...prev,
-                    ...(a.name ? { name: a.name } : {}),
-                    ...(a.street ? { street: a.street } : {}),
-                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
-                    ...(a.city ? { city: a.city } : {}),
-                    ...(a.state ? { state: a.state } : {}),
-                    ...(a.country ? { country: a.country } : {}),
-                  }))}
-                />
-                <IField label={t('address.street')} value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
+                <IField label={t('general.name')} value={form.name ?? ''} onChange={v => f('name', v)} />
+                <IField label={t('address.street')} value={form.street ?? ''} onChange={v => f('street', v)} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label={t('address.postalCode')} value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
-                  <IField label={t('address.city')} value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                  <IField label={t('address.postalCode')} value={form.postalCode ?? ''} onChange={v => f('postalCode', v)} />
+                  <IField label={t('address.city')} value={form.city ?? ''} onChange={v => f('city', v)} />
                 </div>
-                <IField label={t('address.country')} value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
+                <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} />
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label={t('general.phone')} value={inlineForm.phone ?? ''} onChange={v => iF('phone', v)} />
-                  <IField label={t('general.email')} value={inlineForm.email ?? ''} onChange={v => iF('email', v)} />
+                  <IField label={t('general.phone')} value={form.phone ?? ''} onChange={v => f('phone', v)} />
+                  <IField label={t('general.email')} value={form.email ?? ''} onChange={v => f('email', v)} />
                 </div>
-                <IField label={t('general.website')} value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
-                <IField label={t('hotels.reception')} value={inlineForm.reception ?? ''} onChange={v => iF('reception', v)} placeholder={t('hotels.receptionPlaceholder')} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <IField label={t('general.website')} value={form.website ?? ''} onChange={v => f('website', v)} placeholder="https://..." />
+                <IField label={t('hotels.reception')} value={form.reception ?? ''} onChange={v => f('reception', v)} placeholder={t('hotels.receptionPlaceholder')} />
               </div>
             ) : hotel ? (
               <>
@@ -209,23 +193,18 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Clock className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardCheckin')}</span>
-            {isEditor && hotel && editingSection !== 'checkin' && (
-              <button onClick={() => startEditSection('checkin')} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'checkin' ? (
+            {loading ? (
+              <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
+            ) : isEditing ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label={t('hotels.checkin')} value={inlineForm.checkIn ?? ''} onChange={v => iF('checkIn', v)} placeholder={t('hotels.checkinPlaceholder')} />
-                  <IField label={t('hotels.checkout')} value={inlineForm.checkOut ?? ''} onChange={v => iF('checkOut', v)} placeholder={t('hotels.checkoutPlaceholder')} />
+                  <IField label={t('hotels.checkin')} value={form.checkIn ?? ''} onChange={v => f('checkIn', v)} placeholder={t('hotels.checkinPlaceholder')} />
+                  <IField label={t('hotels.checkout')} value={form.checkOut ?? ''} onChange={v => f('checkOut', v)} placeholder={t('hotels.checkoutPlaceholder')} />
                 </div>
-                <IField label={t('hotels.earlyCheckin')} value={inlineForm.earlyCheckIn ?? ''} onChange={v => iF('earlyCheckIn', v)} placeholder={t('hotels.earlyCheckinPlaceholder')} />
-                <IField label={t('hotels.lateCheckout')} value={inlineForm.lateCheckOut ?? ''} onChange={v => iF('lateCheckOut', v)} placeholder={t('hotels.lateCheckoutPlaceholder')} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <IField label={t('hotels.earlyCheckin')} value={form.earlyCheckIn ?? ''} onChange={v => f('earlyCheckIn', v)} placeholder={t('hotels.earlyCheckinPlaceholder')} />
+                <IField label={t('hotels.lateCheckout')} value={form.lateCheckOut ?? ''} onChange={v => f('lateCheckOut', v)} placeholder={t('hotels.lateCheckoutPlaceholder')} />
               </div>
             ) : hotel ? (
               <>
@@ -245,20 +224,15 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         <div className="pt-card md:col-span-2">
           <div className="pt-card-header">
             <span className="pt-card-title"><Coffee className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardServices')}</span>
-            {isEditor && hotel && editingSection !== 'services' && (
-              <button onClick={() => startEditSection('services')} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
           <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'services' ? (
+            {loading ? (
+              <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
+            ) : isEditing ? (
               <div className="space-y-2">
-                <IField label={t('hotels.breakfast')} value={inlineForm.breakfast ?? ''} onChange={v => iF('breakfast', v)} placeholder={t('hotels.breakfastPlaceholder')} />
-                <IField label={t('hotels.breakfastWeekend')} value={inlineForm.breakfastWeekend ?? ''} onChange={v => iF('breakfastWeekend', v)} />
-                <ITextarea label={t('hotels.additionalInfo')} value={inlineForm.additionalInfo ?? ''} onChange={v => iF('additionalInfo', v)} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <IField label={t('hotels.breakfast')} value={form.breakfast ?? ''} onChange={v => f('breakfast', v)} placeholder={t('hotels.breakfastPlaceholder')} />
+                <IField label={t('hotels.breakfastWeekend')} value={form.breakfastWeekend ?? ''} onChange={v => f('breakfastWeekend', v)} />
+                <ITextarea label={t('hotels.additionalInfo')} value={form.additionalInfo ?? ''} onChange={v => f('additionalInfo', v)} />
               </div>
             ) : hotel ? (
               <>
@@ -274,6 +248,36 @@ export function HotelDetailContent({ hotelId, onNotFound }: { hotelId: string; o
         </div>
 
       </div>
+
+      {/* Sticky Save Bar */}
+      {isEditing && (
+        <div style={{
+          position: 'sticky', bottom: 0,
+          background: barBg,
+          borderTop: `1px solid ${barBorder}`,
+          padding: '12px 0',
+          marginTop: '16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px',
+        }}>
+          {saveError && (
+            <span style={{ color: '#f87171', fontSize: '13px', marginRight: 'auto' }}>{saveError}</span>
+          )}
+          <button
+            onClick={cancelEdit}
+            style={{ padding: '7px 14px', fontSize: '13px', color: dark ? '#b0b0b0' : '#6b7280', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <X className="w-3.5 h-3.5" /> {t('general.cancel')}
+          </button>
+          <button
+            onClick={saveEdit}
+            disabled={saving}
+            style={{ padding: '7px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            {t('general.save')}
+          </button>
+        </div>
+      )}
 
     </div>
   )
