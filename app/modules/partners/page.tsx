@@ -8,6 +8,7 @@ import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { PartnerDetailContent } from '@/app/modules/partners/PartnerDetail'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
 
 export default function PartnersPage() {
   const t = useT()
@@ -18,6 +19,7 @@ export default function PartnersPage() {
   const isAdmin = getEffectiveRole() === 'admin'
   const [partners, setPartners] = useState<Partner[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showQuickCreate, setShowQuickCreate] = useState(false)
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -205,7 +207,7 @@ export default function PartnersPage() {
         <>
           <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Partner</h1>
           <div className="flex items-center gap-2 mb-2">
-            {isEditor && <button onClick={openNewPartnerModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> Neu</button>}
+            {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> Neu</button>}
             <input type="text" placeholder={t('partners.searchPlaceholder')} value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
             {isAdmin && <>
@@ -257,6 +259,18 @@ export default function PartnersPage() {
           </div>
         )
       })()}
+
+      {showQuickCreate && (
+        <QuickCreatePartnerModal
+          onClose={() => setShowQuickCreate(false)}
+          onCreated={p => {
+            setPartners(prev => [...prev, p])
+            localStorage.setItem('pt_partners_last_id', p.id)
+            setSelectedPartnerId(p.id)
+            setShowQuickCreate(false)
+          }}
+        />
+      )}
 
       {/* Modal for Add/Edit Partner */}
       {isModalOpen && (

@@ -1606,6 +1606,41 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   border-radius: 4px;
 }
 
+/* QuickCreate Modal — dark input fields via CSS vars */
+.qfield-input {
+  background: var(--qf-input-bg, #fff);
+  border: 1px solid var(--qf-input-border, #d1d5db);
+  color: var(--qf-input-color, #111827);
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+}
+.qfield-input:focus {
+  ring: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+}
+.qfield-input::placeholder {
+  color: var(--qf-label, #9ca3af);
+  opacity: 0.7;
+}
+
+/* QuickCreate Modal — dark form-input override (for NameAddressAutocomplete) */
+.qcm-dark .form-input,
+.qcm-dark .form-input:focus {
+  background: #3c3c3c !important;
+  border-color: #555 !important;
+  color: #e0e0e0 !important;
+}
+.qcm-dark .form-input::placeholder {
+  color: #6b7280 !important;
+}
+.qcm-dark .form-label {
+  color: #b0b0b0 !important;
+}
+
 /* PT-Sidebar Nav Active */
 .pt-nav-active {
   background-color: #60a5fa !important;

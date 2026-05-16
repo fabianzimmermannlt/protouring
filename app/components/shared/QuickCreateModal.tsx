@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 interface QuickCreateModalProps {
   title: string
@@ -26,6 +27,8 @@ export function QuickCreateModal({
   children,
 }: QuickCreateModalProps) {
   const t = useT()
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
 
   // Close on Escape
   useEffect(() => {
@@ -34,37 +37,43 @@ export function QuickCreateModal({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
+  const bg = dark ? '#2d2d2d' : '#ffffff'
+  const border = dark ? '#4a4a4a' : '#e5e7eb'
+  const titleColor = dark ? '#e0e0e0' : '#111827'
+  const labelColor = dark ? '#b0b0b0' : '#4b5563'
+  const bodyBg = dark ? '#2d2d2d' : '#ffffff'
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div style={{ background: bg, borderRadius: '6px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, ['--qf-label' as string]: dark ? '#b0b0b0' : '#4b5563', ['--qf-input-bg' as string]: dark ? '#3c3c3c' : '#fff', ['--qf-input-border' as string]: dark ? '#555' : '#d1d5db', ['--qf-input-color' as string]: dark ? '#e0e0e0' : '#111827' } as React.CSSProperties}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${border}` }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, color: titleColor, margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ color: labelColor, background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className={dark ? 'qcm-body qcm-dark' : 'qcm-body'} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: bodyBg }}>
           {error && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>
+            <div style={{ fontSize: '12px', color: '#f87171', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: '4px', padding: '8px 12px' }}>{error}</div>
           )}
           {children}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '14px 20px', borderTop: `1px solid ${border}` }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            style={{ padding: '7px 14px', fontSize: '13px', color: labelColor, background: 'none', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
           >
             {t('general.cancel')}
           </button>
           <button
             onClick={onSubmit}
             disabled={disabled || submitting}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            style={{ padding: '7px 14px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: disabled || submitting ? 'not-allowed' : 'pointer', opacity: disabled || submitting ? 0.5 : 1 }}
           >
             {submitting ? t('general.creating') : (submitLabel ?? t('general.create'))}
           </button>
@@ -74,15 +83,15 @@ export function QuickCreateModal({
   )
 }
 
-// Reusable field components matching the Einladen-Modal style
+// Reusable field components
 export function QField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="qfield-label block text-xs font-medium mb-1" style={{ color: 'var(--qf-label, #4b5563)' }}>{label}</label>
       {children}
     </div>
   )
 }
 
-export const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500'
-export const selectCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white'
+export const inputCls = 'qfield-input w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500'
+export const selectCls = 'qfield-input w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500'

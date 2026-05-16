@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import { createVehicle, type Vehicle } from '@/lib/api-client'
-import { QuickCreateModal, QField, inputCls, selectCls } from '@/app/components/shared/QuickCreateModal'
-
-const VEHICLE_TYPES = ['Tourbus', 'Nightliner', 'Sprinter', 'Van', 'PKW', 'LKW', 'Truck', 'Anhänger', 'Sonstiges']
+import { QuickCreateModal, QField, inputCls } from '@/app/components/shared/QuickCreateModal'
 
 interface Props {
   onClose: () => void
@@ -13,7 +11,6 @@ interface Props {
 
 export function QuickCreateVehicleModal({ onClose, onCreated }: Props) {
   const [designation, setDesignation] = useState('')
-  const [vehicleType, setVehicleType] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,7 +19,7 @@ export function QuickCreateVehicleModal({ onClose, onCreated }: Props) {
     setSaving(true); setError('')
     try {
       const vehicle = await createVehicle({
-        designation: designation.trim(), vehicleType, driver: '', licensePlate: '',
+        designation: designation.trim(), vehicleType: '', driver: '', licensePlate: '',
         dimensions: '', powerConnection: '', seats: '', sleepingPlaces: '',
         hasTrailer: false, trailerDimensions: '', trailerLicensePlate: '', notes: '',
       })
@@ -56,12 +53,6 @@ export function QuickCreateVehicleModal({ onClose, onCreated }: Props) {
         />
       </QField>
 
-      <QField label="Fahrzeugart">
-        <select value={vehicleType} onChange={e => setVehicleType(e.target.value)} className={selectCls}>
-          <option value="">– wählen –</option>
-          {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </QField>
     </QuickCreateModal>
   )
 }

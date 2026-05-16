@@ -1,18 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createPartner, getPartnerTypes, type Partner } from '@/lib/api-client'
-import { QuickCreateModal, QField, selectCls } from '@/app/components/shared/QuickCreateModal'
+import { useState } from 'react'
+import { createPartner, type Partner } from '@/lib/api-client'
+import { QuickCreateModal } from '@/app/components/shared/QuickCreateModal'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
-
-const FALLBACK_TYPES = [
-  'Autovermietung', 'Backline-Firma', 'Booking', 'Booking Agentur', 'Brand',
-  'Catering', 'Catering-Firma', 'Endorser', 'Label', 'Management',
-  'Marketing', 'Medien-/Videoproduktion', 'Merchandise', 'Merchandise-Dienstleister',
-  'Organizer', 'Press / PR', 'Production', 'Promoter', 'Publisher', 'Reisebüro',
-  'Sicherheits-Firma', 'Studio', 'Support-Band', 'Technik-Lieferant',
-  'Ticketing-Dienstleister', 'Transport', 'Trucking-Firma', 'Zulieferer Sonstiges', 'Other',
-]
 
 interface Props {
   onClose: () => void
@@ -21,29 +12,20 @@ interface Props {
 
 export function QuickCreatePartnerModal({ onClose, onCreated }: Props) {
   const [companyName, setCompanyName] = useState('')
-  const [type, setType] = useState('')
   const [street, setStreet] = useState('')
   const [postalCode, setPostalCode] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [country, setCountry] = useState('')
-  const [types, setTypes] = useState<string[]>(FALLBACK_TYPES)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    getPartnerTypes().then(data => {
-      const visible = data.filter(t => t.visible !== 0 && t.visible !== false as any).map(t => t.name)
-      setTypes(visible.length > 0 ? visible : data.map(t => t.name))
-    }).catch(() => {})
-  }, [])
 
   const handleSubmit = async () => {
     if (!companyName.trim()) { setError('Firmenname ist erforderlich'); return }
     setSaving(true); setError('')
     try {
       const partner = await createPartner({
-        companyName: companyName.trim(), type, street, postalCode, city, state, country,
+        companyName: companyName.trim(), type: '', street, postalCode, city, state, country,
         contactPerson: '', email: '', phone: '', taxId: '', billingAddress: '', notes: '',
       })
       onCreated(partner)
@@ -64,13 +46,6 @@ export function QuickCreatePartnerModal({ onClose, onCreated }: Props) {
       disabled={!companyName.trim()}
       error={error}
     >
-      <QField label="Art">
-        <select value={type} onChange={e => setType(e.target.value)} className={selectCls}>
-          <option value="">– wählen –</option>
-          {types.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </QField>
-
       <NameAddressAutocomplete
         label="Firmenname *"
         variant="modal"

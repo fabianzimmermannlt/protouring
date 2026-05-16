@@ -5,6 +5,7 @@ import { Plus, ArrowLeft, Download, Upload } from 'lucide-react'
 import { getHotels, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import HotelFormModal from './HotelFormModal'
+import { QuickCreateHotelModal } from '@/app/components/shared/modals/QuickCreateHotelModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { HotelDetailContent } from '@/app/modules/hotels/HotelDetail'
@@ -81,6 +82,7 @@ export default function HotelsPage() {
   const isAdmin = getEffectiveRole() === 'admin'
   const [hotels, setHotels] = useState<Hotel[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showQuickCreate, setShowQuickCreate] = useState(false)
   const [editingHotel, setEditingHotel] = useState<Hotel | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -170,7 +172,7 @@ export default function HotelsPage() {
         <>
           <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Hotels</h1>
           <div className="flex items-center gap-2 mb-1">
-            {isEditor && <button onClick={openNewHotelModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
+            {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
             <input type="text" placeholder={t('hotels.searchPlaceholder')} value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
             {isAdmin && <>
@@ -224,6 +226,18 @@ export default function HotelsPage() {
             }
           }} />
         </div>
+      )}
+
+      {showQuickCreate && (
+        <QuickCreateHotelModal
+          onClose={() => setShowQuickCreate(false)}
+          onCreated={h => {
+            setHotels(prev => [...prev, h])
+            localStorage.setItem('pt_hotels_last_id', h.id)
+            setSelectedHotelId(h.id)
+            setShowQuickCreate(false)
+          }}
+        />
       )}
 
       {isModalOpen && (

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Plus, ArrowLeft, Download, Upload } from 'lucide-react'
 import { getVehicles, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
+import { QuickCreateVehicleModal } from '@/app/components/shared/modals/QuickCreateVehicleModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
@@ -19,6 +20,7 @@ export default function VehiclesPage() {
   const isAdmin = getEffectiveRole() === 'admin'
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showQuickCreate, setShowQuickCreate] = useState(false)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -103,7 +105,7 @@ export default function VehiclesPage() {
         <>
           <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Fahrzeuge</h1>
           <div className="flex items-center gap-2 mb-2">
-            {isEditor && <button onClick={openNewVehicleModal} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
+            {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
             <input type="text" placeholder={t('vehicles.searchPlaceholder')} value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
             {isAdmin && <>
@@ -148,6 +150,18 @@ export default function VehiclesPage() {
             else { history.pushState(null, '', `/vehicles/${v.id}`); window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: v.id } })) }
           }} />
         </div>
+      )}
+
+      {showQuickCreate && (
+        <QuickCreateVehicleModal
+          onClose={() => setShowQuickCreate(false)}
+          onCreated={v => {
+            setVehicles(prev => [...prev, v])
+            localStorage.setItem('pt_vehicles_last_id', v.id)
+            setSelectedVehicleId(v.id)
+            setShowQuickCreate(false)
+          }}
+        />
       )}
 
       {isModalOpen && (
