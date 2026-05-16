@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { createVenue, type Venue } from '@/lib/api-client'
 import { QuickCreateModal, QField, inputCls } from '@/app/components/shared/QuickCreateModal'
-import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 interface Props {
   onClose: () => void
@@ -12,13 +11,6 @@ interface Props {
 
 export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
   const [name, setName] = useState('')
-  const [street, setStreet] = useState('')
-  const [postalCode, setPostalCode] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
-  const [country, setCountry] = useState('')
-  const [latitude, setLatitude] = useState('')
-  const [longitude, setLongitude] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -27,8 +19,8 @@ export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
     setSaving(true); setError('')
     try {
       const venue = await createVenue({
-        name: name.trim(), street, postalCode, city, state, country,
-        latitude, longitude,
+        name: name.trim(), street: '', postalCode: '', city: '', state: '', country: '',
+        latitude: '', longitude: '',
         website: '', arrival: '', arrivalStreet: '', arrivalPostalCode: '', arrivalCity: '',
         capacity: '', capacitySeated: '', stageDimensions: '', clearanceHeight: '',
         merchandiseFee: '', merchandiseStand: '', wardrobe: '', showers: '', wifi: '',
@@ -52,29 +44,17 @@ export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
       disabled={!name.trim()}
       error={error}
     >
-      <NameAddressAutocomplete
-        label="Name *"
-        variant="modal"
-        value={name}
-        onChange={setName}
-        placeholder="z.B. Batschkapp Frankfurt"
-        withLatLon
-        onAddressSelect={a => {
-          if (a.name) setName(a.name)
-          if (a.street) setStreet(a.street)
-          if (a.postalCode) setPostalCode(a.postalCode)
-          if (a.city) setCity(a.city)
-          if (a.state) setState(a.state)
-          if (a.country) setCountry(a.country)
-          if (a.latitude) setLatitude(a.latitude)
-          if (a.longitude) setLongitude(a.longitude)
-        }}
-      />
-      {(street || city || country) && (
-        <p className="text-xs text-gray-400 -mt-2">
-          {[street, postalCode, city, country].filter(Boolean).join(', ')}
-        </p>
-      )}
+      <QField label="Name *">
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+          placeholder="z.B. Batschkapp Frankfurt"
+          autoFocus
+          className={inputCls}
+        />
+      </QField>
     </QuickCreateModal>
   )
 }
