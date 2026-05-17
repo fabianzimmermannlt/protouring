@@ -428,59 +428,61 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
             {isMobile ? (
               /* ── Mobile Toolbar ── */
-              isEditor && (
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {isEditor && (
+                  <>
                     <button onClick={openAddModal} className="btn btn-primary">
                       <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                     </button>
                     <button onClick={() => setShowGastModal(true)} title={t('contacts.action.createManual')} className="btn btn-ghost">
                       <Plus className="w-4 h-4" />
                     </button>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={handleCSVExport} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
-                      <Download className="w-5 h-5" />
-                    </button>
-                    <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import">
-                      <Upload className="w-5 h-5" />
-                      <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
-                    </label>
-                  </div>
-                </div>
-              )
+                  </>
+                )}
+                <input
+                  type="text"
+                  placeholder={t('contacts.search.placeholder')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input flex-1"
+                />
+                <button onClick={handleCSVExport} title="CSV Export" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                  <Download className="w-5 h-5" />
+                </button>
+                <label className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer" title="CSV Import">
+                  <Upload className="w-5 h-5" />
+                  <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
+                </label>
+              </div>
             ) : (
               /* ── Desktop Toolbar ── */
-              isEditor && (
-                <div className="flex justify-between items-center">
-                  <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {isEditor && (
+                  <>
                     <button onClick={openAddModal} className="btn btn-primary">
                       <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                     </button>
                     <button onClick={() => setShowGastModal(true)} className="btn btn-ghost" title={t('contacts.action.createManual')}>
                       <Plus className="w-4 h-4" /> {t('contacts.action.createManual')}
                     </button>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={handleCSVExport} className="btn btn-ghost">
-                      <Download className="w-4 h-4" /> CSV
-                    </button>
-                    <label className="btn btn-ghost cursor-pointer">
-                      <Upload className="w-4 h-4" /> CSV
-                      <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
-                    </label>
-                  </div>
-                </div>
-              )
+                  </>
+                )}
+                <input
+                  type="text"
+                  placeholder={t('contacts.search.placeholder')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input flex-1"
+                />
+                <button onClick={handleCSVExport} className="btn btn-ghost">
+                  <Download className="w-4 h-4" /> CSV
+                </button>
+                <label className="btn btn-ghost cursor-pointer">
+                  <Upload className="w-4 h-4" /> CSV
+                  <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
+                </label>
+              </div>
             )}
-
-            <input
-              type="text"
-              placeholder={t('contacts.search.placeholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
 
             {loading ? (
               <div className="text-center py-8 text-gray-500">{t('general.loading')}</div>
