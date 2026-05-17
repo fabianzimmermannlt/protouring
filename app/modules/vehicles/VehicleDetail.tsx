@@ -176,7 +176,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
                       onChange={e => f('hasTrailer', e.target.checked ? 'true' : 'false')}
                       style={{ accentColor: '#60a5fa', width: '14px', height: '14px', cursor: ro ? 'default' : 'pointer' }} />
                     <label htmlFor="hasTrailer" style={{ marginLeft: '6px', fontSize: '0.875rem', color: labelColor, cursor: ro ? 'default' : 'pointer' }}>
-                      {hasTrailer ? t('vehicles.trailerYes') : t('vehicles.trailerNo') }
+                      {hasTrailer ? t('vehicles.trailerYes') : 'Nein'}
                     </label>
                   </div>
                 </div>
