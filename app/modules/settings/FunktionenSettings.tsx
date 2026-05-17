@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Loader2, Check } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Loader2, Save, X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import type { TranslationKey } from '@/app/lib/i18n/translations/de'
 import {
@@ -19,6 +19,11 @@ const GROUP_KEY_MAP: Record<string, TranslationKey> = {
   'Sonstige':          'settings.funktionen.group.sonstige',
 }
 
+function catalogSig(catalog: FunctionCatalogGroup[], custom: string[]) {
+  const active = catalog.flatMap(g => g.functions.filter(f => f.active).map(f => f.name)).sort()
+  return [...active, ...custom.slice().sort()].join('|')
+}
+
 export default function FunktionenSettings() {
   const t = useT()
   const [catalog, setCatalog] = useState<FunctionCatalogGroup[]>([])
@@ -26,7 +31,9 @@ export default function FunktionenSettings() {
   const [newCustom, setNewCustom] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+
+  const originalSigRef = useRef<string>('')
 
   useEffect(() => {
     Promise.all([
@@ -34,12 +41,62 @@ export default function FunktionenSettings() {
       getActiveFunctions().catch(() => [] as { name: string }[]),
     ]).then(([cat, active]) => {
       setCatalog(cat)
-      // Custom names = active names not in predefined catalog
       const predefinedNames = new Set(cat.flatMap(g => g.functions.map(f => f.name)))
       const custom = active.map(f => f.name).filter(n => !predefinedNames.has(n))
       setCustomNames(custom)
+      originalSigRef.current = catalogSig(cat, custom)
     }).finally(() => setLoading(false))
   }, [])
+
+  // Dirty detection
+  useEffect(() => {
+    if (loading) return
+    const dirty = catalogSig(catalog, customNames) !== originalSigRef.current
+    setIsDirty(dirty)
+  }, [catalog, customNames, loading])
+
+  // Global dirty flag for L2 nav guard
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
+  const saveEdit = async (): Promise<boolean> => {
+    setSaving(true)
+    try {
+      const catalogActive = catalog.flatMap(g => g.functions.filter(f => f.active).map(f => f.name))
+      await saveFunctionCatalog([...catalogActive, ...customNames])
+      originalSigRef.current = catalogSig(catalog, customNames)
+      setIsDirty(false)
+      return true
+    } catch {
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Always-fresh save reference (no deps — runs every render)
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
+  const cancelEdit = () => {
+    // Reload from server to reset state cleanly
+    setLoading(true)
+    Promise.all([
+      getFunctionCatalog(),
+      getActiveFunctions().catch(() => [] as { name: string }[]),
+    ]).then(([cat, active]) => {
+      setCatalog(cat)
+      const predefinedNames = new Set(cat.flatMap(g => g.functions.map(f => f.name)))
+      const custom = active.map(f => f.name).filter(n => !predefinedNames.has(n))
+      setCustomNames(custom)
+      originalSigRef.current = catalogSig(cat, custom)
+      setIsDirty(false)
+    }).finally(() => setLoading(false))
+  }
 
   const toggle = (groupIdx: number, fnName: string) => {
     setCatalog(prev => prev.map((g, gi) =>
@@ -72,19 +129,6 @@ export default function FunktionenSettings() {
     setCustomNames(prev => prev.filter(n => n !== name))
   }
 
-  const handleSave = async () => {
-    setSaving(true)
-    setSaved(false)
-    try {
-      const catalogActive = catalog.flatMap(g => g.functions.filter(f => f.active).map(f => f.name))
-      await saveFunctionCatalog([...catalogActive, ...customNames])
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const totalActive = catalog.flatMap(g => g.functions).filter(f => f.active).length + customNames.length
   const totalAll = catalog.flatMap(g => g.functions).length
 
@@ -97,30 +141,34 @@ export default function FunktionenSettings() {
   }
 
   return (
-    <div className="pt-fn-settings">
-      <div className="pt-fn-header">
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header + dirty bar */}
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <div>
-          <p className="pt-fn-subtitle">
+          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Funktionen</h1>
+          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
             {t('settings.funktionen.activeCount').replace('{active}', String(totalActive)).replace('{total}', String(totalAll))}
           </p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving
-            ? <><Loader2 size={14} className="animate-spin" /> {t('general.saving')}</>
-            : saved
-            ? <><Check size={14} /> {t('general.saved')}</>
-            : t('general.save')}
-        </button>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="pt-fn-groups">
         {catalog.map((group, gi) => {
-          const allOn = group.functions.every(f => f.active)
-          const someOn = group.functions.some(f => f.active)
           return (
             <div key={group.group} className="pt-fn-group">
               <div className="pt-fn-group-header">
@@ -177,15 +225,16 @@ export default function FunktionenSettings() {
               onChange={e => setNewCustom(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addCustom()}
               placeholder="Neue Funktion eingeben…"
-              className="flex-1 px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-              style={{ borderColor: '#3c3c3c', background: '#1e1e1e', color: '#d1d5db' }}
+              className="detail-input"
+              style={{ flex: 1, marginBottom: 0 }}
             />
             <button
               onClick={addCustom}
               disabled={!newCustom.trim() || customNames.includes(newCustom.trim())}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors flex-shrink-0"
+              className="btn btn-primary flex-shrink-0"
+              style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}
             >
-              + Hinzufügen
+              +
             </button>
           </div>
         </div>

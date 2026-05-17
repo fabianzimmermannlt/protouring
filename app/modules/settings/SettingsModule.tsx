@@ -94,17 +94,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
         )
 
       case 'contacts':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <UsersIcon className="w-5 h-5" />
-                {t('settings.contacts.title')}
-              </h3>
-              <FunktionenSettings />
-            </div>
-          </div>
-        )
+        return <FunktionenSettings />
 
       case 'guestlist':
         return (
@@ -2019,10 +2009,14 @@ function PartnerTypesSettings() {
   const t = useT()
   const [types, setTypes] = useState<PartnerType[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
-  const [toggling, setToggling] = useState<number | null>(null)
+  // pendingOverrides: buffered visibility changes { [id]: 0 | 1 }
+  const [pendingOverrides, setPendingOverrides] = useState<Record<number, 0 | 1>>({})
+
+  const isDirty = Object.keys(pendingOverrides).length > 0
 
   useEffect(() => {
     getPartnerTypes()
@@ -2030,13 +2024,55 @@ function PartnerTypesSettings() {
       .catch(() => setLoading(false))
   }, [])
 
-  async function handleToggle(t: PartnerType) {
-    setToggling(t.id)
+  // Global dirty flag for L2 nav guard
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
+  const saveEdit = async (): Promise<boolean> => {
+    if (!isDirty) return true
+    setSaving(true)
     try {
-      const updated = await togglePartnerTypeVisible(t.id, t.visible === 0)
-      setTypes(prev => prev.map(x => x.id === updated.id ? updated : x))
-    } catch { /* silent */ }
-    finally { setToggling(null) }
+      const entries = Object.entries(pendingOverrides) as [string, 0 | 1][]
+      await Promise.all(
+        entries.map(([idStr, visible]) =>
+          togglePartnerTypeVisible(Number(idStr), visible === 1)
+        )
+      )
+      setPendingOverrides({})
+      return true
+    } catch {
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Always-fresh save reference
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
+  const cancelEdit = () => {
+    setPendingOverrides({})
+  }
+
+  function handleToggle(pt: PartnerType) {
+    // Determine what the current visual state is (pending override or original)
+    const currentVisible = pendingOverrides[pt.id] !== undefined ? pendingOverrides[pt.id] : pt.visible
+    const nextVisible: 0 | 1 = currentVisible === 1 ? 0 : 1
+    // If this toggle returns to original state, remove from pending
+    if (nextVisible === pt.visible) {
+      setPendingOverrides(prev => {
+        const next = { ...prev }
+        delete next[pt.id]
+        return next
+      })
+    } else {
+      setPendingOverrides(prev => ({ ...prev, [pt.id]: nextVisible }))
+    }
   }
 
   async function handleAdd(nameOverride?: string) {
@@ -2057,7 +2093,12 @@ function PartnerTypesSettings() {
     if (!confirm(t('settings.partnerTypes.deleteConfirm'))) return
     try {
       await deletePartnerType(id)
-      setTypes(prev => prev.filter(t => t.id !== id))
+      setTypes(prev => prev.filter(pt => pt.id !== id))
+      setPendingOverrides(prev => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
     } catch { /* silent */ }
   }
 
@@ -2071,26 +2112,51 @@ function PartnerTypesSettings() {
   const allSuggested = new Set(PARTNER_SUGGESTIONS.flatMap(g => g.items))
   const uncategorized = types.filter(pt => !allSuggested.has(pt.name))
 
-  const renderTypeChip = (pt: PartnerType) => (
-    <button
-      key={pt.id}
-      className={`pt-fn-chip group ${pt.visible === 1 ? 'pt-fn-chip--active' : ''} ${toggling === pt.id ? 'opacity-40 pointer-events-none' : ''}`}
-      onClick={() => handleToggle(pt)}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-      title={pt.visible === 1 ? 'Klicken um auszublenden' : 'Klicken um einzublenden'}
-    >
-      {pt.name}
-      <span
-        className="opacity-0 group-hover:opacity-50 transition-opacity"
-        style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
-        onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
-      >✕</span>
-    </button>
-  )
+  const renderTypeChip = (pt: PartnerType) => {
+    const effectiveVisible = pendingOverrides[pt.id] !== undefined ? pendingOverrides[pt.id] : pt.visible
+    const hasPending = pendingOverrides[pt.id] !== undefined
+    return (
+      <button
+        key={pt.id}
+        className={`pt-fn-chip group ${effectiveVisible === 1 ? 'pt-fn-chip--active' : ''}`}
+        onClick={() => handleToggle(pt)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', outline: hasPending ? '1px dashed #888' : undefined }}
+        title={effectiveVisible === 1 ? 'Klicken um auszublenden' : 'Klicken um einzublenden'}
+      >
+        {pt.name}
+        <span
+          className="opacity-0 group-hover:opacity-50 transition-opacity"
+          style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+          onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
+        >✕</span>
+      </button>
+    )
+  }
 
   return (
-    <div className="pt-fn-settings">
-      <p className="pt-fn-subtitle">Aktive Chips sind im System sichtbar. Gestrichelte Chips sind Vorschläge — klicken zum Hinzufügen.</p>
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header + dirty bar */}
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
+        <div>
+          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Partner-Kategorien</h1>
+          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>Aktive Chips sind im System sichtbar. Gestrichelte Chips sind Vorschläge.</p>
+        </div>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="pt-fn-groups">
         {PARTNER_SUGGESTIONS.map(group => {
