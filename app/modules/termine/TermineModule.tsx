@@ -6,7 +6,7 @@ import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import type { TranslationKey } from '@/app/lib/i18n/translations/de'
-import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download } from 'lucide-react'
+import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download, Upload } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
@@ -1477,11 +1477,14 @@ export default function TerminePage() {
       {/* ---- LIST VIEW ---- */}
       {(
         <>
+          {/* Titel */}
+          <h1 className="text-xl font-semibold mb-1" style={{ color: '#e0e0e0' }}>Events</h1>
+
           {/* Toolbar: Neu + Suche + Filter + CSV */}
           <div className="flex items-center gap-2">
             {canCreate && (
               <button onClick={openNew} className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px' }}>
-                <Plus size={16} /> {t('appointments.new')}
+                {t('appointments.new')}
               </button>
             )}
             <input
@@ -1518,15 +1521,15 @@ export default function TerminePage() {
                 {t('appointments.calendar')}
               </button>
             )}
-            {/* CSV Export (Admin) */}
-            {isAdmin && (
+            {/* CSV Export + Import (Admin) */}
+            {isAdmin && (<>
               <button onClick={() => {
                 const q = (v: string | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
                 const rows = [
-                  ['Datum', 'Titel', 'Art', 'Stadt', 'Venue', 'Status Booking', 'Status Public'].join(';'),
-                  ...filteredTermine.map(t => [q(t.date), q(t.title), q(t.art), q(t.city), q(t.venueName), q(t.statusBooking), q(t.statusPublic)].join(';')),
+                  ['Datum', 'Titel', 'Art', 'Art_Sub', 'Stadt', 'Venue', 'Status_Booking', 'Status_Public', 'Notiz'].join(';'),
+                  ...filteredTermine.map(item => [q(item.date), q(item.title), q(item.art), q(item.artSub), q(item.city), q(item.venueName), q(item.statusBooking), q(item.statusPublic), q(item.notes)].join(';')),
                 ]
-                const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+                const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a'); a.href = url; a.download = 'termine.csv'; a.click()
                 URL.revokeObjectURL(url)
@@ -1534,7 +1537,39 @@ export default function TerminePage() {
                 className="btn btn-ghost flex-shrink-0" style={{ borderRadius: '4px' }} title="CSV Export">
                 <Download size={15} />
               </button>
-            )}
+              <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{ borderRadius: '4px' }} title="CSV Import">
+                <Upload size={15} />
+                <input type="file" accept=".csv" className="hidden" onChange={async e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const text = await file.text()
+                  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+                  const header = lines[0].split(';').map(h => h.replace(/"/g, '').trim())
+                  const col = (row: string[], name: string) => row[header.indexOf(name)]?.replace(/^"|"$/g, '').trim() ?? ''
+                  const created: Termin[] = []
+                  for (const line of lines.slice(1)) {
+                    const row = line.split(';')
+                    const date = col(row, 'Datum')
+                    const title = col(row, 'Titel')
+                    if (!date || !title) continue
+                    try {
+                      const termin = await createTermin({
+                        date, title,
+                        art: col(row, 'Art') || undefined,
+                        art_sub: col(row, 'Art_Sub') || undefined,
+                        city: col(row, 'Stadt') || undefined,
+                        status_booking: col(row, 'Status_Booking') || 'Idee',
+                        status_public: col(row, 'Status_Public') || 'nicht öffentlich',
+                        notes: col(row, 'Notiz') || undefined,
+                      })
+                      created.push(termin)
+                    } catch { /* skip invalid rows */ }
+                  }
+                  if (created.length > 0) setTermine(prev => [...prev, ...created])
+                  e.target.value = ''
+                }} />
+              </label>
+            </>)}
           </div>
 
           {/* Kalender-View */}
