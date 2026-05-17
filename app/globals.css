@@ -1728,13 +1728,25 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 }
 
 /* Detail View — Underline Input, L2 dark overrides */
-.l2-content .detail-input {
+.l2-content .detail-input,
+.l2-content .pt-card-body .detail-input,
+.l2-content .pt-card-body input.detail-input[type="text"],
+.l2-content .pt-card-body input.detail-input[type="email"],
+.l2-content .pt-card-body input.detail-input[type="tel"],
+.l2-content .pt-card-body textarea.detail-input {
   color: #e0e0e0 !important;
-  border-bottom-color: #555 !important;
+  border: none !important;
+  border-bottom: 1px solid #555 !important;
   background: transparent !important;
+  border-radius: 0 !important;
 }
-.l2-content .detail-input:focus {
+.l2-content .detail-input:focus,
+.l2-content .pt-card-body .detail-input:focus,
+.l2-content .pt-card-body input.detail-input:focus,
+.l2-content .pt-card-body textarea.detail-input:focus {
+  border: none !important;
   border-bottom: 2px solid #60a5fa !important;
+  outline: none !important;
 }
 .l2-content .detail-input::placeholder {
   color: #555 !important;
