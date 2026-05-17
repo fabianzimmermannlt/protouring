@@ -2175,7 +2175,17 @@ function PartnerTypesSettings() {
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <div>
           <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Partner-Kategorien</h1>
-          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>Aktive Chips sind im System sichtbar.</p>
+          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
+            {(() => {
+              const totalAll = PARTNER_SUGGESTIONS.flatMap(g => g.items).length + uncategorized.length
+              const activeExisting = types.filter(pt => {
+                const ov = pendingOverrides[pt.id]
+                return ov !== undefined ? ov === 1 : pt.visible === 1
+              }).length
+              const activeTotal = activeExisting + pendingCreates.length
+              return `${activeTotal} von ${totalAll} aktiv`
+            })()}
+          </p>
         </div>
         {isDirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -2194,16 +2204,40 @@ function PartnerTypesSettings() {
       </div>
 
       <div className="pt-fn-groups">
-        {PARTNER_SUGGESTIONS.map(group => (
+        {PARTNER_SUGGESTIONS.map(group => {
+          const toggleGroup = (on: boolean) => {
+            const nextOverrides: Record<number, 0 | 1> = { ...pendingOverrides }
+            const nextCreates = new Set(pendingCreates)
+            group.items.forEach(name => {
+              const existing = types.find(pt => pt.name === name)
+              if (existing) {
+                const target: 0 | 1 = on ? 1 : 0
+                if (target !== existing.visible) nextOverrides[existing.id] = target
+                else delete nextOverrides[existing.id]
+              } else {
+                if (on) nextCreates.add(name)
+                else nextCreates.delete(name)
+              }
+            })
+            setPendingOverrides(nextOverrides)
+            setPendingCreates(Array.from(nextCreates))
+          }
+          return (
           <div key={group.group} className="pt-fn-group">
             <div className="pt-fn-group-header">
               <span className="pt-fn-group-name">{group.group}</span>
+              <div className="pt-fn-group-actions">
+                <button className="pt-fn-group-toggle" onClick={() => toggleGroup(true)}>Alle an</button>
+                <span className="pt-fn-group-divider">·</span>
+                <button className="pt-fn-group-toggle" onClick={() => toggleGroup(false)}>Alle aus</button>
+              </div>
             </div>
             <div className="pt-fn-chips">
               {group.items.map(renderCatalogChip)}
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {/* Eigene — nicht im Katalog, nur diese haben X */}
         <div className="pt-fn-group">
