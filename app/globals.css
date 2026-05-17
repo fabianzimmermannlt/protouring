@@ -503,6 +503,38 @@ body {
 }
 
 /* ============================================================
+   PT-Detail Tab Bar (TerminDetailHeader)
+   ============================================================ */
+
+.pt-detail-tab {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: #666;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+.pt-detail-tab:hover {
+  color: #ccc;
+  background: #2d2d2d;
+}
+.pt-detail-tab.active {
+  color: #e0e0e0;
+  font-weight: 500;
+  border-bottom: 2px solid #3b82f6;
+  background: none;
+}
+.pt-detail-tab.active:hover {
+  background: none;
+}
+
+/* ============================================================
    PT-Travel — Reisegruppe pro Termin
    ============================================================ */
 

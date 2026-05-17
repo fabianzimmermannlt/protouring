@@ -779,12 +779,14 @@ function TerminDetailHeader({
   termine,
   selectedView,
   onNavigate,
+  isAdmin,
   isEditor,
 }: {
   termin: Termin
   termine: Termin[]
   selectedView: string
   onNavigate: (id: number) => void
+  isAdmin: boolean
   isEditor: boolean
 }) {
   const idx = termine.findIndex(t => t.id === termin.id)
@@ -794,23 +796,37 @@ function TerminDetailHeader({
   const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader ? termin.title : locationLabel || termin.title
 
+  // Alle verfügbaren Views — entspricht L3 + Advance Sheet + Gästeliste
   const tabs = [
-    { id: 'details',       label: 'Details' },
-    { id: 'travelparty',   label: 'Reisegruppe' },
-    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-    { id: 'guestlist',     label: 'Gästeliste' },
-  ]
+    { id: 'details2',    label: 'Details',      always: true },
+    { id: 'travel',      label: 'Travel',       always: true },
+    { id: 'schedule',    label: 'Schedule',     always: true },
+    { id: 'hospitality', label: 'Hospitality',  always: true },
+    { id: 'advancing',   label: 'Advancing',    always: true },
+    { id: 'agreements',  label: 'Agreements',   always: true },
+    { id: 'travelparty', label: 'Reisegruppe',  always: true },
+    { id: 'briefing',    label: 'Briefing',     always: true },
+    { id: 'advance-sheet', label: 'Advance Sheet', editorOnly: true },
+    { id: 'guestlist',   label: 'Gästeliste',   always: true },
+  ].filter(t => {
+    if (t.editorOnly) return isEditor
+    return true
+  })
 
   const changeView = (view: string) => {
     window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view } }))
   }
+
+  // Normalize: 'details' maps to 'details2' in this header
+  const activeTab = selectedView === 'details' ? 'details2' : selectedView
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
       {/* Back link */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
-        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#555', marginBottom: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        className="pt-detail-back"
+        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#555', marginBottom: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.12s' }}
         onMouseOver={e => (e.currentTarget.style.color = '#999')}
         onMouseOut={e => (e.currentTarget.style.color = '#555')}
       >
@@ -823,7 +839,7 @@ function TerminDetailHeader({
         <button
           onClick={() => prev && onNavigate(prev.id)}
           disabled={!prev}
-          style={{ color: '#555', background: 'none', border: 'none', cursor: prev ? 'pointer' : 'default', padding: '0.25rem', opacity: prev ? 1 : 0.2, flexShrink: 0 }}
+          style={{ color: '#555', background: 'none', border: 'none', cursor: prev ? 'pointer' : 'default', padding: '0.25rem', opacity: prev ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s' }}
           onMouseOver={e => { if (prev) e.currentTarget.style.color = '#aaa' }}
           onMouseOut={e => { e.currentTarget.style.color = '#555' }}
         >
@@ -842,7 +858,7 @@ function TerminDetailHeader({
         <button
           onClick={() => next && onNavigate(next.id)}
           disabled={!next}
-          style={{ color: '#555', background: 'none', border: 'none', cursor: next ? 'pointer' : 'default', padding: '0.25rem', opacity: next ? 1 : 0.2, flexShrink: 0 }}
+          style={{ color: '#555', background: 'none', border: 'none', cursor: next ? 'pointer' : 'default', padding: '0.25rem', opacity: next ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s' }}
           onMouseOver={e => { if (next) e.currentTarget.style.color = '#aaa' }}
           onMouseOut={e => { e.currentTarget.style.color = '#555' }}
         >
@@ -851,34 +867,16 @@ function TerminDetailHeader({
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #333' }}>
-        {tabs.map(tab => {
-          const active = selectedView === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => changeView(tab.id)}
-              style={{
-                padding: '0.5rem 1.125rem',
-                fontSize: '0.8125rem',
-                fontWeight: active ? 500 : 400,
-                color: active ? '#e0e0e0' : '#666',
-                borderTop: 'none',
-                borderLeft: 'none',
-                borderRight: 'none',
-                borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-                marginBottom: '-1px',
-                background: 'none',
-                cursor: 'pointer',
-                transition: 'color 0.15s',
-              }}
-              onMouseOver={e => { if (!active) e.currentTarget.style.color = '#bbb' }}
-              onMouseOut={e => { if (!active) e.currentTarget.style.color = '#666' }}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
+      <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => changeView(tab.id)}
+            className={`pt-detail-tab${activeTab === tab.id ? ' active' : ''}`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -1564,6 +1562,7 @@ export default function TerminePage() {
             termine={sortedTermine}
             selectedView={selectedView}
             onNavigate={id => selectTermin(id, selectedView)}
+            isAdmin={isAdmin}
             isEditor={isEditor}
           />
         )}
