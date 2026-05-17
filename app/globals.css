@@ -1565,10 +1565,10 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   border-bottom-color: #4a4a4a !important;
 }
 .l2-content .pt-card-title {
-  color: #d4d4d4 !important;
+  color: #b0b0b0 !important;
 }
 .l2-content .pt-card-title svg {
-  color: #d4d4d4 !important;
+  color: #b0b0b0 !important;
 }
 /* KV row dividers */
 .l2-content .pt-card-body [class*="border-gray-50"],
