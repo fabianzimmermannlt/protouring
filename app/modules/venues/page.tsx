@@ -52,8 +52,16 @@ export default function VenuesPage() {
       const id = (e as CustomEvent<{ id: string }>).detail?.id
       if (id) setSelectedVenueId(id)
     }
+    const updateHandler = (e: Event) => {
+      const updated = (e as CustomEvent<Venue>).detail
+      if (updated) setVenues(prev => prev.map(v => v.id === updated.id ? updated : v))
+    }
     window.addEventListener('select-venue', handler)
-    return () => window.removeEventListener('select-venue', handler)
+    window.addEventListener('venue-updated', updateHandler)
+    return () => {
+      window.removeEventListener('select-venue', handler)
+      window.removeEventListener('venue-updated', updateHandler)
+    }
   }, [])
 
   const loadVenues = useCallback(async () => {

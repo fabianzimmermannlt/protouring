@@ -110,11 +110,17 @@ export default function HotelsPage() {
         setSelectedHotelId(null)
       }
     }
+    const updateHandler = (e: Event) => {
+      const updated = (e as CustomEvent<Hotel>).detail
+      if (updated) setHotels(prev => prev.map(h => h.id === updated.id ? updated : h))
+    }
     window.addEventListener('select-hotel', selectHandler)
     window.addEventListener('hotel-deleted', deleteHandler)
+    window.addEventListener('hotel-updated', updateHandler)
     return () => {
       window.removeEventListener('select-hotel', selectHandler)
       window.removeEventListener('hotel-deleted', deleteHandler)
+      window.removeEventListener('hotel-updated', updateHandler)
     }
   }, [])
 

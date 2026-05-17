@@ -48,11 +48,17 @@ export default function VehiclesPage() {
         setSelectedVehicleId(null)
       }
     }
+    const updateHandler = (e: Event) => {
+      const updated = (e as CustomEvent<Vehicle>).detail
+      if (updated) setVehicles(prev => prev.map(v => v.id === updated.id ? updated : v))
+    }
     window.addEventListener('select-vehicle', selectHandler)
     window.addEventListener('vehicle-deleted', deleteHandler)
+    window.addEventListener('vehicle-updated', updateHandler)
     return () => {
       window.removeEventListener('select-vehicle', selectHandler)
       window.removeEventListener('vehicle-deleted', deleteHandler)
+      window.removeEventListener('vehicle-updated', updateHandler)
     }
   }, [])
 

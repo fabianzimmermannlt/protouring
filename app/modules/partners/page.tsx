@@ -87,11 +87,17 @@ export default function PartnersPage() {
         setSelectedPartnerId(null)
       }
     }
+    const updateHandler = (e: Event) => {
+      const updated = (e as CustomEvent<Partner>).detail
+      if (updated) setPartners(prev => prev.map(p => p.id === updated.id ? updated : p))
+    }
     window.addEventListener('select-partner', selectHandler)
     window.addEventListener('partner-deleted', deleteHandler)
+    window.addEventListener('partner-updated', updateHandler)
     return () => {
       window.removeEventListener('select-partner', selectHandler)
       window.removeEventListener('partner-deleted', deleteHandler)
+      window.removeEventListener('partner-updated', updateHandler)
     }
   }, [])
 
