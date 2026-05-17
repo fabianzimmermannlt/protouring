@@ -14,12 +14,11 @@ function IField({ label, value, onChange, placeholder = '', readOnly = false }: 
 }) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <label className="detail-label">{label}</label>
       <input
         type="text" value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} readOnly={readOnly}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white"
-        style={readOnly ? { cursor: 'default', opacity: 0.6 } : {}}
+        className="detail-input"
       />
     </div>
   )
@@ -30,12 +29,11 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
 }) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <label className="detail-label">{label}</label>
       <textarea
         value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} rows={3} readOnly={readOnly}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none"
-        style={readOnly ? { cursor: 'default', opacity: 0.6 } : {}}
+        className="detail-input resize-none"
       />
     </div>
   )

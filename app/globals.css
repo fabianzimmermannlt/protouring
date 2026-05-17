@@ -1693,6 +1693,59 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   opacity: 0.7;
 }
 
+/* Detail View — Underline Input Style */
+.detail-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #d1d5db;
+  border-radius: 0;
+  padding: 4px 0;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  transition: border-bottom-color 0.15s;
+}
+.detail-input:focus {
+  border-bottom: 2px solid #9ca3af;
+}
+.detail-input::placeholder {
+  color: #d1d5db;
+}
+.detail-input[readonly] {
+  cursor: default;
+  color: #6b7280;
+  border-bottom-color: #f3f4f6;
+}
+.detail-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1px;
+}
+
+/* Detail View — Underline Input, L2 dark overrides */
+.l2-content .detail-input {
+  color: #e0e0e0 !important;
+  border-bottom-color: #555 !important;
+}
+.l2-content .detail-input:focus {
+  border-bottom: 2px solid #b0b0b0 !important;
+}
+.l2-content .detail-input::placeholder {
+  color: #555 !important;
+}
+.l2-content .detail-input[readonly] {
+  color: #6b7280 !important;
+  border-bottom-color: #3c3c3c !important;
+}
+.l2-content .detail-label {
+  color: #6b7280 !important;
+}
+
 /* QuickCreate Modal — dark form-input override (for NameAddressAutocomplete) */
 .qcm-dark .form-input,
 .qcm-dark .form-input:focus {
