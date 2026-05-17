@@ -6,7 +6,7 @@ import {
   CheckCircleIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
-import { Loader2, X, Save, Download, Upload, Plus } from 'lucide-react'
+import { Loader2, X, Save, Download, Upload, Plus, ArrowLeft } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
@@ -20,6 +20,7 @@ import {
 import { useSortable } from '@/app/hooks/useSortable'
 import { parseCSV, col } from '@/lib/csvParser'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 const CONTACT_COLS: [string, keyof Contact][] = [
   ['Vorname', 'firstName'],
@@ -95,7 +96,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/contacts\/([^/]+)/)
     if (m?.[1]) return m[1]
-    return localStorage.getItem('pt_contacts_last_id') ?? null
+    return null
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
@@ -157,11 +158,17 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         localStorage.removeItem('pt_contacts_last_id')
       }
     }
+    const updateHandler = (e: Event) => {
+      const updated = (e as CustomEvent<Contact>).detail
+      if (updated) setContacts(prev => prev.map(c => String(c.id) === String(updated.id) ? updated : c))
+    }
     window.addEventListener('select-contact', selectHandler)
     window.addEventListener('contact-deleted', deleteHandler)
+    window.addEventListener('contact-updated', updateHandler)
     return () => {
       window.removeEventListener('select-contact', selectHandler)
       window.removeEventListener('contact-deleted', deleteHandler)
+      window.removeEventListener('contact-updated', updateHandler)
     }
   }, [])
 
@@ -326,9 +333,15 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   })
 
   const isMobile = useIsMobile()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
 
   const handleEdit = (contact: Contact) => {
-    setEditingContact(contact)
+    if (isL2) {
+      setSelectedContactId(String(contact.id))
+    } else {
+      setEditingContact(contact)
+    }
   }
 
   const handleCreateGast = async (profileData: ProfileData) => {
@@ -389,8 +402,22 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const renderContent = () => {
     switch (activeSubTab) {
       case 'overview':
-        // Desktop SPA: show detail inline
-        if (!isMobile && selectedContactId) {
+        // Desktop L2: back button + detail
+        if (!isMobile && isL2 && selectedContactId) {
+          return (
+            <div>
+              <button
+                onClick={() => { setSelectedContactId(null); localStorage.removeItem('pt_contacts_last_id'); loadContacts() }}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+              </button>
+              <ContactDetailContent contactId={selectedContactId} onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)} />
+            </div>
+          )
+        }
+        // Desktop L3 SPA: show detail inline (sidebar handles navigation)
+        if (!isMobile && !isL2 && selectedContactId) {
           return <ContactDetailContent contactId={selectedContactId} onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)} />
         }
         return (
