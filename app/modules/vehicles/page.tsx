@@ -28,7 +28,7 @@ export default function VehiclesPage() {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/vehicles\/([^/]+)/)
     if (m?.[1]) return m[1]
-    return localStorage.getItem('pt_vehicles_last_id') ?? null
+    return null
   })
 
   useEffect(() => {

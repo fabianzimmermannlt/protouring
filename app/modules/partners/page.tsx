@@ -28,7 +28,7 @@ export default function PartnersPage() {
     if (typeof window === 'undefined') return null
     const m = window.location.pathname.match(/\/partners\/([^/]+)/)
     if (m?.[1]) return m[1]
-    return localStorage.getItem('pt_partners_last_id') ?? null
+    return null
   })
   const [formData, setFormData] = useState<PartnerFormData>({
     type: '',
