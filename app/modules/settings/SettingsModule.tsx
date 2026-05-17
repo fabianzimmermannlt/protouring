@@ -2068,86 +2068,84 @@ function PartnerTypesSettings() {
   )
 
   const existingNames = new Set(types.map(pt => pt.name))
+  const allSuggested = new Set(PARTNER_SUGGESTIONS.flatMap(g => g.items))
+  const uncategorized = types.filter(pt => !allSuggested.has(pt.name))
+
+  const renderTypeChip = (pt: PartnerType) => (
+    <button
+      key={pt.id}
+      className={`pt-fn-chip group ${pt.visible === 1 ? 'pt-fn-chip--active' : ''} ${toggling === pt.id ? 'opacity-40 pointer-events-none' : ''}`}
+      onClick={() => handleToggle(pt)}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+      title={pt.visible === 1 ? 'Klicken um auszublenden' : 'Klicken um einzublenden'}
+    >
+      {pt.name}
+      <span
+        className="opacity-0 group-hover:opacity-50 transition-opacity"
+        style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+        onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
+      >✕</span>
+    </button>
+  )
 
   return (
     <div className="pt-fn-settings">
+      <p className="pt-fn-subtitle">Aktive Chips sind im System sichtbar. Gestrichelte Chips sind Vorschläge — klicken zum Hinzufügen.</p>
 
-      {/* Aktive Kategorien */}
-      <div className="pt-fn-group">
-        <div className="pt-fn-group-header">
-          <span className="pt-fn-group-name">Deine Kategorien</span>
-        </div>
-        <div className="pt-fn-chips" style={{ minHeight: '28px' }}>
-          {types.length === 0 && (
-            <span className="pt-fn-subtitle" style={{ fontSize: '0.78rem' }}>Noch keine Kategorien — füge unten welche hinzu</span>
-          )}
-          {types.map(pt => (
-            <button
-              key={pt.id}
-              className={`pt-fn-chip group ${pt.visible === 1 ? 'pt-fn-chip--active' : ''} ${toggling === pt.id ? 'opacity-40 pointer-events-none' : ''}`}
-              onClick={() => handleToggle(pt)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-              title={pt.visible === 1 ? 'Klicken um auszublenden' : 'Klicken um einzublenden'}
-            >
-              {pt.name}
-              <span
-                className="opacity-0 group-hover:opacity-50 transition-opacity"
-                style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
-                onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
-                title={t('general.delete')}
-              >✕</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Eigene Eingabe */}
-        <div className="flex gap-2 items-center mt-3" style={{ maxWidth: '380px' }}>
-          <input
-            type="text" value={newName} onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleAdd()}
-            placeholder="Eigene Kategorie…"
-            className="detail-input" style={{ flex: 1, marginBottom: 0 }}
-          />
-          <button onClick={() => handleAdd()} disabled={adding || !newName.trim()}
-            className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
-            {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
-          </button>
-        </div>
-        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-      </div>
-
-      {/* Vorschläge */}
-      {PARTNER_SUGGESTIONS.some(g => g.items.some(item => !existingNames.has(item))) && (
-        <div className="pt-fn-groups">
-          <p className="pt-fn-subtitle" style={{ marginBottom: '0.25rem' }}>
-            Vorschläge — klicken zum Hinzufügen
-          </p>
-          {PARTNER_SUGGESTIONS.map(group => {
-            const available = group.items.filter(item => !existingNames.has(item))
-            if (available.length === 0) return null
-            return (
-              <div key={group.group} className="pt-fn-group">
-                <div className="pt-fn-group-header">
-                  <span className="pt-fn-group-name">{group.group}</span>
-                </div>
-                <div className="pt-fn-chips">
-                  {available.map(item => (
-                    <button
-                      key={item}
-                      className="pt-fn-chip pt-suggestion-chip"
-                      onClick={() => handleAdd(item)}
-                      disabled={adding}
-                      title="Klicken zum Hinzufügen"
-                    >
-                      + {item}
-                    </button>
-                  ))}
-                </div>
+      <div className="pt-fn-groups">
+        {PARTNER_SUGGESTIONS.map(group => {
+          const groupTypes = types.filter(pt => group.items.includes(pt.name))
+          const suggestions = group.items.filter(item => !existingNames.has(item))
+          if (groupTypes.length === 0 && suggestions.length === 0) return null
+          return (
+            <div key={group.group} className="pt-fn-group">
+              <div className="pt-fn-group-header">
+                <span className="pt-fn-group-name">{group.group}</span>
               </div>
-            )
-          })}
+              <div className="pt-fn-chips">
+                {groupTypes.map(renderTypeChip)}
+                {suggestions.map(item => (
+                  <button
+                    key={item}
+                    className="pt-fn-chip pt-suggestion-chip"
+                    onClick={() => handleAdd(item)}
+                    disabled={adding}
+                    title="Klicken zum Hinzufügen"
+                  >
+                    + {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Eigene — nicht in Vorschlagsliste */}
+        <div className="pt-fn-group">
+          <div className="pt-fn-group-header">
+            <span className="pt-fn-group-name">Eigene</span>
+          </div>
+          <div className="pt-fn-chips" style={{ marginBottom: '0.6rem' }}>
+            {uncategorized.length === 0 && (
+              <span className="pt-fn-subtitle" style={{ fontSize: '0.78rem' }}>Noch keine eigenen Einträge</span>
+            )}
+            {uncategorized.map(renderTypeChip)}
+          </div>
+          <div className="flex gap-2 items-center" style={{ maxWidth: '380px' }}>
+            <input
+              type="text" value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="Eigene Kategorie…"
+              className="detail-input" style={{ flex: 1, marginBottom: 0 }}
+            />
+            <button onClick={() => handleAdd()} disabled={adding || !newName.trim()}
+              className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
+              {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
         </div>
-      )}
+      </div>
 
     </div>
   )
