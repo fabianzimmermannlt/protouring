@@ -1221,75 +1221,31 @@ export function TerminDetail2({
         </div>
       )}
 
-      {/* Zeile 1: Event + Schnellzugriff */}
-      <section>
-        <SectionLabel label="Event" />
-        <div className="grid grid-cols-3 gap-4">
-          <VeranstaltungCard
-            key={termin.id}
-            termin={termin}
-            isAdmin={isAdmin}
-            onUpdated={onUpdated}
-          />
-          <ToDoCard terminId={termin.id} />
-          <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
-            <ContentBoard
-              entityType="termin_private"
-              entityId={`${termin.id}_${currentUserId}`}
-              title=""
-              isAdmin={true}
-              singleItem
-              fixedTitle="Private Notiz"
-              showTitleField={false}
-              modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
-              hideEmptyButton
-              allowDelete={false}
-              className="flex-1"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Venue-Bereich: Verlinkung + Details + Lokale Ansprechpartner */}
-      <section>
-        <VenueInfoSection
-          venueId={termin.venueId ?? null}
-          venueName={termin.venueName}
-          isAdmin={isAdmin}
+      {/* Event-Daten + ToDo + Private Notiz */}
+      <div className="grid grid-cols-3 gap-4">
+        <VeranstaltungCard
+          key={termin.id}
           termin={termin}
-          onTerminUpdated={onUpdated}
+          isAdmin={isAdmin}
+          onUpdated={onUpdated}
         />
-        {termin.venueId && (
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-0.5">Lokale Ansprechpartner</div>
-            <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} layout="grid-3" />
-          </div>
-        )}
-      </section>
-
-      {/* Partner */}
-      <section>
-        <SectionLabel label="Partner" />
-        <div className="grid grid-cols-3 gap-4">
-          <PartnerCard
-            key={`partner-${termin.id}`}
-            termin={termin}
-            isAdmin={isAdmin}
-            onUpdated={onUpdated}
+        <ToDoCard terminId={termin.id} />
+        <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
+          <ContentBoard
+            entityType="termin_private"
+            entityId={`${termin.id}_${currentUserId}`}
+            title=""
+            isAdmin={true}
+            singleItem
+            fixedTitle="Private Notiz"
+            showTitleField={false}
+            modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+            hideEmptyButton
+            allowDelete={false}
+            className="flex-1"
           />
         </div>
-      </section>
-
-      {/* Kommunikation */}
-      <section>
-        <SectionLabel label="Kommunikation" />
-        <div className="grid grid-cols-3 gap-4">
-          {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
-          <div className={canSeeFiles ? 'col-span-2' : 'col-span-3'}>
-            <TerminChatCard terminId={termin.id} />
-          </div>
-        </div>
-      </section>
+      </div>
 
     </div>
   )
