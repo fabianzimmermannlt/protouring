@@ -155,21 +155,9 @@ export default function HotelsPage() {
 
   // Desktop L2: Detail-Ansicht wenn Hotel selektiert
   if (!isMobile && isL2 && selectedHotelId) {
-    return (
-      <div>
-        <button
-          onClick={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id'); getHotels().then(setHotels).catch(() => {}) }}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Zurück zur Übersicht
-        </button>
-        <HotelDetailContent hotelId={selectedHotelId} onNotFound={() => {
-          localStorage.removeItem('pt_hotels_last_id')
-          setSelectedHotelId(null)
-        }} />
-      </div>
-    )
+    return <HotelDetailContent hotelId={selectedHotelId}
+      onNotFound={() => { localStorage.removeItem('pt_hotels_last_id'); setSelectedHotelId(null) }}
+      onBack={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id'); getHotels().then(setHotels).catch(() => {}) }} />
   }
 
   return (

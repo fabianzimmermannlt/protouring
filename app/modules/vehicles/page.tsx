@@ -91,18 +91,9 @@ export default function VehiclesPage() {
   }
 
   if (!isMobile && isL2 && selectedVehicleId) {
-    return (
-      <div>
-        <button onClick={() => { setSelectedVehicleId(null); localStorage.removeItem('pt_vehicles_last_id'); getVehicles().then(setVehicles).catch(() => {}) }}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
-        </button>
-        <VehicleDetailContent vehicleId={selectedVehicleId} onNotFound={() => {
-          localStorage.removeItem('pt_vehicles_last_id')
-          setSelectedVehicleId(null)
-        }} />
-      </div>
-    )
+    return <VehicleDetailContent vehicleId={selectedVehicleId}
+      onNotFound={() => { localStorage.removeItem('pt_vehicles_last_id'); setSelectedVehicleId(null) }}
+      onBack={() => { setSelectedVehicleId(null); localStorage.removeItem('pt_vehicles_last_id'); getVehicles().then(setVehicles).catch(() => {}) }} />
   }
 
   return (

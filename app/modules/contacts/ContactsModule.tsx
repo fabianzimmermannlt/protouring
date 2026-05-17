@@ -404,17 +404,9 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       case 'overview':
         // Desktop L2: back button + detail
         if (!isMobile && isL2 && selectedContactId) {
-          return (
-            <div>
-              <button
-                onClick={() => { setSelectedContactId(null); localStorage.removeItem('pt_contacts_last_id'); loadContacts() }}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
-              </button>
-              <ContactDetailContent contactId={selectedContactId} onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)} />
-            </div>
-          )
+          return <ContactDetailContent contactId={selectedContactId}
+            onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)}
+            onBack={() => { setSelectedContactId(null); localStorage.removeItem('pt_contacts_last_id'); loadContacts() }} />
         }
         // Desktop L3 SPA: show detail inline (sidebar handles navigation)
         if (!isMobile && !isL2 && selectedContactId) {
