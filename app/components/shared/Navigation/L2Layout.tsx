@@ -241,7 +241,15 @@ export function L2Layout({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const guardDirtyNav = (): boolean => {
+    if ((window as any).__pt_isDirty) {
+      return window.confirm('Du hast ungespeicherte Änderungen. Trotzdem wechseln? Die Änderungen gehen verloren.')
+    }
+    return true
+  }
+
   const handleNav = (id: string) => {
+    if (!guardDirtyNav()) return
     if (id === 'settings') { onTabChange('settings', 'profil'); return }
     let defaultSub: string | undefined
     if (id === 'contacts') defaultSub = 'overview'
@@ -404,7 +412,7 @@ export function L2Layout({
             {subs.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => onSubTabChange?.(sub.id)}
+                onClick={() => { if (guardDirtyNav()) onSubTabChange?.(sub.id) }}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'pt-nav-sub-active'
@@ -432,7 +440,7 @@ export function L2Layout({
         {visible.map(item => (
           <button
             key={item.id}
-            onClick={() => onSubTabChange?.(item.id)}
+            onClick={() => { if (guardDirtyNav()) onSubTabChange?.(item.id) }}
             className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
               activeSubTab === item.id
                 ? 'bg-gray-200 text-gray-900 font-medium'

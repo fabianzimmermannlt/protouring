@@ -142,6 +142,11 @@ export function ContactDetailContent({ contactId, onInvite, onBack }: { contactI
 
   const handleBack = () => { if (isDirty) setShowDirtyDialog(true); else onBack?.() }
 
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
   const d = (k: keyof Contact) => String(draft[k] ?? '')
   const db = (k: keyof Contact) => Boolean(draft[k])
   const ro = !isEditor

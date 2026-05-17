@@ -109,6 +109,11 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack }: { hotelId: s
 
   const handleBack = () => { if (isDirty) setShowDirtyDialog(true); else onBack?.() }
 
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
   const ro = !isEditor
 
   const titleColor = isL2 ? '#e0e0e0' : '#111827'
