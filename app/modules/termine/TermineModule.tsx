@@ -6,7 +6,7 @@ import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import type { TranslationKey } from '@/app/lib/i18n/translations/de'
-import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
+import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
@@ -1477,70 +1477,65 @@ export default function TerminePage() {
       {/* ---- LIST VIEW ---- */}
       {(
         <>
-          {/* Header: Neuer Termin + Filter-Buttons */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            {canCreate ? (
-              <button onClick={openNew} className="btn btn-primary">
+          {/* Toolbar: Neu + Suche + Filter + CSV */}
+          <div className="flex items-center gap-2">
+            {canCreate && (
+              <button onClick={openNew} className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px' }}>
                 <Plus size={16} /> {t('appointments.new')}
               </button>
-            ) : <div />}
-
-            {/* Filter-Gruppe */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-              {(['aktuell', 'vergangen', 'alle'] as const).map(f => {
-                const labels = {
-                  aktuell:  t('appointments.filter.current'),
-                  vergangen: t('appointments.filter.past'),
-                  alle:     t('appointments.filter.all'),
-                }
-                const active = listView === 'list' && termineFilter === f
-                return (
-                  <button
-                    key={f}
-                    onClick={() => {
-                      setTermineFilter(f)
-                      setListView('list')
-                      window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f } }))
-                      window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
-                    }}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {labels[f]}
-                  </button>
-                )
-              })}
-              {canDo(effectiveRole, CAN_SEE_KALENDER) && (
-                <button
-                  onClick={() => {
-                    setListView('calendar')
-                    window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
-                  }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    listView === 'calendar'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {t('appointments.calendar')}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Search */}
-          {listView === 'list' && (
+            )}
             <input
               type="text"
               placeholder={t('appointments.search')}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
+              onChange={e => setSearchTerm(e.target.value)}
+              className="search-input l2-search"
+              style={{ marginBottom: 0, borderRadius: '4px', flex: 1 }}
             />
-          )}
+            {/* Filter-Pills */}
+            {(['aktuell', 'vergangen', 'alle'] as const).map(f => {
+              const labels = { aktuell: t('appointments.filter.current'), vergangen: t('appointments.filter.past'), alle: t('appointments.filter.all') }
+              const active = listView === 'list' && termineFilter === f
+              return (
+                <button key={f} onClick={() => {
+                  setTermineFilter(f); setListView('list')
+                  window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f } }))
+                  window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
+                }}
+                  className="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded transition-colors"
+                  style={{ background: active ? '#3a3a3a' : 'transparent', color: active ? '#e0e0e0' : '#888', border: '1px solid', borderColor: active ? '#555' : 'transparent' }}>
+                  {labels[f]}
+                </button>
+              )
+            })}
+            {canDo(effectiveRole, CAN_SEE_KALENDER) && (
+              <button onClick={() => {
+                setListView('calendar')
+                window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
+              }}
+                className="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded transition-colors"
+                style={{ background: listView === 'calendar' ? '#3a3a3a' : 'transparent', color: listView === 'calendar' ? '#e0e0e0' : '#888', border: '1px solid', borderColor: listView === 'calendar' ? '#555' : 'transparent' }}>
+                {t('appointments.calendar')}
+              </button>
+            )}
+            {/* CSV Export (Admin) */}
+            {isAdmin && (
+              <button onClick={() => {
+                const q = (v: string | null | undefined) => `"${String(v ?? '').replace(/"/g, '""')}"`
+                const rows = [
+                  ['Datum', 'Titel', 'Art', 'Stadt', 'Venue', 'Status Booking', 'Status Public'].join(';'),
+                  ...filteredTermine.map(t => [q(t.date), q(t.title), q(t.art), q(t.city), q(t.venueName), q(t.statusBooking), q(t.statusPublic)].join(';')),
+                ]
+                const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a'); a.href = url; a.download = 'termine.csv'; a.click()
+                URL.revokeObjectURL(url)
+              }}
+                className="btn btn-ghost flex-shrink-0" style={{ borderRadius: '4px' }} title="CSV Export">
+                <Download size={15} />
+              </button>
+            )}
+          </div>
 
           {/* Kalender-View */}
           {listView === 'calendar' && (

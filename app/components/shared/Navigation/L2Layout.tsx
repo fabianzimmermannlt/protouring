@@ -314,49 +314,8 @@ export function L2Layout({
       )
     }
 
-    // Listen-Ansicht: Filter + optional Kalender
-    const filters: { id: TermineListFilter; label: string }[] = [
-      { id: 'aktuell',   label: 'Aktuelle Termine' },
-      { id: 'vergangen', label: 'Vergangene Termine' },
-      { id: 'alle',      label: 'Alle Termine' },
-    ]
-    return (
-      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
-        {filters.map(f => (
-          <button
-            key={f.id}
-            onClick={() => {
-              setTermineFilter(f.id)
-              setTermineListView('list')
-              window.dispatchEvent(new CustomEvent('termine-filter-changed', { detail: { filter: f.id } }))
-              window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
-            }}
-            className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-              termineListView === 'list' && termineFilter === f.id
-                ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-        {canSeeKalender && (
-          <button
-            onClick={() => {
-              setTermineListView('calendar')
-              window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
-            }}
-            className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-              termineListView === 'calendar'
-                ? 'text-blue-100 font-medium bg-blue-400/20'
-                : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
-            }`}
-          >
-            Kalender
-          </button>
-        )}
-      </div>
-    )
+    // Listen-Ansicht: kein Filter in Sidebar (Filter ist im Toolbar der Listenansicht)
+    return null
   }
 
   // ── Nav item renderer ───────────────────────────────────────────────────────
