@@ -147,6 +147,12 @@ export function ContactDetailContent({ contactId, onInvite, onBack }: { contactI
     return () => { ;(window as any).__pt_isDirty = false }
   }, [isDirty])
 
+  // Always-fresh save reference for L2 nav guard
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
   const d = (k: keyof Contact) => String(draft[k] ?? '')
   const db = (k: keyof Contact) => Boolean(draft[k])
   const ro = !isEditor

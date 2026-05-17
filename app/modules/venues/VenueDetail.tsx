@@ -335,6 +335,11 @@ export function VenueDetailContent({ venueId, onBack }: { venueId: string; onBac
     return () => { ;(window as any).__pt_isDirty = false }
   }, [isDirty])
 
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
   const ro = !isEditor
   const titleColor = isL2 ? '#e0e0e0' : '#111827'
   const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
