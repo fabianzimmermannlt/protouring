@@ -18,7 +18,7 @@ import {
   ClipboardDocumentIcon,
   ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Save, X, AlertCircle } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
 import GewerkSettings from './GewerkSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
@@ -33,6 +33,7 @@ import {
   getCurrentTenant, getCurrentUser, isAdminRole, getEffectiveRole, updateCurrentTenantRole,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   getIcalToken, regenerateIcalToken, getIcalUrl,
+  getActiveFunctions,
   getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
   getArtistMembers, createArtistMember, updateArtistMember, deleteArtistMember,
   ROLE_LABELS, CURRENT_USER_KEY,
@@ -557,6 +558,70 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 }
 
 // ============================================================
+// UserProfil Helper Components (detail-input pattern)
+// ============================================================
+
+function FPField({ label, value, onChange, type = 'text', placeholder = '', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; readOnly?: boolean
+}) {
+  return (
+    <div>
+      <label className="detail-label">{label}</label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} readOnly={readOnly} className="detail-input" />
+    </div>
+  )
+}
+
+function FPSelect({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <div>
+      <label className="detail-label">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} className="detail-input">
+        <option value="">– keine –</option>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  )
+}
+
+function FPTextarea({ label, value, onChange, rows = 2, placeholder = '' }: {
+  label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="detail-label">{label}</label>
+      <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows}
+        placeholder={placeholder} className="detail-input resize-none" />
+    </div>
+  )
+}
+
+function FPCheckbox({ label, checked, onChange }: {
+  label: string; checked: boolean; onChange: (v: boolean) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#9ca3af' }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
+        className="rounded border-gray-500 text-blue-600 focus:ring-blue-500" />
+      {label}
+    </label>
+  )
+}
+
+function FPSection({ title }: { title: string }) {
+  return (
+    <h3 className="text-xs font-semibold uppercase tracking-wider"
+      style={{ color: '#888', borderBottom: '1px solid #333', paddingBottom: '6px' }}>
+      {title}
+    </h3>
+  )
+}
+
+// ============================================================
 // UserProfil Component
 // ============================================================
 
@@ -564,9 +629,7 @@ function UserProfil() {
   const currentUser = getCurrentUser()
   const { language, setLanguage, t } = useLanguage()
   const [currentTenant, setCurrentTenant] = useState(getCurrentTenant())
-  const isAdmin = isAdminRole(currentTenant?.role ?? '')
 
-  // Profil-Daten
   const emptyProfile: ProfileData = {
     firstName: currentUser?.firstName || '', lastName: currentUser?.lastName || '',
     email: currentUser?.email || '', phone: '', mobile: '', address: '', postalCode: '',
@@ -579,23 +642,29 @@ function UserProfil() {
     railcard: '', frequentFlyer: '', bankAccount: '', bankIban: '', bankBic: '',
     personalFiles: [], crewToolActive: true,
   }
-  const [profileData, setProfileData] = useState<ProfileData>(emptyProfile)
+
+  const [form, setFormState] = useState<ProfileData>(emptyProfile)
+  const [isDirty, setIsDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [profileLoading, setProfileLoading] = useState(true)
+  const [activeFunctions, setActiveFunctions] = useState<{ name: string }[]>([])
+  const originalRef = useRef<ProfileData>(emptyProfile)
 
   useEffect(() => {
-    // Beide parallel laden: System-Rolle aus DB + Kontaktdaten
+    getActiveFunctions().then(setActiveFunctions).catch(() => {})
+  }, [])
+
+  useEffect(() => {
     Promise.all([
       getMyRole().catch(() => currentTenant?.role ?? ''),
       getMyContact(),
     ]).then(([freshRole, contact]) => {
-      // Session-Cache aktualisieren falls Rolle veraltet
       if (freshRole && freshRole !== currentTenant?.role) {
         updateCurrentTenantRole(freshRole)
-        setCurrentTenant(t => t ? { ...t, role: freshRole } : t)
+        setCurrentTenant(prev => prev ? { ...prev, role: freshRole } : prev)
       }
-      // accessRights immer aus der echten System-Rolle befüllen
       const roleLabel = ROLE_LABELS[freshRole as TenantRole] ?? freshRole ?? ''
-      // Namen aus Contacts in localStorage korrigieren (falls beim Invite falsch eingegeben)
       if (contact.firstName || contact.lastName) {
         const storedUser = getCurrentUser()
         if (storedUser && (storedUser.firstName !== contact.firstName || storedUser.lastName !== contact.lastName)) {
@@ -606,7 +675,7 @@ function UserProfil() {
           }))
         }
       }
-      setProfileData({
+      const data: ProfileData = {
         ...emptyProfile,
         firstName: contact.firstName || currentUser?.firstName || '',
         lastName: contact.lastName || currentUser?.lastName || '',
@@ -632,32 +701,71 @@ function UserProfil() {
         frequentFlyer: contact.frequentFlyer || '', bankAccount: contact.bankAccount || '',
         bankIban: contact.bankIban || '', bankBic: contact.bankBic || '',
         personalFiles: [], crewToolActive: contact.crewToolActive !== false,
-      })
+      }
+      setFormState(data)
+      originalRef.current = data
     }).catch(() => {}).finally(() => setProfileLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleProfileSave = async (data: ProfileData) => {
-    setProfileData(data)
-    await updateMyContact({
-      firstName: data.firstName, lastName: data.lastName, function1: data.function1,
-      function2: data.function2, function3: data.function3, specification: data.specification,
-      accessRights: data.accessRights, email: data.email, phone: data.phone,
-      mobile: data.mobile, address: data.address, postalCode: data.postalCode,
-      residence: data.residence, taxId: data.taxId, website: '', birthDate: data.birthDate,
-      gender: data.gender, pronouns: data.pronouns, birthPlace: data.birthPlace,
-      nationality: data.nationality, idNumber: data.idNumber, socialSecurity: data.socialSecurity,
-      diet: data.diet, glutenFree: data.glutenFree, lactoseFree: data.lactoseFree,
-      allergies: data.allergies, emergencyContact: data.emergencyContact,
-      emergencyPhone: data.emergencyPhone, shirtSize: data.shirtSize,
-      hoodieSize: data.hoodieSize, pantsSize: data.pantsSize, shoeSize: data.shoeSize,
-      languages: data.languages, driversLicense: data.driversLicense, railcard: data.railcard,
-      frequentFlyer: data.frequentFlyer, bankAccount: data.bankAccount,
-      bankIban: data.bankIban, bankBic: data.bankBic, taxNumber: data.taxNumber,
-      vatId: data.vatId, notes: data.specialNotes, hotelInfo: data.hotelInfo,
-      hotelAlias: data.hotelAlias, crewToolActive: data.crewToolActive,
-    } as ContactFormData)
+  const set = (k: keyof ProfileData, v: unknown) => {
+    const next = { ...form, [k]: v }
+    setFormState(next)
+    const dirty = (Object.keys(originalRef.current) as (keyof ProfileData)[])
+      .filter(key => key !== 'personalFiles')
+      .some(key => next[key] !== originalRef.current[key])
+    setIsDirty(dirty)
   }
+
+  const cancelEdit = () => {
+    setFormState({ ...originalRef.current })
+    setIsDirty(false)
+    setSaveError('')
+  }
+
+  const saveEdit = async (): Promise<boolean> => {
+    setSaving(true); setSaveError('')
+    try {
+      await updateMyContact({
+        firstName: form.firstName, lastName: form.lastName, function1: form.function1,
+        function2: form.function2, function3: form.function3, specification: form.specification,
+        accessRights: form.accessRights, email: form.email, phone: form.phone,
+        mobile: form.mobile, address: form.address, postalCode: form.postalCode,
+        residence: form.residence, taxId: form.taxId, website: '', birthDate: form.birthDate,
+        gender: form.gender, pronouns: form.pronouns, birthPlace: form.birthPlace,
+        nationality: form.nationality, idNumber: form.idNumber, socialSecurity: form.socialSecurity,
+        diet: form.diet, glutenFree: form.glutenFree, lactoseFree: form.lactoseFree,
+        allergies: form.allergies, emergencyContact: form.emergencyContact,
+        emergencyPhone: form.emergencyPhone, shirtSize: form.shirtSize,
+        hoodieSize: form.hoodieSize, pantsSize: form.pantsSize, shoeSize: form.shoeSize,
+        languages: form.languages, driversLicense: form.driversLicense, railcard: form.railcard,
+        frequentFlyer: form.frequentFlyer, bankAccount: form.bankAccount,
+        bankIban: form.bankIban, bankBic: form.bankBic, taxNumber: form.taxNumber,
+        vatId: form.vatId, notes: form.specialNotes, hotelInfo: form.hotelInfo,
+        hotelAlias: form.hotelAlias, crewToolActive: form.crewToolActive,
+      } as ContactFormData)
+      originalRef.current = { ...form }
+      setIsDirty(false)
+      return true
+    } catch (e) {
+      setSaveError((e as Error).message || t('general.error'))
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Global dirty/save flags for L2 nav guard
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
+  // Always-fresh save reference (no deps — runs every render)
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
 
   // Passwort
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
@@ -669,8 +777,7 @@ function UserProfil() {
 
   const handlePwChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    setPwError('')
-    setPwSuccess(false)
+    setPwError(''); setPwSuccess(false)
     if (pwForm.next !== pwForm.confirm) { setPwError(t('settings.profile.passwordMismatch')); return }
     if (pwForm.next.length < 6) { setPwError(t('settings.profile.passwordMinLength')); return }
     setPwSaving(true)
@@ -681,14 +788,20 @@ function UserProfil() {
       setShowPwForm(false)
     } catch (e: any) {
       setPwError(e?.message ?? t('general.error'))
-    } finally {
-      setPwSaving(false)
-    }
+    } finally { setPwSaving(false) }
   }
 
-  const displayFirst = profileData.firstName || currentUser?.firstName || ''
-  const displayLast = profileData.lastName || currentUser?.lastName || ''
+  const displayFirst = form.firstName || currentUser?.firstName || ''
+  const displayLast = form.lastName || currentUser?.lastName || ''
   const initials = `${displayFirst[0] ?? ''}${displayLast[0] ?? ''}`.toUpperCase() || '?'
+
+  const funcOpts = (cur: string) => {
+    const activeNames = new Set(activeFunctions.map(f => f.name))
+    return [
+      ...(cur && !activeNames.has(cur) ? [{ value: cur, label: `${cur} ⚠ (deaktiviert)` }] : []),
+      ...activeFunctions.map(f => ({ value: f.name, label: f.name })),
+    ]
+  }
 
   if (profileLoading) return (
     <div className="flex items-center gap-2 text-gray-500 text-sm py-8">
@@ -697,36 +810,144 @@ function UserProfil() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      {/* Avatar + Kurzinfo */}
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-semibold select-none flex-shrink-0">
-          {initials}
+      {/* Header: Name + dirty state */}
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-semibold select-none flex-shrink-0">
+            {initials}
+          </div>
+          <div>
+            <p className="text-sm font-semibold leading-tight" style={{ color: '#e0e0e0' }}>{displayFirst} {displayLast}</p>
+            <p className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>{form.email || currentUser?.email}</p>
+            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ background: '#333', color: '#9ca3af' }}>
+              {ROLE_LABELS[currentTenant?.role as TenantRole] ?? currentTenant?.role}
+            </span>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-900 leading-tight">{displayFirst} {displayLast}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{profileData.email || currentUser?.email}</p>
-          <span className="inline-block mt-1.5 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-            {ROLE_LABELS[currentTenant?.role as TenantRole] ?? currentTenant?.role}
-          </span>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {saveError && (
+        <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>
+          <AlertCircle className="w-4 h-4 shrink-0" />{saveError}
+        </div>
+      )}
+
+      {/* Persönliche Daten */}
+      <div className="space-y-3">
+        <FPSection title={t('profile.personalData')} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FPField label={t('profile.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
+          <FPField label={t('profile.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
+          <FPField label={t('profile.birthDate')} value={form.birthDate} onChange={v => set('birthDate', v)} type="date" />
+          <FPSelect label={t('profile.gender')} value={form.gender} onChange={v => set('gender', v)} options={[
+            { value: 'männlich', label: t('profile.gender.male') },
+            { value: 'weiblich', label: t('profile.gender.female') },
+            { value: 'divers', label: t('profile.gender.diverse') },
+            { value: 'keine_angabe', label: t('profile.gender.noStatement') },
+          ]} />
+          <FPField label={t('profile.pronouns')} value={form.pronouns} onChange={v => set('pronouns', v)} placeholder="er/ihm, sie/ihr, divers" />
         </div>
       </div>
 
-      {/* Profildaten */}
-      <ProfileEditor
-        isOpen={true}
-        onClose={() => {}}
-        profileData={profileData}
-        onSave={handleProfileSave}
-        isAdmin={isAdmin}
-        isSelf={true}
-        inline={true}
-      />
+      {/* Kontaktdaten */}
+      <div className="space-y-3">
+        <FPSection title={t('profile.contactData')} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FPField label={t('profile.email')} value={form.email} onChange={() => {}} readOnly />
+          <FPField label={t('profile.phone')} value={form.phone} onChange={v => set('phone', v)} type="tel" />
+          <div className="grid gap-2" style={{ gridTemplateColumns: '80px 1fr' }}>
+            <FPField label={t('profile.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} />
+            <FPField label={t('profile.residence')} value={form.residence} onChange={v => set('residence', v)} />
+          </div>
+          <FPField label={t('profile.address')} value={form.address} onChange={v => set('address', v)} />
+        </div>
+      </div>
+
+      {/* Berufliche Daten */}
+      <div className="space-y-3">
+        <FPSection title={t('profile.professionalData')} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(['function1', 'function2', 'function3'] as const).map((field, i) => (
+            <FPSelect key={field} label={`${i + 1}. ${t('profile.function')}`}
+              value={form[field]} onChange={v => set(field, v)} options={funcOpts(form[field])} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FPField label={t('profile.specification')} value={form.specification} onChange={v => set('specification', v)} placeholder="z.B. Schlagzeug" />
+          <FPField label={t('profile.languages')} value={form.languages} onChange={v => set('languages', v)} placeholder="Deutsch, Englisch, Französisch" />
+        </div>
+      </div>
+
+      {/* Reisedaten */}
+      <div className="space-y-3">
+        <FPSection title={t('profile.travelData')} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FPField label={t('profile.driversLicense')} value={form.driversLicense} onChange={v => set('driversLicense', v)} placeholder="z.B. Klasse B, Klasse C..." />
+          <FPField label={t('profile.railcard')} value={form.railcard} onChange={v => set('railcard', v)} placeholder="z.B. Bahncard 25, Bahncard 50..." />
+          <FPField label={t('profile.frequentFlyer')} value={form.frequentFlyer} onChange={v => set('frequentFlyer', v)} placeholder="z.B. Lufthansa Miles & More..." />
+          <FPField label={t('profile.hotelAlias')} value={form.hotelAlias} onChange={v => set('hotelAlias', v)} placeholder="z.B. John Smith..." />
+          <div className="md:col-span-2">
+            <FPTextarea label={t('profile.hotelPreferences')} value={form.hotelInfo} onChange={v => set('hotelInfo', v)} rows={2} placeholder="z.B. Einzelzimmer bevorzugt, ruhiges Zimmer..." />
+          </div>
+        </div>
+      </div>
+
+      {/* Ernährung */}
+      <div className="space-y-3">
+        <FPSection title={t('profile.diet')} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FPSelect label={t('profile.dietType')} value={form.diet} onChange={v => set('diet', v)} options={[
+            { value: 'alles', label: t('profile.diet.all') },
+            { value: 'vegetarisch', label: t('profile.diet.vegetarian') },
+            { value: 'vegan', label: t('profile.diet.vegan') },
+          ]} />
+          <FPField label={t('profile.allergies')} value={form.allergies} onChange={v => set('allergies', v)} placeholder="z.B. Nüsse, Erdnüsse, Fisch..." />
+          <div className="flex flex-col gap-1">
+            <label className="detail-label">{t('profile.intolerances')}</label>
+            <div className="flex gap-4 pt-1">
+              <FPCheckbox label={t('profile.glutenFree')} checked={form.glutenFree} onChange={v => set('glutenFree', v)} />
+              <FPCheckbox label={t('profile.lactoseFree')} checked={form.lactoseFree} onChange={v => set('lactoseFree', v)} />
+            </div>
+          </div>
+          <FPField label={t('profile.specialNotes')} value={form.specialNotes} onChange={v => set('specialNotes', v)} placeholder="z.B. scharf essen, kein Koffein..." />
+        </div>
+      </div>
+
+      {/* Kleidergrößen */}
+      <div className="space-y-3">
+        <FPSection title={t('profile.clothing')} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <FPField label={t('profile.shirt')} value={form.shirtSize} onChange={v => set('shirtSize', v)} placeholder="S, M, L, XL" />
+          <FPField label={t('profile.hoodie')} value={form.hoodieSize} onChange={v => set('hoodieSize', v)} placeholder="S, M, L, XL" />
+          <FPField label={t('profile.pants')} value={form.pantsSize} onChange={v => set('pantsSize', v)} placeholder="32, 34, 36" />
+          <FPField label={t('profile.shoes')} value={form.shoeSize} onChange={v => set('shoeSize', v)} placeholder="42, 43, 44" />
+        </div>
+      </div>
+
+      {/* Crew Tool */}
+      <div className="pt-2" style={{ borderTop: '1px solid #333' }}>
+        <FPCheckbox label={t('profile.crewToolActive')} checked={form.crewToolActive} onChange={v => set('crewToolActive', v)} />
+      </div>
 
       {/* Passwort */}
       <div className="space-y-3" ref={pwAccordionRef}>
-        <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">{t('profile.password')}</h3>
+        <h3 className="text-sm font-semibold border-b pb-2" style={{ color: '#e0e0e0', borderColor: '#333' }}>{t('profile.password')}</h3>
 
         {/* Mobile: Akkordion */}
         <div className="md:hidden">
@@ -737,25 +958,26 @@ function UserProfil() {
               setShowPwForm(next)
               if (next) setTimeout(() => pwAccordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
             }}
-            className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700"
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium"
+            style={{ background: '#2d2d2d', border: '1px solid #444', color: '#e0e0e0' }}
           >
             <span>{t('settings.profile.changePassword')}</span>
-            <svg className={`w-4 h-4 text-gray-400 transition-transform${showPwForm ? ' rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-4 h-4 transition-transform${showPwForm ? ' rotate-180' : ''}`} style={{ color: '#9ca3af' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
           {showPwForm && (
-            <div className="mt-2 bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div className="mt-2 rounded-xl p-4" style={{ background: '#2d2d2d', border: '1px solid #444' }}>
               <form onSubmit={handlePwChange} className="space-y-2.5">
-                {pwError && <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{pwError}</div>}
-                {pwSuccess && <div className="p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">{t('settings.profile.savedSuccess')}</div>}
+                {pwError && <div className="p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
+                {pwSuccess && <div className="p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
                 {(['current','next','confirm'] as const).map((key, i) => (
                   <div key={key}>
-                    <label className="block text-xs text-gray-500 mb-1">{[t('settings.profile.currentPassword'), t('settings.profile.newPassword'), t('settings.profile.confirm')][i]}</label>
-                    <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <label className="detail-label">{[t('settings.profile.currentPassword'), t('settings.profile.newPassword'), t('settings.profile.confirm')][i]}</label>
+                    <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="detail-input" />
                   </div>
                 ))}
-                <button type="submit" disabled={pwSaving} className="w-full mt-1 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5">
+                <button type="submit" disabled={pwSaving} className="btn btn-primary w-full mt-1">
                   {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
                   {t('general.save')}
                 </button>
@@ -769,14 +991,14 @@ function UserProfil() {
           <form onSubmit={handlePwChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(['current','next','confirm'] as const).map((key, i) => (
               <div key={key}>
-                <label className="block text-xs text-gray-500 mb-1">{[t('settings.profile.currentPasswordLabel'), t('settings.profile.newPasswordLabel'), t('settings.profile.confirm')][i]}</label>
-                <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="detail-label">{[t('settings.profile.currentPasswordLabel'), t('settings.profile.newPasswordLabel'), t('settings.profile.confirm')][i]}</label>
+                <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="detail-input" />
               </div>
             ))}
-            {pwError && <div className="md:col-span-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{pwError}</div>}
-            {pwSuccess && <div className="md:col-span-3 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs">{t('settings.profile.savedSuccess')}</div>}
+            {pwError && <div className="md:col-span-3 p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
+            {pwSuccess && <div className="md:col-span-3 p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
             <div className="md:col-span-3 flex">
-              <button type="submit" disabled={pwSaving} className="py-1.5 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
+              <button type="submit" disabled={pwSaving} className="btn btn-primary flex items-center gap-1.5">
                 {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
                 {t('general.save')}
               </button>
@@ -787,7 +1009,7 @@ function UserProfil() {
 
       {/* Sprache / Language */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+        <h3 className="text-sm font-semibold border-b pb-2" style={{ color: '#e0e0e0', borderColor: '#333' }}>
           {t('settings.language.label')}
         </h3>
         <div className="flex gap-2">
@@ -795,9 +1017,10 @@ function UserProfil() {
             onClick={() => setLanguage('de')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
               language === 'de'
-                ? 'bg-blue-50 border-blue-400 text-blue-700'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'
             }`}
+            style={{ background: language === 'de' ? '#2563eb' : '#2d2d2d' }}
           >
             🇩🇪 Deutsch
           </button>
@@ -805,9 +1028,10 @@ function UserProfil() {
             onClick={() => setLanguage('en')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
               language === 'en'
-                ? 'bg-blue-50 border-blue-400 text-blue-700'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'
             }`}
+            style={{ background: language === 'en' ? '#2563eb' : '#2d2d2d' }}
           >
             🇺🇸 English
           </button>
