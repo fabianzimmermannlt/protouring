@@ -898,31 +898,31 @@ function TerminDetailHeader({
         <ArrowLeft size={16} /> Zurück zur Übersicht
       </button>
 
-      {/* Title + both nav arrows inline */}
+      {/* Nav arrows + Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
-          {pageTitle}
-        </h1>
         <button
           onClick={() => prev && onNavigate(prev.id)}
           disabled={!prev}
           title={prev ? formatDateShort(prev.date) + ' · ' + (prev.city || prev.title) : undefined}
-          style={{ color: '#444', background: 'none', border: 'none', cursor: prev ? 'pointer' : 'default', padding: '2px 4px', opacity: prev ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s', display: 'flex', alignItems: 'center' }}
-          onMouseOver={e => { if (prev) e.currentTarget.style.color = '#aaa' }}
-          onMouseOut={e => { e.currentTarget.style.color = '#444' }}
+          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: prev ? 'pointer' : 'default', opacity: prev ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
+          onMouseOver={e => { if (prev) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={14} />
         </button>
         <button
           onClick={() => next && onNavigate(next.id)}
           disabled={!next}
           title={next ? formatDateShort(next.date) + ' · ' + (next.city || next.title) : undefined}
-          style={{ color: '#444', background: 'none', border: 'none', cursor: next ? 'pointer' : 'default', padding: '2px 4px', opacity: next ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s', display: 'flex', alignItems: 'center' }}
-          onMouseOver={e => { if (next) e.currentTarget.style.color = '#aaa' }}
-          onMouseOut={e => { e.currentTarget.style.color = '#444' }}
+          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: next ? 'pointer' : 'default', opacity: next ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
+          onMouseOver={e => { if (next) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
+          {pageTitle}
+        </h1>
       </div>
 
       {/* Date subtitle */}
