@@ -892,8 +892,7 @@ function TerminDetailHeader({
       {/* Back link */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
-        className="pt-detail-back"
-        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#555', marginBottom: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.12s' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#555', marginBottom: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.12s' }}
         onMouseOver={e => (e.currentTarget.style.color = '#999')}
         onMouseOut={e => (e.currentTarget.style.color = '#555')}
       >
@@ -901,36 +900,36 @@ function TerminDetailHeader({
         Events
       </button>
 
-      {/* Title row: prev · name + date · next */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+      {/* Title + both nav arrows inline */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
+          {pageTitle}
+        </h1>
         <button
           onClick={() => prev && onNavigate(prev.id)}
           disabled={!prev}
-          style={{ color: '#555', background: 'none', border: 'none', cursor: prev ? 'pointer' : 'default', padding: '0.25rem', opacity: prev ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s' }}
+          title={prev ? formatDateShort(prev.date) + ' · ' + (prev.city || prev.title) : undefined}
+          style={{ color: '#444', background: 'none', border: 'none', cursor: prev ? 'pointer' : 'default', padding: '2px 4px', opacity: prev ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s', display: 'flex', alignItems: 'center' }}
           onMouseOver={e => { if (prev) e.currentTarget.style.color = '#aaa' }}
-          onMouseOut={e => { e.currentTarget.style.color = '#555' }}
+          onMouseOut={e => { e.currentTarget.style.color = '#444' }}
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={16} />
         </button>
-
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', lineHeight: 1.25 }}>
-            {pageTitle}
-          </div>
-          <div style={{ fontSize: '0.8rem', color: '#777', marginTop: '0.15rem' }}>
-            {formatDateLong(termin.date)}
-          </div>
-        </div>
-
         <button
           onClick={() => next && onNavigate(next.id)}
           disabled={!next}
-          style={{ color: '#555', background: 'none', border: 'none', cursor: next ? 'pointer' : 'default', padding: '0.25rem', opacity: next ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s' }}
+          title={next ? formatDateShort(next.date) + ' · ' + (next.city || next.title) : undefined}
+          style={{ color: '#444', background: 'none', border: 'none', cursor: next ? 'pointer' : 'default', padding: '2px 4px', opacity: next ? 1 : 0.2, flexShrink: 0, transition: 'color 0.12s', display: 'flex', alignItems: 'center' }}
           onMouseOver={e => { if (next) e.currentTarget.style.color = '#aaa' }}
-          onMouseOut={e => { e.currentTarget.style.color = '#555' }}
+          onMouseOut={e => { e.currentTarget.style.color = '#444' }}
         >
-          <ChevronRight size={20} />
+          <ChevronRight size={16} />
         </button>
+      </div>
+
+      {/* Date subtitle */}
+      <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '1rem' }}>
+        {formatDateLong(termin.date)}
       </div>
 
       {/* Tab bar */}
