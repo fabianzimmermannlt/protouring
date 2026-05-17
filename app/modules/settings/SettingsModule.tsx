@@ -1999,10 +1999,10 @@ function ErsteSchritte() {
 // ── Partner-Typen Settings ────────────────────────────────────────────────────
 const PARTNER_SUGGESTIONS = [
   { group: 'Booking & Management', items: ['Booking Agentur', 'Tourmanagement', 'Artist Management', 'Promotion', 'Veranstalter'] },
-  { group: 'Technik', items: ['PA / Sound', 'Lichtfirma', 'Backline', 'Bühnenbau', 'Video / LED', 'Strom / Generator'] },
-  { group: 'Medien', items: ['Pressebüro', 'Fotografie', 'Videoproduktion', 'Social Media', 'Radio / TV'] },
+  { group: 'Technik', items: ['PA / Sound', 'Lichtfirma', 'Backline', 'Backline-Firma', 'Bühnenbau', 'Video / LED', 'Strom / Generator', 'Technik-Lieferant'] },
+  { group: 'Medien', items: ['Pressebüro', 'Fotografie', 'Videoproduktion', 'Medien-/Videoproduktion', 'Social Media', 'Radio / TV'] },
   { group: 'Produktion & Merch', items: ['Label', 'Verleger', 'Merchandise', 'Catering'] },
-  { group: 'Logistik', items: ['Busunternehmen', 'Sicherheitsdienst', 'Reisebüro', 'Versicherung'] },
+  { group: 'Logistik', items: ['Busunternehmen', 'Transport', 'Autovermietung', 'Trucking-Firma', 'Sicherheitsdienst', 'Reisebüro', 'Versicherung'] },
 ]
 
 function PartnerTypesSettings() {
@@ -2013,10 +2013,13 @@ function PartnerTypesSettings() {
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
-  // pendingOverrides: buffered visibility changes { [id]: 0 | 1 }
-  const [pendingOverrides, setPendingOverrides] = useState<Record<number, 0 | 1>>({})
 
-  const isDirty = Object.keys(pendingOverrides).length > 0
+  // pendingOverrides: visibility changes for existing DB entries { [id]: 0 | 1 }
+  const [pendingOverrides, setPendingOverrides] = useState<Record<number, 0 | 1>>({})
+  // pendingCreates: catalog names not yet in DB that user activated
+  const [pendingCreates, setPendingCreates] = useState<string[]>([])
+
+  const isDirty = Object.keys(pendingOverrides).length > 0 || pendingCreates.length > 0
 
   useEffect(() => {
     getPartnerTypes()
@@ -2024,7 +2027,6 @@ function PartnerTypesSettings() {
       .catch(() => setLoading(false))
   }, [])
 
-  // Global dirty flag for L2 nav guard
   useEffect(() => {
     ;(window as any).__pt_isDirty = isDirty
     return () => { ;(window as any).__pt_isDirty = false }
@@ -2034,13 +2036,27 @@ function PartnerTypesSettings() {
     if (!isDirty) return true
     setSaving(true)
     try {
-      const entries = Object.entries(pendingOverrides) as [string, 0 | 1][]
+      // Create all pending catalog items (created as visible=1)
+      const created = await Promise.all(
+        pendingCreates.map(name => createPartnerType(name))
+      )
+      // Apply all visibility overrides
+      const overrideEntries = Object.entries(pendingOverrides) as [string, 0 | 1][]
       await Promise.all(
-        entries.map(([idStr, visible]) =>
+        overrideEntries.map(([idStr, visible]) =>
           togglePartnerTypeVisible(Number(idStr), visible === 1)
         )
       )
+      // Merge into local state
+      setTypes(prev => {
+        const merged = prev.map(pt => {
+          const ov = pendingOverrides[pt.id]
+          return ov !== undefined ? { ...pt, visible: ov } : pt
+        })
+        return [...merged, ...created]
+      })
       setPendingOverrides({})
+      setPendingCreates([])
       return true
     } catch {
       return false
@@ -2049,7 +2065,6 @@ function PartnerTypesSettings() {
     }
   }
 
-  // Always-fresh save reference
   useEffect(() => {
     ;(window as any).__pt_save = saveEdit
     return () => { ;(window as any).__pt_save = null }
@@ -2057,33 +2072,37 @@ function PartnerTypesSettings() {
 
   const cancelEdit = () => {
     setPendingOverrides({})
+    setPendingCreates([])
   }
 
-  function handleToggle(pt: PartnerType) {
-    // Determine what the current visual state is (pending override or original)
+  // Toggle an existing DB entry's visibility (buffered)
+  function handleToggleExisting(pt: PartnerType) {
     const currentVisible = pendingOverrides[pt.id] !== undefined ? pendingOverrides[pt.id] : pt.visible
     const nextVisible: 0 | 1 = currentVisible === 1 ? 0 : 1
-    // If this toggle returns to original state, remove from pending
     if (nextVisible === pt.visible) {
-      setPendingOverrides(prev => {
-        const next = { ...prev }
-        delete next[pt.id]
-        return next
-      })
+      setPendingOverrides(prev => { const next = { ...prev }; delete next[pt.id]; return next })
     } else {
       setPendingOverrides(prev => ({ ...prev, [pt.id]: nextVisible }))
     }
   }
 
-  async function handleAdd(nameOverride?: string) {
-    const name = (nameOverride ?? newName).trim()
+  // Toggle a predefined catalog name that has no DB entry yet
+  function handleToggleCatalog(name: string) {
+    if (pendingCreates.includes(name)) {
+      setPendingCreates(prev => prev.filter(n => n !== name))
+    } else {
+      setPendingCreates(prev => [...prev, name])
+    }
+  }
+
+  async function handleAddOwn() {
+    const name = newName.trim()
     if (!name) return
-    setAdding(true)
-    setError('')
+    setAdding(true); setError('')
     try {
       const created = await createPartnerType(name)
       setTypes(prev => [...prev, created])
-      if (!nameOverride) setNewName('')
+      setNewName('')
     } catch (e) {
       setError((e as Error).message || t('settings.users.saveError'))
     } finally { setAdding(false) }
@@ -2094,11 +2113,7 @@ function PartnerTypesSettings() {
     try {
       await deletePartnerType(id)
       setTypes(prev => prev.filter(pt => pt.id !== id))
-      setPendingOverrides(prev => {
-        const next = { ...prev }
-        delete next[id]
-        return next
-      })
+      setPendingOverrides(prev => { const next = { ...prev }; delete next[id]; return next })
     } catch { /* silent */ }
   }
 
@@ -2108,20 +2123,41 @@ function PartnerTypesSettings() {
     </div>
   )
 
-  const existingNames = new Set(types.map(pt => pt.name))
   const allSuggested = new Set(PARTNER_SUGGESTIONS.flatMap(g => g.items))
   const uncategorized = types.filter(pt => !allSuggested.has(pt.name))
 
-  const renderTypeChip = (pt: PartnerType) => {
-    const effectiveVisible = pendingOverrides[pt.id] !== undefined ? pendingOverrides[pt.id] : pt.visible
-    const hasPending = pendingOverrides[pt.id] !== undefined
+  // Chip for predefined catalog items — no X button, no dashed border
+  const renderCatalogChip = (name: string) => {
+    const existing = types.find(pt => pt.name === name)
+    let isActive: boolean
+    if (existing) {
+      const ov = pendingOverrides[existing.id]
+      isActive = ov !== undefined ? ov === 1 : existing.visible === 1
+    } else {
+      isActive = pendingCreates.includes(name)
+    }
+    const handleClick = () => existing ? handleToggleExisting(existing) : handleToggleCatalog(name)
+    return (
+      <button
+        key={name}
+        className={`pt-fn-chip ${isActive ? 'pt-fn-chip--active' : ''}`}
+        onClick={handleClick}
+      >
+        {name}
+      </button>
+    )
+  }
+
+  // Chip for "Eigene" entries — has X delete button
+  const renderOwnChip = (pt: PartnerType) => {
+    const ov = pendingOverrides[pt.id]
+    const isActive = ov !== undefined ? ov === 1 : pt.visible === 1
     return (
       <button
         key={pt.id}
-        className={`pt-fn-chip group ${effectiveVisible === 1 ? 'pt-fn-chip--active' : ''}`}
-        onClick={() => handleToggle(pt)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', outline: hasPending ? '1px dashed #888' : undefined }}
-        title={effectiveVisible === 1 ? 'Klicken um auszublenden' : 'Klicken um einzublenden'}
+        className={`pt-fn-chip group ${isActive ? 'pt-fn-chip--active' : ''}`}
+        onClick={() => handleToggleExisting(pt)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
       >
         {pt.name}
         <span
@@ -2136,11 +2172,10 @@ function PartnerTypesSettings() {
   return (
     <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      {/* Header + dirty bar */}
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <div>
           <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Partner-Kategorien</h1>
-          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>Aktive Chips sind im System sichtbar. Gestrichelte Chips sind Vorschläge.</p>
+          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>Aktive Chips sind im System sichtbar.</p>
         </div>
         {isDirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -2159,52 +2194,36 @@ function PartnerTypesSettings() {
       </div>
 
       <div className="pt-fn-groups">
-        {PARTNER_SUGGESTIONS.map(group => {
-          const groupTypes = types.filter(pt => group.items.includes(pt.name))
-          const suggestions = group.items.filter(item => !existingNames.has(item))
-          if (groupTypes.length === 0 && suggestions.length === 0) return null
-          return (
-            <div key={group.group} className="pt-fn-group">
-              <div className="pt-fn-group-header">
-                <span className="pt-fn-group-name">{group.group}</span>
-              </div>
-              <div className="pt-fn-chips">
-                {groupTypes.map(renderTypeChip)}
-                {suggestions.map(item => (
-                  <button
-                    key={item}
-                    className="pt-fn-chip pt-suggestion-chip"
-                    onClick={() => handleAdd(item)}
-                    disabled={adding}
-                    title="Klicken zum Hinzufügen"
-                  >
-                    + {item}
-                  </button>
-                ))}
-              </div>
+        {PARTNER_SUGGESTIONS.map(group => (
+          <div key={group.group} className="pt-fn-group">
+            <div className="pt-fn-group-header">
+              <span className="pt-fn-group-name">{group.group}</span>
             </div>
-          )
-        })}
+            <div className="pt-fn-chips">
+              {group.items.map(renderCatalogChip)}
+            </div>
+          </div>
+        ))}
 
-        {/* Eigene — nicht in Vorschlagsliste */}
+        {/* Eigene — nicht im Katalog, nur diese haben X */}
         <div className="pt-fn-group">
           <div className="pt-fn-group-header">
             <span className="pt-fn-group-name">Eigene</span>
           </div>
-          <div className="pt-fn-chips" style={{ marginBottom: '0.6rem' }}>
+          <div className="pt-fn-chips" style={{ marginBottom: '0.6rem', minHeight: '28px' }}>
             {uncategorized.length === 0 && (
               <span className="pt-fn-subtitle" style={{ fontSize: '0.78rem' }}>Noch keine eigenen Einträge</span>
             )}
-            {uncategorized.map(renderTypeChip)}
+            {uncategorized.map(renderOwnChip)}
           </div>
           <div className="flex gap-2 items-center" style={{ maxWidth: '380px' }}>
             <input
               type="text" value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              onKeyDown={e => e.key === 'Enter' && handleAddOwn()}
               placeholder="Eigene Kategorie…"
               className="detail-input" style={{ flex: 1, marginBottom: 0 }}
             />
-            <button onClick={() => handleAdd()} disabled={adding || !newName.trim()}
+            <button onClick={handleAddOwn} disabled={adding || !newName.trim()}
               className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
               {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
             </button>
