@@ -898,36 +898,40 @@ function TerminDetailHeader({
         <ArrowLeft size={16} /> Zurück zur Übersicht
       </button>
 
-      {/* Nav arrows + Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-        <button
-          onClick={() => prev && onNavigate(prev.id)}
-          disabled={!prev}
-          title={prev ? formatDateShort(prev.date) + ' · ' + (prev.city || prev.title) : undefined}
-          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: prev ? 'pointer' : 'default', opacity: prev ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
-          onMouseOver={e => { if (prev) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
-          onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
-        >
-          <ChevronLeft size={14} />
-        </button>
-        <button
-          onClick={() => next && onNavigate(next.id)}
-          disabled={!next}
-          title={next ? formatDateShort(next.date) + ' · ' + (next.city || next.title) : undefined}
-          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: next ? 'pointer' : 'default', opacity: next ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
-          onMouseOver={e => { if (next) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
-          onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
-        >
-          <ChevronRight size={14} />
-        </button>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
-          {pageTitle}
-        </h1>
-      </div>
-
-      {/* Date subtitle */}
-      <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '1rem' }}>
-        {formatDateLong(termin.date)}
+      {/* Nav arrows + Title + Date */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '1rem' }}>
+        {/* Arrows */}
+        <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0, paddingTop: '3px' }}>
+          <button
+            onClick={() => prev && onNavigate(prev.id)}
+            disabled={!prev}
+            title={prev ? formatDateShort(prev.date) + ' · ' + (prev.city || prev.title) : undefined}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: prev ? 'pointer' : 'default', opacity: prev ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
+            onMouseOver={e => { if (prev) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => next && onNavigate(next.id)}
+            disabled={!next}
+            title={next ? formatDateShort(next.date) + ' · ' + (next.city || next.title) : undefined}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: next ? 'pointer' : 'default', opacity: next ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
+            onMouseOver={e => { if (next) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        {/* Title + Date stacked */}
+        <div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
+            {pageTitle}
+          </h1>
+          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.1rem' }}>
+            {formatDateLong(termin.date)}
+          </div>
+        </div>
       </div>
 
       {/* Tab bar */}
