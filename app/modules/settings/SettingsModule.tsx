@@ -51,401 +51,11 @@ export interface SettingsProps {
 
 export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProps) {
   const t = useT()
-  const [savedFeedback, setSavedFeedback] = useState<string | null>(null)
-  const showSaved = (label?: string) => {
-    setSavedFeedback(label || t('general.saved'))
-    setTimeout(() => setSavedFeedback(null), 2000)
-  }
-  // Load data from API on mount
-  useEffect(() => {
-    // Artist-Einstellungen aus DB laden
-    getTenantArtistSettings()
-      .then(s => setArtistData({
-        displayName: s.displayName,
-        shortCode:   s.shortCode,
-        homebase:    s.homebase,
-        genre:       s.genre,
-        foundedYear: '',
-        website:     s.website,
-        email:       s.email,
-        phone:       s.phone,
-        socialMedia: { facebook: '', instagram: '', twitter: '', spotify: '', youtube: '' },
-      }))
-      .catch(() => {})
-    // Billing aus DB laden
-    getTenantBilling()
-      .then(b => setBillingData({
-        company:    b.company,
-        firstName:  b.firstName,
-        lastName:   b.lastName,
-        address:    b.address,
-        postalCode: b.postalCode,
-        city:       b.city,
-        country:    '',
-        taxId:      b.taxId,
-        email:      b.email,
-        phone:      b.phone,
-      }))
-      .catch(() => {})
-    // Format aus DB laden
-    getUserFormat()
-      .then(f => setFormatData(fd => ({
-        ...fd,
-        language: f.language,
-        timezone: f.timezone,
-        currency: f.currency,
-      })))
-      .catch(() => {})
-  }, []);
-
-  const [billingData, setBillingData] = useState({
-    company: '',
-    firstName: '',
-    lastName: '',
-    address: '',
-    postalCode: '',
-    city: '',
-    country: '',
-    taxId: '',
-    email: '',
-    phone: ''
-  })
-
-  const [subscriptionData, setSubscriptionData] = useState({
-    plan: 'Starter',
-    status: 'Trial',
-    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    nextBilling: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-  })
-
-  const [formatData, setFormatData] = useState({
-    language: 'de-DE',
-    timezone: 'Europe/Berlin',
-    dateFormat: 'DD.MM.YYYY',
-    timeFormat: '24h',
-    currency: 'EUR',
-    numberFormat: 'de-DE'
-  })
-
-  const [artistData, setArtistData] = useState({
-    displayName: '',
-    shortCode: '',
-    homebase: '',
-    genre: '',
-    foundedYear: '',
-    website: '',
-    email: '',
-    phone: '',
-    socialMedia: {
-      facebook: '',
-      instagram: '',
-      twitter: '',
-      spotify: '',
-      youtube: ''
-    }
-  })
-
-  // Save functions for each data type
-  const saveBillingData = (data: typeof billingData) => {
-    setBillingData(data);
-  };
-
-  const saveSubscriptionData = (data: typeof subscriptionData) => {
-    setSubscriptionData(data);
-  };
-
-  const saveFormatData = (data: typeof formatData) => {
-    setFormatData(data);
-  };
-
-  const saveArtistData = async (data: typeof artistData) => {
-    setArtistData(data)
-    try {
-      await updateTenantArtistSettings({
-        displayName: data.displayName,
-        shortCode:   data.shortCode,
-        homebase:    data.homebase,
-        genre:       data.genre,
-        email:       data.email,
-        phone:       data.phone,
-        website:     data.website,
-        equipmentKuerzel: '',
-      })
-      window.dispatchEvent(new CustomEvent('artistUpdated'))
-    } catch {}
-  };
 
   const renderContent = () => {
     switch (activeSubTab) {
       case 'artist':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <MusicalNoteIcon className="w-5 h-5" />
-                Artist
-              </h3>
-              
-              {/* 4 Areas in 4 columns layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Area 1: Rechnungsanschrift */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.billingAddress')}</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.company')}</label>
-                      <input
-                        type="text"
-                        value={billingData.company}
-                        onChange={(e) => saveBillingData({...billingData, company: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.companyPlaceholder')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.firstName')}</label>
-                      <input
-                        type="text"
-                        value={billingData.firstName}
-                        onChange={(e) => saveBillingData({...billingData, firstName: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.firstName')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.lastName')}</label>
-                      <input
-                        type="text"
-                        value={billingData.lastName}
-                        onChange={(e) => saveBillingData({...billingData, lastName: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.lastName')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.address')}</label>
-                      <input
-                        type="text"
-                        value={billingData.address}
-                        onChange={(e) => saveBillingData({...billingData, address: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.addressPlaceholder')}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="w-20">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.postalCode')}</label>
-                        <input
-                          type="text"
-                          value={billingData.postalCode}
-                          onChange={(e) => saveBillingData({...billingData, postalCode: e.target.value})}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          placeholder="12345"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.city')}</label>
-                        <input
-                          type="text"
-                          value={billingData.city}
-                          onChange={(e) => saveBillingData({...billingData, city: e.target.value})}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          placeholder={t('settings.artist.cityPlaceholder')}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.phone')}</label>
-                      <input
-                        type="tel"
-                        value={billingData.phone}
-                        onChange={(e) => saveBillingData({...billingData, phone: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.phonePlaceholder')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.taxId')}</label>
-                      <input
-                        type="text"
-                        value={billingData.taxId}
-                        onChange={(e) => saveBillingData({...billingData, taxId: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="DE123456789"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('general.email')}</label>
-                      <input
-                        type="email"
-                        value={billingData.email}
-                        onChange={(e) => saveBillingData({...billingData, email: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.emailPlaceholder')}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Area 2: Subscription */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.subscription')}</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-blue-600">{subscriptionData.plan}</p>
-                      <p className="text-xs text-gray-600">{t('settings.artist.subscriptionStatus')}: {subscriptionData.status}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-900">
-                        {new Date(subscriptionData.nextBilling).toLocaleDateString('de-DE')}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {subscriptionData.status === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                        {t('settings.artist.upgradePlan')}
-                      </button>
-                      <button className="w-full px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
-                        {t('settings.artist.changePayment')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Area 3: Format & Region */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.formatRegion')}</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.language.label')}</label>
-                      <select
-                        value={formatData.language}
-                        onChange={(e) => saveFormatData({...formatData, language: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="de-DE">Deutsch</option>
-                        <option value="en-US">English</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.timezone')}</label>
-                      <select
-                        value={formatData.timezone}
-                        onChange={(e) => saveFormatData({...formatData, timezone: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="Europe/Berlin">Europe/Berlin</option>
-                        <option value="Europe/London">Europe/London</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.currency')}</label>
-                      <select
-                        value={formatData.currency}
-                        onChange={(e) => saveFormatData({...formatData, currency: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="EUR">EUR (€)</option>
-                        <option value="USD">USD ($)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Area 4: Artist Information */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-gray-900 border-b pb-2">{t('settings.artist.information')}</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.displayName')}</label>
-                      <input
-                        type="text"
-                        value={artistData.displayName}
-                        onChange={(e) => setArtistData({...artistData, displayName: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.displayNamePlaceholder')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.shortCode')}</label>
-                      <input
-                        type="text"
-                        value={artistData.shortCode}
-                        onChange={(e) => setArtistData({...artistData, shortCode: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.shortCodePlaceholder')}
-                        maxLength={5}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.homebase')}</label>
-                      <input
-                        type="text"
-                        value={artistData.homebase}
-                        onChange={(e) => setArtistData({...artistData, homebase: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.homebasePlaceholder')}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">{t('settings.artist.genre')}</label>
-                      <input
-                        type="text"
-                        value={artistData.genre}
-                        onChange={(e) => setArtistData({...artistData, genre: e.target.value})}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder={t('settings.artist.genrePlaceholder')}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex items-center gap-3">
-                <button
-                  onClick={async () => {
-                    await Promise.all([
-                      saveArtistData(artistData),
-                      updateTenantBilling({
-                        company:    billingData.company,
-                        firstName:  billingData.firstName,
-                        lastName:   billingData.lastName,
-                        address:    billingData.address,
-                        postalCode: billingData.postalCode,
-                        city:       billingData.city,
-                        phone:      billingData.phone,
-                        taxId:      billingData.taxId,
-                        email:      billingData.email,
-                      }),
-                      updateUserFormat({
-                        language: formatData.language,
-                        timezone: formatData.timezone,
-                        currency: formatData.currency,
-                      }),
-                    ])
-                    showSaved(t('settings.artist.saveAll'))
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  {t('settings.artist.saveAll')}
-                </button>
-                {savedFeedback && (
-                  <span className="text-sm text-green-600 font-medium flex items-center gap-1">
-                    <CheckCircleIcon className="w-4 h-4" />
-                    {savedFeedback}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Band-Mitglieder */}
-            <div className="mt-8 border-t pt-6">
-              <ArtistMembersSettings />
-            </div>
-          </div>
-        )
+        return <ArtistSettings />
 
       case 'profil':
         return <UserProfil />
@@ -553,6 +163,231 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
   return (
     <div>
       {renderContent()}
+    </div>
+  )
+}
+
+// ============================================================
+// ArtistSettings Component
+// ============================================================
+
+type ArtistForm = {
+  company: string; firstName: string; lastName: string
+  address: string; postalCode: string; city: string
+  billingPhone: string; taxId: string; billingEmail: string
+  language: string; timezone: string; currency: string
+  displayName: string; shortCode: string; homebase: string; genre: string
+  website: string; artistEmail: string; artistPhone: string
+}
+
+const ARTIST_FORM_EMPTY: ArtistForm = {
+  company: '', firstName: '', lastName: '', address: '', postalCode: '', city: '',
+  billingPhone: '', taxId: '', billingEmail: '',
+  language: 'de-DE', timezone: 'Europe/Berlin', currency: 'EUR',
+  displayName: '', shortCode: '', homebase: '', genre: '',
+  website: '', artistEmail: '', artistPhone: '',
+}
+
+function ArtistSettings() {
+  const t = useT()
+  const [form, setFormState] = useState<ArtistForm>(ARTIST_FORM_EMPTY)
+  const [isDirty, setIsDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [subPlan] = useState('Starter')
+  const [subStatus] = useState('Trial')
+  const [subNextBilling] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString())
+  const originalRef = useRef<ArtistForm>(ARTIST_FORM_EMPTY)
+
+  useEffect(() => {
+    Promise.all([
+      getTenantArtistSettings().catch(() => null),
+      getTenantBilling().catch(() => null),
+      getUserFormat().catch(() => null),
+    ]).then(([artist, billing, format]) => {
+      const data: ArtistForm = {
+        company:      billing?.company    || '',
+        firstName:    billing?.firstName  || '',
+        lastName:     billing?.lastName   || '',
+        address:      billing?.address    || '',
+        postalCode:   billing?.postalCode || '',
+        city:         billing?.city       || '',
+        billingPhone: billing?.phone      || '',
+        taxId:        billing?.taxId      || '',
+        billingEmail: billing?.email      || '',
+        language:     format?.language    || 'de-DE',
+        timezone:     format?.timezone    || 'Europe/Berlin',
+        currency:     format?.currency    || 'EUR',
+        displayName:  artist?.displayName || '',
+        shortCode:    artist?.shortCode   || '',
+        homebase:     artist?.homebase    || '',
+        genre:        artist?.genre       || '',
+        website:      artist?.website     || '',
+        artistEmail:  artist?.email       || '',
+        artistPhone:  artist?.phone       || '',
+      }
+      setFormState(data)
+      originalRef.current = data
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const set = (k: keyof ArtistForm, v: string) => {
+    const next = { ...form, [k]: v }
+    setFormState(next)
+    const dirty = (Object.keys(originalRef.current) as (keyof ArtistForm)[])
+      .some(key => next[key] !== originalRef.current[key])
+    setIsDirty(dirty)
+  }
+
+  const cancelEdit = () => {
+    setFormState({ ...originalRef.current })
+    setIsDirty(false)
+    setSaveError('')
+  }
+
+  const saveEdit = async (): Promise<boolean> => {
+    setSaving(true); setSaveError('')
+    try {
+      await Promise.all([
+        updateTenantArtistSettings({
+          displayName: form.displayName, shortCode: form.shortCode,
+          homebase: form.homebase, genre: form.genre,
+          email: form.artistEmail, phone: form.artistPhone,
+          website: form.website, equipmentKuerzel: '',
+        }),
+        updateTenantBilling({
+          company: form.company, firstName: form.firstName, lastName: form.lastName,
+          address: form.address, postalCode: form.postalCode, city: form.city,
+          phone: form.billingPhone, taxId: form.taxId, email: form.billingEmail,
+        }),
+        updateUserFormat({
+          language: form.language, timezone: form.timezone, currency: form.currency,
+        }),
+      ])
+      originalRef.current = { ...form }
+      setIsDirty(false)
+      window.dispatchEvent(new CustomEvent('artistUpdated'))
+      return true
+    } catch (e) {
+      setSaveError((e as Error).message || t('general.error'))
+      return false
+    } finally { setSaving(false) }
+  }
+
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
+  if (loading) return (
+    <div className="flex items-center gap-2 text-gray-500 text-sm py-8">
+      <Loader2 className="animate-spin w-4 h-4" /> {t('general.loading')}
+    </div>
+  )
+
+  return (
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header + dirty state */}
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
+        <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Artist</h1>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {saveError && (
+        <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>
+          <AlertCircle className="w-4 h-4 shrink-0" />{saveError}
+        </div>
+      )}
+
+      {/* 4-column grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        {/* Rechnungsanschrift */}
+        <div className="space-y-3">
+          <FPSection title={t('settings.artist.billingAddress')} />
+          <FPField label={t('settings.artist.company')} value={form.company} onChange={v => set('company', v)} placeholder={t('settings.artist.companyPlaceholder')} />
+          <FPField label={t('settings.artist.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
+          <FPField label={t('settings.artist.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
+          <FPField label={t('settings.artist.address')} value={form.address} onChange={v => set('address', v)} placeholder={t('settings.artist.addressPlaceholder')} />
+          <div className="grid gap-2" style={{ gridTemplateColumns: '70px 1fr' }}>
+            <FPField label={t('settings.artist.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} placeholder="12345" />
+            <FPField label={t('settings.artist.city')} value={form.city} onChange={v => set('city', v)} placeholder={t('settings.artist.cityPlaceholder')} />
+          </div>
+          <FPField label={t('settings.artist.phone')} value={form.billingPhone} onChange={v => set('billingPhone', v)} type="tel" placeholder={t('settings.artist.phonePlaceholder')} />
+          <FPField label={t('settings.artist.taxId')} value={form.taxId} onChange={v => set('taxId', v)} placeholder="DE123456789" />
+          <FPField label={t('general.email')} value={form.billingEmail} onChange={v => set('billingEmail', v)} type="email" placeholder={t('settings.artist.emailPlaceholder')} />
+        </div>
+
+        {/* Abo */}
+        <div className="space-y-3">
+          <FPSection title={t('settings.artist.subscription')} />
+          <p className="text-sm font-medium" style={{ color: '#60a5fa' }}>{subPlan}</p>
+          <p className="text-xs" style={{ color: '#9ca3af' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
+          <p className="text-xs" style={{ color: '#9ca3af' }}>
+            {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
+          </p>
+          <div className="space-y-2 pt-1">
+            <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+              {t('settings.artist.upgradePlan')}
+            </button>
+            <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: '#3a3a3a', color: '#9ca3af' }}>
+              {t('settings.artist.changePayment')}
+            </button>
+          </div>
+        </div>
+
+        {/* Format & Region */}
+        <div className="space-y-3">
+          <FPSection title={t('settings.artist.formatRegion')} />
+          <FPSelect label={t('settings.language.label')} value={form.language} onChange={v => set('language', v)} options={[
+            { value: 'de-DE', label: 'Deutsch' },
+            { value: 'en-US', label: 'English' },
+          ]} />
+          <FPSelect label={t('settings.artist.timezone')} value={form.timezone} onChange={v => set('timezone', v)} options={[
+            { value: 'Europe/Berlin', label: 'Europe/Berlin' },
+            { value: 'Europe/London', label: 'Europe/London' },
+          ]} />
+          <FPSelect label={t('settings.artist.currency')} value={form.currency} onChange={v => set('currency', v)} options={[
+            { value: 'EUR', label: 'EUR (€)' },
+            { value: 'USD', label: 'USD ($)' },
+          ]} />
+        </div>
+
+        {/* Artist Info */}
+        <div className="space-y-3">
+          <FPSection title={t('settings.artist.information')} />
+          <FPField label={t('settings.artist.displayName')} value={form.displayName} onChange={v => set('displayName', v)} placeholder={t('settings.artist.displayNamePlaceholder')} />
+          <FPField label={t('settings.artist.shortCode')} value={form.shortCode} onChange={v => set('shortCode', v)} placeholder={t('settings.artist.shortCodePlaceholder')} />
+          <FPField label={t('settings.artist.homebase')} value={form.homebase} onChange={v => set('homebase', v)} placeholder={t('settings.artist.homebasePlaceholder')} />
+          <FPField label={t('settings.artist.genre')} value={form.genre} onChange={v => set('genre', v)} placeholder={t('settings.artist.genrePlaceholder')} />
+        </div>
+      </div>
+
+      {/* Band-Mitglieder */}
+      <div className="pt-6" style={{ borderTop: '1px solid #333' }}>
+        <ArtistMembersSettings />
+      </div>
+
     </div>
   )
 }
