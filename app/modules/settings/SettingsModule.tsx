@@ -1998,11 +1998,13 @@ function ErsteSchritte() {
 
 // ── Partner-Typen Settings ────────────────────────────────────────────────────
 const PARTNER_SUGGESTIONS = [
-  { group: 'Booking & Management', items: ['Booking Agentur', 'Tourmanagement', 'Artist Management', 'Promotion', 'Veranstalter'] },
+  { group: 'Booking & Management', items: ['Booking Agentur', 'Booking', 'Tourmanagement', 'Management', 'Artist Management', 'Promotion', 'Promoter', 'Veranstalter', 'Organizer'] },
   { group: 'Technik', items: ['PA / Sound', 'Lichtfirma', 'Backline', 'Backline-Firma', 'Bühnenbau', 'Video / LED', 'Strom / Generator', 'Technik-Lieferant'] },
-  { group: 'Medien', items: ['Pressebüro', 'Fotografie', 'Videoproduktion', 'Medien-/Videoproduktion', 'Social Media', 'Radio / TV'] },
-  { group: 'Produktion & Merch', items: ['Label', 'Verleger', 'Merchandise', 'Catering'] },
-  { group: 'Logistik', items: ['Busunternehmen', 'Transport', 'Autovermietung', 'Trucking-Firma', 'Sicherheitsdienst', 'Reisebüro', 'Versicherung'] },
+  { group: 'Medien & PR', items: ['Pressebüro', 'Press / PR', 'Fotografie', 'Videoproduktion', 'Medien-/Videoproduktion', 'Social Media', 'Radio / TV'] },
+  { group: 'Produktion & Merch', items: ['Label', 'Verleger', 'Publisher', 'Production', 'Studio', 'Merchandise', 'Merchandise-Dienstleister', 'Catering', 'Catering-Firma'] },
+  { group: 'Marketing & Sponsoring', items: ['Marketing', 'Brand', 'Endorser'] },
+  { group: 'Logistik & Service', items: ['Busunternehmen', 'Transport', 'Autovermietung', 'Trucking-Firma', 'Sicherheitsdienst', 'Sicherheits-Firma', 'Ticketing-Dienstleister', 'Reisebüro', 'Versicherung'] },
+  { group: 'Sonstige', items: ['Support-Band', 'Zulieferer Sonstiges', 'Other'] },
 ]
 
 function PartnerTypesSettings() {
