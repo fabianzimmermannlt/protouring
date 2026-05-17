@@ -6,7 +6,7 @@ import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import type { TranslationKey } from '@/app/lib/i18n/translations/de'
-import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download, Upload } from 'lucide-react'
+import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download, Upload, Save } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
@@ -151,146 +151,197 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
   onUpdated: (t: Termin) => void
 }) {
   const t = useT()
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState<TerminFormData>(terminToFormData(termin))
+  const [form, setForm] = useState<TerminFormData>(() => terminToFormData(termin))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const originalRef = useRef<TerminFormData>(terminToFormData(termin))
 
+  // Sync when navigating to a different termin
   useEffect(() => {
-    if (!editing) setForm(terminToFormData(termin))
-  }, [termin, editing])
+    const fd = terminToFormData(termin)
+    setForm(fd)
+    originalRef.current = fd
+    setError('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termin.id])
 
-  const startEdit = () => { setForm(terminToFormData(termin)); setEditing(true) }
-  const cancelEdit = () => { setForm(terminToFormData(termin)); setEditing(false); setError('') }
-  const f = (key: keyof TerminFormData, value: string | boolean | null) =>
+  const isDirty = JSON.stringify(form) !== JSON.stringify(originalRef.current)
+
+  // Nav guard
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+  }, [isDirty])
+
+  // Always-fresh save reference
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+  })
+
+  const f = (key: keyof TerminFormData, value: string | boolean | number | null | undefined) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
-  const save = async () => {
+  const cancelEdit = () => {
+    setForm(originalRef.current)
+    setError('')
+  }
+
+  const saveEdit = async (): Promise<boolean> => {
     setSaving(true)
     try {
       const updated = await updateTermin(termin.id, form)
       onUpdated(updated)
-      setEditing(false)
+      originalRef.current = terminToFormData(updated)
       setError('')
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
+      return false
     } finally {
       setSaving(false)
     }
   }
 
-  const iCls = "w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-
   return (
     <div className="pt-card">
       <div className="pt-card-header">
         <span className="pt-card-title">{t('appointments.card.event')}</span>
-        {isAdmin && !editing && (
-          <button onClick={startEdit} className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors">
-            <Edit2 size={12} />
-          </button>
-        )}
-        {editing && (
-          <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+        {isDirty && (
+          <div className="flex items-center gap-2">
+            <button onClick={cancelEdit} disabled={saving}
+              className="text-xs transition-colors" style={{ color: '#888' }}>
+              Abbrechen
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded font-medium disabled:opacity-50 transition-colors"
+              style={{ background: '#2563eb', color: '#fff' }}>
+              {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
+              Speichern
+            </button>
+          </div>
         )}
       </div>
 
       {error && (
-        <div className="mx-5 mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs flex items-center gap-2">
+        <div className="mx-5 mt-2 p-2 bg-red-900/30 border border-red-700/40 rounded text-red-300 text-xs flex items-center gap-2">
           <AlertCircle size={12} /> {error}
           <button onClick={() => setError('')} className="ml-auto"><X size={12} /></button>
         </div>
       )}
 
       <div className="pt-card-body">
-        {editing ? (
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.date')}</label>
-              <input type="date" className={iCls} value={form.date} onChange={e => f('date', e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.title')}</label>
-              <input type="text" className={iCls} value={form.title} onChange={e => f('title', e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.type')}</label>
-                <select className={iCls} value={form.art || ''} onChange={e => f('art', e.target.value)}>
-                  <option value="">—</option>
-                  {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 font-medium mb-1">Sub-Typ</label>
-                <select className={iCls} value={form.art_sub || ''} onChange={e => f('art_sub', e.target.value)}>
-                  <option value="">—</option>
-                  {TERMIN_ART_SUB.map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.statusBooking')}</label>
-                <select className={iCls} value={form.status_booking || ''} onChange={e => f('status_booking', e.target.value)}>
-                  {TERMIN_STATUS_BOOKING.map(s => <option key={s} value={s}>{STATUS_BOOKING_TKEY[s] ? t(STATUS_BOOKING_TKEY[s]) : s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 font-medium mb-1">{t('appointments.card.statusPublic')}</label>
-                <select className={iCls} value={form.status_public || ''} onChange={e => f('status_public', e.target.value)}>
-                  {TERMIN_STATUS_PUBLIC.map(s => <option key={s} value={s}>{STATUS_PUBLIC_TKEY[s] ? t(STATUS_PUBLIC_TKEY[s]) : s}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-              <button onClick={save} disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-medium disabled:opacity-50 transition-colors">
-                {saving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                Speichern
-              </button>
-              <button onClick={cancelEdit} disabled={saving}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                Abbrechen
-              </button>
-            </div>
+        <div className="space-y-3">
+          <div>
+            <label className="detail-label">{t('appointments.card.date')}</label>
+            <input
+              type="date"
+              className="detail-input"
+              value={form.date}
+              onChange={e => f('date', e.target.value)}
+              disabled={!isAdmin}
+            />
           </div>
-        ) : (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
-            <dt className="text-gray-400 font-medium whitespace-nowrap">{t('appointments.card.date')}</dt>
-            <dd className="text-gray-800">{formatDateLong(termin.date)}</dd>
-            <dt className="text-gray-400 font-medium">{t('appointments.card.title')}</dt>
-            <dd className="text-gray-800 font-semibold">{termin.title}</dd>
-            {(termin.art || termin.artSub) && (
-              <>
-                <dt className="text-gray-400 font-medium">{t('appointments.card.type')}</dt>
-                <dd className="text-gray-800">
-                  {termin.art}{termin.artSub && <span className="text-gray-400 ml-1">· {termin.artSub}</span>}
-                </dd>
-              </>
-            )}
-            {termin.statusBooking && (
-              <>
-                <dt className="text-gray-400 font-medium">{t('appointments.card.statusBooking')}</dt>
-                <dd>
-                  <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>
-                    {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
-                  </span>
-                </dd>
-              </>
-            )}
-            {termin.statusPublic && (
-              <>
-                <dt className="text-gray-400 font-medium">{t('appointments.card.statusPublic')}</dt>
-                <dd>
-                  <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>
-                    {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
-                  </span>
-                </dd>
-              </>
-            )}
-          </dl>
-        )}
+          <div>
+            <label className="detail-label">{t('appointments.card.title')}</label>
+            <input
+              type="text"
+              className="detail-input"
+              value={form.title}
+              onChange={e => f('title', e.target.value)}
+              disabled={!isAdmin}
+            />
+          </div>
+          <div>
+            <label className="detail-label">{t('table.city')}</label>
+            <input
+              type="text"
+              className="detail-input"
+              value={form.city || ''}
+              onChange={e => f('city', e.target.value)}
+              disabled={!isAdmin}
+            />
+          </div>
+          <div>
+            <label className="detail-label">{t('appointments.card.type')}</label>
+            <select
+              className="detail-input"
+              value={form.art || ''}
+              onChange={e => f('art', e.target.value)}
+              disabled={!isAdmin}
+            >
+              <option value="">—</option>
+              {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="detail-label">Sub-Typ</label>
+            <select
+              className="detail-input"
+              value={form.art_sub || ''}
+              onChange={e => f('art_sub', e.target.value)}
+              disabled={!isAdmin}
+            >
+              <option value="">—</option>
+              {TERMIN_ART_SUB.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="detail-label">{t('appointments.card.statusBooking')}</label>
+            <select
+              className="detail-input"
+              value={form.status_booking || ''}
+              onChange={e => f('status_booking', e.target.value)}
+              disabled={!isAdmin}
+            >
+              {TERMIN_STATUS_BOOKING.map(s => (
+                <option key={s} value={s}>{STATUS_BOOKING_TKEY[s] ? t(STATUS_BOOKING_TKEY[s]) : s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="detail-label">{t('appointments.card.statusPublic')}</label>
+            <select
+              className="detail-input"
+              value={form.status_public || ''}
+              onChange={e => f('status_public', e.target.value)}
+              disabled={!isAdmin}
+            >
+              {TERMIN_STATUS_PUBLIC.map(s => (
+                <option key={s} value={s}>{STATUS_PUBLIC_TKEY[s] ? t(STATUS_PUBLIC_TKEY[s]) : s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="detail-label">{t('appointments.card.capacity')}</label>
+            <input
+              type="number"
+              className="detail-input"
+              value={form.capacity ?? ''}
+              onChange={e => f('capacity', e.target.value ? Number(e.target.value) : null)}
+              disabled={!isAdmin}
+            />
+          </div>
+          <div>
+            <label className="detail-label">Ankündigung</label>
+            <input
+              type="text"
+              className="detail-input"
+              value={form.announcement || ''}
+              onChange={e => f('announcement', e.target.value)}
+              disabled={!isAdmin}
+            />
+          </div>
+          <div>
+            <label className="detail-label">Notizen</label>
+            <textarea
+              className="detail-input"
+              rows={3}
+              value={form.notes || ''}
+              onChange={e => f('notes', e.target.value)}
+              disabled={!isAdmin}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

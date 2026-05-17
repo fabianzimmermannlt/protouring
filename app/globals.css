@@ -1747,11 +1747,13 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 }
 
 /* Detail View — Underline Input, L2 dark overrides */
+/* Use high-specificity selectors so we win over .pt-card-body input[type] rules */
 .l2-content .detail-input,
-.l2-content .pt-card-body .detail-input,
-.l2-content .pt-card-body input.detail-input[type="text"],
-.l2-content .pt-card-body input.detail-input[type="email"],
-.l2-content .pt-card-body input.detail-input[type="tel"],
+.l2-content input.detail-input,
+.l2-content select.detail-input,
+.l2-content textarea.detail-input,
+.l2-content .pt-card-body input.detail-input,
+.l2-content .pt-card-body select.detail-input,
 .l2-content .pt-card-body textarea.detail-input {
   color: #e0e0e0 !important;
   border: none !important;
@@ -1760,19 +1762,42 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   border-radius: 0 !important;
 }
 .l2-content .detail-input:focus,
-.l2-content .pt-card-body .detail-input:focus,
+.l2-content input.detail-input:focus,
+.l2-content select.detail-input:focus,
+.l2-content textarea.detail-input:focus,
 .l2-content .pt-card-body input.detail-input:focus,
+.l2-content .pt-card-body select.detail-input:focus,
 .l2-content .pt-card-body textarea.detail-input:focus {
   border: none !important;
   border-bottom: 1px solid #60a5fa !important;
   outline: none !important;
 }
-.l2-content .detail-input::placeholder {
+.l2-content .detail-input::placeholder,
+.l2-content .pt-card-body .detail-input::placeholder {
   color: #484848 !important;
 }
-.l2-content .detail-input[readonly] {
+.l2-content .detail-input[readonly],
+.l2-content .detail-input:disabled,
+.l2-content .pt-card-body input.detail-input:disabled,
+.l2-content .pt-card-body select.detail-input:disabled,
+.l2-content .pt-card-body textarea.detail-input:disabled {
   color: #6b7280 !important;
   border-bottom-color: #3c3c3c !important;
+  background: transparent !important;
+  cursor: default;
+  opacity: 1 !important;
+}
+.l2-content select.detail-input {
+  appearance: auto;
+  cursor: pointer;
+}
+.l2-content select.detail-input:disabled {
+  cursor: default;
+  pointer-events: none;
+}
+.l2-content select.detail-input option {
+  background: #2c2c2c;
+  color: #e0e0e0;
 }
 .l2-content .detail-label {
   color: #9ca3af !important;
