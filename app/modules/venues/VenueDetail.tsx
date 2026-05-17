@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
-  Pencil, Upload, Trash2, X, AlertCircle, Plus, Save, Check,
+  Upload, Trash2, X, AlertCircle, Plus, Save, Check,
   File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
   Image as ImageIcon, ExternalLink, Loader2, UserCircle, Phone, Mail,
 } from 'lucide-react'
@@ -15,7 +16,6 @@ import {
 } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
-import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 
 // ─── API Base ─────────────────────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
@@ -87,19 +87,11 @@ function fileIcon(mime: string): string {
   return '📎'
 }
 
-function KV({ label, value }: { label: string; value?: string }) {
-  if (!value?.trim()) return null
-  return (
-    <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50 last:border-0">
-      <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{label}</span>
-      <span className="text-gray-800">{value}</span>
-    </div>
-  )
-}
-
 // ─── Main Detail Component ────────────────────────────────────────────────────
 export function VenueDetailContent({ venueId }: { venueId: string }) {
   const t = useT()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isMobile = useIsMobile()
 
   const isEditor = isEditorRole(getEffectiveRole())
@@ -111,11 +103,12 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
   const [error, setError] = useState('')
   const [editModalOpen, setEditModalOpen] = useState(false)
 
-  type EditSection = 'spielstaette' | 'backstage' | 'technik'
-  const [editingSection, setEditingSection] = useState<EditSection | null>(null)
-  const [inlineForm, setInlineForm] = useState<Record<string, string>>({})
-  const [savingInline, setSavingInline] = useState(false)
-  const [inlineError, setInlineError] = useState('')
+  // Always-editable form state
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [isDirty, setIsDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const originalRef = useRef<Record<string, string>>({})
 
   const [files, setFiles] = useState<FileItem[]>([])
   const [filesLoading, setFilesLoading] = useState(true)
@@ -149,7 +142,10 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
       if (!res.ok) throw new Error(t('venues.notFound'))
       const data = await res.json()
       setVenue(data.venue)
-      setInlineForm(data.venue)
+      const d = data.venue as Record<string, string>
+      setForm(d)
+      originalRef.current = d
+      setIsDirty(false)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -217,11 +213,11 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
     setUploading(true)
     const category = uploadType === 'photos' ? 'Fotos' : selectedCategory
     try {
-      const form = new FormData()
-      Array.from(fileList).forEach(f => form.append('files', f))
+      const formData = new FormData()
+      Array.from(fileList).forEach(f => formData.append('files', f))
       const res = await fetch(
         `${API_BASE}/api/files/venue/${venueId}?category=${encodeURIComponent(category)}`,
-        { method: 'POST', headers: authHeaders(), body: form }
+        { method: 'POST', headers: authHeaders(), body: formData }
       )
       if (!res.ok) throw new Error(t('general.uploadFailed'))
       await loadFiles()
@@ -295,50 +291,76 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
     } catch { /* silent */ }
   }
 
-  // ─── Inline section edit ──────────────────────────────────────────────────
-  function startEditSection(section: EditSection) {
-    if (venue) setInlineForm({ ...venue })
-    setInlineError('')
-    setEditingSection(section)
+  // ─── Form handlers ────────────────────────────────────────────────────────
+  const f = (key: string, val: string) => {
+    const next = { ...form, [key]: val }
+    setForm(next)
+    const orig = originalRef.current
+    setIsDirty(Object.keys(next).some(k => next[k] !== (orig[k] ?? '')))
   }
 
-  function cancelEditSection() {
-    if (venue) setInlineForm({ ...venue })
-    setEditingSection(null)
-    setInlineError('')
-  }
+  const cancelEdit = () => { setForm(originalRef.current); setIsDirty(false); setSaveError('') }
 
-  async function saveInlineSection() {
+  const saveEdit = async () => {
     if (!venue) return
-    setSavingInline(true)
-    setInlineError('')
+    setSaving(true); setSaveError('')
     try {
       const res = await fetch(`${API_BASE}/api/venues/${venueId}`, {
         method: 'PUT',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(inlineForm),
+        body: JSON.stringify(form),
       })
       if (!res.ok) throw new Error(t('general.saveFailed'))
       const data = await res.json()
       setVenue(data.venue)
-      setInlineForm({ ...data.venue })
-      setEditingSection(null)
+      const d = data.venue as Record<string, string>
+      setForm(d)
+      originalRef.current = d
+      setIsDirty(false)
       window.dispatchEvent(new CustomEvent('venue-updated', { detail: data.venue }))
     } catch (e) {
-      setInlineError((e as Error).message || 'Speichern fehlgeschlagen')
+      setSaveError((e as Error).message || 'Speichern fehlgeschlagen')
     } finally {
-      setSavingInline(false)
+      setSaving(false)
     }
   }
 
-  const iF = (key: string, value: string) => setInlineForm(prev => ({ ...prev, [key]: value }))
+  const ro = !isEditor
+  const titleColor = isL2 ? '#e0e0e0' : '#111827'
+  const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="module-content">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4" style={{ minHeight: '32px', gap: '12px' }}>
+        <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {loading ? '' : (form.name || venue?.name || '')}
+        </h2>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${isL2 ? '#555' : '#d1d5db'}`, borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
+      </div>
+
       {error && (
         <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">
           <AlertCircle className="w-4 h-4 shrink-0" />{error}
+        </div>
+      )}
+      {saveError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">
+          <AlertCircle className="w-4 h-4 shrink-0" />{saveError}
         </div>
       )}
 
@@ -348,74 +370,32 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardVenue')}</span>
-            {isEditor && venue && editingSection !== 'spielstaette' && (
-              <button onClick={() => startEditSection('spielstaette')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-            )}
           </div>
           <div className="pt-card-body">
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'spielstaette' ? (
+            : (
               <div className="space-y-2">
-                <NameAddressAutocomplete
-                  label={`${t('general.name')} *`}
-                  variant="inline"
-                  withLatLon
-                  value={String(inlineForm.name ?? '')}
-                  onChange={v => iF('name', v)}
-                  onAddressSelect={a => setInlineForm(prev => ({
-                    ...prev,
-                    ...(a.name ? { name: a.name } : {}),
-                    ...(a.street ? { street: a.street } : {}),
-                    ...(a.postalCode ? { postalCode: a.postalCode } : {}),
-                    ...(a.city ? { city: a.city } : {}),
-                    ...(a.state ? { state: a.state } : {}),
-                    ...(a.country ? { country: a.country } : {}),
-                    ...(a.latitude ? { latitude: a.latitude } : {}),
-                    ...(a.longitude ? { longitude: a.longitude } : {}),
-                  }))}
-                />
-                <IField label={t('address.street')} value={inlineForm.street ?? ''} onChange={v => iF('street', v)} />
+                <IField label={t('general.name')} value={form.name ?? ''} onChange={v => f('name', v)} readOnly={ro} />
+                <IField label={t('address.street')} value={form.street ?? ''} onChange={v => f('street', v)} readOnly={ro} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label={t('address.postalCode')} value={inlineForm.postalCode ?? ''} onChange={v => iF('postalCode', v)} />
-                  <IField label={t('address.city')} value={inlineForm.city ?? ''} onChange={v => iF('city', v)} />
+                  <IField label={t('address.postalCode')} value={form.postalCode ?? ''} onChange={v => f('postalCode', v)} readOnly={ro} />
+                  <IField label={t('address.city')} value={form.city ?? ''} onChange={v => f('city', v)} readOnly={ro} />
                 </div>
-                <IField label={t('address.state')} value={inlineForm.state ?? ''} onChange={v => iF('state', v)} />
-                <IField label={t('address.country')} value={inlineForm.country ?? ''} onChange={v => iF('country', v)} />
-                <IField label={t('general.website')} value={inlineForm.website ?? ''} onChange={v => iF('website', v)} placeholder="https://..." />
+                <IField label={t('address.state')} value={form.state ?? ''} onChange={v => f('state', v)} readOnly={ro} />
+                <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} readOnly={ro} />
+                <IField label={t('general.website')} value={form.website ?? ''} onChange={v => f('website', v)} placeholder="https://..." readOnly={ro} />
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label={t('address.latitude')} value={inlineForm.latitude ?? ''} onChange={v => iF('latitude', v)} placeholder="48.137154" />
-                  <IField label={t('address.longitude')} value={inlineForm.longitude ?? ''} onChange={v => iF('longitude', v)} placeholder="11.576124" />
+                  <IField label={t('address.latitude')} value={form.latitude ?? ''} onChange={v => f('latitude', v)} placeholder="48.137154" readOnly={ro} />
+                  <IField label={t('address.longitude')} value={form.longitude ?? ''} onChange={v => f('longitude', v)} placeholder="11.576124" readOnly={ro} />
                 </div>
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                {(form.latitude || form.longitude) && (
+                  <a href={`https://maps.google.com/?q=${form.latitude},${form.longitude}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1">
+                    <Navigation className="w-3 h-3" />Google Maps
+                  </a>
+                )}
               </div>
-            ) : venue ? (
-              <>
-                {venue.name && <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50"><span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('general.name')}</span><span className="text-gray-800 font-semibold">{venue.name}</span></div>}
-                <KV label={t('address.street')} value={venue.street || undefined} />
-                <KV label={t('address.postalCodeCity')} value={[venue.postalCode, venue.city].filter(Boolean).join(' ') || undefined} />
-                <KV label={t('address.state')} value={venue.state || undefined} />
-                <KV label={t('address.country')} value={venue.country || undefined} />
-                {venue.website && (
-                  <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('general.website')}</span>
-                    <a href={venue.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 truncate">
-                      <Globe className="w-3 h-3 shrink-0" />{venue.website.replace(/^https?:\/\//, '')}
-                    </a>
-                  </div>
-                )}
-                {(venue.latitude || venue.longitude) && (
-                  <div className="grid grid-cols-[140px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('address.gps')}</span>
-                    <a href={`https://maps.google.com/?q=${venue.latitude},${venue.longitude}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                      <Navigation className="w-3 h-3 shrink-0" />{venue.latitude}, {venue.longitude}
-                    </a>
-                  </div>
-                )}
-                {!venue.name && !venue.street && !venue.city && !venue.country && !venue.website && !venue.latitude && (
-                  <p className="text-sm text-gray-400 py-2">{t('general.noDataEntered')}</p>
-                )}
-              </>
-            ) : null}
+            )}
           </div>
         </div>
 
@@ -423,38 +403,22 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardBackstage')}</span>
-            {isEditor && venue && editingSection !== 'backstage' && (
-              <button onClick={() => startEditSection('backstage')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-            )}
           </div>
           <div className="pt-card-body">
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'backstage' ? (
+            : (
               <div className="space-y-2">
-                <IField label={t('address.arrivalNote')} value={inlineForm.arrival ?? ''} onChange={v => iF('arrival', v)} />
-                <IField label={t('address.arrivalStreet')} value={inlineForm.arrivalStreet ?? ''} onChange={v => iF('arrivalStreet', v)} />
+                <IField label={t('address.arrivalNote')} value={form.arrival ?? ''} onChange={v => f('arrival', v)} readOnly={ro} />
+                <IField label={t('address.arrivalStreet')} value={form.arrivalStreet ?? ''} onChange={v => f('arrivalStreet', v)} readOnly={ro} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
-                  <IField label={t('address.arrivalPostalCode')} value={inlineForm.arrivalPostalCode ?? ''} onChange={v => iF('arrivalPostalCode', v)} />
-                  <IField label={t('address.arrivalCity')} value={inlineForm.arrivalCity ?? ''} onChange={v => iF('arrivalCity', v)} />
+                  <IField label={t('address.arrivalPostalCode')} value={form.arrivalPostalCode ?? ''} onChange={v => f('arrivalPostalCode', v)} readOnly={ro} />
+                  <IField label={t('address.arrivalCity')} value={form.arrivalCity ?? ''} onChange={v => f('arrivalCity', v)} readOnly={ro} />
                 </div>
-                <ITextarea label={t('venues.parking')} value={inlineForm.parking ?? ''} onChange={v => iF('parking', v)} />
-                <ITextarea label={t('venues.nightliner')} value={inlineForm.nightlinerParking ?? ''} onChange={v => iF('nightlinerParking', v)} />
-                <ITextarea label={t('venues.loadingPath')} value={inlineForm.loadingPath ?? ''} onChange={v => iF('loadingPath', v)} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <ITextarea label={t('venues.parking')} value={form.parking ?? ''} onChange={v => f('parking', v)} readOnly={ro} />
+                <ITextarea label={t('venues.nightliner')} value={form.nightlinerParking ?? ''} onChange={v => f('nightlinerParking', v)} readOnly={ro} />
+                <ITextarea label={t('venues.loadingPath')} value={form.loadingPath ?? ''} onChange={v => f('loadingPath', v)} readOnly={ro} />
               </div>
-            ) : venue ? (
-              <>
-                <KV label={t('address.arrival')} value={venue.arrival || undefined} />
-                <KV label={t('address.arrivalStreet')} value={venue.arrivalStreet || undefined} />
-                <KV label={t('address.arrivalPostalCodeCity')} value={[venue.arrivalPostalCode, venue.arrivalCity].filter(Boolean).join(' ') || undefined} />
-                <KV label={t('venues.parking')} value={venue.parking || undefined} />
-                <KV label={t('venues.nightliner')} value={venue.nightlinerParking || undefined} />
-                <KV label={t('venues.loadingPath')} value={venue.loadingPath || undefined} />
-                {!venue.arrival && !venue.arrivalStreet && !venue.parking && !venue.nightlinerParking && !venue.loadingPath && (
-                  <p className="text-sm text-gray-400 py-2">{t('general.noDataEntered')}</p>
-                )}
-              </>
-            ) : null}
+            )}
           </div>
         </div>
 
@@ -462,47 +426,27 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
         <div className="pt-card">
           <div className="pt-card-header">
             <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardTech')}</span>
-            {isEditor && venue && editingSection !== 'technik' && (
-              <button onClick={() => startEditSection('technik')} className="text-gray-400 hover:text-blue-600 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-            )}
           </div>
           <div className="pt-card-body">
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'technik' ? (
+            : (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label={t('venues.capacityStanding')} value={inlineForm.capacity ?? ''} onChange={v => iF('capacity', v)} placeholder="z.B. 5000" />
-                  <IField label={t('venues.capacitySeated')} value={inlineForm.capacitySeated ?? ''} onChange={v => iF('capacitySeated', v)} placeholder="z.B. 3000" />
+                  <IField label={t('venues.capacityStanding')} value={form.capacity ?? ''} onChange={v => f('capacity', v)} placeholder="z.B. 5000" readOnly={ro} />
+                  <IField label={t('venues.capacitySeated')} value={form.capacitySeated ?? ''} onChange={v => f('capacitySeated', v)} placeholder="z.B. 3000" readOnly={ro} />
                 </div>
                 <div className="grid grid-cols-[2fr_1fr] gap-2">
-                  <IField label={t('venues.stageDimensions')} value={inlineForm.stageDimensions ?? ''} onChange={v => iF('stageDimensions', v)} placeholder="z.B. 12x8m" />
-                  <IField label={t('venues.clearanceHeight')} value={inlineForm.clearanceHeight ?? ''} onChange={v => iF('clearanceHeight', v)} placeholder="z.B. 6m" />
+                  <IField label={t('venues.stageDimensions')} value={form.stageDimensions ?? ''} onChange={v => f('stageDimensions', v)} placeholder="z.B. 12x8m" readOnly={ro} />
+                  <IField label={t('venues.clearanceHeight')} value={form.clearanceHeight ?? ''} onChange={v => f('clearanceHeight', v)} placeholder="z.B. 6m" readOnly={ro} />
                 </div>
-                <ITextarea label={t('venues.wifiShort')} value={inlineForm.wifi ?? ''} onChange={v => iF('wifi', v)} placeholder="SSID / Passwort..." />
-                <ITextarea label={t('venues.wardrobe')} value={inlineForm.wardrobe ?? ''} onChange={v => iF('wardrobe', v)} />
-                <IField label={t('venues.showers')} value={inlineForm.showers ?? ''} onChange={v => iF('showers', v)} placeholder="z.B. 4 im Backstage" />
-                <IField label={t('venues.merchandiseFeeShort')} value={inlineForm.merchandiseFee ?? ''} onChange={v => iF('merchandiseFee', v)} placeholder="z.B. 15%" />
-                <ITextarea label={t('venues.merchandiseStandShort')} value={inlineForm.merchandiseStand ?? ''} onChange={v => iF('merchandiseStand', v)} />
-                <ITextarea label={t('venues.notesTitle')} value={inlineForm.notes ?? ''} onChange={v => iF('notes', v)} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <ITextarea label={t('venues.wifiShort')} value={form.wifi ?? ''} onChange={v => f('wifi', v)} placeholder="SSID / Passwort..." readOnly={ro} />
+                <ITextarea label={t('venues.wardrobe')} value={form.wardrobe ?? ''} onChange={v => f('wardrobe', v)} readOnly={ro} />
+                <IField label={t('venues.showers')} value={form.showers ?? ''} onChange={v => f('showers', v)} placeholder="z.B. 4 im Backstage" readOnly={ro} />
+                <IField label={t('venues.merchandiseFeeShort')} value={form.merchandiseFee ?? ''} onChange={v => f('merchandiseFee', v)} placeholder="z.B. 15%" readOnly={ro} />
+                <ITextarea label={t('venues.merchandiseStandShort')} value={form.merchandiseStand ?? ''} onChange={v => f('merchandiseStand', v)} readOnly={ro} />
+                <ITextarea label={t('venues.notesTitle')} value={form.notes ?? ''} onChange={v => f('notes', v)} readOnly={ro} />
               </div>
-            ) : venue ? (
-              <>
-                <KV label={t('venues.capacityStandingKV')} value={venue.capacity || undefined} />
-                <KV label={t('venues.capacitySeatedKV')} value={venue.capacitySeated || undefined} />
-                <KV label={t('venues.stageDimensions')} value={venue.stageDimensions || undefined} />
-                <KV label={t('venues.clearanceHeight')} value={venue.clearanceHeight || undefined} />
-                <KV label={t('venues.wifiShort')} value={venue.wifi || undefined} />
-                <KV label={t('venues.wardrobe')} value={venue.wardrobe || undefined} />
-                <KV label={t('venues.showers')} value={venue.showers || undefined} />
-                <KV label={t('venues.merchandiseFeeShort')} value={venue.merchandiseFee || undefined} />
-                <KV label={t('venues.merchandiseStandShort')} value={venue.merchandiseStand || undefined} />
-                <KV label={t('venues.notesTitle')} value={venue.notes || undefined} />
-                {!venue.capacity && !venue.stageDimensions && !venue.wifi && !venue.wardrobe && !venue.notes && (
-                  <p className="text-sm text-gray-400 py-2">{t('venues.noTechData')}</p>
-                )}
-              </>
-            ) : null}
+            )}
           </div>
         </div>
 
@@ -535,7 +479,7 @@ export function VenueDetailContent({ venueId }: { venueId: string }) {
                         </div>
                         {isEditor && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><Pencil className="w-3 h-3" /></button>
+                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><File className="w-3 h-3" /></button>
                             <button onClick={() => handleDeleteContact(c.id)} className="text-gray-400 hover:text-red-600 p-0.5"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         )}
@@ -702,39 +646,26 @@ function PhotoThumb({ file }: { file: FileItem }) {
   return <img src={src} alt={file.originalName} className="w-full h-full object-cover" />
 }
 
-function IField({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function IField({ label, value, onChange, placeholder = '', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
+}) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <label className="detail-label">{label}</label>
       <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white" />
+        readOnly={readOnly} className="detail-input" />
     </div>
   )
 }
 
-function ITextarea({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function ITextarea({ label, value, onChange, placeholder = '', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
+}) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
+      <label className="detail-label">{label}</label>
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={2}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none" />
-    </div>
-  )
-}
-
-function InlineSaveBar({ onSave, onCancel, saving, error }: { onSave: () => void; onCancel: () => void; saving: boolean; error?: string }) {
-  const t = useT()
-  return (
-    <div className="pt-2 border-t border-gray-100 mt-2">
-      {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
-      <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
-        <button onClick={onSave} disabled={saving}
-          className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          {t('general.save')}
-        </button>
-      </div>
+        readOnly={readOnly} className="detail-input resize-none" />
     </div>
   )
 }

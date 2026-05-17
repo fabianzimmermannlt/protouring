@@ -1,95 +1,69 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Pencil, AlertCircle, Save, Loader2, Truck, Users } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { AlertCircle, Save, Loader2, Truck, Users, X } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
   getVehicle, updateVehicle, type Vehicle, type VehicleFormData,
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
-function KV({ label, value }: { label: string; value?: string }) {
-  if (!value?.trim()) return null
-  return (
-    <div className="grid grid-cols-[160px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50 last:border-0">
-      <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{label}</span>
-      <span className="text-gray-800">{value}</span>
-    </div>
-  )
-}
-
-function IField({ label, value, onChange, placeholder = '' }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+function IField({ label, value, onChange, placeholder = '', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
 }) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
-      <input
-        type="text" value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white"
-      />
+      <label className="detail-label">{label}</label>
+      <input type="text" value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} readOnly={readOnly} className="detail-input" />
     </div>
   )
 }
 
-function ITextarea({ label, value, onChange, placeholder = '' }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+function ITextarea({ label, value, onChange, placeholder = '', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
 }) {
   return (
     <div>
-      <label className="block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5">{label}</label>
-      <textarea
-        value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} rows={2}
-        className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white resize-none"
-      />
-    </div>
-  )
-}
-
-function InlineSaveBar({ onSave, onCancel, saving, error }: {
-  onSave: () => void; onCancel: () => void; saving: boolean; error?: string
-}) {
-  const t = useT()
-  return (
-    <div className="pt-2 border-t border-gray-100 mt-2">
-      {error && <p className="text-xs text-red-600 mb-1">{error}</p>}
-      <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">{t('general.cancel')}</button>
-        <button onClick={onSave} disabled={saving}
-          className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          {t('general.save')}
-        </button>
-      </div>
+      <label className="detail-label">{label}</label>
+      <textarea value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} rows={3} readOnly={readOnly}
+        className="detail-input resize-none" />
     </div>
   )
 }
 
 export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: string; onNotFound?: () => void }) {
   const t = useT()
+  const { layout } = useLayout()
+  const isL2 = layout === 'L2'
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  type EditSection = 'fahrzeug' | 'anhaenger' | 'kapazitaet'
-  const [editingSection, setEditingSection] = useState<EditSection | null>(null)
-  const [inlineForm, setInlineForm] = useState<Record<string, string | boolean>>({})
-  const [savingInline, setSavingInline] = useState(false)
-  const [inlineError, setInlineError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [isDirty, setIsDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const originalRef = useRef<Record<string, string>>({})
 
   const loadVehicle = useCallback(async () => {
     setLoading(true)
     try {
       const v = await getVehicle(vehicleId)
       setVehicle(v)
-      setInlineForm(v as any)
+      const data: Record<string, string> = {
+        ...(v as unknown as Record<string, string>),
+        hasTrailer: v.hasTrailer ? 'true' : 'false',
+      }
+      setForm(data)
+      originalRef.current = data
+      setIsDirty(false)
     } catch {
       if (onNotFound) { onNotFound(); return }
-      setError(t('vehicles.notFound'))
+      setLoadError(t('vehicles.notFound'))
     } finally {
       setLoading(false)
     }
@@ -97,168 +71,143 @@ export function VehicleDetailContent({ vehicleId, onNotFound }: { vehicleId: str
 
   useEffect(() => { loadVehicle() }, [loadVehicle])
 
-  function startEditSection(section: EditSection) {
-    if (vehicle) setInlineForm({ ...vehicle as any })
-    setInlineError('')
-    setEditingSection(section)
+  const f = (key: string, val: string) => {
+    const next = { ...form, [key]: val }
+    setForm(next)
+    const orig = originalRef.current
+    setIsDirty(Object.keys(next).some(k => next[k] !== (orig[k] ?? '')))
   }
 
-  function cancelEditSection() {
-    if (vehicle) setInlineForm({ ...vehicle as any })
-    setEditingSection(null)
-    setInlineError('')
-  }
+  const cancelEdit = () => { setForm(originalRef.current); setIsDirty(false); setSaveError('') }
 
-  async function saveInlineSection() {
+  const saveEdit = async () => {
     if (!vehicle) return
-    setSavingInline(true)
-    setInlineError('')
+    setSaving(true); setSaveError('')
     try {
-      const updated = await updateVehicle(vehicleId, inlineForm as unknown as VehicleFormData)
+      const payload = { ...form, hasTrailer: form.hasTrailer === 'true' } as unknown as VehicleFormData
+      const updated = await updateVehicle(vehicleId, payload)
       setVehicle(updated)
-      setInlineForm({ ...updated as any })
-      setEditingSection(null)
+      const data: Record<string, string> = {
+        ...(updated as unknown as Record<string, string>),
+        hasTrailer: updated.hasTrailer ? 'true' : 'false',
+      }
+      setForm(data)
+      originalRef.current = data
+      setIsDirty(false)
     } catch (e) {
-      setInlineError((e as Error).message || t('general.saveFailed'))
+      setSaveError((e as Error).message || t('general.saveFailed'))
     } finally {
-      setSavingInline(false)
+      setSaving(false)
     }
   }
 
-  const iF = (key: string, value: string | boolean) => setInlineForm(prev => ({ ...prev, [key]: value }))
-
-  const hasTrailer = inlineForm.hasTrailer === true || inlineForm.hasTrailer === 'true'
+  const ro = !isEditor
+  const hasTrailer = form.hasTrailer === 'true'
+  const titleColor = isL2 ? '#e0e0e0' : '#111827'
+  const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
+  const labelColor = isL2 ? '#9ca3af' : '#6b7280'
 
   return (
     <div className="module-content">
-      {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4">
-          <AlertCircle className="w-4 h-4 shrink-0" />{error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        {/* Fahrzeug */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardVehicle')}</span>
-            {isEditor && vehicle && editingSection !== 'fahrzeug' && (
-              <button onClick={() => startEditSection('fahrzeug')} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4" style={{ minHeight: '32px', gap: '12px' }}>
+        <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {loading ? '' : (form.designation || vehicle?.designation || '')}
+        </h2>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${isL2 ? '#555' : '#d1d5db'}`, borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
           </div>
-          <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'fahrzeug' ? (
+        )}
+      </div>
+
+      {loadError && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{loadError}</div>}
+      {saveError && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{saveError}</div>}
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="pt-card">
+              <div className="pt-card-header"><div className="h-3 w-24 bg-gray-100 animate-pulse rounded" /></div>
+              <div className="pt-card-body space-y-3">{[...Array(4)].map((_, j) => <div key={j} className="h-7 bg-gray-100 animate-pulse rounded" />)}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Fahrzeug */}
+          <div className="pt-card">
+            <div className="pt-card-header">
+              <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardVehicle')}</span>
+            </div>
+            <div className="pt-card-body">
               <div className="space-y-2">
-                <IField label={t('vehicles.designationRequired')} value={String(inlineForm.designation ?? '')} onChange={v => iF('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} />
-                <IField label={t('vehicles.vehicleType')} value={String(inlineForm.vehicleType ?? '')} onChange={v => iF('vehicleType', v)} placeholder={t('vehicles.vehicleTypePlaceholder')} />
-                <IField label={t('vehicles.driver')} value={String(inlineForm.driver ?? '')} onChange={v => iF('driver', v)} />
-                <IField label={t('vehicles.licensePlate')} value={String(inlineForm.licensePlate ?? '')} onChange={v => iF('licensePlate', v)} />
-                <IField label={t('vehicles.dimensions')} value={String(inlineForm.dimensions ?? '')} onChange={v => iF('dimensions', v)} placeholder={t('vehicles.dimensionsPlaceholder')} />
-                <IField label={t('vehicles.powerConnection')} value={String(inlineForm.powerConnection ?? '')} onChange={v => iF('powerConnection', v)} placeholder={t('vehicles.powerConnectionPlaceholder')} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <IField label={t('vehicles.designationRequired')} value={form.designation ?? ''} onChange={v => f('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} readOnly={ro} />
+                <IField label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} placeholder={t('vehicles.vehicleTypePlaceholder')} readOnly={ro} />
+                <IField label={t('vehicles.driver')} value={form.driver ?? ''} onChange={v => f('driver', v)} readOnly={ro} />
+                <IField label={t('vehicles.licensePlate')} value={form.licensePlate ?? ''} onChange={v => f('licensePlate', v)} readOnly={ro} />
+                <IField label={t('vehicles.dimensions')} value={form.dimensions ?? ''} onChange={v => f('dimensions', v)} placeholder={t('vehicles.dimensionsPlaceholder')} readOnly={ro} />
+                <IField label={t('vehicles.powerConnection')} value={form.powerConnection ?? ''} onChange={v => f('powerConnection', v)} placeholder={t('vehicles.powerConnectionPlaceholder')} readOnly={ro} />
               </div>
-            ) : vehicle ? (
-              <>
-                {vehicle.designation && (
-                  <div className="grid grid-cols-[160px_1fr] gap-2 text-sm py-1.5 border-b border-gray-50">
-                    <span className="text-gray-400 font-medium text-xs uppercase tracking-wide leading-5">{t('vehicles.designation')}</span>
-                    <span className="text-gray-800 font-semibold">{vehicle.designation}</span>
-                  </div>
-                )}
-                <KV label={t('vehicles.vehicleTypeShort')} value={vehicle.vehicleType || undefined} />
-                <KV label={t('vehicles.driver')} value={vehicle.driver || undefined} />
-                <KV label={t('vehicles.licensePlate')} value={vehicle.licensePlate || undefined} />
-                <KV label={t('vehicles.dimensions')} value={vehicle.dimensions || undefined} />
-                <KV label={t('vehicles.powerConnection')} value={vehicle.powerConnection || undefined} />
-                {!vehicle.designation && !vehicle.vehicleType && !vehicle.driver && !vehicle.licensePlate && (
-                  <p className="text-sm text-gray-400 py-2">{t('vehicles.noData')}</p>
-                )}
-              </>
-            ) : null}
+            </div>
           </div>
-        </div>
 
-        {/* Anhänger */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardTrailer')}</span>
-            {isEditor && vehicle && editingSection !== 'anhaenger' && (
-              <button onClick={() => startEditSection('anhaenger')} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'anhaenger' ? (
+          {/* Anhänger */}
+          <div className="pt-card">
+            <div className="pt-card-header">
+              <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardTrailer')}</span>
+            </div>
+            <div className="pt-card-body">
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="hasTrailer" checked={hasTrailer}
-                    onChange={e => iF('hasTrailer', e.target.checked)}
-                    className="rounded border-gray-300" />
-                  <label htmlFor="hasTrailer" className="text-sm text-gray-700">{t('vehicles.hasTrailer')}</label>
+                <div>
+                  <label className="detail-label">{t('vehicles.hasTrailer')}</label>
+                  <div style={{ paddingTop: '4px' }}>
+                    <input type="checkbox" id="hasTrailer" checked={hasTrailer} disabled={ro}
+                      onChange={e => f('hasTrailer', e.target.checked ? 'true' : 'false')}
+                      style={{ accentColor: '#60a5fa', width: '14px', height: '14px', cursor: ro ? 'default' : 'pointer' }} />
+                    <label htmlFor="hasTrailer" style={{ marginLeft: '6px', fontSize: '0.875rem', color: labelColor, cursor: ro ? 'default' : 'pointer' }}>
+                      {hasTrailer ? t('vehicles.trailerYes') : t('vehicles.trailerNo') }
+                    </label>
+                  </div>
                 </div>
                 {hasTrailer && (
                   <>
-                    <IField label={t('vehicles.trailerDimensions')} value={String(inlineForm.trailerDimensions ?? '')} onChange={v => iF('trailerDimensions', v)} />
-                    <IField label={t('vehicles.trailerLicensePlate')} value={String(inlineForm.trailerLicensePlate ?? '')} onChange={v => iF('trailerLicensePlate', v)} />
+                    <IField label={t('vehicles.trailerDimensions')} value={form.trailerDimensions ?? ''} onChange={v => f('trailerDimensions', v)} readOnly={ro} />
+                    <IField label={t('vehicles.trailerLicensePlate')} value={form.trailerLicensePlate ?? ''} onChange={v => f('trailerLicensePlate', v)} readOnly={ro} />
                   </>
                 )}
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
               </div>
-            ) : vehicle ? (
-              <>
-                <KV label={t('vehicles.cardTrailer')} value={vehicle.hasTrailer ? t('vehicles.trailerYes') : undefined} />
-                <KV label={t('vehicles.dimensions')} value={vehicle.trailerDimensions || undefined} />
-                <KV label={t('vehicles.licensePlate')} value={vehicle.trailerLicensePlate || undefined} />
-                {!vehicle.hasTrailer && !vehicle.trailerDimensions && !vehicle.trailerLicensePlate && (
-                  <p className="text-sm text-gray-400 py-2">{t('vehicles.noTrailer')}</p>
-                )}
-              </>
-            ) : null}
+            </div>
           </div>
-        </div>
 
-        {/* Kapazität */}
-        <div className="pt-card md:col-span-2">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardCapacity')}</span>
-            {isEditor && vehicle && editingSection !== 'kapazitaet' && (
-              <button onClick={() => startEditSection('kapazitaet')} className="text-gray-400 hover:text-blue-600 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          <div className="pt-card-body">
-            {loading ? <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
-            : editingSection === 'kapazitaet' ? (
+          {/* Kapazität */}
+          <div className="pt-card md:col-span-2">
+            <div className="pt-card-header">
+              <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />{t('vehicles.cardCapacity')}</span>
+            </div>
+            <div className="pt-card-body">
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label={t('vehicles.seats')} value={String(inlineForm.seats ?? '')} onChange={v => iF('seats', v)} placeholder={t('vehicles.seatsPlaceholder')} />
-                  <IField label={t('vehicles.sleepingPlaces')} value={String(inlineForm.sleepingPlaces ?? '')} onChange={v => iF('sleepingPlaces', v)} placeholder={t('vehicles.sleepingPlacesPlaceholder')} />
+                  <IField label={t('vehicles.seats')} value={form.seats ?? ''} onChange={v => f('seats', v)} placeholder={t('vehicles.seatsPlaceholder')} readOnly={ro} />
+                  <IField label={t('vehicles.sleepingPlaces')} value={form.sleepingPlaces ?? ''} onChange={v => f('sleepingPlaces', v)} placeholder={t('vehicles.sleepingPlacesPlaceholder')} readOnly={ro} />
                 </div>
-                <ITextarea label={t('vehicles.notes')} value={String(inlineForm.notes ?? '')} onChange={v => iF('notes', v)} />
-                <InlineSaveBar onSave={saveInlineSection} onCancel={cancelEditSection} saving={savingInline} error={inlineError} />
+                <ITextarea label={t('vehicles.notes')} value={form.notes ?? ''} onChange={v => f('notes', v)} readOnly={ro} />
               </div>
-            ) : vehicle ? (
-              <>
-                <KV label={t('vehicles.seats')} value={vehicle.seats || undefined} />
-                <KV label={t('vehicles.sleepingPlaces')} value={vehicle.sleepingPlaces || undefined} />
-                <KV label={t('vehicles.notes')} value={vehicle.notes || undefined} />
-                {!vehicle.seats && !vehicle.sleepingPlaces && !vehicle.notes && (
-                  <p className="text-sm text-gray-400 py-2">{t('vehicles.noCapacity')}</p>
-                )}
-              </>
-            ) : null}
+            </div>
           </div>
+
         </div>
-
-      </div>
-
+      )}
     </div>
   )
 }
