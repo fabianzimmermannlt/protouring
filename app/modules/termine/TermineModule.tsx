@@ -771,6 +771,120 @@ function PlaceholderCard({ title }: { title: string }) {
 }
 
 // ============================================================
+// TerminDetailHeader – Event-Name + Datum + Tab-Bar (Desktop)
+// ============================================================
+
+function TerminDetailHeader({
+  termin,
+  termine,
+  selectedView,
+  onNavigate,
+  isEditor,
+}: {
+  termin: Termin
+  termine: Termin[]
+  selectedView: string
+  onNavigate: (id: number) => void
+  isEditor: boolean
+}) {
+  const idx = termine.findIndex(t => t.id === termin.id)
+  const prev = idx > 0 ? termine[idx - 1] : null
+  const next = idx < termine.length - 1 ? termine[idx + 1] : null
+
+  const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
+  const pageTitle = termin.showTitleAsHeader ? termin.title : locationLabel || termin.title
+
+  const tabs = [
+    { id: 'details',       label: 'Details' },
+    { id: 'travelparty',   label: 'Reisegruppe' },
+    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
+    { id: 'guestlist',     label: 'Gästeliste' },
+  ]
+
+  const changeView = (view: string) => {
+    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view } }))
+  }
+
+  return (
+    <div style={{ marginBottom: '1.25rem' }}>
+      {/* Back link */}
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
+        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#555', marginBottom: '0.75rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        onMouseOver={e => (e.currentTarget.style.color = '#999')}
+        onMouseOut={e => (e.currentTarget.style.color = '#555')}
+      >
+        <ChevronLeft size={13} />
+        Events
+      </button>
+
+      {/* Title row: prev · name + date · next */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+        <button
+          onClick={() => prev && onNavigate(prev.id)}
+          disabled={!prev}
+          style={{ color: '#555', background: 'none', border: 'none', cursor: prev ? 'pointer' : 'default', padding: '0.25rem', opacity: prev ? 1 : 0.2, flexShrink: 0 }}
+          onMouseOver={e => { if (prev) e.currentTarget.style.color = '#aaa' }}
+          onMouseOut={e => { e.currentTarget.style.color = '#555' }}
+        >
+          <ChevronLeft size={20} />
+        </button>
+
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', lineHeight: 1.25 }}>
+            {pageTitle}
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#777', marginTop: '0.15rem' }}>
+            {formatDateLong(termin.date)}
+          </div>
+        </div>
+
+        <button
+          onClick={() => next && onNavigate(next.id)}
+          disabled={!next}
+          style={{ color: '#555', background: 'none', border: 'none', cursor: next ? 'pointer' : 'default', padding: '0.25rem', opacity: next ? 1 : 0.2, flexShrink: 0 }}
+          onMouseOver={e => { if (next) e.currentTarget.style.color = '#aaa' }}
+          onMouseOut={e => { e.currentTarget.style.color = '#555' }}
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #333' }}>
+        {tabs.map(tab => {
+          const active = selectedView === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => changeView(tab.id)}
+              style={{
+                padding: '0.5rem 1.125rem',
+                fontSize: '0.8125rem',
+                fontWeight: active ? 500 : 400,
+                color: active ? '#e0e0e0' : '#666',
+                borderTop: 'none',
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
+                marginBottom: '-1px',
+                background: 'none',
+                cursor: 'pointer',
+                transition: 'color 0.15s',
+              }}
+              onMouseOver={e => { if (!active) e.currentTarget.style.color = '#bbb' }}
+              onMouseOut={e => { if (!active) e.currentTarget.style.color = '#666' }}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
 // Detail view components (exported for use in standalone route pages)
 // ============================================================
 
@@ -1444,7 +1558,16 @@ export default function TerminePage() {
 
     return (
       <div className="module-content">
-        {!isL3 && (
+        {!isL3 && !isMobile && (
+          <TerminDetailHeader
+            termin={selectedTermin}
+            termine={sortedTermine}
+            selectedView={selectedView}
+            onNavigate={id => selectTermin(id, selectedView)}
+            isEditor={isEditor}
+          />
+        )}
+        {!isL3 && isMobile && (
           <TerminDatumzeile
             termin={selectedTermin}
             termine={sortedTermine}

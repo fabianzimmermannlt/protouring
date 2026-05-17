@@ -278,38 +278,15 @@ export function L2Layout({
   // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
   const renderTermineSubs = () => {
     if (termineInDetail) {
-      // Detail-Ansicht: Zurück + View-Tabs
-      const views = [
-        { id: 'details',       label: 'Details' },
-        { id: 'travelparty',   label: 'Reisegruppe' },
-        ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-        { id: 'guestlist',     label: 'Gästeliste' },
-      ] as { id: string; label: string }[]
-
+      // Detail-Ansicht: nur Zurück-Button (Tabs sind jetzt im Content-Bereich)
       return (
-        <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
+        <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333]">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
             className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-1"
           >
-            ← Terminliste
+            ← Events
           </button>
-          {views.map(v => (
-            <button
-              key={v.id}
-              onClick={() => {
-                setTermineView(v.id as TermineDetailView)
-                window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
-              }}
-              className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                termineView === v.id
-                  ? 'text-blue-100 font-medium bg-blue-400/20'
-                  : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
         </div>
       )
     }
@@ -568,33 +545,6 @@ export function L2Layout({
         {/* Header */}
         <header className="h-12 bg-white border-b border-gray-200 flex items-center px-6 flex-shrink-0 gap-4">
           <div className="flex-1" />
-
-          {/* Center: Termine detail view tabs */}
-          {activeTab === 'events' && termineInDetail && (
-            <div className="flex items-center gap-0.5">
-              {([
-                { id: 'details',       label: 'Details' },
-                { id: 'travelparty',   label: 'Reisegruppe' },
-                ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-                { id: 'guestlist',     label: 'Gästeliste' },
-              ] as { id: string; label: string }[]).map(v => (
-                <button
-                  key={v.id}
-                  onClick={() => {
-                    setTermineView(v.id as TermineDetailView)
-                    window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view: v.id } }))
-                  }}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    termineView === v.id
-                      ? 'bg-gray-100 text-gray-900 font-medium'
-                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                  }`}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Right: Preview Banner */}
           <div className="flex-1 flex items-center justify-end gap-3">
