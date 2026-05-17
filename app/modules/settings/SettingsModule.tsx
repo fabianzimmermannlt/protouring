@@ -309,73 +309,83 @@ function ArtistSettings() {
         </div>
       )}
 
-      {/* 4-column grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* Rechnungsanschrift */}
-        <div className="space-y-3">
-          <FPSection title={t('settings.artist.billingAddress')} />
-          <FPField label={t('settings.artist.company')} value={form.company} onChange={v => set('company', v)} placeholder={t('settings.artist.companyPlaceholder')} />
-          <FPField label={t('settings.artist.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
-          <FPField label={t('settings.artist.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
-          <FPField label={t('settings.artist.address')} value={form.address} onChange={v => set('address', v)} placeholder={t('settings.artist.addressPlaceholder')} />
-          <div className="grid gap-2" style={{ gridTemplateColumns: '70px 1fr' }}>
-            <FPField label={t('settings.artist.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} placeholder="12345" />
-            <FPField label={t('settings.artist.city')} value={form.city} onChange={v => set('city', v)} placeholder={t('settings.artist.cityPlaceholder')} />
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.billingAddress')}</span></div>
+          <div className="pt-card-body space-y-3">
+            <FPField label={t('settings.artist.company')} value={form.company} onChange={v => set('company', v)} placeholder={t('settings.artist.companyPlaceholder')} />
+            <FPField label={t('settings.artist.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
+            <FPField label={t('settings.artist.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
+            <FPField label={t('settings.artist.address')} value={form.address} onChange={v => set('address', v)} placeholder={t('settings.artist.addressPlaceholder')} />
+            <div className="grid gap-2" style={{ gridTemplateColumns: '70px 1fr' }}>
+              <FPField label={t('settings.artist.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} placeholder="12345" />
+              <FPField label={t('settings.artist.city')} value={form.city} onChange={v => set('city', v)} placeholder={t('settings.artist.cityPlaceholder')} />
+            </div>
+            <FPField label={t('settings.artist.phone')} value={form.billingPhone} onChange={v => set('billingPhone', v)} type="tel" placeholder={t('settings.artist.phonePlaceholder')} />
+            <FPField label={t('settings.artist.taxId')} value={form.taxId} onChange={v => set('taxId', v)} placeholder="DE123456789" />
+            <FPField label={t('general.email')} value={form.billingEmail} onChange={v => set('billingEmail', v)} type="email" placeholder={t('settings.artist.emailPlaceholder')} />
           </div>
-          <FPField label={t('settings.artist.phone')} value={form.billingPhone} onChange={v => set('billingPhone', v)} type="tel" placeholder={t('settings.artist.phonePlaceholder')} />
-          <FPField label={t('settings.artist.taxId')} value={form.taxId} onChange={v => set('taxId', v)} placeholder="DE123456789" />
-          <FPField label={t('general.email')} value={form.billingEmail} onChange={v => set('billingEmail', v)} type="email" placeholder={t('settings.artist.emailPlaceholder')} />
         </div>
 
         {/* Abo */}
-        <div className="space-y-3">
-          <FPSection title={t('settings.artist.subscription')} />
-          <p className="text-sm font-medium" style={{ color: '#60a5fa' }}>{subPlan}</p>
-          <p className="text-xs" style={{ color: '#9ca3af' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
-          <p className="text-xs" style={{ color: '#9ca3af' }}>
-            {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
-          </p>
-          <div className="space-y-2 pt-1">
-            <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-              {t('settings.artist.upgradePlan')}
-            </button>
-            <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: '#3a3a3a', color: '#9ca3af' }}>
-              {t('settings.artist.changePayment')}
-            </button>
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.subscription')}</span></div>
+          <div className="pt-card-body space-y-2">
+            <p className="text-sm font-medium" style={{ color: '#60a5fa' }}>{subPlan}</p>
+            <p className="text-xs" style={{ color: '#9ca3af' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
+            <p className="text-xs" style={{ color: '#9ca3af' }}>
+              {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
+            </p>
+            <div className="space-y-2 pt-1">
+              <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                {t('settings.artist.upgradePlan')}
+              </button>
+              <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: '#3a3a3a', color: '#9ca3af' }}>
+                {t('settings.artist.changePayment')}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Format & Region */}
-        <div className="space-y-3">
-          <FPSection title={t('settings.artist.formatRegion')} />
-          <FPSelect label={t('settings.language.label')} value={form.language} onChange={v => set('language', v)} options={[
-            { value: 'de-DE', label: 'Deutsch' },
-            { value: 'en-US', label: 'English' },
-          ]} />
-          <FPSelect label={t('settings.artist.timezone')} value={form.timezone} onChange={v => set('timezone', v)} options={[
-            { value: 'Europe/Berlin', label: 'Europe/Berlin' },
-            { value: 'Europe/London', label: 'Europe/London' },
-          ]} />
-          <FPSelect label={t('settings.artist.currency')} value={form.currency} onChange={v => set('currency', v)} options={[
-            { value: 'EUR', label: 'EUR (€)' },
-            { value: 'USD', label: 'USD ($)' },
-          ]} />
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.formatRegion')}</span></div>
+          <div className="pt-card-body space-y-3">
+            <FPSelect label={t('settings.language.label')} value={form.language} onChange={v => set('language', v)} options={[
+              { value: 'de-DE', label: 'Deutsch' },
+              { value: 'en-US', label: 'English' },
+            ]} />
+            <FPSelect label={t('settings.artist.timezone')} value={form.timezone} onChange={v => set('timezone', v)} options={[
+              { value: 'Europe/Berlin', label: 'Europe/Berlin' },
+              { value: 'Europe/London', label: 'Europe/London' },
+            ]} />
+            <FPSelect label={t('settings.artist.currency')} value={form.currency} onChange={v => set('currency', v)} options={[
+              { value: 'EUR', label: 'EUR (€)' },
+              { value: 'USD', label: 'USD ($)' },
+            ]} />
+          </div>
         </div>
 
         {/* Artist Info */}
-        <div className="space-y-3">
-          <FPSection title={t('settings.artist.information')} />
-          <FPField label={t('settings.artist.displayName')} value={form.displayName} onChange={v => set('displayName', v)} placeholder={t('settings.artist.displayNamePlaceholder')} />
-          <FPField label={t('settings.artist.shortCode')} value={form.shortCode} onChange={v => set('shortCode', v)} placeholder={t('settings.artist.shortCodePlaceholder')} />
-          <FPField label={t('settings.artist.homebase')} value={form.homebase} onChange={v => set('homebase', v)} placeholder={t('settings.artist.homebasePlaceholder')} />
-          <FPField label={t('settings.artist.genre')} value={form.genre} onChange={v => set('genre', v)} placeholder={t('settings.artist.genrePlaceholder')} />
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.information')}</span></div>
+          <div className="pt-card-body space-y-3">
+            <FPField label={t('settings.artist.displayName')} value={form.displayName} onChange={v => set('displayName', v)} placeholder={t('settings.artist.displayNamePlaceholder')} />
+            <FPField label={t('settings.artist.shortCode')} value={form.shortCode} onChange={v => set('shortCode', v)} placeholder={t('settings.artist.shortCodePlaceholder')} />
+            <FPField label={t('settings.artist.homebase')} value={form.homebase} onChange={v => set('homebase', v)} placeholder={t('settings.artist.homebasePlaceholder')} />
+            <FPField label={t('settings.artist.genre')} value={form.genre} onChange={v => set('genre', v)} placeholder={t('settings.artist.genrePlaceholder')} />
+          </div>
         </div>
       </div>
 
       {/* Band-Mitglieder */}
-      <div className="pt-6" style={{ borderTop: '1px solid #333' }}>
-        <ArtistMembersSettings />
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">Band-Mitglieder</span></div>
+        <div className="pt-card-body">
+          <ArtistMembersSettings />
+        </div>
       </div>
 
     </div>
