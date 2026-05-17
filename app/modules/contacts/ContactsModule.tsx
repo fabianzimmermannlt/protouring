@@ -419,16 +419,16 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
           return <ContactDetailContent contactId={selectedContactId} onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)} />
         }
         return (
-          <div className="space-y-4">
+          <div className="module-content">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
                 {error}
               </div>
             )}
 
             {isMobile ? (
               /* ── Mobile Toolbar ── */
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 {isEditor && (
                   <>
                     <button onClick={openAddModal} className="btn btn-primary">
@@ -490,7 +490,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               /* ── Desktop L3 Toolbar ── */
               <>
                 {isEditor && (
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-2">
                     <div className="flex gap-2">
                       <button onClick={openAddModal} className="btn btn-primary">
                         <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
@@ -515,7 +515,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                   placeholder={t('contacts.search.placeholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
+                  className="search-input mb-4"
                 />
               </>
             )}
