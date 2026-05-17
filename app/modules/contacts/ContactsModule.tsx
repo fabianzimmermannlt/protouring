@@ -132,6 +132,12 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   }, [])
 
   useEffect(() => {
+    if (activeSubTab !== 'overview') {
+      setSelectedContactId(null)
+    }
+  }, [activeSubTab])
+
+  useEffect(() => {
     const onInvite = () => openAddModal()
     const onCreate = () => setShowGastModal(true)
     window.addEventListener('contact-sidebar-invite', onInvite)
