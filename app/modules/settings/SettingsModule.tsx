@@ -674,192 +674,190 @@ function UserProfil() {
       )}
 
       {/* Persönliche Daten */}
-      <div className="space-y-3">
-        <FPSection title={t('profile.personalData')} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FPField label={t('profile.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
-          <FPField label={t('profile.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
-          <FPField label={t('profile.birthDate')} value={form.birthDate} onChange={v => set('birthDate', v)} type="date" />
-          <FPSelect label={t('profile.gender')} value={form.gender} onChange={v => set('gender', v)} options={[
-            { value: 'männlich', label: t('profile.gender.male') },
-            { value: 'weiblich', label: t('profile.gender.female') },
-            { value: 'divers', label: t('profile.gender.diverse') },
-            { value: 'keine_angabe', label: t('profile.gender.noStatement') },
-          ]} />
-          <FPField label={t('profile.pronouns')} value={form.pronouns} onChange={v => set('pronouns', v)} placeholder="er/ihm, sie/ihr, divers" />
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.personalData')}</span></div>
+        <div className="pt-card-body">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FPField label={t('profile.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
+            <FPField label={t('profile.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
+            <FPField label={t('profile.birthDate')} value={form.birthDate} onChange={v => set('birthDate', v)} type="date" />
+            <FPSelect label={t('profile.gender')} value={form.gender} onChange={v => set('gender', v)} options={[
+              { value: 'männlich', label: t('profile.gender.male') },
+              { value: 'weiblich', label: t('profile.gender.female') },
+              { value: 'divers', label: t('profile.gender.diverse') },
+              { value: 'keine_angabe', label: t('profile.gender.noStatement') },
+            ]} />
+            <FPField label={t('profile.pronouns')} value={form.pronouns} onChange={v => set('pronouns', v)} placeholder="er/ihm, sie/ihr, divers" />
+          </div>
         </div>
       </div>
 
       {/* Kontaktdaten */}
-      <div className="space-y-3">
-        <FPSection title={t('profile.contactData')} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FPField label={t('profile.email')} value={form.email} onChange={() => {}} readOnly />
-          <FPField label={t('profile.phone')} value={form.phone} onChange={v => set('phone', v)} type="tel" />
-          <div className="grid gap-2" style={{ gridTemplateColumns: '80px 1fr' }}>
-            <FPField label={t('profile.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} />
-            <FPField label={t('profile.residence')} value={form.residence} onChange={v => set('residence', v)} />
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.contactData')}</span></div>
+        <div className="pt-card-body">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FPField label={t('profile.email')} value={form.email} onChange={() => {}} readOnly />
+            <FPField label={t('profile.phone')} value={form.phone} onChange={v => set('phone', v)} type="tel" />
+            <div className="grid gap-2" style={{ gridTemplateColumns: '80px 1fr' }}>
+              <FPField label={t('profile.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} />
+              <FPField label={t('profile.residence')} value={form.residence} onChange={v => set('residence', v)} />
+            </div>
+            <FPField label={t('profile.address')} value={form.address} onChange={v => set('address', v)} />
           </div>
-          <FPField label={t('profile.address')} value={form.address} onChange={v => set('address', v)} />
         </div>
       </div>
 
       {/* Berufliche Daten */}
-      <div className="space-y-3">
-        <FPSection title={t('profile.professionalData')} />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(['function1', 'function2', 'function3'] as const).map((field, i) => (
-            <FPSelect key={field} label={`${i + 1}. ${t('profile.function')}`}
-              value={form[field]} onChange={v => set(field, v)} options={funcOpts(form[field])} />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FPField label={t('profile.specification')} value={form.specification} onChange={v => set('specification', v)} placeholder="z.B. Schlagzeug" />
-          <FPField label={t('profile.languages')} value={form.languages} onChange={v => set('languages', v)} placeholder="Deutsch, Englisch, Französisch" />
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.professionalData')}</span></div>
+        <div className="pt-card-body">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(['function1', 'function2', 'function3'] as const).map((field, i) => (
+              <FPSelect key={field} label={`${i + 1}. ${t('profile.function')}`}
+                value={form[field]} onChange={v => set(field, v)} options={funcOpts(form[field])} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <FPField label={t('profile.specification')} value={form.specification} onChange={v => set('specification', v)} placeholder="z.B. Schlagzeug" />
+            <FPField label={t('profile.languages')} value={form.languages} onChange={v => set('languages', v)} placeholder="Deutsch, Englisch, Französisch" />
+          </div>
         </div>
       </div>
 
       {/* Reisedaten */}
-      <div className="space-y-3">
-        <FPSection title={t('profile.travelData')} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FPField label={t('profile.driversLicense')} value={form.driversLicense} onChange={v => set('driversLicense', v)} placeholder="z.B. Klasse B, Klasse C..." />
-          <FPField label={t('profile.railcard')} value={form.railcard} onChange={v => set('railcard', v)} placeholder="z.B. Bahncard 25, Bahncard 50..." />
-          <FPField label={t('profile.frequentFlyer')} value={form.frequentFlyer} onChange={v => set('frequentFlyer', v)} placeholder="z.B. Lufthansa Miles & More..." />
-          <FPField label={t('profile.hotelAlias')} value={form.hotelAlias} onChange={v => set('hotelAlias', v)} placeholder="z.B. John Smith..." />
-          <div className="md:col-span-2">
-            <FPTextarea label={t('profile.hotelPreferences')} value={form.hotelInfo} onChange={v => set('hotelInfo', v)} rows={2} placeholder="z.B. Einzelzimmer bevorzugt, ruhiges Zimmer..." />
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.travelData')}</span></div>
+        <div className="pt-card-body">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FPField label={t('profile.driversLicense')} value={form.driversLicense} onChange={v => set('driversLicense', v)} placeholder="z.B. Klasse B, Klasse C..." />
+            <FPField label={t('profile.railcard')} value={form.railcard} onChange={v => set('railcard', v)} placeholder="z.B. Bahncard 25, Bahncard 50..." />
+            <FPField label={t('profile.frequentFlyer')} value={form.frequentFlyer} onChange={v => set('frequentFlyer', v)} placeholder="z.B. Lufthansa Miles & More..." />
+            <FPField label={t('profile.hotelAlias')} value={form.hotelAlias} onChange={v => set('hotelAlias', v)} placeholder="z.B. John Smith..." />
+            <div className="md:col-span-2">
+              <FPTextarea label={t('profile.hotelPreferences')} value={form.hotelInfo} onChange={v => set('hotelInfo', v)} rows={2} placeholder="z.B. Einzelzimmer bevorzugt, ruhiges Zimmer..." />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Ernährung */}
-      <div className="space-y-3">
-        <FPSection title={t('profile.diet')} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FPSelect label={t('profile.dietType')} value={form.diet} onChange={v => set('diet', v)} options={[
-            { value: 'alles', label: t('profile.diet.all') },
-            { value: 'vegetarisch', label: t('profile.diet.vegetarian') },
-            { value: 'vegan', label: t('profile.diet.vegan') },
-          ]} />
-          <FPField label={t('profile.allergies')} value={form.allergies} onChange={v => set('allergies', v)} placeholder="z.B. Nüsse, Erdnüsse, Fisch..." />
-          <div className="flex flex-col gap-1">
-            <label className="detail-label">{t('profile.intolerances')}</label>
-            <div className="flex gap-4 pt-1">
-              <FPCheckbox label={t('profile.glutenFree')} checked={form.glutenFree} onChange={v => set('glutenFree', v)} />
-              <FPCheckbox label={t('profile.lactoseFree')} checked={form.lactoseFree} onChange={v => set('lactoseFree', v)} />
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.diet')}</span></div>
+        <div className="pt-card-body">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FPSelect label={t('profile.dietType')} value={form.diet} onChange={v => set('diet', v)} options={[
+              { value: 'alles', label: t('profile.diet.all') },
+              { value: 'vegetarisch', label: t('profile.diet.vegetarian') },
+              { value: 'vegan', label: t('profile.diet.vegan') },
+            ]} />
+            <FPField label={t('profile.allergies')} value={form.allergies} onChange={v => set('allergies', v)} placeholder="z.B. Nüsse, Erdnüsse, Fisch..." />
+            <div className="flex flex-col gap-1">
+              <label className="detail-label">{t('profile.intolerances')}</label>
+              <div className="flex gap-4 pt-1">
+                <FPCheckbox label={t('profile.glutenFree')} checked={form.glutenFree} onChange={v => set('glutenFree', v)} />
+                <FPCheckbox label={t('profile.lactoseFree')} checked={form.lactoseFree} onChange={v => set('lactoseFree', v)} />
+              </div>
             </div>
+            <FPField label={t('profile.specialNotes')} value={form.specialNotes} onChange={v => set('specialNotes', v)} placeholder="z.B. scharf essen, kein Koffein..." />
           </div>
-          <FPField label={t('profile.specialNotes')} value={form.specialNotes} onChange={v => set('specialNotes', v)} placeholder="z.B. scharf essen, kein Koffein..." />
         </div>
       </div>
 
-      {/* Kleidergrößen */}
-      <div className="space-y-3">
-        <FPSection title={t('profile.clothing')} />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <FPField label={t('profile.shirt')} value={form.shirtSize} onChange={v => set('shirtSize', v)} placeholder="S, M, L, XL" />
-          <FPField label={t('profile.hoodie')} value={form.hoodieSize} onChange={v => set('hoodieSize', v)} placeholder="S, M, L, XL" />
-          <FPField label={t('profile.pants')} value={form.pantsSize} onChange={v => set('pantsSize', v)} placeholder="32, 34, 36" />
-          <FPField label={t('profile.shoes')} value={form.shoeSize} onChange={v => set('shoeSize', v)} placeholder="42, 43, 44" />
+      {/* Kleidergrößen + Crew Tool */}
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.clothing')}</span></div>
+        <div className="pt-card-body">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <FPField label={t('profile.shirt')} value={form.shirtSize} onChange={v => set('shirtSize', v)} placeholder="S, M, L, XL" />
+            <FPField label={t('profile.hoodie')} value={form.hoodieSize} onChange={v => set('hoodieSize', v)} placeholder="S, M, L, XL" />
+            <FPField label={t('profile.pants')} value={form.pantsSize} onChange={v => set('pantsSize', v)} placeholder="32, 34, 36" />
+            <FPField label={t('profile.shoes')} value={form.shoeSize} onChange={v => set('shoeSize', v)} placeholder="42, 43, 44" />
+          </div>
+          <div className="mt-4 pt-3" style={{ borderTop: '1px solid #3c3c3c' }}>
+            <FPCheckbox label={t('profile.crewToolActive')} checked={form.crewToolActive} onChange={v => set('crewToolActive', v)} />
+          </div>
         </div>
-      </div>
-
-      {/* Crew Tool */}
-      <div className="pt-2" style={{ borderTop: '1px solid #333' }}>
-        <FPCheckbox label={t('profile.crewToolActive')} checked={form.crewToolActive} onChange={v => set('crewToolActive', v)} />
       </div>
 
       {/* Passwort */}
-      <div className="space-y-3" ref={pwAccordionRef}>
-        <h3 className="text-sm font-semibold border-b pb-2" style={{ color: '#e0e0e0', borderColor: '#333' }}>{t('profile.password')}</h3>
-
-        {/* Mobile: Akkordion */}
-        <div className="md:hidden">
-          <button
-            type="button"
-            onClick={() => {
-              const next = !showPwForm
-              setShowPwForm(next)
-              if (next) setTimeout(() => pwAccordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-            }}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium"
-            style={{ background: '#2d2d2d', border: '1px solid #444', color: '#e0e0e0' }}
-          >
-            <span>{t('settings.profile.changePassword')}</span>
-            <svg className={`w-4 h-4 transition-transform${showPwForm ? ' rotate-180' : ''}`} style={{ color: '#9ca3af' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {showPwForm && (
-            <div className="mt-2 rounded-xl p-4" style={{ background: '#2d2d2d', border: '1px solid #444' }}>
-              <form onSubmit={handlePwChange} className="space-y-2.5">
-                {pwError && <div className="p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
-                {pwSuccess && <div className="p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
-                {(['current','next','confirm'] as const).map((key, i) => (
-                  <div key={key}>
-                    <label className="detail-label">{[t('settings.profile.currentPassword'), t('settings.profile.newPassword'), t('settings.profile.confirm')][i]}</label>
-                    <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="detail-input" />
-                  </div>
-                ))}
-                <button type="submit" disabled={pwSaving} className="btn btn-primary w-full mt-1">
+      <div className="pt-card" ref={pwAccordionRef}>
+        <div className="pt-card-header"><span className="pt-card-title">{t('profile.password')}</span></div>
+        <div className="pt-card-body">
+          {/* Mobile: Akkordion */}
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showPwForm
+                setShowPwForm(next)
+                if (next) setTimeout(() => pwAccordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium"
+              style={{ background: '#2d2d2d', border: '1px solid #444', color: '#e0e0e0' }}
+            >
+              <span>{t('settings.profile.changePassword')}</span>
+              <svg className={`w-4 h-4 transition-transform${showPwForm ? ' rotate-180' : ''}`} style={{ color: '#9ca3af' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showPwForm && (
+              <div className="mt-2 rounded-xl p-4" style={{ background: '#2d2d2d', border: '1px solid #444' }}>
+                <form onSubmit={handlePwChange} className="space-y-2.5">
+                  {pwError && <div className="p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
+                  {pwSuccess && <div className="p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
+                  {(['current','next','confirm'] as const).map((key, i) => (
+                    <div key={key}>
+                      <label className="detail-label">{[t('settings.profile.currentPassword'), t('settings.profile.newPassword'), t('settings.profile.confirm')][i]}</label>
+                      <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="detail-input" />
+                    </div>
+                  ))}
+                  <button type="submit" disabled={pwSaving} className="btn btn-primary w-full mt-1">
+                    {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
+                    {t('general.save')}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+          {/* Desktop */}
+          <div className="hidden md:block">
+            <form onSubmit={handlePwChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(['current','next','confirm'] as const).map((key, i) => (
+                <div key={key}>
+                  <label className="detail-label">{[t('settings.profile.currentPasswordLabel'), t('settings.profile.newPasswordLabel'), t('settings.profile.confirm')][i]}</label>
+                  <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="detail-input" />
+                </div>
+              ))}
+              {pwError && <div className="md:col-span-3 p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
+              {pwSuccess && <div className="md:col-span-3 p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
+              <div className="md:col-span-3 flex">
+                <button type="submit" disabled={pwSaving} className="btn btn-primary flex items-center gap-1.5">
                   {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
                   {t('general.save')}
                 </button>
-              </form>
-            </div>
-          )}
-        </div>
-
-        {/* Desktop */}
-        <div className="hidden md:block">
-          <form onSubmit={handlePwChange} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['current','next','confirm'] as const).map((key, i) => (
-              <div key={key}>
-                <label className="detail-label">{[t('settings.profile.currentPasswordLabel'), t('settings.profile.newPasswordLabel'), t('settings.profile.confirm')][i]}</label>
-                <input type="password" value={pwForm[key]} onChange={e => setPwForm(f => ({ ...f, [key]: e.target.value }))} required minLength={key !== 'current' ? 6 : undefined} className="detail-input" />
               </div>
-            ))}
-            {pwError && <div className="md:col-span-3 p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
-            {pwSuccess && <div className="md:col-span-3 p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
-            <div className="md:col-span-3 flex">
-              <button type="submit" disabled={pwSaving} className="btn btn-primary flex items-center gap-1.5">
-                {pwSaving ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : null}
-                {t('general.save')}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
 
-      {/* Sprache / Language */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold border-b pb-2" style={{ color: '#e0e0e0', borderColor: '#333' }}>
-          {t('settings.language.label')}
-        </h3>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setLanguage('de')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-              language === 'de'
-                ? 'bg-blue-600 border-blue-500 text-white'
-                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'
-            }`}
-            style={{ background: language === 'de' ? '#2563eb' : '#2d2d2d' }}
-          >
-            🇩🇪 Deutsch
-          </button>
-          <button
-            onClick={() => setLanguage('en')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-              language === 'en'
-                ? 'bg-blue-600 border-blue-500 text-white'
-                : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'
-            }`}
-            style={{ background: language === 'en' ? '#2563eb' : '#2d2d2d' }}
-          >
-            🇺🇸 English
-          </button>
+      {/* Sprache */}
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">{t('settings.language.label')}</span></div>
+        <div className="pt-card-body">
+          <div className="flex gap-2">
+            <button onClick={() => setLanguage('de')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${language === 'de' ? 'bg-blue-600 border-blue-500 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
+              style={{ background: language === 'de' ? '#2563eb' : '#2d2d2d' }}>
+              🇩🇪 Deutsch
+            </button>
+            <button onClick={() => setLanguage('en')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${language === 'en' ? 'bg-blue-600 border-blue-500 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
+              style={{ background: language === 'en' ? '#2563eb' : '#2d2d2d' }}>
+              🇺🇸 English
+            </button>
+          </div>
         </div>
       </div>
 
@@ -917,12 +915,15 @@ function IcalSection() {
   }
 
   return (
-    <div className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
-      <h4 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
-        <CalendarDaysIcon className="w-4 h-4 text-gray-400" />
-        {t('profile.calendar')}
-      </h4>
-      <p className="text-xs text-gray-500 mb-3">
+    <div className="pt-card">
+      <div className="pt-card-header">
+        <span className="pt-card-title">
+          <CalendarDaysIcon className="w-3.5 h-3.5 inline mr-1" />
+          {t('profile.calendar')}
+        </span>
+      </div>
+      <div className="pt-card-body">
+      <p className="text-xs mb-3" style={{ color: '#888' }}>
         {t('settings.ical.description')}
       </p>
       {loading ? (
@@ -957,6 +958,7 @@ function IcalSection() {
           </button>
         </div>
       )}
+      </div>
     </div>
   )
 }
