@@ -2007,6 +2007,14 @@ function ErsteSchritte() {
 }
 
 // ── Partner-Typen Settings ────────────────────────────────────────────────────
+const PARTNER_SUGGESTIONS = [
+  { group: 'Booking & Management', items: ['Booking Agentur', 'Tourmanagement', 'Artist Management', 'Promotion', 'Veranstalter'] },
+  { group: 'Technik', items: ['PA / Sound', 'Lichtfirma', 'Backline', 'Bühnenbau', 'Video / LED', 'Strom / Generator'] },
+  { group: 'Medien', items: ['Pressebüro', 'Fotografie', 'Videoproduktion', 'Social Media', 'Radio / TV'] },
+  { group: 'Produktion & Merch', items: ['Label', 'Verleger', 'Merchandise', 'Catering'] },
+  { group: 'Logistik', items: ['Busunternehmen', 'Sicherheitsdienst', 'Reisebüro', 'Versicherung'] },
+]
+
 function PartnerTypesSettings() {
   const t = useT()
   const [types, setTypes] = useState<PartnerType[]>([])
@@ -2031,14 +2039,15 @@ function PartnerTypesSettings() {
     finally { setToggling(null) }
   }
 
-  async function handleAdd() {
-    if (!newName.trim()) return
+  async function handleAdd(nameOverride?: string) {
+    const name = (nameOverride ?? newName).trim()
+    if (!name) return
     setAdding(true)
     setError('')
     try {
-      const created = await createPartnerType(newName.trim())
+      const created = await createPartnerType(name)
       setTypes(prev => [...prev, created])
-      setNewName('')
+      if (!nameOverride) setNewName('')
     } catch (e) {
       setError((e as Error).message || t('settings.users.saveError'))
     } finally { setAdding(false) }
@@ -2058,50 +2067,88 @@ function PartnerTypesSettings() {
     </div>
   )
 
+  const existingNames = new Set(types.map(pt => pt.name))
+
   return (
     <div className="pt-fn-settings">
-      <div>
-        <p className="pt-fn-subtitle">{t('settings.partnerTypes.description')}</p>
-      </div>
 
-      {/* Chips */}
-      <div className="pt-fn-chips" style={{ minHeight: '32px' }}>
-        {types.length === 0 && (
-          <p className="text-xs" style={{ color: '#6b7280' }}>{t('settings.partnerTypes.newPlaceholder')}</p>
-        )}
-        {types.map(pt => (
-          <button
-            key={pt.id}
-            className={`pt-fn-chip group ${pt.visible === 1 ? 'pt-fn-chip--active' : ''} ${toggling === pt.id ? 'opacity-50 pointer-events-none' : ''}`}
-            onClick={() => handleToggle(pt)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-          >
-            {pt.name}
-            <span
-              className="opacity-0 group-hover:opacity-60 transition-opacity"
-              style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
-              onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
-              title={t('general.delete')}
-            >✕</span>
+      {/* Aktive Kategorien */}
+      <div className="pt-fn-group">
+        <div className="pt-fn-group-header">
+          <span className="pt-fn-group-name">Deine Kategorien</span>
+        </div>
+        <div className="pt-fn-chips" style={{ minHeight: '28px' }}>
+          {types.length === 0 && (
+            <span className="pt-fn-subtitle" style={{ fontSize: '0.78rem' }}>Noch keine Kategorien — füge unten welche hinzu</span>
+          )}
+          {types.map(pt => (
+            <button
+              key={pt.id}
+              className={`pt-fn-chip group ${pt.visible === 1 ? 'pt-fn-chip--active' : ''} ${toggling === pt.id ? 'opacity-40 pointer-events-none' : ''}`}
+              onClick={() => handleToggle(pt)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              title={pt.visible === 1 ? 'Klicken um auszublenden' : 'Klicken um einzublenden'}
+            >
+              {pt.name}
+              <span
+                className="opacity-0 group-hover:opacity-50 transition-opacity"
+                style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+                onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
+                title={t('general.delete')}
+              >✕</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Eigene Eingabe */}
+        <div className="flex gap-2 items-center mt-3" style={{ maxWidth: '380px' }}>
+          <input
+            type="text" value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            placeholder="Eigene Kategorie…"
+            className="detail-input" style={{ flex: 1, marginBottom: 0 }}
+          />
+          <button onClick={() => handleAdd()} disabled={adding || !newName.trim()}
+            className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
+            {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
           </button>
-        ))}
+        </div>
+        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
       </div>
 
-      {/* Neue Kategorie */}
-      <div className="flex gap-2 items-center" style={{ maxWidth: '400px' }}>
-        <input
-          type="text" value={newName} onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          placeholder={t('settings.partnerTypes.newPlaceholder')}
-          className="detail-input" style={{ flex: 1, marginBottom: 0 }}
-        />
-        <button onClick={handleAdd} disabled={adding || !newName.trim()}
-          className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
-          {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
-          {t('general.add')}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      {/* Vorschläge */}
+      {PARTNER_SUGGESTIONS.some(g => g.items.some(item => !existingNames.has(item))) && (
+        <div className="pt-fn-groups">
+          <p className="pt-fn-subtitle" style={{ marginBottom: '0.25rem' }}>
+            Vorschläge — klicken zum Hinzufügen
+          </p>
+          {PARTNER_SUGGESTIONS.map(group => {
+            const available = group.items.filter(item => !existingNames.has(item))
+            if (available.length === 0) return null
+            return (
+              <div key={group.group} className="pt-fn-group">
+                <div className="pt-fn-group-header">
+                  <span className="pt-fn-group-name">{group.group}</span>
+                </div>
+                <div className="pt-fn-chips">
+                  {available.map(item => (
+                    <button
+                      key={item}
+                      className="pt-fn-chip pt-suggestion-chip"
+                      onClick={() => handleAdd(item)}
+                      disabled={adding}
+                      title="Klicken zum Hinzufügen"
+                    >
+                      + {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
     </div>
   )
 }
