@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, ReactNode, useCallback } from 'react'
+import { useState, useEffect, useRef, ReactNode } from 'react'
 import {
   HomeIcon,
   CalendarDaysIcon,
@@ -18,7 +18,6 @@ import {
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
   ViewColumnsIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
   getCurrentUser,
@@ -196,19 +195,6 @@ export function L2Layout({
     currentUser?.email?.[0]?.toUpperCase() ||
     '?'
 
-  // Settings modal state
-  const isSettingsOpen = activeTab === 'settings'
-  const closeSettings = useCallback(() => {
-    onTabChange('desk')
-  }, [onTabChange])
-
-  // ESC closes settings modal
-  useEffect(() => {
-    if (!isSettingsOpen) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeSettings() }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [isSettingsOpen, closeSettings])
 
   // Artist name
   useEffect(() => {
@@ -431,28 +417,42 @@ export function L2Layout({
     )
   }
 
-  // ── Settings modal sidebar group ────────────────────────────────────────────
-  const renderSettingsGroup = (label: string, items: SubItem[]) => {
-    const visible = filterSettings(items)
-    if (visible.length === 0) return null
+  // ── Settings sidebar sub-items (inline, like Events/Contacts) ───────────────
+  const renderSettingsSubs = () => {
+    const kontoItems = filterSettings(SETTINGS_KONTO)
+    const workspaceItems = filterSettings(SETTINGS_WORKSPACE)
     return (
-      <div className="mb-4">
-        <p className="px-3 mb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-          {label}
-        </p>
-        {visible.map(item => (
-          <button
-            key={item.id}
-            onClick={() => guardDirtyNav(() => onSubTabChange?.(item.id))}
-            className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-              activeSubTab === item.id
-                ? 'bg-gray-200 text-gray-900 font-medium'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }`}
-          >
-            {item.name}
-          </button>
-        ))}
+      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
+        {kontoItems.length > 0 && (
+          <>
+            <p className="px-2 pt-1 pb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Konto</p>
+            {kontoItems.map(sub => (
+              <button key={sub.id}
+                onClick={() => guardDirtyNav(() => onSubTabChange?.(sub.id))}
+                className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+                }`}
+              >
+                {sub.name}
+              </button>
+            ))}
+          </>
+        )}
+        {workspaceItems.length > 0 && (
+          <>
+            <p className="px-2 pt-2 pb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Workspace</p>
+            {workspaceItems.map(sub => (
+              <button key={sub.id}
+                onClick={() => guardDirtyNav(() => onSubTabChange?.(sub.id))}
+                className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+                }`}
+              >
+                {sub.name}
+              </button>
+            ))}
+          </>
+        )}
       </div>
     )
   }
@@ -590,14 +590,16 @@ export function L2Layout({
           <button
             onClick={() => handleNav('settings')}
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-              activeTab === 'settings'
-                ? 'pt-nav-active'
-                : 'hover:text-white hover:bg-[#2d2d2d]'
+              activeTab === 'settings' ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
             }`}
           >
             <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
-            Einstellungen
+            <span className="flex-1">Einstellungen</span>
+            <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${
+              activeTab === 'settings' ? 'rotate-180 text-gray-700' : 'text-gray-500'
+            }`} />
           </button>
+          {activeTab === 'settings' && renderSettingsSubs()}
         </div>
       </aside>
 
@@ -643,54 +645,9 @@ export function L2Layout({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 bg-[#1c1c1c] l2-content">
-          {!isSettingsOpen && children}
+          {children}
         </div>
       </div>
-
-      {/* ── SETTINGS MODAL ──────────────────────────────────────────────────── */}
-      {isSettingsOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={e => { if (e.target === e.currentTarget) closeSettings() }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl flex overflow-hidden"
-               style={{ width: '860px', height: '600px', maxWidth: '95vw', maxHeight: '90vh' }}>
-
-            {/* Modal left sidebar */}
-            <div className="w-52 flex-shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto p-3">
-              {/* User info */}
-              <div className="flex items-center gap-2 px-3 py-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
-                  {initials}
-                </div>
-                <span className="text-xs font-medium text-gray-700 truncate">
-                  {currentUser?.firstName
-                    ? `${currentUser.firstName} ${currentUser.lastName ?? ''}`.trim()
-                    : currentUser?.email ?? ''}
-                </span>
-              </div>
-
-              {renderSettingsGroup('Konto', SETTINGS_KONTO)}
-              {renderSettingsGroup('Workspace', SETTINGS_WORKSPACE)}
-            </div>
-
-            {/* Modal content */}
-            <div className="flex-1 overflow-y-auto relative">
-              {/* Close button */}
-              <button
-                onClick={closeSettings}
-                className="absolute top-4 right-4 z-10 p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-
-              <div className="p-8 pr-14">
-                {children}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {dirtyDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
