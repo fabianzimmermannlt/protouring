@@ -6,7 +6,7 @@ import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import type { TranslationKey } from '@/app/lib/i18n/translations/de'
-import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download, Upload, Save } from 'lucide-react'
+import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download, Upload, Save, ArrowLeft } from 'lucide-react'
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
@@ -889,15 +889,13 @@ function TerminDetailHeader({
 
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      {/* Back link */}
+      {/* Back link — gleicher Stil wie ContactDetail */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
-        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#555', marginBottom: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.12s' }}
-        onMouseOver={e => (e.currentTarget.style.color = '#999')}
-        onMouseOut={e => (e.currentTarget.style.color = '#555')}
+        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
       >
-        <ChevronLeft size={13} />
-        Events
+        <ArrowLeft size={16} /> Zurück zur Übersicht
       </button>
 
       {/* Title + both nav arrows inline */}
