@@ -140,7 +140,6 @@ export function L2Layout({
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
   const [activeTenantSlug, setActiveTenantSlug] = useState<string | null>(null)
-  const [dirtyDialog, setDirtyDialog] = useState<{ onProceed: () => void } | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -242,23 +241,21 @@ export function L2Layout({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const guardDirtyNav = (onProceed: () => void) => {
+  const guardDirtyNav = (): boolean => {
     if ((window as any).__pt_isDirty) {
-      setDirtyDialog({ onProceed })
-    } else {
-      onProceed()
+      return window.confirm('Du hast ungespeicherte Änderungen. Trotzdem wechseln? Die Änderungen gehen verloren.')
     }
+    return true
   }
 
   const handleNav = (id: string) => {
-    guardDirtyNav(() => {
-      if (id === 'settings') { onTabChange('settings', 'profil'); return }
-      let defaultSub: string | undefined
-      if (id === 'contacts') defaultSub = 'overview'
-      else if (id === 'equipment') defaultSub = 'items'
-      onTabChange(id, defaultSub)
-      setShowUserMenu(false)
-    })
+    if (!guardDirtyNav()) return
+    if (id === 'settings') { onTabChange('settings', 'profil'); return }
+    let defaultSub: string | undefined
+    if (id === 'contacts') defaultSub = 'overview'
+    else if (id === 'equipment') defaultSub = 'items'
+    onTabChange(id, defaultSub)
+    setShowUserMenu(false)
   }
 
   const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string }) => {
@@ -415,7 +412,7 @@ export function L2Layout({
             {subs.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => guardDirtyNav(() => onSubTabChange?.(sub.id))}
+                onClick={() => { if (guardDirtyNav()) onSubTabChange?.(sub.id) }}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'pt-nav-sub-active'
@@ -443,7 +440,7 @@ export function L2Layout({
         {visible.map(item => (
           <button
             key={item.id}
-            onClick={() => guardDirtyNav(() => onSubTabChange?.(item.id))}
+            onClick={() => { if (guardDirtyNav()) onSubTabChange?.(item.id) }}
             className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
               activeSubTab === item.id
                 ? 'bg-gray-200 text-gray-900 font-medium'
@@ -687,34 +684,6 @@ export function L2Layout({
               <div className="p-8 pr-14">
                 {children}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {dirtyDialog && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#2a2a2a', borderRadius: '8px', padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-            <h3 style={{ color: '#e0e0e0', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
-            <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setDirtyDialog(null)}
-                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
-                Abbrechen
-              </button>
-              <button onClick={() => { setDirtyDialog(null); dirtyDialog.onProceed() }}
-                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
-                Verwerfen
-              </button>
-              <button onClick={async () => {
-                const save = (window as any).__pt_save as (() => Promise<boolean>) | null
-                if (save) { const ok = await save(); if (!ok) return }
-                setDirtyDialog(null)
-                dirtyDialog.onProceed()
-              }}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                Speichern
-              </button>
             </div>
           </div>
         </div>
