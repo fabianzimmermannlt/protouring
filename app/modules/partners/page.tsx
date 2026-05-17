@@ -195,7 +195,7 @@ export default function PartnersPage() {
   if (!isMobile && isL2 && selectedPartnerId) {
     return (
       <div>
-        <button onClick={() => { setSelectedPartnerId(null); localStorage.removeItem('pt_partners_last_id') }}
+        <button onClick={() => { setSelectedPartnerId(null); localStorage.removeItem('pt_partners_last_id'); getPartners().then(setPartners).catch(() => {}) }}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
         </button>

@@ -160,7 +160,7 @@ export default function VenuesPage() {
   if (!isMobile && isL2 && selectedVenueId) {
     return (
       <div>
-        <button onClick={() => setSelectedVenueId(null)}
+        <button onClick={() => { setSelectedVenueId(null); loadVenues() }}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
         </button>

@@ -158,7 +158,7 @@ export default function HotelsPage() {
     return (
       <div>
         <button
-          onClick={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id') }}
+          onClick={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id'); getHotels().then(setHotels).catch(() => {}) }}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
