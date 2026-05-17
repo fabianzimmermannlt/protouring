@@ -771,6 +771,73 @@ function PlaceholderCard({ title }: { title: string }) {
 }
 
 // ============================================================
+// Venue Tab View
+// ============================================================
+
+function VenueView({ termin, isAdmin, onUpdated }: {
+  termin: Termin
+  isAdmin: boolean
+  onUpdated: (t: Termin) => void
+}) {
+  return (
+    <div className="flex flex-col gap-4" style={{ maxWidth: '640px' }}>
+      <SpielstaetteCard key={`venue-${termin.id}`} termin={termin} isAdmin={isAdmin} onUpdated={onUpdated} />
+      <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+    </div>
+  )
+}
+
+// ============================================================
+// Partner Tab View
+// ============================================================
+
+function PartnerView({ termin, isAdmin, onUpdated }: {
+  termin: Termin
+  isAdmin: boolean
+  onUpdated: (t: Termin) => void
+}) {
+  return (
+    <div style={{ maxWidth: '480px' }}>
+      <PartnerCard key={`partner-${termin.id}`} termin={termin} isAdmin={isAdmin} onUpdated={onUpdated} />
+    </div>
+  )
+}
+
+// ============================================================
+// Kommunikation Tab View
+// ============================================================
+
+function KommunikationView({ termin, canSeeFiles }: {
+  termin: Termin
+  canSeeFiles: boolean
+}) {
+  const currentUser = getCurrentUser()
+  const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
+
+  return (
+    <div className="flex flex-col gap-4" style={{ maxWidth: '800px' }}>
+      {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
+      <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
+        <ContentBoard
+          entityType="termin_private"
+          entityId={`${termin.id}_${currentUserId}`}
+          title=""
+          isAdmin={true}
+          singleItem
+          fixedTitle="Private Notiz"
+          showTitleField={false}
+          modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+          hideEmptyButton
+          allowDelete={false}
+          className="flex-1"
+        />
+      </div>
+      <TerminChatCard terminId={termin.id} />
+    </div>
+  )
+}
+
+// ============================================================
 // TerminDetailHeader – Event-Name + Datum + Tab-Bar (Desktop)
 // ============================================================
 
@@ -796,22 +863,22 @@ function TerminDetailHeader({
   const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader ? termin.title : locationLabel || termin.title
 
-  // Alle verfügbaren Views — entspricht L3 + Advance Sheet + Gästeliste
+  // Alle verfügbaren Views
   const tabs = [
-    { id: 'details2',    label: 'Details',      always: true },
-    { id: 'travel',      label: 'Travel',       always: true },
-    { id: 'schedule',    label: 'Schedule',     always: true },
-    { id: 'hospitality', label: 'Hospitality',  always: true },
-    { id: 'advancing',   label: 'Advancing',    always: true },
-    { id: 'agreements',  label: 'Agreements',   always: true },
-    { id: 'travelparty', label: 'Reisegruppe',  always: true },
-    { id: 'briefing',    label: 'Briefing',     always: true },
-    { id: 'advance-sheet', label: 'Advance Sheet', editorOnly: true },
-    { id: 'guestlist',   label: 'Gästeliste',   always: true },
-  ].filter(t => {
-    if (t.editorOnly) return isEditor
-    return true
-  })
+    { id: 'details2',       label: 'Details' },
+    { id: 'venue',          label: 'Venue' },
+    { id: 'partner',        label: 'Partner' },
+    { id: 'travel',         label: 'Travel' },
+    { id: 'schedule',       label: 'Schedule' },
+    { id: 'hospitality',    label: 'Hospitality' },
+    { id: 'advancing',      label: 'Advancing' },
+    { id: 'agreements',     label: 'Agreements' },
+    { id: 'travelparty',    label: 'Reisegruppe' },
+    { id: 'briefing',       label: 'Briefing' },
+    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
+    { id: 'guestlist',      label: 'Gästeliste' },
+    { id: 'communication',  label: 'Kommunikation' },
+  ]
 
   const changeView = (view: string) => {
     window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view } }))
@@ -1573,7 +1640,13 @@ export default function TerminePage() {
             onNavigate={id => selectTermin(id, selectedView)}
           />
         )}
-        {selectedView === 'travelparty' ? (
+        {selectedView === 'venue' ? (
+          <VenueView termin={selectedTermin} isAdmin={isAdmin} onUpdated={onUpdated} />
+        ) : selectedView === 'partner' ? (
+          <PartnerView termin={selectedTermin} isAdmin={isAdmin} onUpdated={onUpdated} />
+        ) : selectedView === 'communication' ? (
+          <KommunikationView termin={selectedTermin} canSeeFiles={canSeeFiles} />
+        ) : selectedView === 'travelparty' ? (
           <ReisegruppeView terminId={selectedTermin.id} isAdmin={isEditor} />
         ) : selectedView === 'advance-sheet' ? (
           <AdvanceSheetView terminId={selectedTermin.id} />
