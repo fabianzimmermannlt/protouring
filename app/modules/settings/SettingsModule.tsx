@@ -2052,58 +2052,56 @@ function PartnerTypesSettings() {
     } catch { /* silent */ }
   }
 
+  if (loading) return (
+    <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+      <Loader2 className="w-4 h-4 animate-spin" /> {t('settings.partnerTypes.loading')}
+    </div>
+  )
+
   return (
-    <div className="space-y-5 max-w-md">
+    <div className="pt-fn-settings">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">{t('settings.partnerTypes.title')}</h3>
-        <p className="text-sm text-gray-500">
-          {t('settings.partnerTypes.description')}
-        </p>
+        <p className="pt-fn-subtitle">{t('settings.partnerTypes.description')}</p>
       </div>
 
-      {loading ? (
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" /> {t('settings.partnerTypes.loading')}
-        </div>
-      ) : (
-        <>
-          <div className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
-            {types.map(t => (
-              <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 bg-white group hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  checked={t.visible === 1}
-                  disabled={toggling === t.id}
-                  onChange={() => handleToggle(t)}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <span className={`flex-1 text-sm ${t.visible === 1 ? 'text-gray-800' : 'text-gray-400'}`}>
-                  {t.name}
-                </span>
-                <button onClick={() => handleDelete(t.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 p-0.5 ml-auto">
-                  <TrashIcon className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
+      {/* Chips */}
+      <div className="pt-fn-chips" style={{ minHeight: '32px' }}>
+        {types.length === 0 && (
+          <p className="text-xs" style={{ color: '#6b7280' }}>{t('settings.partnerTypes.newPlaceholder')}</p>
+        )}
+        {types.map(pt => (
+          <button
+            key={pt.id}
+            className={`pt-fn-chip group ${pt.visible === 1 ? 'pt-fn-chip--active' : ''} ${toggling === pt.id ? 'opacity-50 pointer-events-none' : ''}`}
+            onClick={() => handleToggle(pt)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+          >
+            {pt.name}
+            <span
+              className="opacity-0 group-hover:opacity-60 transition-opacity"
+              style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+              onClick={e => { e.stopPropagation(); handleDelete(pt.id) }}
+              title={t('general.delete')}
+            >✕</span>
+          </button>
+        ))}
+      </div>
 
-          <div className="flex gap-2 pt-1">
-            <input
-              type="text" value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder={t('settings.partnerTypes.newPlaceholder')}
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <button onClick={handleAdd} disabled={adding || !newName.trim()}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
-              {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlusIcon className="w-3.5 h-3.5" />}
-              {t('general.add')}
-            </button>
-          </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-        </>
-      )}
+      {/* Neue Kategorie */}
+      <div className="flex gap-2 items-center" style={{ maxWidth: '400px' }}>
+        <input
+          type="text" value={newName} onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          placeholder={t('settings.partnerTypes.newPlaceholder')}
+          className="detail-input" style={{ flex: 1, marginBottom: 0 }}
+        />
+        <button onClick={handleAdd} disabled={adding || !newName.trim()}
+          className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
+          {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
+          {t('general.add')}
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   )
 }
