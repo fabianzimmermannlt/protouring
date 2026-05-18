@@ -297,6 +297,20 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
               onChange={e => f('notes', e.target.value)} disabled={!isAdmin}
               style={{ resize: 'vertical' }} />
           </div>
+
+          {/* Titel als Header */}
+          <div className="col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!!form.show_title_as_header}
+                onChange={e => f('show_title_as_header', e.target.checked)}
+                disabled={!isAdmin}
+                className="rounded"
+              />
+              <span className="detail-label mb-0">{t('termin.showTitleAsHeader')}</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>

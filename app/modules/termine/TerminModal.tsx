@@ -209,6 +209,17 @@ export default function TerminModal({
               </select>
             </div>
           </div>
+
+          {/* Titel als Header */}
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={!!form.show_title_as_header}
+              onChange={e => field('show_title_as_header', e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-xs text-gray-600">{t('termin.showTitleAsHeader')}</span>
+          </label>
         </div>
 
         {/* Footer */}
