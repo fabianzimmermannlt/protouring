@@ -152,6 +152,7 @@ export function L2Layout({
 
   // ── Termine state (event-driven, mirrors Navigation/index.tsx) ───────────
   const [termineInDetail, setTermineInDetail] = useState(false)
+  const [contactInDetail, setContactInDetail] = useState(false)
   const [termineView, setTermineView] = useState<TermineDetailView>('details')
   const [termineFilter, setTermineFilter] = useState<TermineListFilter>('aktuell')
   const [termineListView, setTermineListView] = useState<TermineListView>('list')
@@ -174,17 +175,26 @@ export function L2Layout({
       const v = (e as CustomEvent<{ view: TermineListView }>).detail?.view
       if (v) setTermineListView(v)
     }
+    const onContactDetail = (e: Event) => {
+      const inDetail = (e as CustomEvent<{ inDetail: boolean }>).detail?.inDetail
+      setContactInDetail(!!inDetail)
+    }
+    const onContactShowList = () => setContactInDetail(false)
     window.addEventListener('termine-view-changed', onViewChanged)
     window.addEventListener('termine-go-to-list', onGoToList)
     window.addEventListener('termine-set-view', onSetView)
     window.addEventListener('termine-filter-changed', onFilterChanged)
     window.addEventListener('termine-listview-changed', onListViewChanged)
+    window.addEventListener('contact-detail-changed', onContactDetail)
+    window.addEventListener('contact-show-list', onContactShowList)
     return () => {
       window.removeEventListener('termine-view-changed', onViewChanged)
       window.removeEventListener('termine-go-to-list', onGoToList)
       window.removeEventListener('termine-set-view', onSetView)
       window.removeEventListener('termine-filter-changed', onFilterChanged)
       window.removeEventListener('termine-listview-changed', onListViewChanged)
+      window.removeEventListener('contact-detail-changed', onContactDetail)
+      window.removeEventListener('contact-show-list', onContactShowList)
     }
   }, [])
 
@@ -299,7 +309,7 @@ export function L2Layout({
       <button
         onClick={() => guardDirtyNav(() => { window.dispatchEvent(new CustomEvent('termine-go-to-list')) })}
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-          activeTab === 'events' && !activeSubTab
+          activeTab === 'events' && !activeSubTab && !termineInDetail
             ? 'pt-nav-sub-active'
             : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
         }`}
@@ -374,7 +384,7 @@ export function L2Layout({
                   }
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                  activeSubTab === sub.id
+                  activeSubTab === sub.id && !(activeTab === 'contacts' && sub.id === 'overview' && contactInDetail)
                     ? 'pt-nav-sub-active'
                     : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
                 }`}

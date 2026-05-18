@@ -138,6 +138,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   }, [activeSubTab])
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent('contact-detail-changed', { detail: { inDetail: !!selectedContactId } }))
+  }, [selectedContactId])
+
+  useEffect(() => {
     const onInvite = () => openAddModal()
     const onCreate = () => setShowGastModal(true)
     window.addEventListener('contact-sidebar-invite', onInvite)
