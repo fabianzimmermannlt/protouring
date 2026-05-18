@@ -126,6 +126,7 @@ export default function FunktionenSettings() {
   }
 
   const removeCustom = (name: string) => {
+    if (!confirm(`"${name}" wirklich löschen?`)) return
     setCustomNames(prev => prev.filter(n => n !== name))
   }
 
