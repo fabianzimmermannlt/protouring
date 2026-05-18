@@ -22,7 +22,7 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const isSuperadmin = Boolean((getCurrentUser() as any)?.isSuperadmin)
-    if (!isSuperadmin) { setLayoutState('L3'); return }
+    if (!isSuperadmin) { setLayoutState('L2'); return }
     const stored = localStorage.getItem(STORAGE_KEY) as LayoutMode | null
     if (stored === 'L1' || stored === 'L2' || stored === 'L3') setLayoutState(stored)
   }, [])
