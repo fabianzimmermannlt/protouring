@@ -47,10 +47,12 @@ export default function HotelCard({
   terminId,
   isAdmin,
   terminDate,
+  legsRefreshKey = 0,
 }: {
   terminId: number
   isAdmin: boolean
   terminDate: string
+  legsRefreshKey?: number
 }) {
   const [stays, setStays] = useState<HotelStay[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
@@ -74,21 +76,21 @@ export default function HotelCard({
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([
+    Promise.allSettled([
       getHotelStays(terminId),
       getTravelParty(terminId),
       getTravelLegs(terminId),
       getTenantSetting('nightliner_exclude_anreise'),
       getTenantSetting('nightliner_exclude_abreise'),
     ]).then(([s, tp, legs, nlAnr, nlAbr]) => {
-      setStays(s)
-      setTravelParty(tp)
-      setTravelLegs(legs)
+      if (s.status === 'fulfilled') setStays(s.value)
+      if (tp.status === 'fulfilled') setTravelParty(tp.value)
+      if (legs.status === 'fulfilled') setTravelLegs(legs.value)
       // Default: aktiv (null = nicht gesetzt = Standard = aktiv)
-      setNlExcludeAnreise(nlAnr !== '0')
-      setNlExcludeAbreise(nlAbr !== '0')
-    }).catch(() => {}).finally(() => setLoading(false))
-  }, [terminId])
+      setNlExcludeAnreise(nlAnr.status === 'fulfilled' ? nlAnr.value !== '0' : true)
+      setNlExcludeAbreise(nlAbr.status === 'fulfilled' ? nlAbr.value !== '0' : true)
+    }).finally(() => setLoading(false))
+  }, [terminId, legsRefreshKey])
 
   const openNew = () => { setEditStay(null); setModalOpen(true) }
   const openEdit = (stay: HotelStay) => { setEditStay(stay); setModalOpen(true) }

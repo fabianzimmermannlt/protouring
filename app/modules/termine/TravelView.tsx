@@ -14,6 +14,7 @@ interface TravelViewProps {
 export default function TravelView({ termin, termine, isAdmin }: TravelViewProps) {
   const [abreiseRefreshKey, setAbreiseRefreshKey] = useState(0)
   const [anreiseRefreshKey, setAnreiseRefreshKey] = useState(0)
+  const [hotelLegsKey, setHotelLegsKey] = useState(0)
 
   const ONE_DAY_MS = 86400000
   const idx = termine.findIndex(item => item.id === termin.id)
@@ -39,11 +40,13 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
         prevTerminCity={prevTerminCity}
         refreshKey={anreiseRefreshKey}
         onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
+        onLegChanged={() => setHotelLegsKey(k => k + 1)}
       />
       <HotelCard
         terminId={termin.id}
         isAdmin={isAdmin}
         terminDate={termin.date}
+        legsRefreshKey={hotelLegsKey}
       />
       <AnreiseCard
         terminId={termin.id}
@@ -54,6 +57,7 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
         nextTerminCity={nextTerminCity}
         refreshKey={abreiseRefreshKey}
         onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
+        onLegChanged={() => setHotelLegsKey(k => k + 1)}
       />
     </div>
   )

@@ -24,6 +24,7 @@ interface AnreiseCardProps {
   refreshKey?: number       // inkrementieren triggert Neu-Laden (z.B. nach Kopieren)
   onCopiedToAbreise?: (leg: TravelLeg) => void  // nur für legType="anreise"
   onLegDeleted?: () => void // Callback wenn ein Leg gelöscht wird (für externe Reaktion)
+  onLegChanged?: () => void // Callback bei jeder Leg-Änderung (Save, Delete, Person-Update)
 }
 
 const TRANSPORT_ICON: Record<TransportType, LucideIcon> = {
@@ -57,7 +58,7 @@ function formatTime(date: string, time: string): string {
 
 export default function AnreiseCard({
   terminId, legType, isAdmin, terminDate, terminCity, prevTerminCity, nextTerminCity,
-  refreshKey, onCopiedToAbreise, onLegDeleted,
+  refreshKey, onCopiedToAbreise, onLegDeleted, onLegChanged,
 }: AnreiseCardProps) {
   const [allLegs, setAllLegs] = useState<TravelLeg[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
@@ -88,11 +89,13 @@ export default function AnreiseCard({
       if (idx >= 0) return prev.map(l => l.id === leg.id ? leg : l)
       return [...prev, leg]
     })
+    onLegChanged?.()
   }
 
   const handleDeleted = (legId: number) => {
     setAllLegs(prev => prev.filter(l => l.id !== legId))
     onLegDeleted?.()
+    onLegChanged?.()
   }
 
   const handleCopiedToAbreise = (leg: TravelLeg) => {
