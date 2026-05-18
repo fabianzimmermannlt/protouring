@@ -276,24 +276,16 @@ export function L2Layout({
   ].filter(Boolean)
 
   // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
-  const renderTermineSubs = () => {
-    if (termineInDetail) {
-      // Detail-Ansicht: nur Zurück-Button (Tabs sind jetzt im Content-Bereich)
-      return (
-        <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333]">
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
-            className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-1"
-          >
-            ← Events
-          </button>
-        </div>
-      )
-    }
-
-    // Listen-Ansicht: kein Filter in Sidebar (Filter ist im Toolbar der Listenansicht)
-    return null
-  }
+  const renderTermineSubs = () => (
+    <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333]">
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
+        className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+      >
+        <PlusIcon className="w-3 h-3" /> Neuer Termin
+      </button>
+    </div>
+  )
 
   // ── Nav item renderer ───────────────────────────────────────────────────────
   const renderNavItem = (
