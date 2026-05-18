@@ -66,7 +66,6 @@ const SETTINGS_WORKSPACE: SubItem[] = [
 
 const CONTACTS_SUBS: SubItem[] = [
   { id: 'overview',     name: 'Übersicht' },
-  { id: 'crew-booking', name: 'Crew-Vermittlung', editorOnly: true },
   { id: 'conditions',   name: 'Konditionen',       editorOnly: true },
 ]
 
@@ -292,12 +291,22 @@ export function L2Layout({
 
   // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
   const renderTermineSubs = () => (
-    <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333]">
+    <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
-        className="w-full text-left px-2 py-1.5 rounded text-xs text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+        className="w-full text-left px-2 py-1.5 rounded text-xs l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d] transition-colors flex items-center gap-1.5"
       >
         <PlusIcon className="w-3 h-3" /> Neuer Termin
+      </button>
+      <button
+        onClick={() => guardDirtyNav(() => { handleNav('events'); onSubTabChange?.('crew-booking') })}
+        className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+          activeTab === 'events' && activeSubTab === 'crew-booking'
+            ? 'pt-nav-sub-active'
+            : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+        }`}
+      >
+        Crew-Buchung
       </button>
     </div>
   )

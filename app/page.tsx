@@ -141,7 +141,7 @@ function ProTouringAppInner() {
   const content = (
     <>
       {activeTab === 'desk' && <DeskModule />}
-      {activeTab === 'events' && <TerminePage />}
+      {activeTab === 'events' && <TerminePage activeSubTab={activeSubTab} />}
       {activeTab === 'contacts' && <ContactsModule activeSubTab={activeSubTab} />}
       {activeTab === 'venues' && <VenuesPage />}
       {activeTab === 'partners' && <PartnersPage />}

@@ -103,7 +103,6 @@ type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boo
 
 const CONTACTS_SUBS: SubItem[] = [
   { id: 'overview',     name: 'Übersicht' },
-  { id: 'crew-booking', name: 'Crew-Vermittlung', editorOnly: true },
   { id: 'conditions',   name: 'Konditionen',       editorOnly: true },
 ]
 const EQUIPMENT_SUBS: SubItem[] = [
@@ -1980,7 +1979,6 @@ export function L3Layout({
               <div className="flex items-center gap-0.5">
                 {[
                   { id: 'overview',     label: t('contacts.sub.overview') },
-                  ...(isEditor ? [{ id: 'crew-booking', label: t('contacts.sub.crewBooking') }] : []),
                   ...(isEditor ? [{ id: 'conditions',   label: t('contacts.sub.conditions') }] : []),
                 ].map(tab => (
                   <button key={tab.id}
@@ -2028,15 +2026,29 @@ export function L3Layout({
                     onClick={() => {
                       setTermineInDetail(false)
                       window.dispatchEvent(new CustomEvent('advancing-go-to-list'))
+                      onSubTabChange?.('')
                     }}
                     className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      overviewActive
+                      overviewActive && activeSubTab !== 'crew-booking'
                         ? 'bg-gray-100 text-gray-900 font-medium'
                         : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
                     }`}
                   >
                     Übersicht
                   </button>
+                  {/* Crew-Buchung — nur wenn kein Detail offen */}
+                  {!termineInDetail && isEditor && (
+                    <button
+                      onClick={() => { onSubTabChange?.('crew-booking') }}
+                      className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                        activeSubTab === 'crew-booking'
+                          ? 'bg-gray-100 text-gray-900 font-medium'
+                          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      Crew-Buchung
+                    </button>
+                  )}
                   {/* Detail-Tabs — nur wenn Event offen */}
                   {detailTabs.map(v => (
                     <button

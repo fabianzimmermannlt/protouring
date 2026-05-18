@@ -1507,7 +1507,9 @@ export function TerminDetail2({
 // Main component
 // ============================================================
 
-export default function TerminePage() {
+import CrewBookingView from '../contacts/CrewBookingView'
+
+export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: string }) {
   const router = useRouter()
   const { layout } = useLayout()
   const isL3 = layout === 'L3'
@@ -1917,6 +1919,12 @@ export default function TerminePage() {
   // ============================================================
   // Render (List View)
   // ============================================================
+
+  if (activeSubTab === 'crew-booking') return (
+    <div className="module-content">
+      <CrewBookingView isAdmin={isAdmin} />
+    </div>
+  )
 
   return (
     <div className="module-content">
