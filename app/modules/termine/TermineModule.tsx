@@ -2142,14 +2142,14 @@ export default function TerminePage() {
                         : <span className="text-gray-400">–</span>}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: STATUS_BOOKING_DOT[termin.statusBooking] || '#9ca3af' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusBooking ? STATUS_BOOKING_DOT[termin.statusBooking] : undefined) || '#9ca3af' }}>
                         {termin.statusBooking
                           ? (STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking)
                           : '–'}
                       </span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: STATUS_PUBLIC_DOT[termin.statusPublic] || '#9ca3af' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusPublic ? STATUS_PUBLIC_DOT[termin.statusPublic] : undefined) || '#9ca3af' }}>
                         {termin.statusPublic
                           ? (STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic)
                           : '–'}
