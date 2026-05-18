@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePolling } from '@/app/hooks/usePolling'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import type { TranslationKey } from '@/app/lib/i18n/translations/de'
 import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, ChevronRight, Edit2, Trash2, Download, Upload, Save, ArrowLeft } from 'lucide-react'
@@ -775,12 +776,14 @@ function PlaceholderCard({ title }: { title: string }) {
 // Venue Tab View – zeigt VenueDetailContent (identisch zu Venues/Details)
 // ============================================================
 
-function VenuePicker({ termin, isAdmin, onLinked }: {
+function VenuePicker({ termin, isAdmin, onLinked, onCancel }: {
   termin: Termin
   isAdmin: boolean
   onLinked: (updated: Termin) => void
+  onCancel?: () => void
 }) {
   const t = useT()
+  useEscapeKey(() => onCancel?.())
   const [venues, setVenues] = useState<Venue[]>([])
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
@@ -887,6 +890,7 @@ function VenueView({ termin, isAdmin, onUpdated }: {
           termin={termin}
           isAdmin={isAdmin}
           onLinked={updated => { onUpdated(updated); setShowPicker(false) }}
+          onCancel={showPicker ? () => setShowPicker(false) : undefined}
         />
       </div>
     )

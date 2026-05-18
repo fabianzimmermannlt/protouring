@@ -8,6 +8,7 @@ import {
   type TravelPartyMember,
   type FunctionCatalogGroup,
 } from '@/lib/api-client'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface GastModalProps {
   terminId: number
@@ -16,6 +17,7 @@ interface GastModalProps {
 }
 
 export default function GastModal({ terminId, onClose, onAdded }: GastModalProps) {
+  useEscapeKey(onClose)
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '',
     function1: '', function2: '', function3: '',

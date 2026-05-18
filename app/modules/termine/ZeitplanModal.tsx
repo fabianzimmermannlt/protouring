@@ -9,6 +9,7 @@ import {
   deleteTerminSchedule,
   type TerminSchedule,
 } from '@/lib/api-client'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface ZeitplanModalProps {
   terminId: number
@@ -27,6 +28,7 @@ export default function ZeitplanModal({
   onSaved,
   onDeleted,
 }: ZeitplanModalProps) {
+  useEscapeKey(onClose)
   const isEdit = !!schedule
   const [title, setTitle] = useState(schedule?.title ?? '')
   const [notFinal, setNotFinal] = useState(schedule?.notFinal ?? false)

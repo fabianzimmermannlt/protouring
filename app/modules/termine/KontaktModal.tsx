@@ -8,6 +8,7 @@ import {
   deleteTerminContact,
   type TerminContact,
 } from '@/lib/api-client'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface KontaktModalProps {
   terminId: number
@@ -26,6 +27,7 @@ export default function KontaktModal({
   onSaved,
   onDeleted,
 }: KontaktModalProps) {
+  useEscapeKey(onClose)
   const isEdit = !!contact
   const [label, setLabel]         = useState(contact?.label ?? '')
   const [firstName, setFirstName] = useState(contact?.firstName ?? '')

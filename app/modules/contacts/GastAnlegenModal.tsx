@@ -11,6 +11,7 @@ import {
   type Contact,
   type FunctionCatalogGroup,
 } from '@/lib/api-client'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface GastAnlegenModalProps {
   onClose: () => void
@@ -97,6 +98,7 @@ const SectionHeading = ({ children }: { children: React.ReactNode }) => (
 export default function GastAnlegenModal({
   onClose, onAdded, onUpdated, onDeleted, contact,
 }: GastAnlegenModalProps) {
+  useEscapeKey(onClose)
   const t = useT()
   const isEdit = !!contact
   const [form, setForm] = useState(isEdit ? contactToForm(contact!) : emptyForm())

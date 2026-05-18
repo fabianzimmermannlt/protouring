@@ -13,6 +13,7 @@ import {
 } from '@/lib/api-client'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 const EMPTY: PartnerFormData = {
   type: '', companyName: '', street: '', postalCode: '', city: '', state: '',
@@ -36,6 +37,7 @@ interface PartnerModalProps {
 }
 
 export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: PartnerModalProps) {
+  useEscapeKey(onClose)
   const t = useT()
   const isEdit = !!partner
 

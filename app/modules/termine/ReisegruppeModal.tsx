@@ -7,6 +7,7 @@ import {
   deleteTravelPartyMember,
   type TravelPartyMember,
 } from '@/lib/api-client'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface ReisegruppeModalProps {
   terminId: number
@@ -17,6 +18,7 @@ interface ReisegruppeModalProps {
 }
 
 export default function ReisegruppeModal({ terminId, member, onClose, onSaved, onDeleted }: ReisegruppeModalProps) {
+  useEscapeKey(onClose)
   const [role1, setRole1] = useState(member.role1)
   const [role2, setRole2] = useState(member.role2)
   const [role3, setRole3] = useState(member.role3)

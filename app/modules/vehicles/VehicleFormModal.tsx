@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Trash2, Save, X } from 'lucide-react'
 import { createVehicle, updateVehicle, deleteVehicle, type Vehicle, type VehicleFormData } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 const VEHICLE_TYPES = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
 
@@ -35,6 +36,7 @@ interface VehicleFormModalProps {
 }
 
 export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted }: VehicleFormModalProps) {
+  useEscapeKey(onClose)
   const t = useT()
   const [formData, setFormData] = useState<VehicleFormData>(
     vehicle

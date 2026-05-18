@@ -11,6 +11,7 @@ import {
   type VenueFormData,
 } from '@/lib/api-client'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 const EMPTY_FORM: VenueFormData = {
   name: '', street: '', postalCode: '', city: '', state: '', country: '',
@@ -72,6 +73,7 @@ interface VenueModalProps {
 }
 
 export default function VenueModal({ venue, onClose, onSaved, onDeleted }: VenueModalProps) {
+  useEscapeKey(onClose)
   const t = useT()
   const isEdit = !!venue
   const [form, setForm] = useState<VenueFormData>(isEdit ? venueToForm(venue!) : { ...EMPTY_FORM })

@@ -5,6 +5,7 @@ import { Trash2, Save, X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { createHotel, updateHotel, deleteHotel, type Hotel, type HotelFormData } from '@/lib/api-client'
 import { NameAddressAutocomplete } from '@/app/components/shared/AddressAutocomplete'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 const EMPTY_FORM: HotelFormData = {
   name: '',
@@ -34,6 +35,7 @@ interface HotelFormModalProps {
 }
 
 export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: HotelFormModalProps) {
+  useEscapeKey(onClose)
   const t = useT()
   const [formData, setFormData] = useState<HotelFormData>(
     hotel

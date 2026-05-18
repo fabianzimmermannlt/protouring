@@ -18,6 +18,7 @@ import {
 } from '@/lib/api-client'
 import HotelFormModal from '@/app/modules/hotels/HotelFormModal'
 import { ROOM_TYPE_LABELS } from './HotelCard'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface HotelModalProps {
   terminId: number
@@ -163,6 +164,7 @@ export default function HotelModal({
   terminId, stay, travelParty, assignedInOtherStays, terminDate,
   onClose, onSaved, onDeleted,
 }: HotelModalProps) {
+  useEscapeKey(onClose)
   const isNew = stay === null
   const [form, setForm] = useState<HotelStayFormData>(
     isNew ? emptyForm(terminDate) : stayToForm(stay!)

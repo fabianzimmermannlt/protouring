@@ -17,6 +17,7 @@ import {
   type Venue,
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface TerminModalProps {
   /** null = Neuer Termin, Termin = Bearbeiten */
@@ -46,6 +47,7 @@ export default function TerminModal({
   onDeleted,
   allowAddAnother = false,
 }: TerminModalProps) {
+  useEscapeKey(onClose)
   const t = useT()
   const isEdit = !!termin
 

@@ -18,6 +18,7 @@ import {
   type TransportType,
 } from '@/lib/api-client'
 import VehicleFormModal from '@/app/modules/vehicles/VehicleFormModal'
+import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 interface AnreiseModalProps {
   terminId: number
@@ -142,6 +143,7 @@ export default function AnreiseModal({
   abreiseLegs = [],
   onClose, onSaved, onDeleted, onCopiedToAbreise,
 }: AnreiseModalProps) {
+  useEscapeKey(onClose)
   const isNew = leg === null
   const [form, setForm] = useState<TravelLegFormData>(
     isNew ? emptyForm(legType, terminDate) : legToForm(leg!)
