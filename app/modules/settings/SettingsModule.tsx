@@ -2290,8 +2290,17 @@ function PartnerTypesSettings() {
 
 // ─── File Categories Settings ─────────────────────────────────────────────────
 
+const DEFAULT_FILE_CATEGORY_NAMES = new Set([
+  'Allgemein', 'Spielstätte', 'Anfahrt & Parken', 'Akkreditierung', 'Tickets',
+  'Garderobe', 'Catering', 'Hotel / Unterkunft', 'Busbelegung',
+  'Technik: Allgemein', 'Technik: Ton', 'Technik: Licht', 'Technik: Rigging', 'Technik: Video',
+  'Backline', 'Bühne', 'Logistik & Transport', 'Merchandise', 'Sicherheit',
+  'Kommunikation', 'Genehmigungen & Dokumente', 'Marketing & PR', 'Finanzen',
+  'Setlist', 'Hallenplan', 'Vorverkaufsplan', 'Spielplan',
+  'Stage Plan', 'Groundplan', 'Rigging Plot', 'Technische Daten', 'Verträge', 'Sonstiges',
+])
+
 function FileCategoriesSettings() {
-  const t = useT()
   const [categories, setCategories] = useState<FileCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -2370,10 +2379,37 @@ function FileCategoriesSettings() {
     </div>
   )
 
+  const defaultCats = categories.filter(c => DEFAULT_FILE_CATEGORY_NAMES.has(c.name))
+  const customCats = categories.filter(c => !DEFAULT_FILE_CATEGORY_NAMES.has(c.name))
+
   const activeCount = categories.filter(c => {
     const ov = pendingOverrides[c.id]
     return ov !== undefined ? ov === 1 : c.visible === 1
   }).length
+
+  const renderDefaultChip = (cat: FileCategory) => {
+    const ov = pendingOverrides[cat.id]
+    const isActive = ov !== undefined ? ov === 1 : cat.visible === 1
+    return (
+      <button key={cat.id} className={`pt-fn-chip ${isActive ? 'pt-fn-chip--active' : ''}`} onClick={() => handleToggle(cat)}>
+        {cat.name}
+      </button>
+    )
+  }
+
+  const renderCustomChip = (cat: FileCategory) => {
+    const ov = pendingOverrides[cat.id]
+    const isActive = ov !== undefined ? ov === 1 : cat.visible === 1
+    return (
+      <button key={cat.id} className={`pt-fn-chip group ${isActive ? 'pt-fn-chip--active' : ''}`}
+        onClick={() => handleToggle(cat)} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+        {cat.name}
+        <span className="opacity-0 group-hover:opacity-50 transition-opacity"
+          style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+          onClick={e => { e.stopPropagation(); handleDelete(cat.id) }}>✕</span>
+      </button>
+    )
+  }
 
   return (
     <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -2385,9 +2421,7 @@ function FileCategoriesSettings() {
         </div>
         {isDirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <button onClick={cancelEdit} style={{ fontSize: '13px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>
-              Abbrechen
-            </button>
+            <button onClick={cancelEdit} style={{ fontSize: '13px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>Abbrechen</button>
             <button onClick={saveEdit} style={{ fontSize: '13px', fontWeight: 500, background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', padding: '5px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Save className="w-3 h-3" /> Speichern
             </button>
@@ -2395,59 +2429,41 @@ function FileCategoriesSettings() {
         )}
       </div>
 
-      {/* Alle Kategorien als Chips */}
+      {/* Standard-Kategorien — kein X */}
       <div className="pt-card">
         <div className="pt-card-header">
-          <span className="pt-card-title">Kategorien</span>
+          <span className="pt-card-title">Standard</span>
         </div>
         <div className="pt-card-body">
-          <p className="text-xs text-gray-400 mb-3">Aktive Kategorien erscheinen im Upload-Dropdown bei Events, Venues und anderen Bereichen.</p>
+          <p className="text-xs text-gray-400 mb-3">Aktive Kategorien erscheinen im Upload-Dropdown. Klicken zum An-/Abschalten.</p>
           <div className="pt-fn-chips">
-            {categories.map(cat => {
-              const ov = pendingOverrides[cat.id]
-              const isActive = ov !== undefined ? ov === 1 : cat.visible === 1
-              return (
-                <button
-                  key={cat.id}
-                  className={`pt-fn-chip group ${isActive ? 'pt-fn-chip--active' : ''}`}
-                  onClick={() => handleToggle(cat)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                >
-                  {cat.name}
-                  <span
-                    className="opacity-0 group-hover:opacity-50 transition-opacity"
-                    style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
-                    onClick={e => { e.stopPropagation(); handleDelete(cat.id) }}
-                  >✕</span>
-                </button>
-              )
-            })}
+            {defaultCats.map(renderDefaultChip)}
           </div>
         </div>
       </div>
 
-      {/* Eigene hinzufügen */}
+      {/* Eigene — mit X und Hinzufügen-Formular */}
       <div className="pt-card">
         <div className="pt-card-header">
-          <span className="pt-card-title">Eigene Kategorie hinzufügen</span>
+          <span className="pt-card-title">Eigene</span>
         </div>
-        <div className="pt-card-body">
+        <div className="pt-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {customCats.length > 0 && (
+            <div className="pt-fn-chips">
+              {customCats.map(renderCustomChip)}
+            </div>
+          )}
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
+            <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Kategorie-Name…"
-              className="detail-input flex-1"
-            />
+              placeholder="Neue Kategorie…" className="detail-input flex-1" />
             <button onClick={handleAdd} disabled={adding || !newName.trim()}
               className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded disabled:opacity-40"
               style={{ background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}>
               {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
             </button>
           </div>
-          {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+          {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
       </div>
 
