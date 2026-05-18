@@ -290,18 +290,6 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
             </select>
           </div>
 
-          {/* Capacity + Ankündigung */}
-          <div>
-            <label className="detail-label">{t('appointments.card.capacity')}</label>
-            <input type="number" className="detail-input" value={form.capacity ?? ''}
-              onChange={e => f('capacity', e.target.value ? Number(e.target.value) : null)} disabled={!isAdmin} />
-          </div>
-          <div>
-            <label className="detail-label">Ankündigung</label>
-            <input type="text" className="detail-input" value={form.announcement || ''}
-              onChange={e => f('announcement', e.target.value)} disabled={!isAdmin} />
-          </div>
-
           {/* Notizen – volle Breite */}
           <div className="col-span-2">
             <label className="detail-label">Notizen</label>
