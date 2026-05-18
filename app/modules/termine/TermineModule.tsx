@@ -10,6 +10,7 @@ import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, Chevr
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
+import { VenueDetailContent } from '../venues/VenueDetail'
 import PartnerModal from '../partners/PartnerModal'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
@@ -771,69 +772,22 @@ function PlaceholderCard({ title }: { title: string }) {
 }
 
 // ============================================================
-// Venue Tab View – always-editable with dirty state + nav guard
+// Venue Tab View – zeigt VenueDetailContent (identisch zu Venues/Details)
 // ============================================================
 
-function VenueView({ termin, isAdmin, onUpdated }: {
+function VenuePicker({ termin, isAdmin, onLinked }: {
   termin: Termin
   isAdmin: boolean
-  onUpdated: (t: Termin) => void
+  onLinked: (updated: Termin) => void
 }) {
   const t = useT()
   const [venues, setVenues] = useState<Venue[]>([])
-  const [selectedVenueId, setSelectedVenueId] = useState<number | null>(termin.venueId ?? null)
   const [search, setSearch] = useState('')
-  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [venueModalOpen, setVenueModalOpen] = useState(false)
-  const [venueToEdit, setVenueToEdit] = useState<Venue | null>(null)
-  const originalRef = useRef<number | null>(termin.venueId ?? null)
 
   useEffect(() => { getVenues().then(setVenues).catch(() => {}) }, [])
-
-  // Reset when termin changes (navigation between events)
-  useEffect(() => {
-    setSelectedVenueId(termin.venueId ?? null)
-    originalRef.current = termin.venueId ?? null
-    setSearch('')
-    setDropdownOpen(false)
-    setError(null)
-  }, [termin.id])
-
-  const isDirty = selectedVenueId !== originalRef.current
-  const selectedVenue = venues.find(v => Number(v.id) === selectedVenueId) ?? null
-
-  const save = async () => {
-    setSaving(true)
-    try {
-      const updated = await updateTermin(termin.id, {
-        ...terminToFormData(termin),
-        venue_id: selectedVenueId,
-        city: selectedVenue?.city ?? termin.city,
-      })
-      originalRef.current = selectedVenueId
-      onUpdated(updated)
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('general.error'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const cancel = () => {
-    setSelectedVenueId(originalRef.current)
-    setSearch('')
-    setDropdownOpen(false)
-    setError(null)
-  }
-
-  // Nav guard
-  useEffect(() => {
-    ;(window as any).__pt_isDirty = isDirty
-    ;(window as any).__pt_save = isDirty ? save : undefined
-  })
 
   const filtered = venues.filter(v =>
     !search ||
@@ -841,164 +795,122 @@ function VenueView({ termin, isAdmin, onUpdated }: {
     v.city.toLowerCase().includes(search.toLowerCase())
   )
 
-  const inputDisplayValue = dropdownOpen ? search : (selectedVenue?.name ?? '')
+  const linkVenue = async (venue: Venue | null) => {
+    setSaving(true)
+    try {
+      const updated = await updateTermin(termin.id, {
+        ...terminToFormData(termin),
+        venue_id: venue ? Number(venue.id) : null,
+        city: venue ? venue.city : termin.city,
+      })
+      onLinked(updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('general.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-4" style={{ maxWidth: '640px' }}>
-      {/* Spielstätte Card */}
-      <div className="pt-card">
-        <div className="pt-card-header">
-          <span className="pt-card-title">{t('appointments.card.venue')}</span>
-          {isDirty && (
-            <div className="flex items-center gap-2">
-              <button onClick={cancel} disabled={saving}
-                className="text-xs transition-colors" style={{ color: '#888' }}>
-                Abbrechen
-              </button>
-              <button onClick={save} disabled={saving}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs rounded font-medium disabled:opacity-50 transition-colors"
-                style={{ background: '#2563eb', color: '#fff' }}>
-                {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
-                Speichern
-              </button>
-            </div>
-          )}
-        </div>
-
-        {error && (
-          <div className="mx-5 mt-2 p-2 bg-red-900/30 border border-red-700/40 rounded text-red-300 text-xs flex items-center gap-2">
-            <AlertCircle size={12} /> {error}
-            <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
-          </div>
-        )}
-
-        <div className="pt-card-body">
-          <div className="space-y-4">
-            {/* Venue-Auswahl – immer sichtbar */}
-            <div style={{ position: 'relative' }}>
-              <label className="detail-label">Spielstätte</label>
-              <input
-                type="text"
-                className="detail-input"
-                placeholder={selectedVenue ? '' : 'Spielstätte suchen…'}
-                value={inputDisplayValue}
-                onChange={e => { setSearch(e.target.value); setDropdownOpen(true) }}
-                onFocus={() => { if (isAdmin) { setDropdownOpen(true); setSearch('') } }}
-                onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
-                readOnly={!isAdmin}
-              />
-              {dropdownOpen && isAdmin && (
-                <div style={{
-                  position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50,
-                  background: '#1a1a1a', border: '1px solid #333', borderRadius: '0.5rem',
-                  maxHeight: '220px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
-                }}>
-                  {selectedVenueId && (
-                    <button
-                      onMouseDown={e => { e.preventDefault(); setSelectedVenueId(null); setSearch(''); setDropdownOpen(false) }}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#ef4444', borderBottom: '1px solid #2a2a2a', background: 'none', cursor: 'pointer' }}>
-                      Verknüpfung entfernen
-                    </button>
-                  )}
-                  <button
-                    onMouseDown={e => { e.preventDefault(); setVenueToEdit(null); setVenueModalOpen(true); setDropdownOpen(false) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#3b82f6', borderBottom: '1px solid #2a2a2a', background: 'none', cursor: 'pointer' }}>
-                    <Plus size={12} /> Neue Spielstätte erstellen
-                  </button>
-                  {filtered.length === 0 ? (
-                    <div style={{ padding: '0.6rem 0.75rem', fontSize: '0.8rem', color: '#555', textAlign: 'center' }}>
-                      Keine Ergebnisse
-                    </div>
-                  ) : filtered.map(v => (
-                    <button
-                      key={v.id}
-                      onMouseDown={e => { e.preventDefault(); setSelectedVenueId(Number(v.id)); setSearch(''); setDropdownOpen(false) }}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left',
-                        padding: '0.5rem 0.75rem', background: Number(v.id) === selectedVenueId ? '#1e3a5f' : 'none',
-                        cursor: 'pointer', borderBottom: '1px solid #1e1e1e'
-                      }}>
-                      <div style={{ fontSize: '0.875rem', color: '#e0e0e0' }}>{v.name}</div>
-                      {v.city && <div style={{ fontSize: '0.75rem', color: '#888' }}>{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Venue-Details (read-only) */}
-            {selectedVenue && (
-              <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem 1.5rem', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                {selectedVenue.city && (
-                  <>
-                    <dt style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>Stadt</dt>
-                    <dd style={{ color: '#e0e0e0' }}>{[selectedVenue.postalCode, selectedVenue.city].filter(Boolean).join(' ')}</dd>
-                  </>
-                )}
-                {selectedVenue.capacity && (
-                  <>
-                    <dt style={{ color: '#6b7280' }}>Kapazität</dt>
-                    <dd style={{ color: '#e0e0e0' }}>{Number(selectedVenue.capacity).toLocaleString('de-DE')}</dd>
-                  </>
-                )}
-                {selectedVenue.website && (
-                  <>
-                    <dt style={{ color: '#6b7280' }}>Website</dt>
-                    <dd>
-                      <a href={selectedVenue.website} target="_blank" rel="noopener noreferrer"
-                        style={{ color: '#3b82f6', fontSize: '0.8rem' }}>
-                        {selectedVenue.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                      </a>
-                    </dd>
-                  </>
-                )}
-                <dt></dt>
-                <dd>
-                  <button
-                    onClick={() => { setVenueToEdit(selectedVenue); setVenueModalOpen(true) }}
-                    style={{ fontSize: '0.75rem', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Edit2 size={11} /> Details bearbeiten
-                  </button>
-                </dd>
-              </dl>
-            )}
-
-            {!selectedVenue && !dropdownOpen && (
-              <p style={{ fontSize: '0.875rem', color: '#555', textAlign: 'center', paddingTop: '0.5rem' }}>
-                Keine Spielstätte verknüpft
-              </p>
-            )}
-          </div>
-        </div>
+    <div className="pt-card" style={{ maxWidth: '480px' }}>
+      <div className="pt-card-header">
+        <span className="pt-card-title">{t('appointments.card.venue')}</span>
       </div>
-
-      {/* Lokale Kontakte */}
-      <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
-
+      {error && (
+        <div className="mx-5 mt-2 p-2 bg-red-900/30 border border-red-700/40 rounded text-red-300 text-xs flex items-center gap-2">
+          <AlertCircle size={12} /> {error}
+          <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
+        </div>
+      )}
+      <div className="pt-card-body space-y-2">
+        <input
+          type="text" autoFocus
+          placeholder={t('general.search')}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+          {termin.venueId && (
+            <button onClick={() => linkVenue(null)} disabled={saving}
+              className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+              {t('appointments.card.removeVenue')}
+            </button>
+          )}
+          <button onClick={() => setVenueModalOpen(true)}
+            className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
+            <Plus size={11} /> {t('appointments.card.newVenue')}
+          </button>
+          {filtered.length === 0
+            ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
+            : filtered.map(v => (
+              <button key={v.id} onClick={() => linkVenue(v)} disabled={saving}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin.venueId ? 'bg-blue-50 font-medium' : ''}`}>
+                <div className="font-medium text-gray-800">{v.name}</div>
+                {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+              </button>
+            ))
+          }
+        </div>
+        {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
+      </div>
       {venueModalOpen && (
         <VenueModal
-          venue={venueToEdit}
-          onClose={() => { setVenueModalOpen(false); setVenueToEdit(null) }}
+          venue={null}
+          onClose={() => setVenueModalOpen(false)}
           onSaved={async saved => {
-            setVenues(prev => {
-              const exists = prev.find(v => v.id === saved.id)
-              return exists ? prev.map(v => v.id === saved.id ? saved : v) : [...prev, saved]
-            })
-            if (!venueToEdit) {
-              // Neue Spielstätte → automatisch verknüpfen (als dirty markieren, noch nicht gespeichert)
-              setSelectedVenueId(Number(saved.id))
-            }
+            setVenues(prev => [...prev, saved])
             setVenueModalOpen(false)
-            setVenueToEdit(null)
+            await linkVenue(saved)
           }}
-          onDeleted={id => {
-            setVenues(prev => prev.filter(v => v.id !== id))
-            if (selectedVenueId === Number(id)) setSelectedVenueId(null)
-            setVenueModalOpen(false)
-            setVenueToEdit(null)
-          }}
+          onDeleted={() => setVenueModalOpen(false)}
         />
       )}
+    </div>
+  )
+}
+
+function VenueView({ termin, isAdmin, onUpdated }: {
+  termin: Termin
+  isAdmin: boolean
+  onUpdated: (t: Termin) => void
+}) {
+  const [showPicker, setShowPicker] = useState(false)
+
+  // Reset picker state when switching termins
+  useEffect(() => { setShowPicker(false) }, [termin.id])
+
+  if (!termin.venueId || showPicker) {
+    return (
+      <div className="flex flex-col gap-4">
+        <VenuePicker
+          termin={termin}
+          isAdmin={isAdmin}
+          onLinked={updated => { onUpdated(updated); setShowPicker(false) }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Kleine Kontrolleiste: verknüpfte Spielstätte + wechseln */}
+      {isAdmin && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+          <span>Spielstätte verknüpft</span>
+          <span style={{ color: '#444' }}>·</span>
+          <button onClick={() => setShowPicker(true)}
+            style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}>
+            wechseln
+          </button>
+        </div>
+      )}
+
+      {/* Venue-Detail – identisch zur Venues/Details-Seite */}
+      <VenueDetailContent venueId={String(termin.venueId)} />
+
+      {/* Lokale Event-Kontakte (event-spezifisch, nicht venue-global) */}
+      <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
     </div>
   )
 }
