@@ -1051,12 +1051,12 @@ export async function getFileCategories(): Promise<FileCategory[]> {
 }
 
 export async function createFileCategory(name: string): Promise<FileCategory> {
-  const data = await request('/api/file-categories', { method: 'POST', body: JSON.stringify({ name }) }) as { category: FileCategory };
+  const data = await request('/api/file-categories', { method: 'POST', body: { name } }) as { category: FileCategory };
   return data.category;
 }
 
 export async function toggleFileCategoryVisible(id: number, visible: boolean): Promise<FileCategory> {
-  const data = await request(`/api/file-categories/${id}/visible`, { method: 'PATCH', body: JSON.stringify({ visible }) }) as { category: FileCategory };
+  const data = await request(`/api/file-categories/${id}/visible`, { method: 'PATCH', body: { visible } }) as { category: FileCategory };
   return data.category;
 }
 
