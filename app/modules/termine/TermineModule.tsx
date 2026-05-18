@@ -777,14 +777,13 @@ function PlaceholderCard({ title }: { title: string }) {
 // Venue Tab View – zeigt VenueDetailContent (identisch zu Venues/Details)
 // ============================================================
 
-function VenuePicker({ termin, isAdmin, onLinked, onCancel }: {
+function VenuePicker({ termin, onLinked, onClose }: {
   termin: Termin
-  isAdmin: boolean
   onLinked: (updated: Termin) => void
-  onCancel?: () => void
+  onClose: () => void
 }) {
   const t = useT()
-  useEscapeKey(() => onCancel?.())
+  useEscapeKey(onClose)
   const [venues, setVenues] = useState<Venue[]>([])
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
@@ -808,68 +807,71 @@ function VenuePicker({ termin, isAdmin, onLinked, onCancel }: {
         city: venue ? venue.city : termin.city,
       })
       onLinked(updated)
+      onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : t('general.error'))
-    } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="pt-card" style={{ maxWidth: '480px' }}>
-      <div className="pt-card-header">
-        <span className="pt-card-title">{t('appointments.card.venue')}</span>
-      </div>
-      {error && (
-        <div className="mx-5 mt-2 p-2 bg-red-900/30 border border-red-700/40 rounded text-red-300 text-xs flex items-center gap-2">
-          <AlertCircle size={12} /> {error}
-          <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900">{t('appointments.card.venue')}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={16} /></button>
         </div>
-      )}
-      <div className="pt-card-body space-y-2">
-        <input
-          type="text" autoFocus
-          placeholder={t('general.search')}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {termin.venueId && (
-            <button onClick={() => linkVenue(null)} disabled={saving}
-              className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
-              {t('appointments.card.removeVenue')}
-            </button>
-          )}
-          <button onClick={() => setVenueModalOpen(true)}
-            className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
-            <Plus size={11} /> {t('appointments.card.newVenue')}
-          </button>
-          {filtered.length === 0
-            ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
-            : filtered.map(v => (
-              <button key={v.id} onClick={() => linkVenue(v)} disabled={saving}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin.venueId ? 'bg-blue-50 font-medium' : ''}`}>
-                <div className="font-medium text-gray-800">{v.name}</div>
-                {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+        {error && (
+          <div className="mx-4 mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-xs flex items-center gap-2">
+            <AlertCircle size={12} /> {error}
+            <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
+          </div>
+        )}
+        <div className="px-4 py-3 space-y-2">
+          <input
+            type="text" autoFocus
+            placeholder={t('general.search')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          />
+          <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+            {termin.venueId && (
+              <button onClick={() => linkVenue(null)} disabled={saving}
+                className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+                {t('appointments.card.removeVenue')}
               </button>
-            ))
-          }
+            )}
+            <button onClick={() => setVenueModalOpen(true)}
+              className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
+              <Plus size={11} /> {t('appointments.card.newVenue')}
+            </button>
+            {filtered.length === 0
+              ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
+              : filtered.map(v => (
+                <button key={v.id} onClick={() => linkVenue(v)} disabled={saving}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(v.id) === termin.venueId ? 'bg-blue-50 font-medium' : ''}`}>
+                  <div className="font-medium text-gray-800">{v.name}</div>
+                  {v.city && <div className="text-xs text-gray-400">{[v.postalCode, v.city].filter(Boolean).join(' ')}</div>}
+                </button>
+              ))
+            }
+          </div>
+          {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
         </div>
-        {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
+        {venueModalOpen && (
+          <VenueModal
+            venue={null}
+            onClose={() => setVenueModalOpen(false)}
+            onSaved={async saved => {
+              setVenues(prev => [...prev, saved])
+              setVenueModalOpen(false)
+              await linkVenue(saved)
+            }}
+            onDeleted={() => setVenueModalOpen(false)}
+          />
+        )}
       </div>
-      {venueModalOpen && (
-        <VenueModal
-          venue={null}
-          onClose={() => setVenueModalOpen(false)}
-          onSaved={async saved => {
-            setVenues(prev => [...prev, saved])
-            setVenueModalOpen(false)
-            await linkVenue(saved)
-          }}
-          onDeleted={() => setVenueModalOpen(false)}
-        />
-      )}
     </div>
   )
 }
@@ -881,21 +883,7 @@ function VenueView({ termin, isAdmin, onUpdated }: {
 }) {
   const [showPicker, setShowPicker] = useState(false)
 
-  // Reset picker state when switching termins
   useEffect(() => { setShowPicker(false) }, [termin.id])
-
-  if (!termin.venueId || showPicker) {
-    return (
-      <div className="flex flex-col gap-4">
-        <VenuePicker
-          termin={termin}
-          isAdmin={isAdmin}
-          onLinked={updated => { onUpdated(updated); setShowPicker(false) }}
-          onCancel={showPicker ? () => setShowPicker(false) : undefined}
-        />
-      </div>
-    )
-  }
 
   const wechselnButton = isAdmin ? (
     <button
@@ -903,17 +891,34 @@ function VenueView({ termin, isAdmin, onUpdated }: {
       className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
     >
-      wechseln
+      {termin.venueId ? 'wechseln' : 'verknüpfen'}
     </button>
   ) : undefined
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Venue-Detail – identisch zur Venues/Details-Seite */}
-      <VenueDetailContent venueId={String(termin.venueId)} headerRight={wechselnButton} />
-
-      {/* Lokale Event-Kontakte (event-spezifisch, nicht venue-global) */}
+      {termin.venueId ? (
+        <VenueDetailContent venueId={String(termin.venueId)} headerRight={wechselnButton} />
+      ) : (
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title">Spielstätte</span>
+            {wechselnButton && <div style={{ flexShrink: 0 }}>{wechselnButton}</div>}
+          </div>
+          <div className="pt-card-body">
+            <p className="text-sm text-gray-400">Noch keine Spielstätte verknüpft.</p>
+          </div>
+        </div>
+      )}
       <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+
+      {showPicker && (
+        <VenuePicker
+          termin={termin}
+          onLinked={updated => { onUpdated(updated) }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   )
 }
@@ -922,14 +927,13 @@ function VenueView({ termin, isAdmin, onUpdated }: {
 // Partner Tab View
 // ============================================================
 
-function PartnerPicker({ termin, isAdmin, onLinked, onCancel }: {
+function PartnerPicker({ termin, onLinked, onClose }: {
   termin: Termin
-  isAdmin: boolean
   onLinked: (updated: Termin) => void
-  onCancel?: () => void
+  onClose: () => void
 }) {
   const t = useT()
-  useEscapeKey(() => onCancel?.())
+  useEscapeKey(onClose)
   const [partners, setPartners] = useState<Partner[]>([])
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
@@ -953,70 +957,73 @@ function PartnerPicker({ termin, isAdmin, onLinked, onCancel }: {
         partner_id: partner ? Number(partner.id) : null,
       })
       onLinked(updated)
+      onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : t('general.error'))
-    } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="pt-card" style={{ maxWidth: '480px' }}>
-      <div className="pt-card-header">
-        <span className="pt-card-title">{t('partners.title')}</span>
-      </div>
-      {error && (
-        <div className="mx-5 mt-2 p-2 bg-red-900/30 border border-red-700/40 rounded text-red-300 text-xs flex items-center gap-2">
-          <AlertCircle size={12} /> {error}
-          <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900">{t('partners.title')}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={16} /></button>
         </div>
-      )}
-      <div className="pt-card-body space-y-2">
-        <input
-          type="text" autoFocus
-          placeholder={t('general.search')}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
-          {termin.partnerId && (
-            <button onClick={() => linkPartner(null)} disabled={saving}
-              className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
-              {t('appointments.card.removePartner')}
-            </button>
-          )}
-          <button onClick={() => setPartnerModalOpen(true)}
-            className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
-            <Plus size={11} /> {t('appointments.card.newPartner')}
-          </button>
-          {filtered.length === 0
-            ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
-            : filtered.map(p => (
-              <button key={p.id} onClick={() => linkPartner(p)} disabled={saving}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(p.id) === termin.partnerId ? 'bg-blue-50 font-medium' : ''}`}>
-                <div className="font-medium text-gray-800">{p.companyName}</div>
-                {(p.contactPerson || p.city) && (
-                  <div className="text-xs text-gray-400">{[p.contactPerson, p.city].filter(Boolean).join(' · ')}</div>
-                )}
+        {error && (
+          <div className="mx-4 mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-xs flex items-center gap-2">
+            <AlertCircle size={12} /> {error}
+            <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
+          </div>
+        )}
+        <div className="px-4 py-3 space-y-2">
+          <input
+            type="text" autoFocus
+            placeholder={t('general.search')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          />
+          <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+            {termin.partnerId && (
+              <button onClick={() => linkPartner(null)} disabled={saving}
+                className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+                {t('appointments.card.removePartner')}
               </button>
-            ))
-          }
+            )}
+            <button onClick={() => setPartnerModalOpen(true)}
+              className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
+              <Plus size={11} /> {t('appointments.card.newPartner')}
+            </button>
+            {filtered.length === 0
+              ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
+              : filtered.map(p => (
+                <button key={p.id} onClick={() => linkPartner(p)} disabled={saving}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(p.id) === termin.partnerId ? 'bg-blue-50 font-medium' : ''}`}>
+                  <div className="font-medium text-gray-800">{p.companyName}</div>
+                  {(p.contactPerson || p.city) && (
+                    <div className="text-xs text-gray-400">{[p.contactPerson, p.city].filter(Boolean).join(' · ')}</div>
+                  )}
+                </button>
+              ))
+            }
+          </div>
+          {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
         </div>
-        {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
+        {partnerModalOpen && (
+          <PartnerModal
+            partner={null}
+            onClose={() => setPartnerModalOpen(false)}
+            onSaved={async saved => {
+              setPartners(prev => [...prev, saved])
+              setPartnerModalOpen(false)
+              await linkPartner(saved)
+            }}
+            onDeleted={() => setPartnerModalOpen(false)}
+          />
+        )}
       </div>
-      {partnerModalOpen && (
-        <PartnerModal
-          partner={null}
-          onClose={() => setPartnerModalOpen(false)}
-          onSaved={async saved => {
-            setPartners(prev => [...prev, saved])
-            setPartnerModalOpen(false)
-            await linkPartner(saved)
-          }}
-          onDeleted={() => setPartnerModalOpen(false)}
-        />
-      )}
     </div>
   )
 }
@@ -1030,35 +1037,42 @@ function PartnerView({ termin, isAdmin, onUpdated }: {
 
   useEffect(() => { setShowPicker(false) }, [termin.id])
 
-  if (!termin.partnerId || showPicker) {
-    return (
-      <div className="flex flex-col gap-4">
-        <PartnerPicker
-          termin={termin}
-          isAdmin={isAdmin}
-          onLinked={updated => { onUpdated(updated); setShowPicker(false) }}
-          onCancel={showPicker ? () => setShowPicker(false) : undefined}
-        />
-      </div>
-    )
-  }
-
   const wechselnButton = isAdmin ? (
     <button
       onClick={() => setShowPicker(true)}
       className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
     >
-      wechseln
+      {termin.partnerId ? 'wechseln' : 'verknüpfen'}
     </button>
   ) : undefined
 
   return (
     <div className="flex flex-col gap-4">
-      <PartnerDetailContent
-        partnerId={String(termin.partnerId)}
-        headerRight={wechselnButton}
-      />
+      {termin.partnerId ? (
+        <PartnerDetailContent
+          partnerId={String(termin.partnerId)}
+          headerRight={wechselnButton}
+        />
+      ) : (
+        <div className="pt-card">
+          <div className="pt-card-header">
+            <span className="pt-card-title">Partner / Veranstalter</span>
+            {wechselnButton && <div style={{ flexShrink: 0 }}>{wechselnButton}</div>}
+          </div>
+          <div className="pt-card-body">
+            <p className="text-sm text-gray-400">Noch kein Partner verknüpft.</p>
+          </div>
+        </div>
+      )}
+
+      {showPicker && (
+        <PartnerPicker
+          termin={termin}
+          onLinked={updated => { onUpdated(updated) }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   )
 }
