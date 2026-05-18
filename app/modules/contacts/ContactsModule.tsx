@@ -550,7 +550,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                             {contact.firstName} {contact.lastName}
                           </span>
                           {contact.contactType === 'guest' && (
-                            <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-medium">{t('contacts.badge.manual')}</span>
+                            <span style={{ fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.45)', padding: '1px 6px', borderRadius: '4px', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{t('contacts.badge.manual')}</span>
                           )}
                           {contact.invitePending && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">{t('contacts.badge.invited')}</span>
