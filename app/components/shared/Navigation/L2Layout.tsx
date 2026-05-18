@@ -229,6 +229,20 @@ export function L2Layout({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Chip-Flash: JS-driven weil CSS :active + React re-render kollidieren
+  useEffect(() => {
+    function handleChipClick(e: MouseEvent) {
+      const btn = (e.target as Element).closest('.pt-fn-chip') as HTMLElement | null
+      if (!btn) return
+      btn.style.animation = 'none'
+      void btn.offsetWidth // force reflow -> animation restart
+      btn.style.animation = 'chip-flash 0.25s ease-out'
+      setTimeout(() => btn.style.removeProperty('animation'), 350)
+    }
+    document.addEventListener('click', handleChipClick, true)
+    return () => document.removeEventListener('click', handleChipClick, true)
+  }, [])
+
   const guardDirtyNav = (onProceed: () => void) => {
     if ((window as any).__pt_isDirty) {
       setDirtyDialog({ onProceed })
