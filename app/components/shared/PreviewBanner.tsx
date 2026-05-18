@@ -36,10 +36,34 @@ export default function PreviewBanner() {
   }
 
   return (
-    <>
-      {/* Toggle-Button (nur wenn kein Preview aktiv) */}
-      {!previewRole && (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      {previewRole ? (
+        /* ── Aktiver Preview: Banner mit Beenden-Button ── */
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.4rem',
+          padding: '0.25rem 0.5rem 0.25rem 0.65rem',
+          borderRadius: '0.375rem',
+          background: '#eff6ff',
+          border: '1px solid #bfdbfe',
+          color: '#1d4ed8', fontSize: '0.75rem',
+        }}>
+          <Eye size={13} />
+          <span>Vorschau: <strong>{(ROLE_LABELS as Record<string, string>)[previewRole]}</strong></span>
+          <button
+            onClick={deactivate}
+            title="Vorschau beenden"
+            style={{
+              display: 'flex', alignItems: 'center',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#3b82f6', padding: '0 2px', marginLeft: '2px',
+            }}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ) : (
+        /* ── Kein Preview: Dropdown zum Aktivieren ── */
+        <>
           <button
             onClick={() => setOpen(v => !v)}
             title="Seite als andere Rolle anzeigen"
@@ -84,8 +108,8 @@ export default function PreviewBanner() {
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
-    </>
+    </div>
   )
 }
