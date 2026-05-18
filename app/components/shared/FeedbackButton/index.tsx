@@ -38,7 +38,7 @@ export function FeedbackButton() {
   // Form state
   const [topic, setTopic] = useState('')
   const [description, setDescription] = useState('')
-  const [isPrivate, setIsPrivate] = useState(false)
+  const [isPrivate, setIsPrivate] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [submitted, setSubmitted] = useState(false)
