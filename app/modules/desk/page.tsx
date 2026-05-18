@@ -283,7 +283,7 @@ export default function SchreibtischModule() {
     <>
       {/* Datum Zeile */}
       <div className="mb-2 md:mb-4">
-        <div className="text-lg font-medium text-gray-700 text-center">
+        <div className="text-lg font-medium text-center" style={{ color: '#9ca3af' }}>
           {new Date().toLocaleDateString('de-DE', {
             weekday: 'long',
             year: 'numeric',
@@ -439,7 +439,7 @@ export default function SchreibtischModule() {
                   <div>Geburtstag: {formatBirthDate(profileData.birthDate)}</div>
                 </div>
               )}
-              {profileData.birthDate && <hr className="border-gray-200 my-2" />}
+              {profileData.birthDate && <hr style={{ borderColor: '#3c3c3c', margin: '8px 0' }} />}
               {profileData.function1 && (
                 <div className="text-gray-600">
                   <div>Funktionen: {[
@@ -449,7 +449,7 @@ export default function SchreibtischModule() {
                   ].filter(Boolean).join(', ')}</div>
                 </div>
               )}
-              <hr className="border-gray-200 my-2" />
+              <hr style={{ borderColor: '#3c3c3c', margin: '8px 0' }} />
               <div className="text-gray-600">
                 <div>Ernährung: {formatDietaryInfo(profileData)}</div>
               </div>
@@ -469,7 +469,7 @@ export default function SchreibtischModule() {
                   {profileData.emergencyPhone && <div>{profileData.emergencyPhone}</div>}
                 </div>
               )}
-              <div className="pt-2 border-t">
+              <div style={{ paddingTop: '8px', borderTop: '1px solid #3c3c3c' }}>
                 <div className="flex items-center">
                   <span className={`w-2 h-2 rounded-full mr-2 ${profileData.crewToolActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
                   <span className="text-xs">Crew Tool {profileData.crewToolActive ? 'aktiv' : 'inaktiv'}</span>
