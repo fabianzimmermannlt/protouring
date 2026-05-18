@@ -257,6 +257,9 @@ export function L2Layout({
       let defaultSub: string | undefined
       if (id === 'contacts') defaultSub = 'overview'
       else if (id === 'equipment') defaultSub = 'items'
+      // Klick auf aktiven Tab → zurück zur Liste
+      if (id === 'events') window.dispatchEvent(new CustomEvent('termine-go-to-list'))
+      if (id === 'contacts') window.dispatchEvent(new CustomEvent('contact-show-list'))
       onTabChange(id, defaultSub)
       setShowUserMenu(false)
     })
@@ -293,6 +296,16 @@ export function L2Layout({
   // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
   const renderTermineSubs = () => (
     <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
+      <button
+        onClick={() => guardDirtyNav(() => { window.dispatchEvent(new CustomEvent('termine-go-to-list')) })}
+        className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
+          activeTab === 'events' && !activeSubTab
+            ? 'pt-nav-sub-active'
+            : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+        }`}
+      >
+        Übersicht
+      </button>
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
         className="w-full text-left px-2 py-1.5 rounded text-xs l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d] transition-colors flex items-center gap-1.5"
@@ -354,7 +367,12 @@ export function L2Layout({
             {subs.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => guardDirtyNav(() => onSubTabChange?.(sub.id))}
+                onClick={() => guardDirtyNav(() => {
+                  onSubTabChange?.(sub.id)
+                  if (activeTab === 'contacts' && sub.id === 'overview') {
+                    window.dispatchEvent(new CustomEvent('contact-show-list'))
+                  }
+                })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id
                     ? 'pt-nav-sub-active'
@@ -381,7 +399,12 @@ export function L2Layout({
             <p className="px-2 pt-1 pb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Konto</p>
             {kontoItems.map(sub => (
               <button key={sub.id}
-                onClick={() => guardDirtyNav(() => onSubTabChange?.(sub.id))}
+                onClick={() => guardDirtyNav(() => {
+                  onSubTabChange?.(sub.id)
+                  if (activeTab === 'contacts' && sub.id === 'overview') {
+                    window.dispatchEvent(new CustomEvent('contact-show-list'))
+                  }
+                })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
                 }`}
@@ -396,7 +419,12 @@ export function L2Layout({
             <p className="px-2 pt-2 pb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Workspace</p>
             {workspaceItems.map(sub => (
               <button key={sub.id}
-                onClick={() => guardDirtyNav(() => onSubTabChange?.(sub.id))}
+                onClick={() => guardDirtyNav(() => {
+                  onSubTabChange?.(sub.id)
+                  if (activeTab === 'contacts' && sub.id === 'overview') {
+                    window.dispatchEvent(new CustomEvent('contact-show-list'))
+                  }
+                })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
                 }`}

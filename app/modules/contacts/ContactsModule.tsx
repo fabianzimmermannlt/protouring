@@ -168,13 +168,19 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       const updated = (e as CustomEvent<Contact>).detail
       if (updated) setContacts(prev => prev.map(c => String(c.id) === String(updated.id) ? updated : c))
     }
+    const showListHandler = () => {
+      setSelectedContactId(null)
+      localStorage.removeItem('pt_contacts_last_id')
+    }
     window.addEventListener('select-contact', selectHandler)
     window.addEventListener('contact-deleted', deleteHandler)
     window.addEventListener('contact-updated', updateHandler)
+    window.addEventListener('contact-show-list', showListHandler)
     return () => {
       window.removeEventListener('select-contact', selectHandler)
       window.removeEventListener('contact-deleted', deleteHandler)
       window.removeEventListener('contact-updated', updateHandler)
+      window.removeEventListener('contact-show-list', showListHandler)
     }
   }, [])
 
