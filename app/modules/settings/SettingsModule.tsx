@@ -2421,50 +2421,56 @@ function FileCategoriesSettings() {
         </div>
         {isDirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <button onClick={cancelEdit} style={{ fontSize: '13px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>Abbrechen</button>
-            <button onClick={saveEdit} style={{ fontSize: '13px', fontWeight: 500, background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', padding: '5px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Save className="w-3 h-3" /> Speichern
+            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />Abbrechen
+            </button>
+            <button onClick={saveEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Save className="w-3 h-3" />Speichern
             </button>
           </div>
         )}
       </div>
 
-      {/* Standard-Kategorien — kein X */}
-      <div className="pt-card">
-        <div className="pt-card-header">
-          <span className="pt-card-title">Standard</span>
-        </div>
-        <div className="pt-card-body">
-          <p className="text-xs text-gray-400 mb-3">Aktive Kategorien erscheinen im Upload-Dropdown. Klicken zum An-/Abschalten.</p>
+      <div className="pt-fn-groups">
+
+        {/* Standard-Kategorien — kein X */}
+        <div className="pt-fn-group">
+          <div className="pt-fn-group-header">
+            <span className="pt-fn-group-name">Standard</span>
+          </div>
           <div className="pt-fn-chips">
             {defaultCats.map(renderDefaultChip)}
           </div>
         </div>
-      </div>
 
-      {/* Eigene — mit X und Hinzufügen-Formular */}
-      <div className="pt-card">
-        <div className="pt-card-header">
-          <span className="pt-card-title">Eigene</span>
-        </div>
-        <div className="pt-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {customCats.length > 0 && (
-            <div className="pt-fn-chips">
-              {customCats.map(renderCustomChip)}
-            </div>
-          )}
-          <div className="flex gap-2">
+        {/* Eigene — mit X und Hinzufügen-Formular */}
+        <div className="pt-fn-group">
+          <div className="pt-fn-group-header">
+            <span className="pt-fn-group-name">Eigene</span>
+          </div>
+          <div className="pt-fn-chips" style={{ marginBottom: '0.6rem', minHeight: '28px' }}>
+            {customCats.length === 0 && (
+              <span className="pt-fn-subtitle" style={{ fontSize: '0.78rem' }}>Noch keine eigenen Einträge</span>
+            )}
+            {customCats.map(renderCustomChip)}
+          </div>
+          <div className="flex gap-2 items-center" style={{ maxWidth: '380px' }}>
             <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Neue Kategorie…" className="detail-input flex-1" />
+              placeholder="Eigene Kategorie…"
+              className="detail-input" style={{ flex: 1, marginBottom: 0 }} />
             <button onClick={handleAdd} disabled={adding || !newName.trim()}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded disabled:opacity-40"
-              style={{ background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}>
+              className="btn btn-primary flex-shrink-0"
+              style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
               {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
             </button>
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
         </div>
+
       </div>
 
     </div>
