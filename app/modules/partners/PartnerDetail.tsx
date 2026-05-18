@@ -56,7 +56,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
   )
 }
 
-export function PartnerDetailContent({ partnerId, onNotFound, onBack }: { partnerId: string; onNotFound?: () => void; onBack?: () => void }) {
+export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRight }: { partnerId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
@@ -148,7 +148,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack }: { partne
         <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? '' : (form.companyName || partner?.companyName || '')}
         </h2>
-        {isDirty && (
+        {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
             <button onClick={cancelEdit}
@@ -161,7 +161,9 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack }: { partne
               {t('general.save')}
             </button>
           </div>
-        )}
+        ) : headerRight ? (
+          <div style={{ flexShrink: 0 }}>{headerRight}</div>
+        ) : null}
       </div>
 
       {loadError && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{loadError}</div>}

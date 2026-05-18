@@ -12,6 +12,7 @@ import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
 import { VenueDetailContent } from '../venues/VenueDetail'
+import { PartnerDetailContent } from '../partners/PartnerDetail'
 import PartnerModal from '../partners/PartnerModal'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
@@ -921,14 +922,143 @@ function VenueView({ termin, isAdmin, onUpdated }: {
 // Partner Tab View
 // ============================================================
 
+function PartnerPicker({ termin, isAdmin, onLinked, onCancel }: {
+  termin: Termin
+  isAdmin: boolean
+  onLinked: (updated: Termin) => void
+  onCancel?: () => void
+}) {
+  const t = useT()
+  useEscapeKey(() => onCancel?.())
+  const [partners, setPartners] = useState<Partner[]>([])
+  const [search, setSearch] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [partnerModalOpen, setPartnerModalOpen] = useState(false)
+
+  useEffect(() => { getPartners().then(setPartners).catch(() => {}) }, [])
+
+  const filtered = partners.filter(p =>
+    !search ||
+    p.companyName.toLowerCase().includes(search.toLowerCase()) ||
+    p.city.toLowerCase().includes(search.toLowerCase()) ||
+    p.contactPerson.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const linkPartner = async (partner: Partner | null) => {
+    setSaving(true)
+    try {
+      const updated = await updateTermin(termin.id, {
+        ...terminToFormData(termin),
+        partner_id: partner ? Number(partner.id) : null,
+      })
+      onLinked(updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('general.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="pt-card" style={{ maxWidth: '480px' }}>
+      <div className="pt-card-header">
+        <span className="pt-card-title">{t('partners.title')}</span>
+      </div>
+      {error && (
+        <div className="mx-5 mt-2 p-2 bg-red-900/30 border border-red-700/40 rounded text-red-300 text-xs flex items-center gap-2">
+          <AlertCircle size={12} /> {error}
+          <button onClick={() => setError(null)} className="ml-auto"><X size={12} /></button>
+        </div>
+      )}
+      <div className="pt-card-body space-y-2">
+        <input
+          type="text" autoFocus
+          placeholder={t('general.search')}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+          {termin.partnerId && (
+            <button onClick={() => linkPartner(null)} disabled={saving}
+              className="w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">
+              {t('appointments.card.removePartner')}
+            </button>
+          )}
+          <button onClick={() => setPartnerModalOpen(true)}
+            className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
+            <Plus size={11} /> {t('appointments.card.newPartner')}
+          </button>
+          {filtered.length === 0
+            ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
+            : filtered.map(p => (
+              <button key={p.id} onClick={() => linkPartner(p)} disabled={saving}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${Number(p.id) === termin.partnerId ? 'bg-blue-50 font-medium' : ''}`}>
+                <div className="font-medium text-gray-800">{p.companyName}</div>
+                {(p.contactPerson || p.city) && (
+                  <div className="text-xs text-gray-400">{[p.contactPerson, p.city].filter(Boolean).join(' · ')}</div>
+                )}
+              </button>
+            ))
+          }
+        </div>
+        {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
+      </div>
+      {partnerModalOpen && (
+        <PartnerModal
+          partner={null}
+          onClose={() => setPartnerModalOpen(false)}
+          onSaved={async saved => {
+            setPartners(prev => [...prev, saved])
+            setPartnerModalOpen(false)
+            await linkPartner(saved)
+          }}
+          onDeleted={() => setPartnerModalOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
 function PartnerView({ termin, isAdmin, onUpdated }: {
   termin: Termin
   isAdmin: boolean
   onUpdated: (t: Termin) => void
 }) {
+  const [showPicker, setShowPicker] = useState(false)
+
+  useEffect(() => { setShowPicker(false) }, [termin.id])
+
+  if (!termin.partnerId || showPicker) {
+    return (
+      <div className="flex flex-col gap-4">
+        <PartnerPicker
+          termin={termin}
+          isAdmin={isAdmin}
+          onLinked={updated => { onUpdated(updated); setShowPicker(false) }}
+          onCancel={showPicker ? () => setShowPicker(false) : undefined}
+        />
+      </div>
+    )
+  }
+
+  const wechselnButton = isAdmin ? (
+    <button
+      onClick={() => setShowPicker(true)}
+      className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+    >
+      wechseln
+    </button>
+  ) : undefined
+
   return (
-    <div style={{ maxWidth: '480px' }}>
-      <PartnerCard key={`partner-${termin.id}`} termin={termin} isAdmin={isAdmin} onUpdated={onUpdated} />
+    <div className="flex flex-col gap-4">
+      <PartnerDetailContent
+        partnerId={String(termin.partnerId)}
+        headerRight={wechselnButton}
+      />
     </div>
   )
 }
