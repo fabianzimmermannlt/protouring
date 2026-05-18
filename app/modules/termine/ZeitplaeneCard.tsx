@@ -189,14 +189,6 @@ function ScheduleEditCard({
           autoFocus={isNew}
         />
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => setNotFinal(v => !v)}
-            className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide transition-colors flex-shrink-0 ${
-              notFinal ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-orange-500'
-            }`}
-            title="Noch nicht final">
-            {notFinal ? 'Nicht final' : 'final'}
-          </button>
           {!isNew && onDeleted && (
             <button onClick={handleDelete} disabled={deleting}
               className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0" title="Löschen">
@@ -224,6 +216,24 @@ function ScheduleEditCard({
       )}
 
       <div className="pt-card-body">
+        {/* Nicht-final Toggle */}
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setNotFinal(v => !v)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+              notFinal
+                ? 'bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200'
+                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${notFinal ? 'bg-orange-500' : 'bg-gray-400'}`} />
+            {notFinal ? 'Noch nicht final' : 'Final'}
+          </button>
+          <span className="text-xs text-gray-400">
+            {notFinal ? 'Als final markieren zum Entfernen des Hinweises' : 'Klicken um als „noch nicht final" zu markieren'}
+          </span>
+        </div>
+
         <RichTextEditorField
           ref={editorRef}
           initialContent={schedule?.content ?? ''}
