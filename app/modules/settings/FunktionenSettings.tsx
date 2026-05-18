@@ -210,11 +210,13 @@ export default function FunktionenSettings() {
                 key={name}
                 className="pt-fn-chip pt-fn-chip--active group"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                onClick={() => removeCustom(name)}
-                title="Klicken zum Entfernen"
               >
                 {name}
-                <span className="opacity-0 group-hover:opacity-60 transition-opacity" style={{ fontSize: '10px', lineHeight: 1 }}>✕</span>
+                <span
+                  className="opacity-0 group-hover:opacity-60 transition-opacity"
+                  style={{ fontSize: '10px', lineHeight: 1 }}
+                  onClick={e => { e.stopPropagation(); removeCustom(name) }}
+                >✕</span>
               </button>
             ))}
           </div>
