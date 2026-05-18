@@ -5,11 +5,14 @@ import { Plus, Loader2, Building2, BedDouble, BedSingle, ChevronRight, ChevronDo
 import {
   getHotelStays,
   getTravelParty,
+  getTravelLegs,
+  getTenantSetting,
   getAuthToken,
   getCurrentTenant,
   API_BASE,
   type HotelStay,
   type TravelPartyMember,
+  type TravelLeg,
   type RoomType,
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
@@ -51,6 +54,9 @@ export default function HotelCard({
 }) {
   const [stays, setStays] = useState<HotelStay[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
+  const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([])
+  const [nlExcludeAnreise, setNlExcludeAnreise] = useState(true)
+  const [nlExcludeAbreise, setNlExcludeAbreise] = useState(true)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editStay, setEditStay] = useState<HotelStay | null>(null)
@@ -71,9 +77,16 @@ export default function HotelCard({
     Promise.all([
       getHotelStays(terminId),
       getTravelParty(terminId),
-    ]).then(([s, tp]) => {
+      getTravelLegs(terminId),
+      getTenantSetting('nightliner_exclude_anreise'),
+      getTenantSetting('nightliner_exclude_abreise'),
+    ]).then(([s, tp, legs, nlAnr, nlAbr]) => {
       setStays(s)
       setTravelParty(tp)
+      setTravelLegs(legs)
+      // Default: aktiv (null = nicht gesetzt = Standard = aktiv)
+      setNlExcludeAnreise(nlAnr !== '0')
+      setNlExcludeAbreise(nlAbr !== '0')
     }).catch(() => {}).finally(() => setLoading(false))
   }, [terminId])
 
@@ -109,11 +122,23 @@ export default function HotelCard({
         .flatMap(s => s.rooms.flatMap(r => r.persons.map(p => p.travelPartyMemberId)))
     )
 
-  // Ungeplante Personen = in keinem Zimmer eines Stays
+  // Nightliner-Passagiere: Union über An- und/oder Abreise-Legs (je nach Setting)
+  const nightlinerExcluded = new Set<number>()
+  for (const leg of travelLegs) {
+    if (leg.vehicleType !== 'Nightliner') continue
+    if (leg.legType === 'anreise' && nlExcludeAnreise) {
+      leg.persons.forEach(p => nightlinerExcluded.add(p.travelPartyMemberId))
+    }
+    if (leg.legType === 'abreise' && nlExcludeAbreise) {
+      leg.persons.forEach(p => nightlinerExcluded.add(p.travelPartyMemberId))
+    }
+  }
+
+  // Ungeplante Personen = in keinem Zimmer eines Stays UND nicht im Nightliner (laut Settings)
   const allAssigned = new Set(
     stays.flatMap(s => s.rooms.flatMap(r => r.persons.map(p => p.travelPartyMemberId)))
   )
-  const unplannedCount = travelParty.filter(m => !allAssigned.has(m.id)).length
+  const unplannedCount = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id)).length
 
   return (
     <div className="pt-card">

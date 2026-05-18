@@ -1926,6 +1926,7 @@ export interface TravelLeg {
   transportType: TransportType;
   vehicleId: string | null;
   vehicleLabel: string | null;
+  vehicleType: string | null;
   departureLocation: string;
   arrivalLocation: string;
   departureDate: string;
@@ -1946,7 +1947,7 @@ export interface TravelLeg {
   persons: TravelLegPerson[];
 }
 
-export type TravelLegFormData = Omit<TravelLeg, 'id' | 'terminId' | 'tenantId' | 'vehicleLabel' | 'persons'>;
+export type TravelLegFormData = Omit<TravelLeg, 'id' | 'terminId' | 'tenantId' | 'vehicleLabel' | 'vehicleType' | 'persons'>;
 
 function legPersonFromRow(r: Record<string, unknown>): TravelLegPerson {
   return {
@@ -1975,6 +1976,7 @@ function legFromRow(r: Record<string, unknown>): TravelLeg {
     transportType: (r.transport_type as TransportType) ?? 'fahrzeug',
     vehicleId: r.vehicle_id != null ? String(r.vehicle_id) : null,
     vehicleLabel: (r.vehicle_designation as string) ?? null,      // JOIN alias
+    vehicleType: (r.vehicle_vehicle_type as string) ?? null,      // JOIN alias
     departureLocation: (r.from_location as string) ?? '',          // DB column
     arrivalLocation: (r.to_location as string) ?? '',              // DB column
     departureDate: (r.departure_date as string) ?? '',

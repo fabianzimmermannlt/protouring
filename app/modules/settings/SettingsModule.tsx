@@ -37,6 +37,7 @@ import {
   getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
   getFileCategories, createFileCategory, deleteFileCategory, toggleFileCategoryVisible,
   getArtistMembers, createArtistMember, updateArtistMember, deleteArtistMember,
+  getTenantSetting, setTenantSetting,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
@@ -138,6 +139,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'uploads':
         return <FileCategoriesSettings />
+
+      case 'travel':
+        return <TravelSettings />
 
       case 'erste-schritte':
         return <ErsteSchritte />
@@ -2720,6 +2724,101 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
           {t('general.save')}
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Travel & Hotel Settings ────────────────────────────────────────────────
+function TravelSettings() {
+  const [nlAnreise, setNlAnreise] = useState<boolean>(true)
+  const [nlAbreise, setNlAbreise] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [dirty, setDirty] = useState(false)
+
+  useEffect(() => {
+    Promise.all([
+      getTenantSetting('nightliner_exclude_anreise'),
+      getTenantSetting('nightliner_exclude_abreise'),
+    ]).then(([anr, abr]) => {
+      setNlAnreise(anr !== '0')
+      setNlAbreise(abr !== '0')
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await Promise.all([
+        setTenantSetting('nightliner_exclude_anreise', nlAnreise ? '1' : '0'),
+        setTenantSetting('nightliner_exclude_abreise', nlAbreise ? '1' : '0'),
+      ])
+      setDirty(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="pt-fn-groups">
+      <div className="pt-fn-group">
+        <div className="pt-fn-group-header">
+          <span className="pt-fn-group-title">Nightliner / Hotelbetten</span>
+        </div>
+        <div className="pt-fn-group-body" style={{ padding: '1rem 1.25rem' }}>
+          <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '1rem', lineHeight: 1.5 }}>
+            Personen, die im Nightliner mitfahren, werden nicht als offene Hotelbetten gezählt.
+            Hier festlegen, bei welchen Legs das gilt.
+          </p>
+          {loading ? (
+            <Loader2 size={16} className="animate-spin" style={{ color: '#6b7280' }} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}>
+                <input
+                  type="checkbox"
+                  checked={nlAnreise}
+                  onChange={e => { setNlAnreise(e.target.checked); setDirty(true) }}
+                  style={{ accentColor: '#7c7cf8', width: '15px', height: '15px' }}
+                />
+                Anreise — NL-Passagiere brauchen kein Hotel (Anreise-Nacht)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}>
+                <input
+                  type="checkbox"
+                  checked={nlAbreise}
+                  onChange={e => { setNlAbreise(e.target.checked); setDirty(true) }}
+                  style={{ accentColor: '#7c7cf8', width: '15px', height: '15px' }}
+                />
+                Abreise — NL-Passagiere brauchen kein Hotel (Abreise-Nacht)
+              </label>
+            </div>
+          )}
+          {dirty && (
+            <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setNlAnreise(true); setNlAbreise(true); setDirty(false) }}
+                style={{ fontSize: '0.8rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem 0.6rem' }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  fontSize: '0.8rem', background: '#7c7cf8', color: '#fff',
+                  border: 'none', borderRadius: '5px', padding: '0.3rem 0.75rem',
+                  cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
+                  display: 'flex', alignItems: 'center', gap: '0.3rem',
+                }}
+              >
+                {saving && <Loader2 size={12} className="animate-spin" />}
+                Speichern
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
