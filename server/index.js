@@ -3679,7 +3679,22 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
       );
     }
 
-    // Crew members (contacts)
+    // Ensure ALL artist members (incl. excluded) also have a termin_travel_party row
+    // (unified ID source — fixes ID collision between tam.id and tp.id)
+    const allArtistMembers = await db.all(
+      `SELECT tam.contact_id, tam.role1, tam.sort_order FROM termin_artist_members tam
+       WHERE tam.termin_id = ? AND tam.tenant_id = ? AND tam.contact_id IS NOT NULL`,
+      [terminId, tenantId]
+    );
+    for (const am of allArtistMembers) {
+      await db.run(
+        `INSERT OR IGNORE INTO termin_travel_party (termin_id, tenant_id, contact_id, role1, sort_order)
+         VALUES (?, ?, ?, ?, ?)`,
+        [terminId, tenantId, am.contact_id, am.role1 || '', am.sort_order || 0]
+      );
+    }
+
+    // Crew members (contacts) — only non-artist contacts in termin_travel_party
     const crewRows = await db.all(`
       SELECT
         tp.id, tp.termin_id, tp.tenant_id, tp.contact_id,
@@ -3697,13 +3712,14 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
       LEFT JOIN termin_availability av
         ON av.termin_id = tp.termin_id AND av.user_id = c.user_id
       WHERE tp.termin_id = ? AND tp.tenant_id = ?
+        AND c.contact_type != 'artist'
       ORDER BY tp.sort_order ASC, tp.id ASC
     `, [terminId, tenantId]);
 
-    // Artist members (including excluded, so frontend can show restore option)
+    // Artist members — use tp.id from termin_travel_party as unified ID
     const artistRows = await db.all(`
       SELECT
-        tam.id, tam.termin_id, tam.tenant_id,
+        tp.id, tp.termin_id, tp.tenant_id,
         tam.contact_id,
         tam.role1, tam.role2, tam.role3,
         '' AS specification, tam.sort_order,
@@ -3717,6 +3733,8 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
         tam.contact_id AS artist_member_id
       FROM termin_artist_members tam
       JOIN contacts c ON c.id = tam.contact_id
+      JOIN termin_travel_party tp
+        ON tp.termin_id = tam.termin_id AND tp.contact_id = tam.contact_id AND tp.tenant_id = tam.tenant_id
       WHERE tam.termin_id = ? AND tam.tenant_id = ? AND tam.contact_id IS NOT NULL
       ORDER BY tam.sort_order ASC, c.last_name COLLATE NOCASE ASC
     `, [terminId, tenantId]);
@@ -3795,25 +3813,30 @@ app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTen
   try {
     const { role1 = '', role2 = '', role3 = '', specification = '', sort_order, is_artist_member } = req.body;
     if (is_artist_member) {
-      // Update termin_artist_members
+      // req.params.id is now tp.id (termin_travel_party) — resolve contact_id first
+      const tpRow = await db.get(`SELECT contact_id FROM termin_travel_party WHERE id = ? AND tenant_id = ?`, [req.params.id, req.tenant.id]);
+      if (!tpRow) return res.status(404).json({ error: 'Not found' });
       await db.run(
         `UPDATE termin_artist_members
          SET role1=?, role2=?, role3=?, sort_order=COALESCE(?,sort_order), updated_at=CURRENT_TIMESTAMP
-         WHERE id=? AND tenant_id=?`,
-        [role1, role2, role3, sort_order ?? null, req.params.id, req.tenant.id]
+         WHERE contact_id=? AND termin_id=? AND tenant_id=?`,
+        [role1, role2, role3, sort_order ?? null, tpRow.contact_id, req.params.terminId, req.tenant.id]
       );
       const tam = await db.get(`
-        SELECT tam.*, c.first_name, c.last_name, c.email, c.phone, c.user_id,
+        SELECT tp.id, tam.termin_id, tam.tenant_id, tam.contact_id,
+               tam.role1, tam.role2, tam.role3, tam.sort_order, tam.excluded,
+               c.first_name, c.last_name, c.email, c.phone, c.user_id,
                c.member_roles AS _roles_json,
                1 AS is_artist_member, tam.contact_id AS artist_member_id
         FROM termin_artist_members tam
         JOIN contacts c ON c.id = tam.contact_id
-        WHERE tam.id = ?
-      `, [req.params.id]);
+        JOIN termin_travel_party tp ON tp.contact_id = tam.contact_id AND tp.termin_id = tam.termin_id AND tp.tenant_id = tam.tenant_id
+        WHERE tam.contact_id = ? AND tam.termin_id = ? AND tam.tenant_id = ?
+      `, [tpRow.contact_id, req.params.terminId, req.tenant.id]);
       if (!tam) return res.status(404).json({ error: 'Not found' });
       const roles = JSON.parse(tam._roles_json || '[]');
       const { _roles_json, ...rest } = tam;
-      return res.json({ member: { ...rest, contact_type: 'artist_member', function1: roles[0]||'', function2: roles[1]||'', function3: roles[2]||'', availability_status: 'available', excluded: tam.excluded } });
+      return res.json({ member: { ...rest, contact_type: 'artist_member', function1: roles[0]||'', function2: roles[1]||'', function3: roles[2]||'', availability_status: 'available' } });
     }
     await db.run(
       `UPDATE termin_travel_party
@@ -3841,11 +3864,14 @@ app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTen
 });
 
 // Soft-delete artist member from termin (set excluded=1)
+// :id is tp.id (termin_travel_party) — resolve contact_id first
 app.delete('/api/termine/:terminId/travel-party/artist/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
+    const tpRow = await db.get('SELECT contact_id FROM termin_travel_party WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id]);
+    if (!tpRow) return res.status(404).json({ error: 'Not found' });
     await db.run(
-      'UPDATE termin_artist_members SET excluded=1, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
-      [req.params.id, req.tenant.id]
+      'UPDATE termin_artist_members SET excluded=1, updated_at=CURRENT_TIMESTAMP WHERE contact_id=? AND termin_id=? AND tenant_id=?',
+      [tpRow.contact_id, req.params.terminId, req.tenant.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -3854,11 +3880,14 @@ app.delete('/api/termine/:terminId/travel-party/artist/:id', authenticateToken, 
 });
 
 // Restore excluded artist member for termin
+// :id is tp.id (termin_travel_party) — resolve contact_id first
 app.post('/api/termine/:terminId/travel-party/artist/:id/restore', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
+    const tpRow = await db.get('SELECT contact_id FROM termin_travel_party WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id]);
+    if (!tpRow) return res.status(404).json({ error: 'Not found' });
     await db.run(
-      'UPDATE termin_artist_members SET excluded=0, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
-      [req.params.id, req.tenant.id]
+      'UPDATE termin_artist_members SET excluded=0, updated_at=CURRENT_TIMESTAMP WHERE contact_id=? AND termin_id=? AND tenant_id=?',
+      [tpRow.contact_id, req.params.terminId, req.tenant.id]
     );
     res.json({ success: true });
   } catch (err) {
