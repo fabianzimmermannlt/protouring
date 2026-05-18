@@ -232,69 +232,49 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
       )}
 
       <div className="pt-card-body">
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {/* Datum + Stadt */}
           <div>
             <label className="detail-label">{t('appointments.card.date')}</label>
-            <input
-              type="date"
-              className="detail-input"
-              value={form.date}
-              onChange={e => f('date', e.target.value)}
-              disabled={!isAdmin}
-            />
-          </div>
-          <div>
-            <label className="detail-label">{t('appointments.card.title')}</label>
-            <input
-              type="text"
-              className="detail-input"
-              value={form.title}
-              onChange={e => f('title', e.target.value)}
-              disabled={!isAdmin}
-            />
+            <input type="date" className="detail-input" value={form.date}
+              onChange={e => f('date', e.target.value)} disabled={!isAdmin} />
           </div>
           <div>
             <label className="detail-label">{t('table.city')}</label>
-            <input
-              type="text"
-              className="detail-input"
-              value={form.city || ''}
-              onChange={e => f('city', e.target.value)}
-              disabled={!isAdmin}
-            />
+            <input type="text" className="detail-input" value={form.city || ''}
+              onChange={e => f('city', e.target.value)} disabled={!isAdmin} />
           </div>
+
+          {/* Titel – volle Breite */}
+          <div className="col-span-2">
+            <label className="detail-label">{t('appointments.card.title')}</label>
+            <input type="text" className="detail-input" value={form.title}
+              onChange={e => f('title', e.target.value)} disabled={!isAdmin} />
+          </div>
+
+          {/* Typ + Sub-Typ */}
           <div>
             <label className="detail-label">{t('appointments.card.type')}</label>
-            <select
-              className="detail-input"
-              value={form.art || ''}
-              onChange={e => f('art', e.target.value)}
-              disabled={!isAdmin}
-            >
+            <select className="detail-input" value={form.art || ''}
+              onChange={e => f('art', e.target.value)} disabled={!isAdmin}>
               <option value="">—</option>
               {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div>
             <label className="detail-label">Sub-Typ</label>
-            <select
-              className="detail-input"
-              value={form.art_sub || ''}
-              onChange={e => f('art_sub', e.target.value)}
-              disabled={!isAdmin}
-            >
+            <select className="detail-input" value={form.art_sub || ''}
+              onChange={e => f('art_sub', e.target.value)} disabled={!isAdmin}>
               <option value="">—</option>
               {TERMIN_ART_SUB.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
+
+          {/* Status Booking + Status Public */}
           <div>
             <label className="detail-label">{t('appointments.card.statusBooking')}</label>
-            <select
-              className="detail-input"
-              value={form.status_booking || ''}
-              onChange={e => f('status_booking', e.target.value)}
-              disabled={!isAdmin}
-            >
+            <select className="detail-input" value={form.status_booking || ''}
+              onChange={e => f('status_booking', e.target.value)} disabled={!isAdmin}>
               {TERMIN_STATUS_BOOKING.map(s => (
                 <option key={s} value={s}>{STATUS_BOOKING_TKEY[s] ? t(STATUS_BOOKING_TKEY[s]) : s}</option>
               ))}
@@ -302,47 +282,32 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
           </div>
           <div>
             <label className="detail-label">{t('appointments.card.statusPublic')}</label>
-            <select
-              className="detail-input"
-              value={form.status_public || ''}
-              onChange={e => f('status_public', e.target.value)}
-              disabled={!isAdmin}
-            >
+            <select className="detail-input" value={form.status_public || ''}
+              onChange={e => f('status_public', e.target.value)} disabled={!isAdmin}>
               {TERMIN_STATUS_PUBLIC.map(s => (
                 <option key={s} value={s}>{STATUS_PUBLIC_TKEY[s] ? t(STATUS_PUBLIC_TKEY[s]) : s}</option>
               ))}
             </select>
           </div>
+
+          {/* Capacity + Ankündigung */}
           <div>
             <label className="detail-label">{t('appointments.card.capacity')}</label>
-            <input
-              type="number"
-              className="detail-input"
-              value={form.capacity ?? ''}
-              onChange={e => f('capacity', e.target.value ? Number(e.target.value) : null)}
-              disabled={!isAdmin}
-            />
+            <input type="number" className="detail-input" value={form.capacity ?? ''}
+              onChange={e => f('capacity', e.target.value ? Number(e.target.value) : null)} disabled={!isAdmin} />
           </div>
           <div>
             <label className="detail-label">Ankündigung</label>
-            <input
-              type="text"
-              className="detail-input"
-              value={form.announcement || ''}
-              onChange={e => f('announcement', e.target.value)}
-              disabled={!isAdmin}
-            />
+            <input type="text" className="detail-input" value={form.announcement || ''}
+              onChange={e => f('announcement', e.target.value)} disabled={!isAdmin} />
           </div>
-          <div>
+
+          {/* Notizen – volle Breite */}
+          <div className="col-span-2">
             <label className="detail-label">Notizen</label>
-            <textarea
-              className="detail-input"
-              rows={3}
-              value={form.notes || ''}
-              onChange={e => f('notes', e.target.value)}
-              disabled={!isAdmin}
-              style={{ resize: 'vertical' }}
-            />
+            <textarea className="detail-input" rows={3} value={form.notes || ''}
+              onChange={e => f('notes', e.target.value)} disabled={!isAdmin}
+              style={{ resize: 'vertical' }} />
           </div>
         </div>
       </div>
@@ -1496,30 +1461,34 @@ export function TerminDetail2({
         </div>
       )}
 
-      {/* Event-Daten + ToDo + Private Notiz */}
-      <div className="grid grid-cols-3 gap-4">
-        <VeranstaltungCard
-          key={termin.id}
-          termin={termin}
-          isAdmin={isAdmin}
-          onUpdated={onUpdated}
-        />
-        <ToDoCard terminId={termin.id} />
-        <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
-          <ContentBoard
-            entityType="termin_private"
-            entityId={`${termin.id}_${currentUserId}`}
-            title=""
-            isAdmin={true}
-            singleItem
-            fixedTitle="Private Notiz"
-            showTitleField={false}
-            modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
-            hideEmptyButton
-            allowDelete={false}
-            className="flex-1"
+      {/* Zeile 1: Veranstaltung (2/3) + ToDo (1/3) */}
+      <div className="grid grid-cols-3 gap-4 items-start">
+        <div className="col-span-2">
+          <VeranstaltungCard
+            key={termin.id}
+            termin={termin}
+            isAdmin={isAdmin}
+            onUpdated={onUpdated}
           />
         </div>
+        <ToDoCard terminId={termin.id} />
+      </div>
+
+      {/* Zeile 2: Private Notiz volle Breite */}
+      <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
+        <ContentBoard
+          entityType="termin_private"
+          entityId={`${termin.id}_${currentUserId}`}
+          title=""
+          isAdmin={true}
+          singleItem
+          fixedTitle="Private Notiz"
+          showTitleField={false}
+          modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+          hideEmptyButton
+          allowDelete={false}
+          className="flex-1"
+        />
       </div>
 
     </div>
