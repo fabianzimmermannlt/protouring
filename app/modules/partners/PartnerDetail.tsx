@@ -144,7 +144,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
         </button>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between mb-4" style={{ minHeight: '32px', gap: '12px' }}>
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? '' : (form.companyName || partner?.companyName || '')}
         </h2>
