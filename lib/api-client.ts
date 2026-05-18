@@ -1141,6 +1141,7 @@ export interface Termin {
   city?: string;
   venueId?: number;
   venueName?: string;
+  venueCity?: string;
   partnerId?: number;
   partnerName?: string;
   announcement?: string;
@@ -1185,6 +1186,7 @@ function terminFromRow(row: Record<string, unknown>): Termin {
     city: row.city as string | undefined,
     venueId: row.venue_id as number | undefined,
     venueName: row.venue_name as string | undefined,
+    venueCity: row.venue_city as string | undefined,
     partnerId: row.partner_id as number | undefined,
     partnerName: row.partner_name as string | undefined,
     announcement: row.announcement as string | undefined,

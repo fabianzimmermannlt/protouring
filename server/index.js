@@ -3341,7 +3341,7 @@ app.get('/api/termine', authenticateToken, requireTenant, async (req, res) => {
     const termine = await db.all(`
       SELECT
         t.*,
-        v.name as venue_name,
+        v.name as venue_name, v.city as venue_city,
         p.company_name as partner_name,
         ta.status as my_availability,
         ta.comment as my_comment,
@@ -3389,7 +3389,7 @@ app.get('/api/termine/:id', authenticateToken, requireTenant, async (req, res) =
     const termin = await db.get(`
       SELECT
         t.*,
-        v.name as venue_name,
+        v.name as venue_name, v.city as venue_city,
         p.company_name as partner_name,
         ta.status as my_availability,
         ta.comment as my_comment,
@@ -3437,7 +3437,7 @@ app.post('/api/termine', authenticateToken, requireTenant, requireEditor, async 
     `, [req.tenant.id, date, title, city || null, venue_id || null, partner_id || null, announcement || null, capacity || null, notes || null, art || null, art_sub || null, status_booking || null, status_public || null, show_title_as_header ? 1 : 0, req.user.id]);
 
     const termin = await db.get(`
-      SELECT t.*, v.name as venue_name, p.company_name as partner_name
+      SELECT t.*, v.name as venue_name, v.city as venue_city, p.company_name as partner_name
       FROM termine t
       LEFT JOIN venues v ON t.venue_id = v.id
       LEFT JOIN partners p ON t.partner_id = p.id
@@ -3466,7 +3466,7 @@ app.put('/api/termine/:id', authenticateToken, requireTenant, requireEditor, asy
         req.params.id, req.tenant.id]);
 
     const termin = await db.get(`
-      SELECT t.*, v.name as venue_name, p.company_name as partner_name
+      SELECT t.*, v.name as venue_name, v.city as venue_city, p.company_name as partner_name
       FROM termine t
       LEFT JOIN venues v ON t.venue_id = v.id
       LEFT JOIN partners p ON t.partner_id = p.id
@@ -3492,7 +3492,7 @@ app.patch('/api/termine/:id', authenticateToken, requireTenant, requireEditor, a
     );
 
     const termin = await db.get(`
-      SELECT t.*, v.name as venue_name, p.company_name as partner_name
+      SELECT t.*, v.name as venue_name, v.city as venue_city, p.company_name as partner_name
       FROM termine t
       LEFT JOIN venues v ON t.venue_id = v.id
       LEFT JOIN partners p ON t.partner_id = p.id
@@ -4647,7 +4647,7 @@ app.get('/api/termine/:terminId/advance-sheet/pdf', async (req, res) => {
 
     // Termin
     const termin = await db.get(
-      'SELECT t.*, v.name AS venue_name FROM termine t LEFT JOIN venues v ON v.id = t.venue_id WHERE t.id = ? AND t.tenant_id = ?',
+      'SELECT t.*, v.name AS venue_name, v.city AS venue_city FROM termine t LEFT JOIN venues v ON v.id = t.venue_id WHERE t.id = ? AND t.tenant_id = ?',
       [terminId, tenant.id]
     );
     if (!termin) return res.status(404).json({ error: 'Termin not found' });
@@ -4837,7 +4837,7 @@ app.get('/api/termine/:terminId/call-sheet/pdf', async (req, res) => {
     const sectionsParam = req.query.sections || 'travelparty,schedules,travel,hotel,catering,contacts';
     const sections = sectionsParam.split(',').map(s => s.trim());
 
-    const termin = await db.get('SELECT t.*, v.name AS venue_name FROM termine t LEFT JOIN venues v ON v.id = t.venue_id WHERE t.id = ? AND t.tenant_id = ?', [terminId, tenant.id]);
+    const termin = await db.get('SELECT t.*, v.name AS venue_name, v.city AS venue_city FROM termine t LEFT JOIN venues v ON v.id = t.venue_id WHERE t.id = ? AND t.tenant_id = ?', [terminId, tenant.id]);
     if (!termin) return res.status(404).json({ error: 'Termin not found' });
 
     const data = {};

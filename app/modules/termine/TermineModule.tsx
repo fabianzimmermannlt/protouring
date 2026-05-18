@@ -1101,10 +1101,11 @@ function TerminDetailHeader({
   const prev = idx > 0 ? termine[idx - 1] : null
   const next = idx < termine.length - 1 ? termine[idx + 1] : null
 
-  const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader
-    ? [termin.title, locationLabel].filter(Boolean).join(' · ')
-    : locationLabel || termin.title
+    ? [termin.city, termin.title].filter(Boolean).join(' · ')
+    : termin.venueId
+      ? [termin.venueName, termin.venueCity].filter(Boolean).join(' · ') || termin.title || ''
+      : [termin.city, termin.title].filter(Boolean).join(' · ') || termin.title || ''
 
   // Alle verfügbaren Views
   const tabs = [
@@ -1210,10 +1211,11 @@ export function TerminDatumzeile({ termin, termine, onNavigate }: {
   const next1 = idx < termine.length - 1 ? termine[idx + 1] : null
   const next2 = idx < termine.length - 2 ? termine[idx + 2] : null
 
-  const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader
-    ? [termin.title, locationLabel].filter(Boolean).join(' · ')
-    : locationLabel || termin.title
+    ? [termin.city, termin.title].filter(Boolean).join(' · ')
+    : termin.venueId
+      ? [termin.venueName, termin.venueCity].filter(Boolean).join(' · ') || termin.title || ''
+      : [termin.city, termin.title].filter(Boolean).join(' · ') || termin.title || ''
 
   const dateLabel = formatDateLong(termin.date)
 

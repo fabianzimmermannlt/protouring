@@ -61,10 +61,11 @@ export default function TerminDetailMobile({
   const currentUser = getCurrentUser()
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
 
-  const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader
-    ? [termin.title, locationLabel].filter(Boolean).join(' · ')
-    : locationLabel || termin.title
+    ? [termin.city, termin.title].filter(Boolean).join(' · ')
+    : termin.venueId
+      ? [termin.venueName, termin.venueCity].filter(Boolean).join(' · ') || termin.title || ''
+      : [termin.city, termin.title].filter(Boolean).join(' · ') || termin.title || ''
 
   const [abreiseRefreshKey, setAbreiseRefreshKey] = useState(0)
   const [anreiseRefreshKey, setAnreiseRefreshKey] = useState(0)
