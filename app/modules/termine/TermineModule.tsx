@@ -892,22 +892,20 @@ function VenueView({ termin, isAdmin, onUpdated }: {
     )
   }
 
+  const wechselnButton = isAdmin ? (
+    <button
+      onClick={() => setShowPicker(true)}
+      className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+    >
+      wechseln
+    </button>
+  ) : undefined
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Kleine Kontrolleiste: verknüpfte Spielstätte + wechseln */}
-      {isAdmin && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-          <span>Spielstätte verknüpft</span>
-          <span style={{ color: '#444' }}>·</span>
-          <button onClick={() => setShowPicker(true)}
-            style={{ color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}>
-            wechseln
-          </button>
-        </div>
-      )}
-
       {/* Venue-Detail – identisch zur Venues/Details-Seite */}
-      <VenueDetailContent venueId={String(termin.venueId)} />
+      <VenueDetailContent venueId={String(termin.venueId)} headerRight={wechselnButton} />
 
       {/* Lokale Event-Kontakte (event-spezifisch, nicht venue-global) */}
       <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />

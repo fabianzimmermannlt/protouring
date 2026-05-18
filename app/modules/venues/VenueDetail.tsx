@@ -88,7 +88,7 @@ function fileIcon(mime: string): string {
 }
 
 // ─── Main Detail Component ────────────────────────────────────────────────────
-export function VenueDetailContent({ venueId, onBack }: { venueId: string; onBack?: () => void }) {
+export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: string; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
@@ -357,7 +357,7 @@ export function VenueDetailContent({ venueId, onBack }: { venueId: string; onBac
         <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? '' : (form.name || venue?.name || '')}
         </h2>
-        {isDirty && (
+        {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
             <button onClick={cancelEdit}
@@ -370,7 +370,9 @@ export function VenueDetailContent({ venueId, onBack }: { venueId: string; onBac
               {t('general.save')}
             </button>
           </div>
-        )}
+        ) : headerRight ? (
+          <div style={{ flexShrink: 0 }}>{headerRight}</div>
+        ) : null}
       </div>
 
       {error && (
