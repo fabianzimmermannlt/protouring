@@ -1115,7 +1115,7 @@ function TerminDetailHeader({
   const activeTab = selectedView === 'details' ? 'details2' : selectedView
 
   return (
-    <div style={{ marginBottom: '0.5rem' }}>
+    <div style={{ marginBottom: '0.25rem' }}>
       {/* Back link — gleicher Stil wie ContactDetail */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
