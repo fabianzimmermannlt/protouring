@@ -141,7 +141,10 @@ export function formatDateShort(dateStr: string) {
 }
 
 export function formatDateTable(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const d = new Date(dateStr)
+  const weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '')
+  const date = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return `${weekday} ${date}`
 }
 
 // ============================================================
