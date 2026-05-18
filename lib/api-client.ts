@@ -1021,12 +1021,12 @@ export async function getPartnerTypes(): Promise<PartnerType[]> {
 }
 
 export async function createPartnerType(name: string): Promise<PartnerType> {
-  const data = await request('/api/partner-types', { method: 'POST', body: JSON.stringify({ name }) }) as { type: PartnerType };
+  const data = await request('/api/partner-types', { method: 'POST', body: { name } }) as { type: PartnerType };
   return data.type;
 }
 
 export async function togglePartnerTypeVisible(id: number, visible: boolean): Promise<PartnerType> {
-  const data = await request(`/api/partner-types/${id}/visible`, { method: 'PATCH', body: JSON.stringify({ visible }) }) as { type: PartnerType };
+  const data = await request(`/api/partner-types/${id}/visible`, { method: 'PATCH', body: { visible } }) as { type: PartnerType };
   return data.type;
 }
 
