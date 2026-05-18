@@ -85,19 +85,19 @@ const AVAIL_ICON: Record<string, { tKey: TranslationKey; color: string; symbol: 
   null:        { tKey: 'availability.unknown',     color: '#9ca3af', symbol: '–' },
 }
 
-const STATUS_BOOKING_COLOR: Record<string, string> = {
-  'Idee':                 'badge badge-gray',
-  'Option':               'badge badge-yellow',
-  'noch nicht bestätigt': 'badge badge-orange',
-  'bestätigt':            'badge badge-green',
-  'abgeschlossen':        'badge badge-blue',
-  'abgesagt':             'badge badge-red',
+const STATUS_BOOKING_DOT: Record<string, string> = {
+  'Idee':                 '#9ca3af',
+  'Option':               '#d97706',
+  'noch nicht bestätigt': '#f59e0b',
+  'bestätigt':            '#22c55e',
+  'abgeschlossen':        '#6b7280',
+  'abgesagt':             '#ef4444',
 }
 
-const STATUS_PUBLIC_COLOR: Record<string, string> = {
-  'nicht öffentlich': 'badge badge-gray',
-  'tba':              'badge badge-yellow',
-  'veröffentlicht':   'badge badge-green',
+const STATUS_PUBLIC_DOT: Record<string, string> = {
+  'nicht öffentlich': '#6b7280',
+  'tba':              '#d97706',
+  'veröffentlicht':   '#22c55e',
 }
 
 // Maps DB status values (stored in German) → translation keys
@@ -2043,8 +2043,11 @@ export default function TerminePage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900 text-sm truncate">{item.title}</span>
                       {item.statusBooking && (
-                        <span className={`${STATUS_BOOKING_COLOR[item.statusBooking] || 'badge badge-gray'} flex-shrink-0`}>
-                          {STATUS_BOOKING_TKEY[item.statusBooking] ? t(STATUS_BOOKING_TKEY[item.statusBooking]) : item.statusBooking}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: STATUS_BOOKING_DOT[item.statusBooking] || '#9ca3af' }} />
+                          <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                            {STATUS_BOOKING_TKEY[item.statusBooking] ? t(STATUS_BOOKING_TKEY[item.statusBooking]) : item.statusBooking}
+                          </span>
                         </span>
                       )}
                     </div>
@@ -2063,8 +2066,12 @@ export default function TerminePage() {
                             key={s}
                             onClick={e => { e.stopPropagation(); selectAvailability(item, s) }}
                             title={t(cfg.tKey)}
-                            className="w-5 h-5 rounded-full font-bold text-white flex items-center justify-center text-xs transition-transform active:scale-110"
-                            style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}
+                            className="w-5 h-5 rounded-full font-bold flex items-center justify-center text-xs transition-transform active:scale-110"
+                            style={{
+                              backgroundColor: active ? cfg.color : '#e9eaec',
+                              color: active ? '#fff' : '#b0b5bc',
+                              opacity: active ? 0.85 : 1,
+                            }}
                           >
                             {cfg.symbol}
                           </button>
@@ -2074,11 +2081,11 @@ export default function TerminePage() {
                     {/* Gebucht-Status: Admins sehen ihn immer, Crew sieht eigenen Status */}
                     {(canSeeGebucht || item.inTravelParty || item.isRejected) && (
                       item.inTravelParty
-                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title={t('availability.booked')}>✓</span>
+                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#6ea8d4', opacity: 0.85 }} title={t('availability.booked')}>✓</span>
                         : item.isRejected
-                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }} title={t('availability.rejected')}>✗</span>
+                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: '#d08080', opacity: 0.85 }} title={t('availability.rejected')}>✗</span>
                           : canSeeGebucht
-                            ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title={t('availability.open')}>–</span>
+                            ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: '#e9eaec', color: '#c0c4c9' }} title={t('availability.open')}>–</span>
                             : null
                     )}
                   </div>
@@ -2139,15 +2146,21 @@ export default function TerminePage() {
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.statusBooking
-                        ? <span className={STATUS_BOOKING_COLOR[termin.statusBooking] || 'badge badge-gray'}>
-                            {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
+                        ? <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, backgroundColor: STATUS_BOOKING_DOT[termin.statusBooking] || '#9ca3af' }} />
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking}
+                            </span>
                           </span>
                         : <span className="text-gray-400">–</span>}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.statusPublic
-                        ? <span className={STATUS_PUBLIC_COLOR[termin.statusPublic] || 'badge badge-gray'}>
-                            {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
+                        ? <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0, backgroundColor: STATUS_PUBLIC_DOT[termin.statusPublic] || '#9ca3af' }} />
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                              {STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic}
+                            </span>
                           </span>
                         : <span className="text-gray-400">–</span>}
                     </td>
@@ -2165,8 +2178,12 @@ export default function TerminePage() {
                             <button key={s}
                               onClick={e => { e.stopPropagation(); selectAvailability(termin, s) }}
                               title={t(cfg.tKey)}
-                              className="w-4 h-4 rounded-full font-bold text-white transition-transform hover:scale-110 flex items-center justify-center text-xs"
-                              style={{ backgroundColor: active ? cfg.color : '#d1d5db' }}>
+                              className="w-4 h-4 rounded-full font-bold transition-transform hover:scale-110 flex items-center justify-center text-xs"
+                              style={{
+                                backgroundColor: active ? cfg.color : '#e9eaec',
+                                color: active ? '#fff' : '#b0b5bc',
+                                opacity: active ? 0.85 : 1,
+                              }}>
                               {cfg.symbol}
                             </button>
                           )
@@ -2186,10 +2203,10 @@ export default function TerminePage() {
                     {canSeeGebucht && (
                     <td className="text-center">
                       {termin.inTravelParty
-                        ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#3b82f6' }} title={t('availability.booked')}>✓</span>
+                        ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#6ea8d4', opacity: 0.85 }} title={t('availability.booked')}>✓</span>
                         : termin.isRejected
-                          ? <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#ef4444' }} title={t('availability.rejected')}>✗</span>
-                          : <span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#e5e7eb', color: '#9ca3af' }} title={t('availability.open')}>–</span>
+                          ? <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#d08080', opacity: 0.85 }} title={t('availability.rejected')}>✗</span>
+                          : <span className="w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#e9eaec', color: '#c0c4c9' }} title={t('availability.open')}>–</span>
                       }
                     </td>
                     )}
