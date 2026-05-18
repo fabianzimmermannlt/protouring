@@ -13,6 +13,7 @@ import {
   getAuthToken, getCurrentTenant, getCurrentUser,
   isEditorRole, getEffectiveRole, type Venue, type VenueContact,
   getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
+  getFileCategories,
 } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
@@ -127,6 +128,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
   const [photos, setPhotos] = useState<FileItem[]>([])
   const lightbox = useLightbox(photos, API_BASE, authHeaders)
 
+  const [activeCategories, setActiveCategories] = useState<string[]>([...VENUE_FILE_CATEGORIES])
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadType, setUploadType] = useState<'files' | 'photos'>('files')
   const [selectedCategory, setSelectedCategory] = useState<string>(VENUE_FILE_CATEGORIES[0])
@@ -134,6 +136,18 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    getFileCategories()
+      .then(cats => {
+        const active = cats.filter(c => c.visible === 1).map(c => c.name)
+        if (active.length > 0) {
+          setActiveCategories(active)
+          setSelectedCategory(active[0])
+        }
+      })
+      .catch(() => {/* fallback bleibt */})
+  }, [])
 
   // ─── Load data ────────────────────────────────────────────────────────────
   const loadVenue = useCallback(async () => {
@@ -198,12 +212,12 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
     setPhotos(files.filter(f => f.mimeType.startsWith('image/')))
   }, [files])
 
-  const docsByCategory = VENUE_FILE_CATEGORIES.reduce<Record<string, FileItem[]>>((acc, cat) => {
+  const docsByCategory = activeCategories.reduce<Record<string, FileItem[]>>((acc, cat) => {
     const matching = docs.filter(f => f.category === cat)
     if (matching.length > 0) acc[cat] = matching
     return acc
   }, {})
-  const unknownFiles = docs.filter(f => !(VENUE_FILE_CATEGORIES as readonly string[]).includes(f.category))
+  const unknownFiles = docs.filter(f => !activeCategories.includes(f.category))
   if (unknownFiles.length > 0) {
     docsByCategory['Sonstiges'] = [...(docsByCategory['Sonstiges'] ?? []), ...unknownFiles]
   }
@@ -616,7 +630,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 <div>
                   <label className="form-label">{t('venues.category')}</label>
                   <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="form-select">
-                    {VENUE_FILE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    {activeCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
               )}

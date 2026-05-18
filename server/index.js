@@ -1125,6 +1125,18 @@ async function initDatabase() {
   // Migration: visible-Spalte nachrüsten falls Tabelle schon existiert
   try { await db.run('ALTER TABLE partner_types ADD COLUMN visible INTEGER DEFAULT 1') } catch {}
 
+  // File-Kategorien (Upload-Bereiche)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS file_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      visible INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // Gegenstände (Cases, Flightcases, Dollies…)
   await db.run(`
     CREATE TABLE IF NOT EXISTS equipment_items (
@@ -6004,6 +6016,71 @@ app.delete('/api/partner-types/:id', authenticateToken, requireTenant, async (re
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     await db.run('DELETE FROM partner_types WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+/// ── File Categories ───────────────────────────────────────────────────────────
+
+const DEFAULT_FILE_CATEGORIES = [
+  'Allgemein', 'Spielstätte', 'Anfahrt & Parken', 'Akkreditierung', 'Tickets',
+  'Garderobe', 'Catering', 'Hotel / Unterkunft', 'Busbelegung',
+  'Technik: Allgemein', 'Technik: Ton', 'Technik: Licht', 'Technik: Rigging', 'Technik: Video',
+  'Backline', 'Bühne', 'Logistik & Transport', 'Merchandise', 'Sicherheit',
+  'Kommunikation', 'Genehmigungen & Dokumente', 'Marketing & PR', 'Finanzen',
+  'Setlist', 'Hallenplan', 'Vorverkaufsplan', 'Spielplan',
+  'Stage Plan', 'Groundplan', 'Rigging Plot', 'Technische Daten', 'Verträge', 'Sonstiges',
+]
+
+// GET /api/file-categories
+app.get('/api/file-categories', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    let rows = await db.all('SELECT * FROM file_categories WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    // Seed defaults on first call
+    if (rows.length === 0) {
+      for (let i = 0; i < DEFAULT_FILE_CATEGORIES.length; i++) {
+        await db.run(
+          'INSERT INTO file_categories (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, ?)',
+          [req.tenant.id, DEFAULT_FILE_CATEGORIES[i], i]
+        )
+      }
+      rows = await db.all('SELECT * FROM file_categories WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    }
+    res.json({ categories: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/file-categories
+app.post('/api/file-categories', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { name } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' })
+  try {
+    const result = await db.run(
+      'INSERT INTO file_categories (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, 999)',
+      [req.tenant.id, name.trim()]
+    )
+    const row = await db.get('SELECT * FROM file_categories WHERE id = ?', [result.lastID])
+    res.json({ category: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PATCH /api/file-categories/:id/visible
+app.patch('/api/file-categories/:id/visible', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { visible } = req.body
+  try {
+    await db.run('UPDATE file_categories SET visible = ? WHERE id = ? AND tenant_id = ?', [visible ? 1 : 0, req.params.id, req.tenant.id])
+    const row = await db.get('SELECT * FROM file_categories WHERE id = ?', [req.params.id])
+    res.json({ category: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/file-categories/:id
+app.delete('/api/file-categories/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM file_categories WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

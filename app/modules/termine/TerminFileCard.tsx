@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Upload, File, Trash2, Edit, AlertCircle, X, ChevronDown, ChevronRight, FolderInput } from 'lucide-react'
-import { getAuthToken, getCurrentTenant } from '@/lib/api-client'
+import { getAuthToken, getCurrentTenant, getFileCategories } from '@/lib/api-client'
 
 // ============================================================
 // Kategorien
@@ -135,6 +135,7 @@ function fileIcon(mime: string): string {
 function CategorySection({
   category,
   files,
+  categories,
   onDelete,
   onRename,
   onMoveCategory,
@@ -142,6 +143,7 @@ function CategorySection({
 }: {
   category: string
   files: FileItem[]
+  categories: string[]
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => Promise<void>
   onMoveCategory: (id: string, newCategory: string) => Promise<void>
@@ -243,7 +245,7 @@ function CategorySection({
                     className="form-select w-full text-xs"
                     autoFocus
                   >
-                    {TERMIN_FILE_CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
@@ -290,6 +292,7 @@ export function TerminFileCard({
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [activeCategories, setActiveCategories] = useState<string[]>([...TERMIN_FILE_CATEGORIES])
 
   // Upload-Modal
   const [showModal, setShowModal] = useState(false)
@@ -302,6 +305,18 @@ export function TerminFileCard({
   // Stats
   const totalBytes = files.reduce((s, f) => s + f.size, 0)
   const totalCount = files.length
+
+  useEffect(() => {
+    getFileCategories()
+      .then(cats => {
+        const active = cats.filter(c => c.visible === 1).map(c => c.name)
+        if (active.length > 0) {
+          setActiveCategories(active)
+          setSelectedCategory(active[0])
+        }
+      })
+      .catch(() => {/* fallback bleibt */})
+  }, [])
 
   useEffect(() => { load() }, [terminId])
 
@@ -318,13 +333,13 @@ export function TerminFileCard({
   }
 
   // Dateien nach Kategorie gruppieren (nur Kategorien mit Dateien)
-  const byCategory = TERMIN_FILE_CATEGORIES.reduce<Record<string, FileItem[]>>((acc, cat) => {
+  const byCategory = activeCategories.reduce<Record<string, FileItem[]>>((acc, cat) => {
     const matching = files.filter(f => f.category === cat)
     if (matching.length > 0) acc[cat] = matching
     return acc
   }, {})
   // Dateien ohne bekannte Kategorie unter "Allgemein" bündeln
-  const unknownCatFiles = files.filter(f => !(TERMIN_FILE_CATEGORIES as readonly string[]).includes(f.category))
+  const unknownCatFiles = files.filter(f => !activeCategories.includes(f.category))
   if (unknownCatFiles.length > 0) {
     byCategory['Allgemein'] = [...(byCategory['Allgemein'] ?? []), ...unknownCatFiles]
   }
@@ -420,6 +435,7 @@ export function TerminFileCard({
                 key={cat}
                 category={cat}
                 files={byCategory[cat]}
+                categories={activeCategories}
                 onDelete={handleDelete}
                 onRename={handleRename}
                 onMoveCategory={handleMoveCategory}
@@ -457,7 +473,7 @@ export function TerminFileCard({
                   onChange={e => setSelectedCategory(e.target.value)}
                   className="form-select"
                 >
-                  {TERMIN_FILE_CATEGORIES.map(cat => (
+                  {activeCategories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>

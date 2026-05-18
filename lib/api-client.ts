@@ -1035,6 +1035,36 @@ export async function deletePartnerType(id: number): Promise<void> {
 }
 
 // ============================================
+// File Categories API
+// ============================================
+
+export interface FileCategory {
+  id: number;
+  name: string;
+  visible: number;
+  sort_order: number;
+}
+
+export async function getFileCategories(): Promise<FileCategory[]> {
+  const data = await request('/api/file-categories') as { categories: FileCategory[] };
+  return data.categories;
+}
+
+export async function createFileCategory(name: string): Promise<FileCategory> {
+  const data = await request('/api/file-categories', { method: 'POST', body: JSON.stringify({ name }) }) as { category: FileCategory };
+  return data.category;
+}
+
+export async function toggleFileCategoryVisible(id: number, visible: boolean): Promise<FileCategory> {
+  const data = await request(`/api/file-categories/${id}/visible`, { method: 'PATCH', body: JSON.stringify({ visible }) }) as { category: FileCategory };
+  return data.category;
+}
+
+export async function deleteFileCategory(id: number): Promise<void> {
+  await request(`/api/file-categories/${id}`, { method: 'DELETE' });
+}
+
+// ============================================
 // Artist Members API
 // ============================================
 

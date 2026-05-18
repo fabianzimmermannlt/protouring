@@ -35,11 +35,12 @@ import {
   getIcalToken, regenerateIcalToken, getIcalUrl,
   getActiveFunctions,
   getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
+  getFileCategories, createFileCategory, deleteFileCategory, toggleFileCategoryVisible,
   getArtistMembers, createArtistMember, updateArtistMember, deleteArtistMember,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
-  type PartnerType, type ArtistMember, type ArtistMemberFormData,
+  type PartnerType, type FileCategory, type ArtistMember, type ArtistMemberFormData,
 } from '@/lib/api-client'
 
 import { ProfileEditor, type ProfileData } from '@/app/components/shared/ProfileEditor'
@@ -134,6 +135,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'gewerke':
         return <GewerkSettings />
+
+      case 'uploads':
+        return <FileCategoriesSettings />
 
       case 'erste-schritte':
         return <ErsteSchritte />
@@ -2273,6 +2277,173 @@ function PartnerTypesSettings() {
             />
             <button onClick={handleAddOwn} disabled={adding || !newName.trim()}
               className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}>
+              {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+// ─── File Categories Settings ─────────────────────────────────────────────────
+
+function FileCategoriesSettings() {
+  const t = useT()
+  const [categories, setCategories] = useState<FileCategory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newName, setNewName] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState('')
+  const [pendingOverrides, setPendingOverrides] = useState<Record<number, 0 | 1>>({})
+  const isDirty = Object.keys(pendingOverrides).length > 0
+
+  useEffect(() => {
+    getFileCategories()
+      .then(data => { setCategories(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
+  const saveEdit = async (): Promise<boolean> => {
+    if (!isDirty) return true
+    try {
+      const entries = Object.entries(pendingOverrides) as [string, 0 | 1][]
+      await Promise.all(entries.map(([idStr, visible]) => toggleFileCategoryVisible(Number(idStr), visible === 1)))
+      setCategories(prev => prev.map(c => {
+        const ov = pendingOverrides[c.id]
+        return ov !== undefined ? { ...c, visible: ov } : c
+      }))
+      setPendingOverrides({})
+      return true
+    } catch { return false }
+  }
+
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
+  const cancelEdit = () => setPendingOverrides({})
+
+  function handleToggle(cat: FileCategory) {
+    const current = pendingOverrides[cat.id] !== undefined ? pendingOverrides[cat.id] : cat.visible
+    const next: 0 | 1 = current === 1 ? 0 : 1
+    if (next === cat.visible) {
+      setPendingOverrides(prev => { const n = { ...prev }; delete n[cat.id]; return n })
+    } else {
+      setPendingOverrides(prev => ({ ...prev, [cat.id]: next }))
+    }
+  }
+
+  async function handleAdd() {
+    const name = newName.trim()
+    if (!name) return
+    setAdding(true); setError('')
+    try {
+      const created = await createFileCategory(name)
+      setCategories(prev => [...prev, created])
+      setNewName('')
+    } catch (e) {
+      setError((e as Error).message || 'Fehler beim Speichern')
+    } finally { setAdding(false) }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('Kategorie wirklich löschen?')) return
+    try {
+      await deleteFileCategory(id)
+      setCategories(prev => prev.filter(c => c.id !== id))
+      setPendingOverrides(prev => { const n = { ...prev }; delete n[id]; return n })
+    } catch { /* silent */ }
+  }
+
+  if (loading) return (
+    <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+      <Loader2 className="w-4 h-4 animate-spin" /> Lade Kategorien…
+    </div>
+  )
+
+  const activeCount = categories.filter(c => {
+    const ov = pendingOverrides[c.id]
+    return ov !== undefined ? ov === 1 : c.visible === 1
+  }).length
+
+  return (
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
+        <div>
+          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Upload-Kategorien</h1>
+          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>{activeCount} von {categories.length} aktiv</p>
+        </div>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button onClick={cancelEdit} style={{ fontSize: '13px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>
+              Abbrechen
+            </button>
+            <button onClick={saveEdit} style={{ fontSize: '13px', fontWeight: 500, background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', padding: '5px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Save className="w-3 h-3" /> Speichern
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Alle Kategorien als Chips */}
+      <div className="pt-card">
+        <div className="pt-card-header">
+          <span className="pt-card-title">Kategorien</span>
+        </div>
+        <div className="pt-card-body">
+          <p className="text-xs text-gray-400 mb-3">Aktive Kategorien erscheinen im Upload-Dropdown bei Events, Venues und anderen Bereichen.</p>
+          <div className="pt-fn-chips">
+            {categories.map(cat => {
+              const ov = pendingOverrides[cat.id]
+              const isActive = ov !== undefined ? ov === 1 : cat.visible === 1
+              return (
+                <button
+                  key={cat.id}
+                  className={`pt-fn-chip group ${isActive ? 'pt-fn-chip--active' : ''}`}
+                  onClick={() => handleToggle(cat)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  {cat.name}
+                  <span
+                    className="opacity-0 group-hover:opacity-50 transition-opacity"
+                    style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+                    onClick={e => { e.stopPropagation(); handleDelete(cat.id) }}
+                  >✕</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Eigene hinzufügen */}
+      <div className="pt-card">
+        <div className="pt-card-header">
+          <span className="pt-card-title">Eigene Kategorie hinzufügen</span>
+        </div>
+        <div className="pt-card-body">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="Kategorie-Name…"
+              className="detail-input flex-1"
+            />
+            <button onClick={handleAdd} disabled={adding || !newName.trim()}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded disabled:opacity-40"
+              style={{ background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer' }}>
               {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
             </button>
           </div>
