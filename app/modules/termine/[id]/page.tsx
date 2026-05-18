@@ -174,9 +174,10 @@ export default function TerminDetailPage() {
     </div>
   )
 
+  const locationLabel = [termin.city, termin.venueName].filter(Boolean).join(' · ')
   const pageTitle = termin.showTitleAsHeader
-    ? termin.title
-    : [termin.city, termin.venueName].filter(Boolean).join(' · ') || termin.title
+    ? [termin.title, locationLabel].filter(Boolean).join(' · ')
+    : locationLabel || termin.title
 
   const handleToggleHeader = async (checked: boolean) => {
     if (togglingHeader) return

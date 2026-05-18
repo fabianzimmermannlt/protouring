@@ -958,8 +958,10 @@ export function L3Layout({
               const isActive = item.id === activeTerminId
               const menuOpen = terminMenuOpenId === item.id
               const dateStr = new Date(item.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
-              const locationLabel = item.venueName || item.city
-              const label = item.showTitleAsHeader ? item.title : (locationLabel || item.title || '–')
+              const locationLabel = [item.city, item.venueName].filter(Boolean).join(' · ')
+              const label = item.showTitleAsHeader
+                ? [item.title, locationLabel].filter(Boolean).join(' · ')
+                : (locationLabel || item.title || '–')
               const isPast = item.date < today
 
               return (
