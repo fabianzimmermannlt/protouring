@@ -15,6 +15,7 @@ import { QuickCreateVenueModal } from '@/app/components/shared/modals/QuickCreat
 import { VenueDetailContent } from '../venues/VenueDetail'
 import { PartnerDetailContent } from '../partners/PartnerDetail'
 import PartnerModal from '../partners/PartnerModal'
+import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
 import KalenderView from './KalenderView'
@@ -561,6 +562,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
   const [cardError, setCardError] = useState<string | null>(null)
   const [partnerModalOpen, setPartnerModalOpen] = useState(false)
   const [partnerToEdit, setPartnerToEdit] = useState<Partner | null>(null)
+  const [partnerQuickCreateOpen, setPartnerQuickCreateOpen] = useState(false)
 
   useEffect(() => {
     getPartners().then(setPartners).catch(() => {})
@@ -643,7 +645,7 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
                 </button>
               )}
               <button
-                onClick={() => { setPartnerToEdit(null); setPartnerModalOpen(true); setSelecting(false) }}
+                onClick={() => { setPartnerQuickCreateOpen(true); setSelecting(false) }}
                 className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
                 <Plus size={11} /> {t('appointments.card.newPartner')}
               </button>
@@ -705,7 +707,17 @@ function PartnerCard({ termin, isAdmin, onUpdated }: {
         )}
       </div>
 
-      {/* PartnerModal */}
+      {partnerQuickCreateOpen && (
+        <QuickCreatePartnerModal
+          onClose={() => setPartnerQuickCreateOpen(false)}
+          onCreated={async saved => {
+            setPartners(prev => [...prev, saved])
+            setPartnerQuickCreateOpen(false)
+            await linkPartner(saved)
+          }}
+        />
+      )}
+      {/* PartnerModal – nur für Bearbeiten */}
       {partnerModalOpen && (
         <PartnerModal
           partner={partnerToEdit}
@@ -993,15 +1005,13 @@ function PartnerPicker({ termin, onLinked, onClose }: {
           {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
         </div>
         {partnerModalOpen && (
-          <PartnerModal
-            partner={null}
+          <QuickCreatePartnerModal
             onClose={() => setPartnerModalOpen(false)}
-            onSaved={async saved => {
+            onCreated={async saved => {
               setPartners(prev => [...prev, saved])
               setPartnerModalOpen(false)
               await linkPartner(saved)
             }}
-            onDeleted={() => setPartnerModalOpen(false)}
           />
         )}
       </div>
