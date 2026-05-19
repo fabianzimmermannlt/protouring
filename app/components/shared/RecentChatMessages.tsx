@@ -72,7 +72,7 @@ export default function RecentChatMessages({ currentUserId, hideHeader, classNam
   useEffect(() => { load() }, [load])
 
   const openTermin = (entityId: string) => {
-    window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: parseInt(entityId, 10), view: 'details' } }))
+    window.dispatchEvent(new CustomEvent('navigate-to-termin', { detail: { terminId: parseInt(entityId, 10), view: 'communication' } }))
   }
 
   return (

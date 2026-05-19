@@ -71,14 +71,14 @@ function ProTouringAppInner() {
   // Globales Event: vom Schreibtisch zu einem Termin navigieren → Tab wechseln + Detail öffnen
   useEffect(() => {
     const handler = (e: Event) => {
-      const id = (e as CustomEvent<{ terminId: number }>).detail?.terminId
-      if (id) {
+      const { terminId, view } = (e as CustomEvent<{ terminId: number; view?: string }>).detail ?? {}
+      if (terminId) {
         setActiveTab('events')
         activeTabRef.current = 'events'
         sessionStorage.setItem(STORAGE_TAB, 'events')
         history.replaceState(null, '', `/?tab=events`)
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details' } }))
+          window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: terminId, view: view || 'details' } }))
         }, 80)
       }
     }
