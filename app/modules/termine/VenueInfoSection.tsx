@@ -116,36 +116,25 @@ function InlineSaveBar({ onSave, onCancel, saving, error }: {
 }
 
 // ─── New Venue Inline Form ────────────────────────────────────────────────────
-function NewVenueInlineForm({ form, onChange, onSave, onCancel, saving, error }: {
-  form: { name: string; city: string; postalCode: string; country: string }
-  onChange: (f: { name: string; city: string; postalCode: string; country: string }) => void
+function NewVenueInlineForm({ name, onChange, onSave, onCancel, saving, error }: {
+  name: string
+  onChange: (name: string) => void
   onSave: () => void
   onCancel: () => void
   saving: boolean
   error: string
 }) {
-  const s = (key: string, value: string) => onChange({ ...form, [key]: value })
   return (
     <div className="space-y-2 p-2 bg-gray-50 rounded-lg border border-blue-200">
-      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Neues Venue</p>
-      <input autoFocus type="text" placeholder="Name *" value={form.name}
-        onChange={e => s('name', e.target.value)}
-        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
-      <div className="grid grid-cols-[72px_1fr] gap-1.5">
-        <input type="text" placeholder="PLZ" value={form.postalCode}
-          onChange={e => s('postalCode', e.target.value)}
-          className="px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
-        <input type="text" placeholder="Stadt" value={form.city}
-          onChange={e => s('city', e.target.value)}
-          className="px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
-      </div>
-      <input type="text" placeholder="Land" value={form.country}
-        onChange={e => s('country', e.target.value)}
+      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Neue Spielstätte</p>
+      <input autoFocus type="text" placeholder="Name *" value={name}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && onSave()}
         className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-400" />
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2 justify-end pt-1">
         <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">Abbrechen</button>
-        <button onClick={onSave} disabled={saving || !form.name.trim()}
+        <button onClick={onSave} disabled={saving || !name.trim()}
           className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 transition-colors">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
           Anlegen & verknüpfen
@@ -233,7 +222,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
 
   // Inline Venue-Erstellung
   const [creatingNew, setCreatingNew] = useState(false)
-  const [newVenueForm, setNewVenueForm] = useState({ name: '', city: '', postalCode: '', country: '' })
+  const [newVenueName, setNewVenueName] = useState('')
   const [savingNew, setSavingNew] = useState(false)
   const [newVenueError, setNewVenueError] = useState('')
 
@@ -367,15 +356,13 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
   }
 
   async function createAndLink() {
-    if (!newVenueForm.name.trim()) { setNewVenueError('Name ist erforderlich'); return }
+    if (!newVenueName.trim()) { setNewVenueError('Name ist erforderlich'); return }
     setSavingNew(true)
     setNewVenueError('')
     try {
       const created = await createVenue({
-        name: newVenueForm.name.trim(),
-        city: newVenueForm.city.trim(),
-        postalCode: newVenueForm.postalCode.trim(),
-        country: newVenueForm.country.trim(),
+        name: newVenueName.trim(),
+        city: '', postalCode: '', country: '',
         street: '', state: '', website: '', latitude: '', longitude: '',
         arrival: '', arrivalStreet: '', arrivalPostalCode: '', arrivalCity: '',
         parking: '', nightlinerParking: '', loadingPath: '',
@@ -385,7 +372,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
       setAllVenues(prev => [...prev, created])
       await linkVenue(created)
       setCreatingNew(false)
-      setNewVenueForm({ name: '', city: '', postalCode: '', country: '' })
+      setNewVenueName('')
     } catch (e) {
       setNewVenueError((e as Error).message || 'Erstellen fehlgeschlagen')
     } finally {
@@ -395,13 +382,13 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
 
   function startCreatingNew() {
     setCreatingNew(true)
-    setNewVenueForm({ name: search, city: '', postalCode: '', country: '' })
+    setNewVenueName(search)
     setNewVenueError('')
   }
 
   function cancelCreatingNew() {
     setCreatingNew(false)
-    setNewVenueForm({ name: '', city: '', postalCode: '', country: '' })
+    setNewVenueName('')
     setNewVenueError('')
   }
 
@@ -509,7 +496,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
               )}
               {creatingNew ? (
                 <NewVenueInlineForm
-                  form={newVenueForm} onChange={setNewVenueForm}
+                  name={newVenueName} onChange={setNewVenueName}
                   onSave={createAndLink} onCancel={cancelCreatingNew}
                   saving={savingNew} error={newVenueError} />
               ) : (
@@ -588,7 +575,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
           )}
           {creatingNew ? (
             <NewVenueInlineForm
-              form={newVenueForm} onChange={setNewVenueForm}
+              name={newVenueName} onChange={setNewVenueName}
               onSave={createAndLink} onCancel={cancelCreatingNew}
               saving={savingNew} error={newVenueError} />
           ) : (
