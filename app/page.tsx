@@ -68,17 +68,23 @@ function ProTouringAppInner() {
     setAuthChecked(true)
   }, [router])
 
-  // Globales Event: vom Schreibtisch zu einem Termin navigieren → direkt zur Detail-URL
+  // Globales Event: vom Schreibtisch zu einem Termin navigieren → Tab wechseln + Detail öffnen
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent<{ terminId: number }>).detail?.terminId
       if (id) {
-        window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details' } }))
+        setActiveTab('events')
+        activeTabRef.current = 'events'
+        sessionStorage.setItem(STORAGE_TAB, 'events')
+        history.replaceState(null, '', `/?tab=events`)
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('select-termin', { detail: { id, view: 'details' } }))
+        }, 80)
       }
     }
     window.addEventListener('navigate-to-termin', handler)
     return () => window.removeEventListener('navigate-to-termin', handler)
-  }, [router])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Globales Event: zum Feedback-Tab navigieren (z.B. vom FeedbackButton)
   useEffect(() => {

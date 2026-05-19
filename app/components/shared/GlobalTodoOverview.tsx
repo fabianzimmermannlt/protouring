@@ -143,10 +143,14 @@ export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOve
         ) : (
           <div className="divide-y divide-gray-50">
             {filtered.map(todo => (
-              <div key={todo.id} className={`flex items-start gap-2 px-4 py-2 ${todo.status === 'done' ? 'opacity-40' : ''}`}>
+              <div
+                key={todo.id}
+                className={`flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-gray-50 transition-colors ${todo.status === 'done' ? 'opacity-40' : ''}`}
+                onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-termin', { detail: { terminId: todo.terminId } }))}
+              >
                 {/* Toggle */}
                 <button
-                  onClick={() => handleToggle(todo)}
+                  onClick={e => { e.stopPropagation(); handleToggle(todo) }}
                   disabled={togglingId === todo.id}
                   className="mt-0.5 flex-shrink-0 hover:opacity-70 transition-opacity"
                 >
