@@ -39,6 +39,7 @@ import {
 import type { TermineDetailView, TermineListFilter, TermineListView } from './TermineSubNavigation'
 import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
+import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 
 // ─── Sub-item definitions ─────────────────────────────────────────────────────
@@ -133,6 +134,7 @@ export function L2Layout({
 }: L2LayoutProps) {
   const router = useRouter()
   const { layout, setLayout } = useLayout()
+  const { language, setLanguage } = useLanguage()
 
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -539,6 +541,17 @@ export function L2Layout({
                       </button>
                     </>
                   )}
+                  <div className="border-t border-gray-100 my-1" />
+                  <p className="px-4 py-1 text-[10px] font-medium text-gray-400 uppercase tracking-wider">Sprache</p>
+                  {(['de', 'en'] as const).map(lang => (
+                    <button key={lang}
+                      onClick={() => { setLanguage(lang); setShowUserMenu(false) }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between gap-2"
+                    >
+                      <span>{lang === 'de' ? '🇩🇪 Deutsch' : '🇺🇸 English'}</span>
+                      {language === lang && <CheckIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                    </button>
+                  ))}
                   <div className="border-t border-gray-100 my-1" />
                   <button
                     onClick={() => { setShowUserMenu(false); logout() }}
