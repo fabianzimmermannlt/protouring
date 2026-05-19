@@ -11,6 +11,7 @@ import { Plus, X, Loader2, AlertCircle, MessageSquare, Check, ChevronLeft, Chevr
 import TerminFileCard from './TerminFileCard'
 import TerminModal from './TerminModal'
 import VenueModal from '../venues/VenueModal'
+import { QuickCreateVenueModal } from '@/app/components/shared/modals/QuickCreateVenueModal'
 import { VenueDetailContent } from '../venues/VenueDetail'
 import { PartnerDetailContent } from '../partners/PartnerDetail'
 import PartnerModal from '../partners/PartnerModal'
@@ -357,6 +358,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
   const [cardError, setCardError] = useState<string | null>(null)
   const [venueModalOpen, setVenueModalOpen] = useState(false)
   const [venueToEdit, setVenueToEdit] = useState<Venue | null>(null)
+  const [venueQuickCreateOpen, setVenueQuickCreateOpen] = useState(false)
 
   useEffect(() => {
     getVenues().then(setVenues).catch(() => {})
@@ -449,7 +451,7 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
                   {t('appointments.card.removeVenue')}
                 </button>
               )}
-              <button onClick={() => { setVenueToEdit(null); setVenueModalOpen(true); setSelecting(false) }}
+              <button onClick={() => { setVenueQuickCreateOpen(true); setSelecting(false) }}
                 className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
                 <Plus size={11} /> {t('appointments.card.newVenue')}
               </button>
@@ -506,6 +508,16 @@ function SpielstaetteCard({ termin, isAdmin, onUpdated }: {
         )}
       </div>
 
+      {venueQuickCreateOpen && (
+        <QuickCreateVenueModal
+          onClose={() => setVenueQuickCreateOpen(false)}
+          onCreated={async saved => {
+            setVenues(prev => [...prev, saved])
+            await linkVenue(saved)
+            setVenueQuickCreateOpen(false)
+          }}
+        />
+      )}
       {venueModalOpen && (
         <VenueModal
           venue={venueToEdit}
@@ -816,6 +828,7 @@ function VenuePicker({ termin, onLinked, onClose }: {
               className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1">
               <Plus size={11} /> {t('appointments.card.newVenue')}
             </button>
+
             {filtered.length === 0
               ? <div className="px-3 py-3 text-xs text-gray-400 text-center">{t('appointments.noResults')}</div>
               : filtered.map(v => (
@@ -830,15 +843,13 @@ function VenuePicker({ termin, onLinked, onClose }: {
           {saving && <div className="flex items-center gap-1 text-xs text-gray-400"><Loader2 size={11} className="animate-spin" /> Wird gespeichert…</div>}
         </div>
         {venueModalOpen && (
-          <VenueModal
-            venue={null}
+          <QuickCreateVenueModal
             onClose={() => setVenueModalOpen(false)}
-            onSaved={async saved => {
+            onCreated={async saved => {
               setVenues(prev => [...prev, saved])
               setVenueModalOpen(false)
               await linkVenue(saved)
             }}
-            onDeleted={() => setVenueModalOpen(false)}
           />
         )}
       </div>
