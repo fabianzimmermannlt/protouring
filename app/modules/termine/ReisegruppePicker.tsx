@@ -16,12 +16,16 @@ interface ReisegruppePickerProps {
   onAdded: (member: TravelPartyMember) => void
 }
 
+const AVAIL = {
+  available:   { color: '#22c55e', symbol: '✓', label: 'verfügbar' },
+  maybe:       { color: '#eab308', symbol: '?', label: 'vielleicht' },
+  unavailable: { color: '#ef4444', symbol: '✗', label: 'nicht verfügbar' },
+  null:        { color: '#9ca3af', symbol: '–', label: 'keine Angabe' },
+}
+
 function AvailIcon({ status }: { status: TravelPartyPickerContact['availabilityStatus'] }) {
-  const base: React.CSSProperties = { fontSize: 11, fontWeight: 700, width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
-  if (status === 'available')   return <span style={{ ...base, background: '#d1fae5', color: '#065f46' }} title="verfügbar">✓</span>
-  if (status === 'maybe')       return <span style={{ ...base, background: '#fef3c7', color: '#92400e' }} title="vielleicht">?</span>
-  if (status === 'unavailable') return <span style={{ ...base, background: '#fee2e2', color: '#991b1b' }} title="nicht verfügbar">✗</span>
-  return <span style={{ ...base, background: '#f3f4f6', color: '#9ca3af' }} title="keine Angabe">–</span>
+  const a = AVAIL[status ?? 'null'] ?? AVAIL.null
+  return <span style={{ fontSize: 13, fontWeight: 700, color: a.color, flexShrink: 0, width: 16, textAlign: 'center' }} title={a.label}>{a.symbol}</span>
 }
 
 export default function ReisegruppePicker({ terminId, onClose, onAdded }: ReisegruppePickerProps) {

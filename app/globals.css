@@ -564,22 +564,18 @@ body {
   font-weight: 700;
 }
 
-/* Availability dot */
+/* Availability symbol (plain colored, no badge) */
 .pt-travel-avail {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 999px;
-  font-size: 0.65rem;
+  display: inline-block;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  width: 1rem;
+  text-align: center;
 }
-.pt-travel-avail--available   { background: #22c55e; }
-.pt-travel-avail--maybe       { background: #eab308; }
-.pt-travel-avail--unavailable { background: #ef4444; }
-.pt-travel-avail--unknown     { background: #d1d5db; color: #6b7280; }
+.pt-travel-avail--available   { color: #22c55e; }
+.pt-travel-avail--maybe       { color: #eab308; }
+.pt-travel-avail--unavailable { color: #ef4444; }
+.pt-travel-avail--unknown     { color: #9ca3af; }
 
 /* Action column */
 .pt-travel-actions {
