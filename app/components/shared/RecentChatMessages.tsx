@@ -52,9 +52,10 @@ function terminLabel(msg: RecentMessage): string {
 interface Props {
   currentUserId?: number
   hideHeader?: boolean
+  className?: string
 }
 
-export default function RecentChatMessages({ currentUserId, hideHeader }: Props) {
+export default function RecentChatMessages({ currentUserId, hideHeader, className = '' }: Props) {
   const [messages, setMessages] = useState<RecentMessage[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -75,7 +76,7 @@ export default function RecentChatMessages({ currentUserId, hideHeader }: Props)
   }
 
   return (
-    <div className="pt-card">
+    <div className={`pt-card ${className}`}>
       {!hideHeader && (
         <div className="pt-card-header">
           <span className="pt-card-title">

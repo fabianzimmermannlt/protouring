@@ -26,16 +26,6 @@ export default function SchreibtischModule() {
     }).catch(() => {})
   }, [])
 
-  const cardStyle: React.CSSProperties = {
-    background: '#2d2d2d',
-    borderRadius: '0.625rem',
-    border: '1px solid #3a3a3a',
-    display: 'flex',
-    flexDirection: 'column',
-    height: '400px',
-    overflow: 'hidden',
-  }
-
   return (
     <>
       {/* Datum */}
@@ -109,8 +99,8 @@ export default function SchreibtischModule() {
       {/* Zeile 1: Herzlich willkommen | Offene Aufgaben | Letzte Nachrichten | Allgemeiner Chat */}
       <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
-        {/* 1 — Herzlich willkommen */}
-        <div style={cardStyle}>
+        {/* 1 — Herzlich willkommen: ContentBoard hat kein eigenes pt-card → wrapper nötig */}
+        <div className="pt-card h-[400px] flex flex-col">
           <ContentBoard
             entityType="desk" entityId="announcement" title=""
             isAdmin={canDo(effectiveRole, CAN_EDIT_ANKUENDIGUNG)}
@@ -123,18 +113,16 @@ export default function SchreibtischModule() {
           />
         </div>
 
-        {/* 2 — Offene Aufgaben */}
-        <div style={cardStyle}>
+        {/* 2 — Offene Aufgaben: GlobalTodoOverview hat kein eigenes pt-card → wrapper nötig */}
+        <div className="pt-card h-[400px] flex flex-col">
           <GlobalTodoOverview />
         </div>
 
-        {/* 3 — Letzte Nachrichten */}
-        <div style={cardStyle}>
-          <RecentChatMessages currentUserId={currentUser?.id} />
-        </div>
+        {/* 3 — Letzte Nachrichten: RecentChatMessages rendert eigenes pt-card → kein wrapper */}
+        <RecentChatMessages currentUserId={currentUser?.id} className="h-[400px]" />
 
-        {/* 4 — Allgemeiner Chat */}
-        <div style={cardStyle}>
+        {/* 4 — Allgemeiner Chat: Communication hat kein eigenes pt-card → wrapper nötig */}
+        <div className="pt-card h-[400px] flex flex-col">
           <Communication title="Allgemeiner Chat" entityType="desk" entityId="general" className="h-full" />
         </div>
       </div>
@@ -142,30 +130,30 @@ export default function SchreibtischModule() {
       {/* Zeile 2: Allgemeine Dateien | Persönliche Dateien | Pinnwand | Persönliche Notizen */}
       <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
-        {/* 1 — Allgemeine Dateien */}
+        {/* 1 — Allgemeine Dateien: FileCard rendert eigenes pt-card → kein wrapper */}
         {effectiveRole !== 'guest' ? (
           <FileCard title="ALLGEMEINE DATEIEN" entityType="desk" entityId="shared" category="general"
             maxFiles={10} maxFileSizeMB={50} className="h-[400px]" canManage={isEditor} />
         ) : (
-          <div style={cardStyle}>
+          <div className="pt-card h-[400px] flex flex-col">
             <div className="pt-card-header"><span className="pt-card-title">Allgemeine Dateien</span></div>
             <div className="flex-1 flex items-center justify-center text-sm" style={{ color: '#6b7280' }}>Kein Zugriff</div>
           </div>
         )}
 
-        {/* 2 — Persönliche Dateien */}
+        {/* 2 — Persönliche Dateien: FileCard rendert eigenes pt-card → kein wrapper */}
         {effectiveRole !== 'guest' ? (
           <FileCard title="PERSÖNLICHE DATEIEN" entityType="desk" entityId={currentUserId} category="personal"
             maxFiles={10} maxFileSizeMB={20} className="h-[400px]" canManage={true} />
         ) : (
-          <div style={cardStyle}>
+          <div className="pt-card h-[400px] flex flex-col">
             <div className="pt-card-header"><span className="pt-card-title">Persönliche Dateien</span></div>
             <div className="flex-1 flex items-center justify-center text-sm" style={{ color: '#6b7280' }}>Kein Zugriff</div>
           </div>
         )}
 
-        {/* 3 — Pinnwand */}
-        <div style={cardStyle}>
+        {/* 3 — Pinnwand: ContentBoard hat kein eigenes pt-card → wrapper nötig */}
+        <div className="pt-card h-[400px] flex flex-col">
           <div className="pt-card-header">
             <span className="pt-card-title">Pinnwand</span>
           </div>
@@ -176,8 +164,8 @@ export default function SchreibtischModule() {
           </div>
         </div>
 
-        {/* 4 — Persönliche Notizen */}
-        <div style={cardStyle}>
+        {/* 4 — Persönliche Notizen: ContentBoard hat kein eigenes pt-card → wrapper nötig */}
+        <div className="pt-card h-[400px] flex flex-col">
           <ContentBoard entityType="desk_personal" entityId={currentUserId} title="" isAdmin={true}
             singleItem hideEmptyButton allowDelete={false}
             fixedTitle="Persönliche Notizen" showTitleField={false}
