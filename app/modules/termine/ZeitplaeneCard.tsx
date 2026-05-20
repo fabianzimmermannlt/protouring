@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Pencil, Loader2, Copy, BookTemplate, X, Save, Trash2, AlertCircle, MoreHorizontal } from 'lucide-react'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getTerminSchedules, createTerminSchedule, updateTerminSchedule, deleteTerminSchedule, type TerminSchedule,
   getScheduleTemplates, createScheduleTemplate, type ScheduleTemplate,
@@ -200,6 +201,8 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
   onSaveAsTemplate: () => void
   onDelete: () => void
 }) {
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -232,15 +235,26 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
     }},
   ]
 
+  const dropBg     = dark ? '#2d2d2d' : '#ffffff'
+  const dropBorder = dark ? '#4a4a4a' : '#e5e7eb'
+  const dropText   = dark ? '#e0e0e0' : '#374151'
+  const dropHover  = dark ? '#383838' : '#f9fafb'
+  const dropDangerHover = dark ? '#3d1f1f' : '#fef2f2'
+
   return (
     <>
       <div className="pt-card">
-        <div className="pt-card-header">
+        <div className="pt-card-header" style={{ position: 'relative' }}>
           <span className="pt-card-title">
             {s.title || <span className="normal-case font-normal tracking-normal text-gray-400 italic">Ohne Titel</span>}
           </span>
           {s.notFinal && (
-            <span className="px-2 py-0.5 rounded text-xs font-bold bg-orange-500 text-white uppercase tracking-wide flex-shrink-0">
+            <span style={{
+              position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+              fontSize: 10, fontWeight: 700, background: '#f97316', color: '#fff',
+              padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.06em',
+              whiteSpace: 'nowrap', pointerEvents: 'none',
+            }}>
               Noch nicht final
             </span>
           )}
@@ -271,16 +285,16 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
       {menuOpen && menuRect && createPortal(
         <div ref={menuRef} style={{
           position: 'fixed', top: menuRect.bottom + 4, right: window.innerWidth - menuRect.right,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 9999, minWidth: 190, padding: '4px 0',
+          background: dropBg, border: `1px solid ${dropBorder}`, borderRadius: 8,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)', zIndex: 9999, minWidth: 190, padding: '4px 0',
         }}>
           {menuItems.map(item => (
             <button key={item.label} onClick={item.onClick} style={{
               display: 'flex', alignItems: 'center', gap: 8, width: '100%',
               padding: '7px 14px', fontSize: 13, background: 'none', border: 'none',
-              cursor: 'pointer', color: item.danger ? '#ef4444' : '#374151', textAlign: 'left',
+              cursor: 'pointer', color: item.danger ? '#ef4444' : dropText, textAlign: 'left',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = item.danger ? '#fef2f2' : '#f9fafb')}
+            onMouseEnter={e => (e.currentTarget.style.background = item.danger ? dropDangerHover : dropHover)}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >
               {item.icon}{item.label}
