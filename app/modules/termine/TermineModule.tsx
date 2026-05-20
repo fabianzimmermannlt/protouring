@@ -2191,6 +2191,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                   ))}
                   <th className="text-center" style={{ width: '5.5rem' }}>{t('table.availability')}</th>
                   {canSeeGebucht && <th className="text-center" style={{ width: '4rem' }}>{t('table.booked')}</th>}
+                  {isAdmin && <th style={{ width: '2.5rem' }} />}
                 </tr>
               </thead>
               <tbody>
@@ -2200,7 +2201,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                   )
                   if (filtered.length === 0) return (
                     <tr>
-                      <td colSpan={canSeeGebucht ? 9 : 8} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
+                      <td colSpan={canSeeGebucht ? (isAdmin ? 10 : 9) : (isAdmin ? 9 : 8)} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
                         {termine.length === 0 ? t('appointments.emptyState') : t('appointments.noResults')}
                       </td>
                     </tr>
@@ -2272,6 +2273,23 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                           : <span style={{ fontSize: '0.8rem', color: '#d1d5db' }} title={t('availability.open')}>–</span>
                       }
                     </td>
+                    )}
+                    {/* Löschen – nur Admin */}
+                    {isAdmin && (
+                      <td className="text-center" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={async () => {
+                            const label = [termin.city, termin.title, formatDateShort(termin.date)].filter(Boolean).join(' · ')
+                            if (!confirm(`„${label}" endgültig löschen?\nAlle Daten werden unwiderruflich entfernt.`)) return
+                            await handleDelete(termin.id)
+                          }}
+                          title="Event löschen"
+                          className="text-gray-300 hover:text-red-400 transition-colors"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
                     )}
                   </tr>
                 ))
