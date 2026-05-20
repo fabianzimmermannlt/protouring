@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Pencil, Loader2, Copy, BookTemplate, X, Save, Trash2, AlertCircle } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Plus, Pencil, Loader2, Copy, BookTemplate, X, Save, Trash2, AlertCircle, MoreHorizontal } from 'lucide-react'
 import {
   getTerminSchedules, createTerminSchedule, updateTerminSchedule, deleteTerminSchedule, type TerminSchedule,
   getScheduleTemplates, createScheduleTemplate, type ScheduleTemplate,
@@ -22,9 +23,7 @@ function openSchedulePdf(terminId: number, scheduleId: number) {
 }
 
 // ── Template-Picker Modal ──────────────────────────────────────────────────────
-function TemplatePickerModal({
-  templates, loading, onSelect, onClose,
-}: {
+function TemplatePickerModal({ templates, loading, onSelect, onClose }: {
   templates: ScheduleTemplate[]
   loading: boolean
   onSelect: (t: ScheduleTemplate) => void
@@ -32,15 +31,11 @@ function TemplatePickerModal({
 }) {
   useEscapeKey(onClose)
   const ref = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div ref={ref} className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
@@ -56,7 +51,7 @@ function TemplatePickerModal({
           ) : templates.length === 0 ? (
             <div className="py-10 text-center">
               <p className="text-sm text-gray-500">Noch keine Vorlagen vorhanden.</p>
-              <p className="text-xs text-gray-400 mt-1">Speichere einen Zeitplan als Vorlage über das Buch-Symbol.</p>
+              <p className="text-xs text-gray-400 mt-1">Speichere einen Zeitplan als Vorlage über das ⋯-Menü.</p>
             </div>
           ) : (
             <div className="py-1">
@@ -76,9 +71,7 @@ function TemplatePickerModal({
 }
 
 // ── "Als Vorlage speichern"-Modal ─────────────────────────────────────────────
-function SaveAsTemplateModal({
-  schedule, onSave, onClose,
-}: {
+function SaveAsTemplateModal({ schedule, onSave, onClose }: {
   schedule: TerminSchedule
   onSave: (name: string) => Promise<void>
   onClose: () => void
@@ -87,16 +80,13 @@ function SaveAsTemplateModal({
   const [name, setName] = useState(schedule.title || '')
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select() }, [])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
     setSaving(true)
     try { await onSave(name.trim()) } finally { setSaving(false) }
   }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
@@ -129,9 +119,7 @@ function SaveAsTemplateModal({
 }
 
 // ── Inline Edit-Karte ─────────────────────────────────────────────────────────
-function ScheduleEditCard({
-  terminId, schedule, sortOrder, onSaved, onDeleted, onCancel,
-}: {
+function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, onCancel }: {
   terminId: number
   schedule?: TerminSchedule | null
   sortOrder: number
@@ -144,13 +132,11 @@ function ScheduleEditCard({
   const [title, setTitle] = useState(schedule?.title ?? '')
   const [notFinal, setNotFinal] = useState(schedule?.notFinal ?? false)
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const editorRef = useRef<RichTextEditorFieldHandle>(null)
 
   const handleSave = async () => {
-    setSaving(true)
-    setError(null)
+    setSaving(true); setError(null)
     const content = editorRef.current?.getHTML() ?? ''
     try {
       const saved = isNew
@@ -163,40 +149,18 @@ function ScheduleEditCard({
     }
   }
 
-  const handleDelete = async () => {
-    if (!schedule || !onDeleted) return
-    if (!confirm('Zeitplan löschen?')) return
-    setDeleting(true)
-    try {
-      await deleteTerminSchedule(terminId, schedule.id)
-      onDeleted()
-    } catch {
-      setError('Fehler beim Löschen')
-      setDeleting(false)
-    }
-  }
-
   return (
     <div className="pt-card" style={{ outline: '2px solid #3b82f6', outlineOffset: '-1px' }}>
       <div className="pt-card-header">
         <input
-          type="text"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
+          type="text" value={title} onChange={e => setTitle(e.target.value)}
           placeholder="Titel (z.B. Daysheet, Folgetag…)"
           className="detail-input flex-1 min-w-0"
           style={{ fontSize: '0.8125rem', fontWeight: 600 }}
           autoFocus={isNew}
         />
         <div className="flex items-center gap-2 flex-shrink-0">
-          {!isNew && onDeleted && (
-            <button onClick={handleDelete} disabled={deleting}
-              className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0" title="Löschen">
-              {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-            </button>
-          )}
-          <button onClick={onCancel} disabled={saving}
-            className="text-xs transition-colors" style={{ color: '#888' }}>
+          <button onClick={onCancel} disabled={saving} className="text-xs transition-colors" style={{ color: '#888' }}>
             Abbrechen
           </button>
           <button onClick={handleSave} disabled={saving}
@@ -216,110 +180,61 @@ function ScheduleEditCard({
       )}
 
       <div className="pt-card-body">
-        {/* Nicht-final Toggle */}
-        <div className="flex items-center gap-2 mb-3">
-          <button
-            onClick={() => setNotFinal(v => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
-              notFinal
-                ? 'bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200'
-                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${notFinal ? 'bg-orange-500' : 'bg-gray-400'}`} />
-            {notFinal ? 'Noch nicht final' : 'Final'}
-          </button>
-          <span className="text-xs text-gray-400">
-            {notFinal ? 'Als final markieren zum Entfernen des Hinweises' : 'Klicken um als „noch nicht final" zu markieren'}
-          </span>
-        </div>
-
-        <RichTextEditorField
-          ref={editorRef}
-          initialContent={schedule?.content ?? ''}
-          showLRSeparator
-          minHeight="min-h-32"
-        />
+        <RichTextEditorField ref={editorRef} initialContent={schedule?.content ?? ''} showLRSeparator minHeight="min-h-32" />
+        <label className="flex items-center gap-2 mt-3 cursor-pointer select-none w-fit">
+          <input type="checkbox" checked={notFinal} onChange={e => setNotFinal(e.target.checked)}
+            className="w-3.5 h-3.5 accent-orange-500 cursor-pointer" />
+          <span className="text-xs text-gray-500">Noch nicht final</span>
+        </label>
       </div>
     </div>
   )
 }
 
-// ── Haupt-Komponente ───────────────────────────────────────────────────────────
-export default function ZeitplaeneCard({
-  terminId, isAdmin, layout = 'stack',
-}: {
-  terminId: number
+// ── Einzelne Zeitplan-Karte (View-Modus) mit ⋯-Menü ──────────────────────────
+function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete }: {
+  s: TerminSchedule
   isAdmin: boolean
-  layout?: 'stack' | 'grid-2'
+  terminId: number
+  onEdit: () => void
+  onSaveAsTemplate: () => void
+  onDelete: () => void
 }) {
-  const [schedules, setSchedules] = useState<TerminSchedule[]>([])
-  const [loading, setLoading] = useState(true)
-  const [editingId, setEditingId] = useState<number | 'new' | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [templates, setTemplates] = useState<ScheduleTemplate[]>([])
-  const [templatesLoading, setTemplatesLoading] = useState(false)
-  const [saveAsTemplate, setSaveAsTemplate] = useState<TerminSchedule | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    getTerminSchedules(terminId)
-      .then(setSchedules)
-      .catch(() => setSchedules([]))
-      .finally(() => setLoading(false))
-  }, [terminId])
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return
+      if (menuRef.current?.contains(e.target as Node)) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
 
-  const openTemplatePicker = async () => {
-    setPickerOpen(true)
-    setTemplatesLoading(true)
-    try { setTemplates(await getScheduleTemplates()) }
-    catch { setTemplates([]) }
-    finally { setTemplatesLoading(false) }
+  const openMenu = () => {
+    if (btnRef.current) setMenuRect(btnRef.current.getBoundingClientRect())
+    setMenuOpen(v => !v)
   }
 
-  const handleSelectTemplate = async (t: ScheduleTemplate) => {
-    setPickerOpen(false)
-    const created = await createTerminSchedule(terminId, {
-      title: t.name, content: t.content, notFinal: t.notFinal, sortOrder: schedules.length,
-    })
-    setSchedules(prev => [...prev, created])
-  }
+  const menuItems = [
+    { label: 'Bearbeiten',            icon: <Pencil size={12} />,      danger: false, onClick: () => { setMenuOpen(false); onEdit() } },
+    { label: 'Als Vorlage speichern', icon: <BookTemplate size={12} />, danger: false, onClick: () => { setMenuOpen(false); onSaveAsTemplate() } },
+    { label: 'Löschen',               icon: <Trash2 size={12} />,       danger: true,  onClick: async () => {
+      setMenuOpen(false)
+      if (!confirm(`„${s.title || 'Zeitplan'}" löschen?`)) return
+      await deleteTerminSchedule(terminId, s.id)
+      onDelete()
+    }},
+  ]
 
-  const handleSaveAsTemplate = async (name: string) => {
-    const s = saveAsTemplate!
-    await createScheduleTemplate({ name, content: s.content, notFinal: s.notFinal, sortOrder: 0 })
-    setSaveAsTemplate(null)
-  }
-
-  const handleSaved = (saved: TerminSchedule) => {
-    setSchedules(prev => {
-      const exists = prev.find(s => s.id === saved.id)
-      return exists ? prev.map(s => s.id === saved.id ? saved : s) : [...prev, saved]
-    })
-    setEditingId(null)
-  }
-
-  const handleDeleted = (id: number) => {
-    setSchedules(prev => prev.filter(s => s.id !== id))
-    setEditingId(null)
-  }
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-gray-400" /></div>
-  }
-
-  const scheduleCards = schedules.map(s =>
-    editingId === s.id ? (
-      <ScheduleEditCard
-        key={s.id}
-        terminId={terminId}
-        schedule={s}
-        sortOrder={s.sortOrder}
-        onSaved={handleSaved}
-        onDeleted={() => handleDeleted(s.id)}
-        onCancel={() => setEditingId(null)}
-      />
-    ) : (
-      <div key={s.id} className="pt-card">
+  return (
+    <>
+      <div className="pt-card">
         <div className="pt-card-header">
           <span className="pt-card-title">
             {s.title || <span className="normal-case font-normal tracking-normal text-gray-400 italic">Ohne Titel</span>}
@@ -339,25 +254,11 @@ export default function ZeitplaeneCard({
             </svg>
           </button>
           {isAdmin && (
-            <>
-              <button onClick={() => setSaveAsTemplate(s)}
-                className="text-gray-400 hover:text-amber-500 transition-colors flex-shrink-0" title="Als Vorlage speichern">
-                <BookTemplate size={12} />
-              </button>
-              <button onClick={() => setEditingId(s.id)}
-                className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0" title="Bearbeiten">
-                <Pencil size={12} />
-              </button>
-              <button
-                onClick={async () => {
-                  if (!confirm(`„${s.title || 'Zeitplan'}" löschen?`)) return
-                  await deleteTerminSchedule(terminId, s.id)
-                  handleDeleted(s.id)
-                }}
-                className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0" title="Löschen">
-                <Trash2 size={12} />
-              </button>
-            </>
+            <button ref={btnRef} onClick={openMenu}
+              className={`flex-shrink-0 transition-colors ${menuOpen ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+              title="Aktionen">
+              <MoreHorizontal size={15} />
+            </button>
           )}
         </div>
         {s.content && (
@@ -366,18 +267,94 @@ export default function ZeitplaeneCard({
           </div>
         )}
       </div>
+
+      {menuOpen && menuRect && createPortal(
+        <div ref={menuRef} style={{
+          position: 'fixed', top: menuRect.bottom + 4, right: window.innerWidth - menuRect.right,
+          background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 9999, minWidth: 190, padding: '4px 0',
+        }}>
+          {menuItems.map(item => (
+            <button key={item.label} onClick={item.onClick} style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              padding: '7px 14px', fontSize: 13, background: 'none', border: 'none',
+              cursor: 'pointer', color: item.danger ? '#ef4444' : '#374151', textAlign: 'left',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = item.danger ? '#fef2f2' : '#f9fafb')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              {item.icon}{item.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
+// ── Haupt-Komponente ───────────────────────────────────────────────────────────
+export default function ZeitplaeneCard({ terminId, isAdmin, layout = 'stack' }: {
+  terminId: number
+  isAdmin: boolean
+  layout?: 'stack' | 'grid-2'
+}) {
+  const [schedules, setSchedules] = useState<TerminSchedule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editingId, setEditingId] = useState<number | 'new' | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [templates, setTemplates] = useState<ScheduleTemplate[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [saveAsTemplate, setSaveAsTemplate] = useState<TerminSchedule | null>(null)
+
+  useEffect(() => {
+    getTerminSchedules(terminId).then(setSchedules).catch(() => setSchedules([])).finally(() => setLoading(false))
+  }, [terminId])
+
+  const openTemplatePicker = async () => {
+    setPickerOpen(true); setTemplatesLoading(true)
+    try { setTemplates(await getScheduleTemplates()) }
+    catch { setTemplates([]) }
+    finally { setTemplatesLoading(false) }
+  }
+
+  const handleSelectTemplate = async (t: ScheduleTemplate) => {
+    setPickerOpen(false)
+    const created = await createTerminSchedule(terminId, { title: t.name, content: t.content, notFinal: t.notFinal, sortOrder: schedules.length })
+    setSchedules(prev => [...prev, created])
+  }
+
+  const handleSaveAsTemplate = async (name: string) => {
+    const s = saveAsTemplate!
+    await createScheduleTemplate({ name, content: s.content, notFinal: s.notFinal, sortOrder: 0 })
+    setSaveAsTemplate(null)
+  }
+
+  const handleSaved = (saved: TerminSchedule) => {
+    setSchedules(prev => {
+      const exists = prev.find(s => s.id === saved.id)
+      return exists ? prev.map(s => s.id === saved.id ? saved : s) : [...prev, saved]
+    })
+    setEditingId(null)
+  }
+
+  const handleDeleted = (id: number) => { setSchedules(prev => prev.filter(s => s.id !== id)); setEditingId(null) }
+
+  if (loading) return <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-gray-400" /></div>
+
+  const scheduleCards = schedules.map(s =>
+    editingId === s.id ? (
+      <ScheduleEditCard key={s.id} terminId={terminId} schedule={s} sortOrder={s.sortOrder}
+        onSaved={handleSaved} onDeleted={() => handleDeleted(s.id)} onCancel={() => setEditingId(null)} />
+    ) : (
+      <ScheduleCard key={s.id} s={s} isAdmin={isAdmin} terminId={terminId}
+        onEdit={() => setEditingId(s.id)} onSaveAsTemplate={() => setSaveAsTemplate(s)} onDelete={() => handleDeleted(s.id)} />
     )
   )
 
   const newCard = editingId === 'new' ? (
-    <ScheduleEditCard
-      key="new"
-      terminId={terminId}
-      schedule={null}
-      sortOrder={schedules.length}
-      onSaved={handleSaved}
-      onCancel={() => setEditingId(null)}
-    />
+    <ScheduleEditCard key="new" terminId={terminId} schedule={null} sortOrder={schedules.length}
+      onSaved={handleSaved} onCancel={() => setEditingId(null)} />
   ) : null
 
   const AddButton = () => (
@@ -399,34 +376,13 @@ export default function ZeitplaeneCard({
     <>
       {layout === 'grid-2' ? (
         <div className="grid grid-cols-2 gap-4">
-          {scheduleCards}
-          {newCard}
-          {isAdmin && editingId !== 'new' && <AddButton />}
+          {scheduleCards}{newCard}{isAdmin && editingId !== 'new' && <AddButton />}
         </div>
       ) : (
-        <>
-          {scheduleCards}
-          {newCard}
-          {isAdmin && editingId !== 'new' && <AddButton />}
-        </>
+        <>{scheduleCards}{newCard}{isAdmin && editingId !== 'new' && <AddButton />}</>
       )}
-
-      {pickerOpen && (
-        <TemplatePickerModal
-          templates={templates}
-          loading={templatesLoading}
-          onSelect={handleSelectTemplate}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
-
-      {saveAsTemplate && (
-        <SaveAsTemplateModal
-          schedule={saveAsTemplate}
-          onSave={handleSaveAsTemplate}
-          onClose={() => setSaveAsTemplate(null)}
-        />
-      )}
+      {pickerOpen && <TemplatePickerModal templates={templates} loading={templatesLoading} onSelect={handleSelectTemplate} onClose={() => setPickerOpen(false)} />}
+      {saveAsTemplate && <SaveAsTemplateModal schedule={saveAsTemplate} onSave={handleSaveAsTemplate} onClose={() => setSaveAsTemplate(null)} />}
     </>
   )
 }
