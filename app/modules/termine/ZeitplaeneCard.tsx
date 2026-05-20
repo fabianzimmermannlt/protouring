@@ -348,6 +348,15 @@ export default function ZeitplaeneCard({
                 className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0" title="Bearbeiten">
                 <Pencil size={12} />
               </button>
+              <button
+                onClick={async () => {
+                  if (!confirm(`„${s.title || 'Zeitplan'}" löschen?`)) return
+                  await deleteTerminSchedule(terminId, s.id)
+                  handleDeleted(s.id)
+                }}
+                className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0" title="Löschen">
+                <Trash2 size={12} />
+              </button>
             </>
           )}
         </div>
