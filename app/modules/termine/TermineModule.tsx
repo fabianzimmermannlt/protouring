@@ -1111,6 +1111,7 @@ function TerminDetailHeader({
   termine,
   selectedView,
   onNavigate,
+  onDelete,
   isAdmin,
   isEditor,
 }: {
@@ -1118,6 +1119,7 @@ function TerminDetailHeader({
   termine: Termin[]
   selectedView: string
   onNavigate: (id: number) => void
+  onDelete: () => void
   isAdmin: boolean
   isEditor: boolean
 }) {
@@ -1166,7 +1168,7 @@ function TerminDetailHeader({
         <ArrowLeft size={16} /> Zurück zur Übersicht
       </button>
 
-      {/* Nav arrows + Title + Date */}
+      {/* Nav arrows + Title + Date + Delete */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '1rem' }}>
         {/* Arrows */}
         <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0, paddingTop: '3px' }}>
@@ -1192,7 +1194,7 @@ function TerminDetailHeader({
           </button>
         </div>
         {/* Title + Date stacked */}
-        <div>
+        <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
             {pageTitle}
           </h1>
@@ -1200,6 +1202,18 @@ function TerminDetailHeader({
             {formatDateLong(termin.date)}
           </div>
         </div>
+        {/* Delete – nur Admin */}
+        {isAdmin && (
+          <button
+            onClick={onDelete}
+            title="Event löschen"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: '5px', background: 'none', cursor: 'pointer', color: '#6b7280', flexShrink: 0, paddingTop: '3px', transition: 'border-color 0.12s, color 0.12s' }}
+            onMouseOver={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444' }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#6b7280' }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
 
       {/* Tab bar */}
@@ -1863,6 +1877,12 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
             termine={sortedTermine}
             selectedView={selectedView}
             onNavigate={id => selectTermin(id, selectedView)}
+            onDelete={async () => {
+              const label = [selectedTermin.city, selectedTermin.title, formatDateShort(selectedTermin.date)].filter(Boolean).join(' · ')
+              if (!confirm(`„${label}" endgültig löschen? Alle Daten (Reisegruppe, Travel, Pässe etc.) werden unwiderruflich entfernt.`)) return
+              await deleteTermin(selectedTermin.id)
+              onDeleted()
+            }}
             isAdmin={isAdmin}
             isEditor={isEditor}
           />
