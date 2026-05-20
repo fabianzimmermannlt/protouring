@@ -39,6 +39,8 @@ import BriefingView from './BriefingView'
 import AgreementsView from './AgreementsView'
 import TerminDetailMobile from './TerminDetailMobile'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import {
   getTermine,
   createTermin,
@@ -79,6 +81,18 @@ type AvailStatus = 'available' | 'maybe' | 'unavailable' | null
 // ============================================================
 // Constants
 // ============================================================
+
+const TERMINE_COLUMNS = [
+  { id: 'date',         label: 'Datum',       defaultVisible: true,  alwaysVisible: true },
+  { id: 'art',          label: 'Typ',         defaultVisible: true },
+  { id: 'statusBooking',label: 'Status',      defaultVisible: true },
+  { id: 'statusPublic', label: 'Öffentlich',  defaultVisible: true },
+  { id: 'title',        label: 'Titel',       defaultVisible: true },
+  { id: 'city',         label: 'Stadt',       defaultVisible: true },
+  { id: 'venue',        label: 'Venue',       defaultVisible: true },
+  { id: 'availability', label: 'Verfügbar',   defaultVisible: true },
+  { id: 'booked',       label: 'Gebucht',     defaultVisible: true },
+]
 
 const AVAIL_ICON: Record<string, { tKey: TranslationKey; color: string; symbol: string }> = {
   available:   { tKey: 'availability.available',   color: '#22c55e', symbol: '✓' },
@@ -1702,6 +1716,8 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
   const canSeeGebucht = canDo(effectiveRole, CAN_SEE_GEBUCHT)        // alle außer Gast
   const canSeeFiles   = canDo(effectiveRole, CAN_SEE_FILES_TERMIN)   // admin + tourmanagement + agency + artist + crew_plus
 
+  const { isVisible: isColVisible, toggle: toggleCol, columns: termineColumns } = useColumnVisibility('termine-list', TERMINE_COLUMNS)
+
   // ---- Load data ----
 
   const loadData = useCallback(async () => {
@@ -2169,18 +2185,18 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
               <thead>
                 <tr>
                   {([
-                    [t('table.date'),   'date',          '7rem'],
-                    [t('table.type'),   'art',           '8rem'],
-                    [t('table.status'), 'statusBooking', '11rem'],
-                    [t('table.public'), 'statusPublic',  '8rem'],
-                    [t('table.title'),  'title',         '14rem'],
-                    [t('table.city'),   'city',          '8rem'],
-                    [t('table.venue'),  'venueName',     '11rem'],
-                  ] as [string, keyof Termin, string | null][]).map(([label, key, w]) => (
+                    [t('table.date'),   'date',          '7rem',  'date'],
+                    [t('table.type'),   'art',           '8rem',  'art'],
+                    [t('table.status'), 'statusBooking', '11rem', 'statusBooking'],
+                    [t('table.public'), 'statusPublic',  '8rem',  'statusPublic'],
+                    [t('table.title'),  'title',         '14rem', 'title'],
+                    [t('table.city'),   'city',          '8rem',  'city'],
+                    [t('table.venue'),  'venueName',     '11rem', 'venue'],
+                  ] as [string, keyof Termin, string, string][]).map(([label, key, w, colId]) => isColVisible(colId) ? (
                     <th
                       key={key as string}
                       className="sortable"
-                      style={w ? { width: w } : undefined}
+                      style={{ width: w }}
                       onClick={() => toggleTableSort(key)}
                     >
                       {label}
@@ -2188,10 +2204,12 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                         {tableSortKey === key ? (tableSortDir === 'asc' ? '▲' : '▼') : '⇅'}
                       </span>
                     </th>
-                  ))}
-                  <th className="text-center" style={{ width: '5.5rem' }}>{t('table.availability')}</th>
-                  {canSeeGebucht && <th className="text-center" style={{ width: '4rem' }}>{t('table.booked')}</th>}
-                  {isAdmin && <th style={{ width: '2.5rem' }} />}
+                  ) : null)}
+                  {isColVisible('availability') && <th className="text-center" style={{ width: '5.5rem' }}>{t('table.availability')}</th>}
+                  {canSeeGebucht && isColVisible('booked') && <th className="text-center" style={{ width: '4rem' }}>{t('table.booked')}</th>}
+                  <th style={{ width: '2.5rem', textAlign: 'right' }}>
+                    <ColumnToggle columns={termineColumns} isVisible={isColVisible} toggle={toggleCol} />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -2201,39 +2219,39 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                   )
                   if (filtered.length === 0) return (
                     <tr>
-                      <td colSpan={canSeeGebucht ? (isAdmin ? 10 : 9) : (isAdmin ? 9 : 8)} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
+                      <td colSpan={20} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
                         {termine.length === 0 ? t('appointments.emptyState') : t('appointments.noResults')}
                       </td>
                     </tr>
                   )
                   return filtered.map(termin => (
                   <tr key={termin.id} className="clickable" onClick={() => selectTermin(termin.id)}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    {isColVisible('date')          && <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>}
+                    {isColVisible('art')           && <td style={{ whiteSpace: 'nowrap' }}>
                       {termin.art
                         ? <><span className="font-medium text-gray-800">{termin.art}</span>{termin.artSub && <span className="text-gray-400 text-xs ml-1">· {termin.artSub}</span>}</>
                         : <span className="text-gray-400">–</span>}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    </td>}
+                    {isColVisible('statusBooking') && <td style={{ whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusBooking ? STATUS_BOOKING_DOT[termin.statusBooking] : undefined) || '#9ca3af' }}>
                         {termin.statusBooking
                           ? (STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking)
                           : '–'}
                       </span>
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    </td>}
+                    {isColVisible('statusPublic')  && <td style={{ whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusPublic ? STATUS_PUBLIC_DOT[termin.statusPublic] : undefined) || '#9ca3af' }}>
                         {termin.statusPublic
                           ? (STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic)
                           : '–'}
                       </span>
-                    </td>
-                    <td className="font-medium text-gray-900" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '14rem' }}>{termin.title}</td>
-                    <td className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>{termin.city || <span className="text-gray-300">–</span>}</td>
-                    <td className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '13rem' }}>{termin.venueName || <span className="text-gray-300">–</span>}</td>
+                    </td>}
+                    {isColVisible('title')         && <td className="font-medium text-gray-900" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '14rem' }}>{termin.title}</td>}
+                    {isColVisible('city')          && <td className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>{termin.city || <span className="text-gray-300">–</span>}</td>}
+                    {isColVisible('venue')         && <td className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '13rem' }}>{termin.venueName || <span className="text-gray-300">–</span>}</td>}
 
                     {/* Verfügbar */}
-                    <td className="text-center">
+                    {isColVisible('availability') && <td className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         {(['available', 'maybe', 'unavailable'] as AvailStatus[]).map(s => {
                           const active = termin.myAvailability === s
@@ -2261,10 +2279,10 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                           </button>
                         )}
                       </div>
-                    </td>
+                    </td>}
 
                     {/* Gebucht */}
-                    {canSeeGebucht && (
+                    {canSeeGebucht && isColVisible('booked') && (
                     <td className="text-center">
                       {termin.inTravelParty
                         ? <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#5b9bd5' }} title={t('availability.booked')}>✓</span>
@@ -2274,9 +2292,9 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                       }
                     </td>
                     )}
-                    {/* Löschen – nur Admin */}
-                    {isAdmin && (
-                      <td className="text-center" onClick={e => e.stopPropagation()}>
+                    {/* Toggle-Spalte (immer da für Ausrichtung) + Löschen */}
+                    <td className="text-center" onClick={e => e.stopPropagation()}>
+                      {isAdmin && (
                         <button
                           onClick={async () => {
                             const label = [termin.city, termin.title, formatDateShort(termin.date)].filter(Boolean).join(' · ')
@@ -2289,8 +2307,8 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                         >
                           <Trash2 size={13} />
                         </button>
-                      </td>
-                    )}
+                      )}
+                    </td>
                   </tr>
                 ))
                 })()}
