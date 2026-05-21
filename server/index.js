@@ -1572,6 +1572,32 @@ async function initDatabase() {
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_briefing_sections_briefing ON crew_briefing_sections(briefing_id)`)
 
+  // termin_partners – junction table für mehrere Partner pro Termin
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS termin_partners (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+      partner_id INTEGER NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_partners_termin ON termin_partners(termin_id)`)
+
+  // Migration: bestehende partner_id aus termine in termin_partners übernehmen
+  await db.run(`
+    INSERT INTO termin_partners (tenant_id, termin_id, partner_id, role, sort_order)
+    SELECT t.tenant_id, t.id, t.partner_id, '', 0
+    FROM termine t
+    WHERE t.partner_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM termin_partners tp
+        WHERE tp.termin_id = t.id AND tp.partner_id = t.partner_id
+      )
+  `)
+
   console.log('✅ Database initialized');
 }
 
@@ -8235,6 +8261,91 @@ app.get('/api/search', authenticateToken, requireTenant, async (req, res) => {
   } catch (e) {
     console.error('Search error:', e)
     res.status(500).json({ error: 'Search failed' })
+  }
+})
+
+// ============================================
+// TERMIN PARTNERS
+// ============================================
+
+// GET /api/termine/:terminId/partners
+app.get('/api/termine/:terminId/partners', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(`
+      SELECT tp.id, tp.termin_id, tp.partner_id, tp.role, tp.sort_order,
+             p.company_name, p.contact_person, p.city, p.email, p.phone
+      FROM termin_partners tp
+      JOIN partners p ON p.id = tp.partner_id
+      WHERE tp.termin_id = ? AND tp.tenant_id = ?
+      ORDER BY tp.sort_order, tp.created_at
+    `, [req.params.terminId, req.tenant.id])
+    res.json({ partners: rows })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// POST /api/termine/:terminId/partners
+app.post('/api/termine/:terminId/partners', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { partner_id, role = '' } = req.body
+    if (!partner_id) return res.status(400).json({ error: 'partner_id required' })
+    // Duplikat vermeiden
+    const existing = await db.get(
+      `SELECT id FROM termin_partners WHERE termin_id = ? AND partner_id = ? AND tenant_id = ?`,
+      [req.params.terminId, partner_id, req.tenant.id]
+    )
+    if (existing) return res.status(409).json({ error: 'Partner bereits verknüpft' })
+    const maxOrder = await db.get(
+      `SELECT MAX(sort_order) as m FROM termin_partners WHERE termin_id = ? AND tenant_id = ?`,
+      [req.params.terminId, req.tenant.id]
+    )
+    const result = await db.run(`
+      INSERT INTO termin_partners (tenant_id, termin_id, partner_id, role, sort_order)
+      VALUES (?, ?, ?, ?, ?)
+    `, [req.tenant.id, req.params.terminId, partner_id, role, (maxOrder?.m ?? -1) + 1])
+    const row = await db.get(`
+      SELECT tp.id, tp.termin_id, tp.partner_id, tp.role, tp.sort_order,
+             p.company_name, p.contact_person, p.city, p.email, p.phone
+      FROM termin_partners tp JOIN partners p ON p.id = tp.partner_id
+      WHERE tp.id = ?
+    `, [result.lastID])
+    res.status(201).json({ partner: row })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// PATCH /api/termine/:terminId/partners/:linkId  (Rolle ändern)
+app.patch('/api/termine/:terminId/partners/:linkId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { role } = req.body
+    await db.run(
+      `UPDATE termin_partners SET role = ? WHERE id = ? AND termin_id = ? AND tenant_id = ?`,
+      [role ?? '', req.params.linkId, req.params.terminId, req.tenant.id]
+    )
+    const row = await db.get(`
+      SELECT tp.id, tp.termin_id, tp.partner_id, tp.role, tp.sort_order,
+             p.company_name, p.contact_person, p.city, p.email, p.phone
+      FROM termin_partners tp JOIN partners p ON p.id = tp.partner_id
+      WHERE tp.id = ?
+    `, [req.params.linkId])
+    res.json({ partner: row })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// DELETE /api/termine/:terminId/partners/:linkId
+app.delete('/api/termine/:terminId/partners/:linkId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run(
+      `DELETE FROM termin_partners WHERE id = ? AND termin_id = ? AND tenant_id = ?`,
+      [req.params.linkId, req.params.terminId, req.tenant.id]
+    )
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
   }
 })
 

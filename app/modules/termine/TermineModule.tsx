@@ -16,6 +16,7 @@ import { VenueDetailContent } from '../venues/VenueDetail'
 import { PartnerDetailContent } from '../partners/PartnerDetail'
 import PartnerModal from '../partners/PartnerModal'
 import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
+import TerminPartnersCard from './TerminPartnersCard'
 import LokaleKontakteCard from './LokaleKontakteCard'
 import ZeitplaeneCard from './ZeitplaeneCard'
 import KalenderView from './KalenderView'
@@ -1033,53 +1034,12 @@ function PartnerPicker({ termin, onLinked, onClose }: {
   )
 }
 
-function PartnerView({ termin, isAdmin, onUpdated }: {
+function PartnerView({ termin, isAdmin }: {
   termin: Termin
   isAdmin: boolean
   onUpdated: (t: Termin) => void
 }) {
-  const [showPicker, setShowPicker] = useState(false)
-
-  useEffect(() => { setShowPicker(false) }, [termin.id])
-
-  const wechselnButton = isAdmin ? (
-    <button
-      onClick={() => setShowPicker(true)}
-      className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-    >
-      {termin.partnerId ? 'wechseln' : 'verknüpfen'}
-    </button>
-  ) : undefined
-
-  return (
-    <div className="flex flex-col gap-4">
-      {termin.partnerId ? (
-        <PartnerDetailContent
-          partnerId={String(termin.partnerId)}
-          headerRight={wechselnButton}
-        />
-      ) : (
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title">Partner / Veranstalter</span>
-            {wechselnButton && <div style={{ flexShrink: 0 }}>{wechselnButton}</div>}
-          </div>
-          <div className="pt-card-body">
-            <p className="text-sm text-gray-400">Noch kein Partner verknüpft.</p>
-          </div>
-        </div>
-      )}
-
-      {showPicker && (
-        <PartnerPicker
-          termin={termin}
-          onLinked={updated => { onUpdated(updated) }}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
-    </div>
-  )
+  return <TerminPartnersCard terminId={termin.id} isAdmin={isAdmin} />
 }
 
 // ============================================================

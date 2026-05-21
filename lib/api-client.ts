@@ -3216,3 +3216,43 @@ export async function searchGlobal(q: string): Promise<SearchResult[]> {
   const res = await request<{ results: SearchResult[] }>(`/api/search?q=${encodeURIComponent(q)}`)
   return res.results
 }
+
+// ── Termin Partners ──────────────────────────────────────────────────────────
+
+export interface TerminPartner {
+  id: number
+  termin_id: number
+  partner_id: number
+  role: string
+  sort_order: number
+  company_name: string
+  contact_person: string
+  city: string
+  email: string
+  phone: string
+}
+
+export async function getTerminPartners(terminId: number): Promise<TerminPartner[]> {
+  const data = await request<{ partners: TerminPartner[] }>(`/api/termine/${terminId}/partners`)
+  return data.partners
+}
+
+export async function addTerminPartner(terminId: number, partnerId: number, role: string): Promise<TerminPartner> {
+  const data = await request<{ partner: TerminPartner }>(`/api/termine/${terminId}/partners`, {
+    method: 'POST',
+    body: { partner_id: partnerId, role },
+  })
+  return data.partner
+}
+
+export async function updateTerminPartnerRole(terminId: number, linkId: number, role: string): Promise<TerminPartner> {
+  const data = await request<{ partner: TerminPartner }>(`/api/termine/${terminId}/partners/${linkId}`, {
+    method: 'PATCH',
+    body: { role },
+  })
+  return data.partner
+}
+
+export async function removeTerminPartner(terminId: number, linkId: number): Promise<void> {
+  await request<{ ok: boolean }>(`/api/termine/${terminId}/partners/${linkId}`, { method: 'DELETE' })
+}
