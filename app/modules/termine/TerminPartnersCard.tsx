@@ -7,24 +7,21 @@ import {
   getPartners,
   type TerminPartner, type Partner,
 } from '@/lib/api-client'
+import { PartnerDetailContent } from '../partners/PartnerDetail'
 
 // ── Picker Modal ─────────────────────────────────────────────────────────────
 
 function PartnerPickerModal({
-  terminId,
   existingPartnerIds,
-  onAdded,
+  onSelect,
   onClose,
 }: {
-  terminId: number
   existingPartnerIds: number[]
-  onAdded: (tp: TerminPartner) => void
+  onSelect: (partner: Partner) => void
   onClose: () => void
 }) {
   const [partners, setPartners] = useState<Partner[]>([])
   const [search, setSearch]     = useState('')
-  const [saving, setSaving]     = useState(false)
-  const [error, setError]       = useState('')
 
   useEffect(() => { getPartners().then(setPartners).catch(() => {}) }, [])
 
@@ -37,50 +34,31 @@ function PartnerPickerModal({
     )
   )
 
-  const handleSelect = async (partner: Partner) => {
-    setSaving(true)
-    setError('')
-    try {
-      const tp = await addTerminPartner(terminId, Number(partner.id), '')
-      onAdded(tp)
-      onClose()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler')
-      setSaving(false)
-    }
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Partner hinzufügen</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Partner verknüpfen</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={16} />
           </button>
         </div>
-
         <div className="px-4 py-3 space-y-2">
           <input
-            type="text"
-            autoFocus
+            type="text" autoFocus
             placeholder="Suchen…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
-
-          {error && <p className="text-xs text-red-500">{error}</p>}
-
           <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
             {filtered.length === 0 ? (
               <div className="px-3 py-4 text-xs text-gray-400 text-center">Keine Partner gefunden</div>
             ) : filtered.map(p => (
               <button
                 key={p.id}
-                onClick={() => handleSelect(p)}
-                disabled={saving}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors disabled:opacity-50"
+                onClick={() => onSelect(p)}
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors"
               >
                 <div className="font-medium text-gray-800">{p.companyName}</div>
                 {(p.type || p.contactPerson || p.city) && (
@@ -91,12 +69,6 @@ function PartnerPickerModal({
               </button>
             ))}
           </div>
-
-          {saving && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
-              <Loader2 size={11} className="animate-spin" /> Wird gespeichert…
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -112,9 +84,10 @@ export default function TerminPartnersCard({
   terminId: number
   isAdmin: boolean
 }) {
-  const [links, setLinks]       = useState<TerminPartner[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [links, setLinks]           = useState<TerminPartner[]>([])
+  const [loading, setLoading]       = useState(true)
   const [showPicker, setShowPicker] = useState(false)
+  const [adding, setAdding]         = useState(false)
   const [removingId, setRemovingId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -124,83 +97,95 @@ export default function TerminPartnersCard({
       .finally(() => setLoading(false))
   }, [terminId])
 
-  const handleRemove = async (linkId: number) => {
-    setRemovingId(linkId)
+  const handleSelect = async (partner: Partner) => {
+    setShowPicker(false)
+    setAdding(true)
     try {
-      await removeTerminPartner(terminId, linkId)
-      setLinks(prev => prev.filter(l => l.id !== linkId))
+      const tp = await addTerminPartner(terminId, Number(partner.id), '')
+      setLinks(prev => [...prev, tp])
+    } catch { /* ignore */ } finally {
+      setAdding(false)
+    }
+  }
+
+  const handleRemove = async (link: TerminPartner) => {
+    setRemovingId(link.id)
+    try {
+      await removeTerminPartner(terminId, link.id)
+      setLinks(prev => prev.filter(l => l.id !== link.id))
     } catch { /* ignore */ } finally {
       setRemovingId(null)
     }
   }
 
+  if (loading) return (
+    <div className="pt-card flex items-center justify-center py-8">
+      <Loader2 size={16} className="animate-spin text-gray-400" />
+    </div>
+  )
+
   return (
-    <>
-      <div className="pt-card" style={{ maxWidth: '640px' }}>
-        <div className="pt-card-header">
-          <span className="pt-card-title">Partner / Veranstalter</span>
+    <div className="flex flex-col gap-4">
+
+      {/* Ein vollständiger Partner-Block pro Eintrag */}
+      {links.map(link => (
+        <div key={link.id} style={{ position: 'relative' }}>
+          {/* Entfernen-Button oben rechts */}
           {isAdmin && (
             <button
-              onClick={() => setShowPicker(true)}
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              title="Partner hinzufügen"
+              onClick={() => handleRemove(link)}
+              disabled={removingId === link.id}
+              title="Verknüpfung aufheben"
+              style={{
+                position: 'absolute', top: '12px', right: '12px', zIndex: 10,
+                background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
+                color: '#9ca3af',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
             >
-              <Plus size={14} />
+              {removingId === link.id
+                ? <Loader2 size={14} className="animate-spin" />
+                : <X size={14} />
+              }
             </button>
           )}
+          <PartnerDetailContent partnerId={String(link.partner_id)} />
         </div>
+      ))}
 
-        {loading ? (
-          <div className="pt-card-body flex items-center justify-center py-6">
-            <Loader2 size={14} className="animate-spin text-gray-400" />
-          </div>
-        ) : links.length === 0 ? (
+      {/* Leer-State */}
+      {links.length === 0 && (
+        <div className="pt-card">
           <div className="pt-card-body text-sm text-gray-400">
             Noch kein Partner verknüpft.
           </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {links.map(link => (
-              <div key={link.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-800">{link.company_name}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {[link.partner_type, link.contact_person, link.city].filter(Boolean).join(' · ')}
-                  </div>
-                  {(link.email || link.phone) && (
-                    <div className="text-xs text-gray-400">
-                      {[link.email, link.phone].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
-                </div>
+        </div>
+      )}
 
-                {isAdmin && (
-                  <button
-                    onClick={() => handleRemove(link.id)}
-                    disabled={removingId === link.id}
-                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
-                    title="Verknüpfung aufheben"
-                  >
-                    {removingId === link.id
-                      ? <Loader2 size={13} className="animate-spin" />
-                      : <X size={13} />
-                    }
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Partner hinzufügen */}
+      {isAdmin && (
+        <button
+          onClick={() => setShowPicker(true)}
+          disabled={adding}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-blue-600 transition-colors self-start"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+        >
+          {adding
+            ? <Loader2 size={14} className="animate-spin" />
+            : <Plus size={14} />
+          }
+          Partner hinzufügen
+        </button>
+      )}
 
       {showPicker && (
         <PartnerPickerModal
-          terminId={terminId}
           existingPartnerIds={links.map(l => l.partner_id)}
-          onAdded={tp => setLinks(prev => [...prev, tp])}
+          onSelect={handleSelect}
           onClose={() => setShowPicker(false)}
         />
       )}
-    </>
+    </div>
   )
 }
