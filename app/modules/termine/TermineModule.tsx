@@ -1083,39 +1083,6 @@ function PartnerView({ termin, isAdmin, onUpdated }: {
 }
 
 // ============================================================
-// Kommunikation Tab View
-// ============================================================
-
-function KommunikationView({ termin, canSeeFiles }: {
-  termin: Termin
-  canSeeFiles: boolean
-}) {
-  const currentUser = getCurrentUser()
-  const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
-
-  return (
-    <div className="flex flex-col gap-4" style={{ maxWidth: '800px' }}>
-      {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
-      <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
-        <ContentBoard
-          entityType="termin_private"
-          entityId={`${termin.id}_${currentUserId}`}
-          title=""
-          isAdmin={true}
-          singleItem
-          fixedTitle="Private Notiz"
-          showTitleField={false}
-          modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
-          hideEmptyButton
-          allowDelete={false}
-          className="flex-1"
-        />
-      </div>
-      <TerminChatCard terminId={termin.id} />
-    </div>
-  )
-}
-
 // ============================================================
 // TerminDetailHeader – Event-Name + Datum + Tab-Bar (Desktop)
 // ============================================================
@@ -1161,7 +1128,6 @@ function TerminDetailHeader({
     { id: 'briefing',       label: 'Briefing' },
     ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
     { id: 'guestlist',      label: 'Gästeliste' },
-    { id: 'communication',  label: 'Kommunikation' },
   ]
 
   const changeView = (view: string) => {
@@ -1521,7 +1487,7 @@ export function TerminDetail2({
         </div>
       )}
 
-      {/* Zeile 1: Veranstaltung (2/3) + ToDo (1/3) */}
+      {/* Zeile 1: Veranstaltung (2/3) + Chat (1/3) */}
       <div className="grid grid-cols-3 gap-4 items-start">
         <div className="col-span-2">
           <VeranstaltungCard
@@ -1531,24 +1497,29 @@ export function TerminDetail2({
             onUpdated={onUpdated}
           />
         </div>
-        <ToDoCard terminId={termin.id} />
+        <TerminChatCard terminId={termin.id} />
       </div>
 
-      {/* Zeile 2: Private Notiz volle Breite */}
-      <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
-        <ContentBoard
-          entityType="termin_private"
-          entityId={`${termin.id}_${currentUserId}`}
-          title=""
-          isAdmin={true}
-          singleItem
-          fixedTitle="Private Notiz"
-          showTitleField={false}
-          modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
-          hideEmptyButton
-          allowDelete={false}
-          className="flex-1"
-        />
+      {/* Zeile 2: ToDo (2/3) + Private Notiz (1/3) */}
+      <div className="grid grid-cols-3 gap-4 items-start">
+        <div className="col-span-2">
+          <ToDoCard terminId={termin.id} />
+        </div>
+        <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
+          <ContentBoard
+            entityType="termin_private"
+            entityId={`${termin.id}_${currentUserId}`}
+            title=""
+            isAdmin={true}
+            singleItem
+            fixedTitle="Private Notiz"
+            showTitleField={false}
+            modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+            hideEmptyButton
+            allowDelete={false}
+            className="flex-1"
+          />
+        </div>
       </div>
 
     </div>
@@ -1914,8 +1885,6 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
           <VenueView termin={selectedTermin} isAdmin={isAdmin} onUpdated={onUpdated} />
         ) : selectedView === 'partner' ? (
           <PartnerView termin={selectedTermin} isAdmin={isAdmin} onUpdated={onUpdated} />
-        ) : selectedView === 'communication' ? (
-          <KommunikationView termin={selectedTermin} canSeeFiles={canSeeFiles} />
         ) : selectedView === 'travelparty' ? (
           <ReisegruppeView terminId={selectedTermin.id} isAdmin={isEditor} />
         ) : selectedView === 'advance-sheet' ? (

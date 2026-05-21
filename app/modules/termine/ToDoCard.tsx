@@ -183,6 +183,8 @@ function TodoForm({
 
 const CAN_CREATE_ROLES = ['admin', 'agency', 'tourmanagement', 'artist', 'crew_plus']
 
+type TodoFilter = 'open' | 'overdue' | 'all'
+
 export default function ToDoCard({ terminId }: { terminId: number }) {
   const [todos, setTodos]           = useState<Todo[]>([])
   const [contacts, setContacts]     = useState<Contact[]>([])
@@ -192,6 +194,7 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
   const [showDone, setShowDone]     = useState(false)
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [myContactId, setMyContactId] = useState<number | null>(null)
+  const [filter, setFilter]         = useState<TodoFilter>('open')
 
   const effectiveRole = getEffectiveRole()
   const canSeeAll  = isEditorRole(effectiveRole)                        // 1-3: alle Todos
@@ -262,11 +265,28 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
   const openTodos = visibleTodos.filter(t => t.status !== 'done')
   const doneTodos = visibleTodos.filter(t => t.status === 'done')
 
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const isOverdue = (t: Todo) => t.status !== 'done' && !!t.deadline && new Date(t.deadline) < today
+
+  const filteredTodos = filter === 'all'
+    ? visibleTodos
+    : filter === 'overdue'
+      ? visibleTodos.filter(isOverdue)
+      : visibleTodos.filter(t => t.status !== 'done')
+
+  const overdueCount = visibleTodos.filter(isOverdue).length
+
   if (loading) return (
     <div className="pt-card flex items-center justify-center" style={{ minHeight: '120px' }}>
       <Loader2 size={16} className="animate-spin text-gray-400" />
     </div>
   )
+
+  const filterTabs: { id: TodoFilter; label: string }[] = [
+    { id: 'open',    label: 'Offen' },
+    { id: 'overdue', label: overdueCount > 0 ? `Überfällig (${overdueCount})` : 'Überfällig' },
+    { id: 'all',     label: 'Alle' },
+  ]
 
   return (
     <>
@@ -287,18 +307,44 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
           )}
         </div>
 
+        {/* Filter-Tabs */}
+        {!isGuest && (
+          <div className="flex gap-0 border-b border-gray-100" style={{ paddingLeft: '1rem' }}>
+            {filterTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className="text-xs py-1.5 px-3 transition-colors"
+                style={{
+                  color: filter === tab.id ? '#3b82f6' : '#9ca3af',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  borderBottom: filter === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
+                  fontWeight: filter === tab.id ? 600 : 400,
+                  background: 'none',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  paddingBottom: '6px',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isGuest ? (
           <div className="pt-card-body text-sm text-gray-400 text-center py-4">
             Kein Zugriff
           </div>
-        ) : visibleTodos.length === 0 ? (
+        ) : filteredTodos.length === 0 ? (
           <div className="pt-card-body text-sm text-gray-400 text-center py-4">
-            Noch keine Aufgaben
+            {filter === 'overdue' ? 'Keine überfälligen Aufgaben' : filter === 'open' ? 'Keine offenen Aufgaben' : 'Noch keine Aufgaben'}
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {/* offene + in Bearbeitung */}
-            {openTodos.map(todo => (
+            {filteredTodos.filter(t => t.status !== 'done').map(todo => (
               <TodoRow
                 key={todo.id}
                 todo={todo}
@@ -309,12 +355,13 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
               />
             ))}
 
-            {/* Erledigte (collapsible) */}
-            {doneTodos.length > 0 && (
+            {/* Erledigte (nur im "Alle"-Filter, collapsible) */}
+            {filter === 'all' && doneTodos.length > 0 && (
               <>
                 <button
                   className="w-full flex items-center gap-1 px-4 py-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
                   onClick={() => setShowDone(v => !v)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   {showDone ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                   {doneTodos.length} erledigt
@@ -384,10 +431,17 @@ function TodoRow({ todo, canEdit, toggling, onToggle, onEdit }: {
             style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_COLOR[todo.priority], flexShrink: 0 }}
             title={PRIORITY_LABEL[todo.priority]}
           />
-          <span className={`text-sm text-gray-800 truncate ${isDone ? 'line-through' : ''}`}>
+          <span className={`text-sm text-gray-800 ${isDone ? 'line-through' : ''}`}>
             {todo.title}
           </span>
         </div>
+
+        {/* Description */}
+        {todo.description && (
+          <p className="text-xs text-gray-400 mt-0.5 leading-snug" style={{ paddingLeft: '10px' }}>
+            {todo.description}
+          </p>
+        )}
 
         {/* Meta-Zeile */}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
