@@ -343,7 +343,7 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
             {filter === 'overdue' ? 'Keine überfälligen Aufgaben' : filter === 'open' ? 'Keine offenen Aufgaben' : 'Noch keine Aufgaben'}
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-200">
             {filteredTodos.filter(t => t.status !== 'done').map(todo => (
               <TodoRow
                 key={todo.id}
