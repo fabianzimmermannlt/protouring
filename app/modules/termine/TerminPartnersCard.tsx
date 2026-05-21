@@ -8,6 +8,7 @@ import {
   type TerminPartner, type Partner,
 } from '@/lib/api-client'
 import { PartnerDetailContent } from '../partners/PartnerDetail'
+import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
 
 // ── Picker Modal ─────────────────────────────────────────────────────────────
 
@@ -20,8 +21,9 @@ function PartnerPickerModal({
   onSelect: (partner: Partner) => void
   onClose: () => void
 }) {
-  const [partners, setPartners] = useState<Partner[]>([])
-  const [search, setSearch]     = useState('')
+  const [partners, setPartners]         = useState<Partner[]>([])
+  const [search, setSearch]             = useState('')
+  const [showCreate, setShowCreate]     = useState(false)
 
   useEffect(() => { getPartners().then(setPartners).catch(() => {}) }, [])
 
@@ -52,6 +54,12 @@ function PartnerPickerModal({
             className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
           <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1"
+            >
+              <Plus size={11} /> Neuen Partner anlegen
+            </button>
             {filtered.length === 0 ? (
               <div className="px-3 py-4 text-xs text-gray-400 text-center">Keine Partner gefunden</div>
             ) : filtered.map(p => (
@@ -71,6 +79,17 @@ function PartnerPickerModal({
           </div>
         </div>
       </div>
+
+      {showCreate && (
+        <QuickCreatePartnerModal
+          onClose={() => setShowCreate(false)}
+          onCreated={newPartner => {
+            setPartners(prev => [...prev, newPartner])
+            setShowCreate(false)
+            onSelect(newPartner)
+          }}
+        />
+      )}
     </div>
   )
 }
