@@ -8273,7 +8273,7 @@ app.get('/api/termine/:terminId/partners', authenticateToken, requireTenant, asy
   try {
     const rows = await db.all(`
       SELECT tp.id, tp.termin_id, tp.partner_id, tp.role, tp.sort_order,
-             p.company_name, p.contact_person, p.city, p.email, p.phone
+             p.company_name, p.contact_person, p.city, p.email, p.phone, p.type as partner_type
       FROM termin_partners tp
       JOIN partners p ON p.id = tp.partner_id
       WHERE tp.termin_id = ? AND tp.tenant_id = ?
@@ -8306,7 +8306,7 @@ app.post('/api/termine/:terminId/partners', authenticateToken, requireTenant, re
     `, [req.tenant.id, req.params.terminId, partner_id, role, (maxOrder?.m ?? -1) + 1])
     const row = await db.get(`
       SELECT tp.id, tp.termin_id, tp.partner_id, tp.role, tp.sort_order,
-             p.company_name, p.contact_person, p.city, p.email, p.phone
+             p.company_name, p.contact_person, p.city, p.email, p.phone, p.type as partner_type
       FROM termin_partners tp JOIN partners p ON p.id = tp.partner_id
       WHERE tp.id = ?
     `, [result.lastID])
@@ -8326,7 +8326,7 @@ app.patch('/api/termine/:terminId/partners/:linkId', authenticateToken, requireT
     )
     const row = await db.get(`
       SELECT tp.id, tp.termin_id, tp.partner_id, tp.role, tp.sort_order,
-             p.company_name, p.contact_person, p.city, p.email, p.phone
+             p.company_name, p.contact_person, p.city, p.email, p.phone, p.type as partner_type
       FROM termin_partners tp JOIN partners p ON p.id = tp.partner_id
       WHERE tp.id = ?
     `, [req.params.linkId])

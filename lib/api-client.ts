@@ -3230,6 +3230,7 @@ export interface TerminPartner {
   city: string
   email: string
   phone: string
+  partner_type: string
 }
 
 export async function getTerminPartners(terminId: number): Promise<TerminPartner[]> {
