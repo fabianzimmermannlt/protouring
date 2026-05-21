@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Save, X, ArrowLeft, Download, Upload } from 'lucide-react'
 import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { PartnerDetailContent } from '@/app/modules/partners/PartnerDetail'
 import { useT } from '@/app/lib/i18n/LanguageContext'
@@ -91,13 +93,16 @@ export default function PartnersPage() {
       const updated = (e as CustomEvent<Partner>).detail
       if (updated) setPartners(prev => prev.map(p => p.id === updated.id ? updated : p))
     }
+    const showListHandler = () => setSelectedPartnerId(null)
     window.addEventListener('select-partner', selectHandler)
     window.addEventListener('partner-deleted', deleteHandler)
     window.addEventListener('partner-updated', updateHandler)
+    window.addEventListener('partner-show-list', showListHandler)
     return () => {
       window.removeEventListener('select-partner', selectHandler)
       window.removeEventListener('partner-deleted', deleteHandler)
       window.removeEventListener('partner-updated', updateHandler)
+      window.removeEventListener('partner-show-list', showListHandler)
     }
   }, [])
 
@@ -195,7 +200,25 @@ export default function PartnersPage() {
   if (!isMobile && isL2 && selectedPartnerId) {
     return <PartnerDetailContent partnerId={selectedPartnerId}
       onNotFound={() => { localStorage.removeItem('pt_partners_last_id'); setSelectedPartnerId(null) }}
-      onBack={() => { setSelectedPartnerId(null); localStorage.removeItem('pt_partners_last_id'); getPartners().then(setPartners).catch(() => {}) }} />
+      onBack={() => { setSelectedPartnerId(null); localStorage.removeItem('pt_partners_last_id'); getPartners().then(setPartners).catch(() => {}) }}
+      headerRight={isAdmin ? (
+        <button
+          onClick={async () => {
+            const p = partners.find(x => x.id === selectedPartnerId)
+            if (!confirm(`„${p?.companyName ?? selectedPartnerId}" löschen?`)) return
+            await deletePartner(selectedPartnerId!)
+            setPartners(prev => prev.filter(x => x.id !== selectedPartnerId))
+            setSelectedPartnerId(null)
+          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          title="Partner löschen"
+        >
+          <Trash2 size={14} />
+        </button>
+      ) : undefined}
+    />
   }
 
   return (
@@ -249,9 +272,14 @@ export default function PartnersPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <PartnerTable partners={filtered} onEdit={p => {
+            <PartnerTable partners={filtered} isAdmin={isAdmin} onEdit={p => {
               if (isL2) { localStorage.setItem('pt_partners_last_id', p.id); setSelectedPartnerId(p.id) }
               else { history.pushState(null, '', `/partners/${p.id}`); window.dispatchEvent(new CustomEvent('select-partner', { detail: { id: p.id } })) }
+            }} onDelete={async (id) => {
+              const p = partners.find(x => x.id === id)
+              if (!confirm(`„${p?.companyName ?? id}" löschen?`)) return
+              await deletePartner(id)
+              setPartners(prev => prev.filter(x => x.id !== id))
             }} />
           </div>
         )
@@ -489,18 +517,19 @@ export default function PartnersPage() {
   )
 }
 
-function PartnerTable({ partners, onEdit }: { partners: Partner[]; onEdit: (p: Partner) => void }) {
-  const t = useT()
-  const PARTNER_COLS: [string, keyof Partner][] = [
-    [t('table.companyName'), 'companyName'],
-    [t('table.street'), 'street'],
-    [t('table.postalCode'), 'postalCode'],
-    [t('table.city'), 'city'],
-    [t('table.state'), 'state'],
-    [t('table.country'), 'country'],
-    [t('table.type'), 'type'],
-  ]
+const PARTNER_COLUMNS = [
+  { id: 'name',    label: 'Firma',    defaultVisible: true, alwaysVisible: true },
+  { id: 'type',    label: 'Typ',      defaultVisible: true },
+  { id: 'contact', label: 'Kontakt',  defaultVisible: true },
+  { id: 'street',  label: 'Straße',   defaultVisible: false },
+  { id: 'zip',     label: 'PLZ',      defaultVisible: false },
+  { id: 'city',    label: 'Stadt',    defaultVisible: true },
+  { id: 'state',   label: 'Bundesl.', defaultVisible: false },
+  { id: 'country', label: 'Land',     defaultVisible: false },
+]
 
+function PartnerTable({ partners, onEdit, onDelete, isAdmin }: { partners: Partner[]; onEdit: (p: Partner) => void; onDelete: (id: string) => void; isAdmin: boolean }) {
+  const { isVisible, toggle, columns } = useColumnVisibility('partner-list', PARTNER_COLUMNS)
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     partners as unknown as Record<string, unknown>[],
     'companyName'
@@ -509,26 +538,41 @@ function PartnerTable({ partners, onEdit }: { partners: Partner[]; onEdit: (p: P
     <table className="data-table">
       <thead>
         <tr>
-          {PARTNER_COLS.map(([label, key]) => (
-            <th key={key as string} className="sortable" onClick={() => toggleSort(key as string)}>
-              {label}
-              <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
-                {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-              </span>
-            </th>
-          ))}
+          {isVisible('name')    && <th className="sortable" onClick={() => toggleSort('companyName')}>Firma<span className={`sort-indicator${sortKey === 'companyName' ? ' active' : ''}`}>{sortKey === 'companyName' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('type')    && <th className="sortable" onClick={() => toggleSort('type')}>Typ<span className={`sort-indicator${sortKey === 'type' ? ' active' : ''}`}>{sortKey === 'type' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('contact') && <th className="sortable" onClick={() => toggleSort('contactPerson')}>Kontakt<span className={`sort-indicator${sortKey === 'contactPerson' ? ' active' : ''}`}>{sortKey === 'contactPerson' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('street')  && <th className="sortable" onClick={() => toggleSort('street')}>Straße<span className={`sort-indicator${sortKey === 'street' ? ' active' : ''}`}>{sortKey === 'street' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('zip')     && <th className="sortable" onClick={() => toggleSort('postalCode')}>PLZ<span className={`sort-indicator${sortKey === 'postalCode' ? ' active' : ''}`}>{sortKey === 'postalCode' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('city')    && <th className="sortable" onClick={() => toggleSort('city')}>Stadt<span className={`sort-indicator${sortKey === 'city' ? ' active' : ''}`}>{sortKey === 'city' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('state')   && <th className="sortable" onClick={() => toggleSort('state')}>Bundesland<span className={`sort-indicator${sortKey === 'state' ? ' active' : ''}`}>{sortKey === 'state' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('country') && <th className="sortable" onClick={() => toggleSort('country')}>Land<span className={`sort-indicator${sortKey === 'country' ? ' active' : ''}`}>{sortKey === 'country' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          <th style={{ width: 32, textAlign: 'right' }}>
+            <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+          </th>
         </tr>
       </thead>
       <tbody>
         {(sorted as unknown as Partner[]).map((partner) => (
           <tr key={partner.id} className="clickable" onClick={() => onEdit(partner)}>
-            <td className="font-medium">{partner.companyName}</td>
-            <td>{partner.street}</td>
-            <td>{partner.postalCode}</td>
-            <td>{partner.city}</td>
-            <td>{partner.state}</td>
-            <td>{partner.country}</td>
-            <td>{partner.type}</td>
+            {isVisible('name')    && <td className="font-medium">{partner.companyName}</td>}
+            {isVisible('type')    && <td>{partner.type}</td>}
+            {isVisible('contact') && <td>{partner.contactPerson}</td>}
+            {isVisible('street')  && <td>{partner.street}</td>}
+            {isVisible('zip')     && <td>{partner.postalCode}</td>}
+            {isVisible('city')    && <td>{partner.city}</td>}
+            {isVisible('state')   && <td>{partner.state}</td>}
+            {isVisible('country') && <td>{partner.country}</td>}
+            <td style={{ textAlign: 'right', padding: '0 8px' }} onClick={e => e.stopPropagation()}>
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(partner.id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  title="Löschen"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </td>
           </tr>
         ))}
       </tbody>

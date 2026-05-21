@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { AlertCircle, Save, Loader2, Building2, Clock, Coffee, X, ArrowLeft } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
@@ -39,7 +39,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
   )
 }
 
-export function HotelDetailContent({ hotelId, onNotFound, onBack }: { hotelId: string; onNotFound?: () => void; onBack?: () => void }) {
+export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }: { hotelId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
@@ -138,7 +138,7 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack }: { hotelId: s
         <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? '' : (form.name || hotel?.name || '')}
         </h2>
-        {isDirty && (
+        {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
             <button
@@ -156,7 +156,9 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack }: { hotelId: s
               {t('general.save')}
             </button>
           </div>
-        )}
+        ) : headerRight ? (
+          <div style={{ flexShrink: 0 }}>{headerRight}</div>
+        ) : null}
       </div>
 
       {loadError && (

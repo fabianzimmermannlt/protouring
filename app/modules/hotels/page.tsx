@@ -1,27 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, ArrowLeft, Download, Upload } from 'lucide-react'
-import { getHotels, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
+import { Plus, ArrowLeft, Download, Upload, Trash2 } from 'lucide-react'
+import { getHotels, deleteHotel, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import HotelFormModal from './HotelFormModal'
 import { QuickCreateHotelModal } from '@/app/components/shared/modals/QuickCreateHotelModal'
 import { useSortable } from '@/app/hooks/useSortable'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { HotelDetailContent } from '@/app/modules/hotels/HotelDetail'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
-function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) => void }) {
-  const t = useT()
-  const HOTEL_COLS: [string, keyof Hotel][] = [
-    [t('general.name'), 'name'],
-    [t('table.street'), 'street'],
-    [t('table.postalCode'), 'postalCode'],
-    [t('table.city'), 'city'],
-    [t('table.state'), 'state'],
-    [t('table.country'), 'country'],
-    [t('table.website'), 'website'],
-  ]
+const HOTEL_COLUMNS = [
+  { id: 'name',    label: 'Name',    defaultVisible: true, alwaysVisible: true },
+  { id: 'street',  label: 'Straße',  defaultVisible: false },
+  { id: 'zip',     label: 'PLZ',     defaultVisible: false },
+  { id: 'city',    label: 'Stadt',   defaultVisible: true },
+  { id: 'state',   label: 'Bundesl.',defaultVisible: false },
+  { id: 'country', label: 'Land',    defaultVisible: false },
+  { id: 'website', label: 'Website', defaultVisible: true },
+]
+
+function HotelTable({ hotels, onEdit, onDelete, isAdmin }: { hotels: Hotel[]; onEdit: (h: Hotel) => void; onDelete: (id: string) => void; isAdmin: boolean }) {
+  const { isVisible, toggle, columns } = useColumnVisibility('hotel-list', HOTEL_COLUMNS)
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     hotels as unknown as Record<string, unknown>[],
     'name'
@@ -30,30 +33,28 @@ function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) =>
     <table className="data-table">
       <thead>
         <tr>
-          {HOTEL_COLS.map(([label, key]) => (
-            <th
-              key={key as string}
-              className="sortable"
-              onClick={() => toggleSort(key as string)}
-            >
-              {label}
-              <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
-                {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-              </span>
-            </th>
-          ))}
+          {isVisible('name')    && <th className="sortable" onClick={() => toggleSort('name')}>Name<span className={`sort-indicator${sortKey === 'name' ? ' active' : ''}`}>{sortKey === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('street')  && <th className="sortable" onClick={() => toggleSort('street')}>Straße<span className={`sort-indicator${sortKey === 'street' ? ' active' : ''}`}>{sortKey === 'street' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('zip')     && <th className="sortable" onClick={() => toggleSort('postalCode')}>PLZ<span className={`sort-indicator${sortKey === 'postalCode' ? ' active' : ''}`}>{sortKey === 'postalCode' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('city')    && <th className="sortable" onClick={() => toggleSort('city')}>Stadt<span className={`sort-indicator${sortKey === 'city' ? ' active' : ''}`}>{sortKey === 'city' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('state')   && <th className="sortable" onClick={() => toggleSort('state')}>Bundesland<span className={`sort-indicator${sortKey === 'state' ? ' active' : ''}`}>{sortKey === 'state' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('country') && <th className="sortable" onClick={() => toggleSort('country')}>Land<span className={`sort-indicator${sortKey === 'country' ? ' active' : ''}`}>{sortKey === 'country' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('website') && <th className="sortable" onClick={() => toggleSort('website')}>Website<span className={`sort-indicator${sortKey === 'website' ? ' active' : ''}`}>{sortKey === 'website' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          <th style={{ width: 32, textAlign: 'right' }}>
+            <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+          </th>
         </tr>
       </thead>
       <tbody>
         {(sorted as unknown as Hotel[]).map((hotel) => (
           <tr key={hotel.id} className="clickable" onClick={() => onEdit(hotel)}>
-            <td className="font-medium">{hotel.name}</td>
-            <td>{hotel.street}</td>
-            <td>{hotel.postalCode}</td>
-            <td>{hotel.city}</td>
-            <td>{hotel.state}</td>
-            <td>{hotel.country}</td>
-            <td>
+            {isVisible('name')    && <td className="font-medium">{hotel.name}</td>}
+            {isVisible('street')  && <td>{hotel.street}</td>}
+            {isVisible('zip')     && <td>{hotel.postalCode}</td>}
+            {isVisible('city')    && <td>{hotel.city}</td>}
+            {isVisible('state')   && <td>{hotel.state}</td>}
+            {isVisible('country') && <td>{hotel.country}</td>}
+            {isVisible('website') && <td>
               {hotel.website ? (
                 <a
                   href={hotel.website}
@@ -65,6 +66,17 @@ function HotelTable({ hotels, onEdit }: { hotels: Hotel[]; onEdit: (h: Hotel) =>
                   {hotel.website.replace('https://www.', '').replace('https://', '').split('/')[0]}
                 </a>
               ) : '-'}
+            </td>}
+            <td style={{ textAlign: 'right', padding: '0 8px' }} onClick={e => e.stopPropagation()}>
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(hotel.id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  title="Löschen"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
             </td>
           </tr>
         ))}
@@ -114,13 +126,16 @@ export default function HotelsPage() {
       const updated = (e as CustomEvent<Hotel>).detail
       if (updated) setHotels(prev => prev.map(h => h.id === updated.id ? updated : h))
     }
+    const showListHandler = () => setSelectedHotelId(null)
     window.addEventListener('select-hotel', selectHandler)
     window.addEventListener('hotel-deleted', deleteHandler)
     window.addEventListener('hotel-updated', updateHandler)
+    window.addEventListener('hotel-show-list', showListHandler)
     return () => {
       window.removeEventListener('select-hotel', selectHandler)
       window.removeEventListener('hotel-deleted', deleteHandler)
       window.removeEventListener('hotel-updated', updateHandler)
+      window.removeEventListener('hotel-show-list', showListHandler)
     }
   }, [])
 
@@ -157,7 +172,26 @@ export default function HotelsPage() {
   if (!isMobile && isL2 && selectedHotelId) {
     return <HotelDetailContent hotelId={selectedHotelId}
       onNotFound={() => { localStorage.removeItem('pt_hotels_last_id'); setSelectedHotelId(null) }}
-      onBack={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id'); getHotels().then(setHotels).catch(() => {}) }} />
+      onBack={() => { setSelectedHotelId(null); localStorage.removeItem('pt_hotels_last_id'); getHotels().then(setHotels).catch(() => {}) }}
+      headerRight={isAdmin ? (
+        <button
+          onClick={async () => {
+            const hotel = hotels.find(h => h.id === selectedHotelId)
+            const label = hotel?.name ?? selectedHotelId
+            if (!confirm(`„${label}" wirklich löschen?`)) return
+            await deleteHotel(selectedHotelId!)
+            setHotels(prev => prev.filter(h => h.id !== selectedHotelId))
+            setSelectedHotelId(null)
+          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          title="Hotel löschen"
+        >
+          <Trash2 size={14} />
+        </button>
+      ) : undefined}
+    />
   }
 
   return (
@@ -210,7 +244,7 @@ export default function HotelsPage() {
         </div>
       ) : (
         <div className="data-table-wrapper">
-          <HotelTable hotels={filtered} onEdit={h => {
+          <HotelTable hotels={filtered} isAdmin={isAdmin} onEdit={h => {
             if (isL2) {
               localStorage.setItem('pt_hotels_last_id', h.id)
               setSelectedHotelId(h.id)
@@ -218,6 +252,11 @@ export default function HotelsPage() {
               history.pushState(null, '', `/hotels/${h.id}`)
               window.dispatchEvent(new CustomEvent('select-hotel', { detail: { id: h.id } }))
             }
+          }} onDelete={async (id) => {
+            const h = hotels.find(x => x.id === id)
+            if (!confirm(`„${h?.name ?? id}" löschen?`)) return
+            await deleteHotel(id)
+            setHotels(prev => prev.filter(x => x.id !== id))
           }} />
         </div>
       )}

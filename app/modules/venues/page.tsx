@@ -1,17 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Download, Upload, Loader2, AlertCircle, X, ArrowLeft, Plus } from 'lucide-react'
+import { Download, Upload, Loader2, AlertCircle, X, ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import {
   getVenues,
   createVenue,
+  deleteVenue,
   isAuthenticated,
   isEditorRole,
   getEffectiveRole,
   type Venue,
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { parseCSV, col } from '@/lib/csvParser'
 import { VenueDetailContent } from '@/app/modules/venues/VenueDetail'
@@ -56,11 +59,14 @@ export default function VenuesPage() {
       const updated = (e as CustomEvent<Venue>).detail
       if (updated) setVenues(prev => prev.map(v => v.id === updated.id ? updated : v))
     }
+    const showListHandler = () => setSelectedVenueId(null)
     window.addEventListener('select-venue', handler)
     window.addEventListener('venue-updated', updateHandler)
+    window.addEventListener('venue-show-list', showListHandler)
     return () => {
       window.removeEventListener('select-venue', handler)
       window.removeEventListener('venue-updated', updateHandler)
+      window.removeEventListener('venue-show-list', showListHandler)
     }
   }, [])
 
@@ -159,7 +165,26 @@ export default function VenuesPage() {
 
   if (!isMobile && isL2 && selectedVenueId) {
     return <VenueDetailContent venueId={selectedVenueId}
-      onBack={() => { setSelectedVenueId(null); loadVenues() }} />
+      onBack={() => { setSelectedVenueId(null); loadVenues() }}
+      headerRight={isAdmin ? (
+        <button
+          onClick={async () => {
+            const venue = venues.find(v => v.id === selectedVenueId)
+            const label = venue?.name ?? selectedVenueId
+            if (!confirm(`„${label}" wirklich löschen?`)) return
+            await deleteVenue(selectedVenueId!)
+            setVenues(prev => prev.filter(v => v.id !== selectedVenueId))
+            setSelectedVenueId(null)
+          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          title="Venue löschen"
+        >
+          <Trash2 size={14} />
+        </button>
+      ) : undefined}
+    />
   }
 
   return (
@@ -240,9 +265,14 @@ export default function VenuesPage() {
           </div>
         ) : (
           <div className="data-table-wrapper">
-            <VenueTable venues={filtered} onDetail={id => {
+            <VenueTable venues={filtered} isAdmin={isAdmin} onDetail={id => {
               if (isL2) setSelectedVenueId(id)
               else window.location.href = `/venues/${id}`
+            }} onDelete={async (id) => {
+              const v = venues.find(x => x.id === id)
+              if (!confirm(`„${v?.name ?? id}" löschen?`)) return
+              await deleteVenue(id)
+              setVenues(prev => prev.filter(x => x.id !== id))
             }} />
           </div>
         )
@@ -251,20 +281,23 @@ export default function VenuesPage() {
   )
 }
 
-function VenueTable({ venues, onDetail }: {
+const VENUE_COLUMNS = [
+  { id: 'name',     label: 'Name',     defaultVisible: true, alwaysVisible: true },
+  { id: 'street',   label: 'Straße',   defaultVisible: true },
+  { id: 'zip',      label: 'PLZ',      defaultVisible: false },
+  { id: 'city',     label: 'Stadt',    defaultVisible: true },
+  { id: 'state',    label: 'Bundesl.', defaultVisible: false },
+  { id: 'country',  label: 'Land',     defaultVisible: false },
+  { id: 'capacity', label: 'Kapazität',defaultVisible: true },
+]
+
+function VenueTable({ venues, onDetail, onDelete, isAdmin }: {
   venues: Venue[]
   onDetail: (id: string) => void
+  onDelete: (id: string) => void
+  isAdmin: boolean
 }) {
-  const t = useT()
-  const VENUE_COLS: [string, keyof Venue][] = [
-    [t('general.name'), 'name'],
-    [t('table.street'), 'street'],
-    [t('table.postalCode'), 'postalCode'],
-    [t('table.city'), 'city'],
-    [t('table.state'), 'state'],
-    [t('table.country'), 'country'],
-    [t('table.capacity'), 'capacity'],
-  ]
+  const { isVisible, toggle, columns } = useColumnVisibility('venue-list', VENUE_COLUMNS)
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     venues as unknown as Record<string, unknown>[],
     'name'
@@ -273,26 +306,39 @@ function VenueTable({ venues, onDetail }: {
     <table className="data-table">
       <thead>
         <tr>
-          {VENUE_COLS.map(([label, key]) => (
-            <th key={key as string} className="sortable" onClick={() => toggleSort(key as string)}>
-              {label}
-              <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
-                {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-              </span>
-            </th>
-          ))}
+          {isVisible('name')     && <th className="sortable" onClick={() => toggleSort('name')}>Name<span className={`sort-indicator${sortKey === 'name' ? ' active' : ''}`}>{sortKey === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('street')   && <th className="sortable" onClick={() => toggleSort('street')}>Straße<span className={`sort-indicator${sortKey === 'street' ? ' active' : ''}`}>{sortKey === 'street' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('zip')      && <th className="sortable" onClick={() => toggleSort('postalCode')}>PLZ<span className={`sort-indicator${sortKey === 'postalCode' ? ' active' : ''}`}>{sortKey === 'postalCode' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('city')     && <th className="sortable" onClick={() => toggleSort('city')}>Stadt<span className={`sort-indicator${sortKey === 'city' ? ' active' : ''}`}>{sortKey === 'city' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('state')    && <th className="sortable" onClick={() => toggleSort('state')}>Bundesland<span className={`sort-indicator${sortKey === 'state' ? ' active' : ''}`}>{sortKey === 'state' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('country')  && <th className="sortable" onClick={() => toggleSort('country')}>Land<span className={`sort-indicator${sortKey === 'country' ? ' active' : ''}`}>{sortKey === 'country' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('capacity') && <th className="sortable" onClick={() => toggleSort('capacity')}>Kapazität<span className={`sort-indicator${sortKey === 'capacity' ? ' active' : ''}`}>{sortKey === 'capacity' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          <th style={{ width: 32, textAlign: 'right' }}>
+            <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+          </th>
         </tr>
       </thead>
       <tbody>
         {(sorted as unknown as Venue[]).map((venue) => (
           <tr key={venue.id} className="clickable" onClick={() => onDetail(venue.id)}>
-            <td className="font-medium">{venue.name}</td>
-            <td>{venue.street}</td>
-            <td>{venue.postalCode}</td>
-            <td>{venue.city}</td>
-            <td>{venue.state}</td>
-            <td>{venue.country}</td>
-            <td>{venue.capacity}</td>
+            {isVisible('name')     && <td className="font-medium">{venue.name}</td>}
+            {isVisible('street')   && <td>{venue.street}</td>}
+            {isVisible('zip')      && <td>{venue.postalCode}</td>}
+            {isVisible('city')     && <td>{venue.city}</td>}
+            {isVisible('state')    && <td>{venue.state}</td>}
+            {isVisible('country')  && <td>{venue.country}</td>}
+            {isVisible('capacity') && <td>{venue.capacity}</td>}
+            <td style={{ textAlign: 'right', padding: '0 8px' }} onClick={e => e.stopPropagation()}>
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(venue.id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  title="Löschen"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </td>
           </tr>
         ))}
       </tbody>

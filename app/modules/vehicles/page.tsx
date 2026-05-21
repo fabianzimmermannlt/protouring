@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, ArrowLeft, Download, Upload } from 'lucide-react'
-import { getVehicles, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
+import { Plus, ArrowLeft, Download, Upload, Trash2 } from 'lucide-react'
+import { getVehicles, deleteVehicle, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
 import VehicleFormModal from './VehicleFormModal'
 import { QuickCreateVehicleModal } from '@/app/components/shared/modals/QuickCreateVehicleModal'
 import { useSortable } from '@/app/hooks/useSortable'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
+import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
 import { useT } from '@/app/lib/i18n/LanguageContext'
@@ -52,13 +54,16 @@ export default function VehiclesPage() {
       const updated = (e as CustomEvent<Vehicle>).detail
       if (updated) setVehicles(prev => prev.map(v => v.id === updated.id ? updated : v))
     }
+    const showListHandler = () => setSelectedVehicleId(null)
     window.addEventListener('select-vehicle', selectHandler)
     window.addEventListener('vehicle-deleted', deleteHandler)
     window.addEventListener('vehicle-updated', updateHandler)
+    window.addEventListener('vehicle-show-list', showListHandler)
     return () => {
       window.removeEventListener('select-vehicle', selectHandler)
       window.removeEventListener('vehicle-deleted', deleteHandler)
       window.removeEventListener('vehicle-updated', updateHandler)
+      window.removeEventListener('vehicle-show-list', showListHandler)
     }
   }, [])
 
@@ -93,7 +98,26 @@ export default function VehiclesPage() {
   if (!isMobile && isL2 && selectedVehicleId) {
     return <VehicleDetailContent vehicleId={selectedVehicleId}
       onNotFound={() => { localStorage.removeItem('pt_vehicles_last_id'); setSelectedVehicleId(null) }}
-      onBack={() => { setSelectedVehicleId(null); localStorage.removeItem('pt_vehicles_last_id'); getVehicles().then(setVehicles).catch(() => {}) }} />
+      onBack={() => { setSelectedVehicleId(null); localStorage.removeItem('pt_vehicles_last_id'); getVehicles().then(setVehicles).catch(() => {}) }}
+      headerRight={isAdmin ? (
+        <button
+          onClick={async () => {
+            const vehicle = vehicles.find(v => v.id === selectedVehicleId)
+            const label = vehicle?.designation ?? selectedVehicleId
+            if (!confirm(`„${label}" wirklich löschen?`)) return
+            await deleteVehicle(selectedVehicleId!)
+            setVehicles(prev => prev.filter(v => v.id !== selectedVehicleId))
+            setSelectedVehicleId(null)
+          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+          onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          title="Fahrzeug löschen"
+        >
+          <Trash2 size={14} />
+        </button>
+      ) : undefined}
+    />
   }
 
   return (
@@ -142,9 +166,14 @@ export default function VehiclesPage() {
         </div>
       ) : (
         <div className="data-table-wrapper">
-          <VehicleTable vehicles={filteredVehicles} onEdit={v => {
+          <VehicleTable vehicles={filteredVehicles} isAdmin={isAdmin} onEdit={v => {
             if (isL2) { localStorage.setItem('pt_vehicles_last_id', v.id); setSelectedVehicleId(v.id) }
             else { history.pushState(null, '', `/vehicles/${v.id}`); window.dispatchEvent(new CustomEvent('select-vehicle', { detail: { id: v.id } })) }
+          }} onDelete={async (id) => {
+            const v = vehicles.find(x => x.id === id)
+            if (!confirm(`„${v?.designation ?? id}" löschen?`)) return
+            await deleteVehicle(id)
+            setVehicles(prev => prev.filter(x => x.id !== id))
           }} />
         </div>
       )}
@@ -182,18 +211,19 @@ export default function VehiclesPage() {
   )
 }
 
-function VehicleTable({ vehicles, onEdit }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void }) {
-  const t = useT()
-  const VEHICLE_COLS: [string, keyof Vehicle][] = [
-    [t('table.designation'), 'designation'],
-    [t('table.vehicleType'), 'vehicleType'],
-    [t('table.driver'), 'driver'],
-    [t('table.licensePlate'), 'licensePlate'],
-    [t('table.dimensions'), 'dimensions'],
-    [t('table.powerConnection'), 'powerConnection'],
-    [t('table.seats'), 'seats'],
-    [t('table.sleepingPlaces'), 'sleepingPlaces'],
-  ]
+const VEHICLE_COLUMNS = [
+  { id: 'designation',    label: 'Bezeichnung',  defaultVisible: true, alwaysVisible: true },
+  { id: 'vehicleType',    label: 'Typ',          defaultVisible: true },
+  { id: 'driver',         label: 'Fahrer',        defaultVisible: true },
+  { id: 'licensePlate',   label: 'Kennzeichen',   defaultVisible: true },
+  { id: 'dimensions',     label: 'Abmessungen',   defaultVisible: false },
+  { id: 'powerConnection',label: 'Strom',         defaultVisible: false },
+  { id: 'seats',          label: 'Sitze',         defaultVisible: false },
+  { id: 'sleepingPlaces', label: 'Schlafplätze',  defaultVisible: false },
+]
+
+function VehicleTable({ vehicles, onEdit, onDelete, isAdmin }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void; onDelete: (id: string) => void; isAdmin: boolean }) {
+  const { isVisible, toggle, columns } = useColumnVisibility('vehicle-list', VEHICLE_COLUMNS)
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     vehicles as unknown as Record<string, unknown>[],
     'designation'
@@ -202,27 +232,41 @@ function VehicleTable({ vehicles, onEdit }: { vehicles: Vehicle[]; onEdit: (v: V
     <table className="data-table">
       <thead>
         <tr>
-          {VEHICLE_COLS.map(([label, key]) => (
-            <th key={key as string} className="sortable" onClick={() => toggleSort(key as string)}>
-              {label}
-              <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
-                {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-              </span>
-            </th>
-          ))}
+          {isVisible('designation')     && <th className="sortable" onClick={() => toggleSort('designation')}>Bezeichnung<span className={`sort-indicator${sortKey === 'designation' ? ' active' : ''}`}>{sortKey === 'designation' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('vehicleType')     && <th className="sortable" onClick={() => toggleSort('vehicleType')}>Typ<span className={`sort-indicator${sortKey === 'vehicleType' ? ' active' : ''}`}>{sortKey === 'vehicleType' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('driver')          && <th className="sortable" onClick={() => toggleSort('driver')}>Fahrer<span className={`sort-indicator${sortKey === 'driver' ? ' active' : ''}`}>{sortKey === 'driver' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('licensePlate')    && <th className="sortable" onClick={() => toggleSort('licensePlate')}>Kennzeichen<span className={`sort-indicator${sortKey === 'licensePlate' ? ' active' : ''}`}>{sortKey === 'licensePlate' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('dimensions')      && <th className="sortable" onClick={() => toggleSort('dimensions')}>Abmessungen<span className={`sort-indicator${sortKey === 'dimensions' ? ' active' : ''}`}>{sortKey === 'dimensions' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('powerConnection') && <th className="sortable" onClick={() => toggleSort('powerConnection')}>Strom<span className={`sort-indicator${sortKey === 'powerConnection' ? ' active' : ''}`}>{sortKey === 'powerConnection' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('seats')           && <th className="sortable" onClick={() => toggleSort('seats')}>Sitze<span className={`sort-indicator${sortKey === 'seats' ? ' active' : ''}`}>{sortKey === 'seats' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {isVisible('sleepingPlaces')  && <th className="sortable" onClick={() => toggleSort('sleepingPlaces')}>Schlafplätze<span className={`sort-indicator${sortKey === 'sleepingPlaces' ? ' active' : ''}`}>{sortKey === 'sleepingPlaces' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          <th style={{ width: 32, textAlign: 'right' }}>
+            <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+          </th>
         </tr>
       </thead>
       <tbody>
         {(sorted as unknown as Vehicle[]).map((vehicle) => (
           <tr key={vehicle.id} className="clickable" onClick={() => onEdit(vehicle)}>
-            <td className="font-medium">{vehicle.designation}</td>
-            <td>{vehicle.vehicleType}</td>
-            <td>{vehicle.driver}</td>
-            <td>{vehicle.licensePlate}</td>
-            <td>{vehicle.dimensions}</td>
-            <td>{vehicle.powerConnection}</td>
-            <td>{vehicle.seats}</td>
-            <td>{vehicle.sleepingPlaces}</td>
+            {isVisible('designation')     && <td className="font-medium">{vehicle.designation}</td>}
+            {isVisible('vehicleType')     && <td>{vehicle.vehicleType}</td>}
+            {isVisible('driver')          && <td>{vehicle.driver}</td>}
+            {isVisible('licensePlate')    && <td>{vehicle.licensePlate}</td>}
+            {isVisible('dimensions')      && <td>{vehicle.dimensions}</td>}
+            {isVisible('powerConnection') && <td>{vehicle.powerConnection}</td>}
+            {isVisible('seats')           && <td>{vehicle.seats}</td>}
+            {isVisible('sleepingPlaces')  && <td>{vehicle.sleepingPlaces}</td>}
+            <td style={{ textAlign: 'right', padding: '0 8px' }} onClick={e => e.stopPropagation()}>
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(vehicle.id)}
+                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  title="Löschen"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </td>
           </tr>
         ))}
       </tbody>

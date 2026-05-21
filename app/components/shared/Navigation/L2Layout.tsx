@@ -272,6 +272,10 @@ export function L2Layout({
       // Klick auf aktiven Tab → zurück zur Liste
       if (id === 'events') window.dispatchEvent(new CustomEvent('termine-go-to-list'))
       if (id === 'contacts') window.dispatchEvent(new CustomEvent('contact-show-list'))
+      if (id === 'venues') window.dispatchEvent(new CustomEvent('venue-show-list'))
+      if (id === 'partners') window.dispatchEvent(new CustomEvent('partner-show-list'))
+      if (id === 'hotels') window.dispatchEvent(new CustomEvent('hotel-show-list'))
+      if (id === 'vehicles') window.dispatchEvent(new CustomEvent('vehicle-show-list'))
       onTabChange(id, defaultSub)
       setShowUserMenu(false)
     })
