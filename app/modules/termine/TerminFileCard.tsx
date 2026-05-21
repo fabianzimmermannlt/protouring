@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Upload, File, Trash2, Edit, AlertCircle, X, ChevronDown, ChevronRight, FolderInput } from 'lucide-react'
 import { getAuthToken, getCurrentTenant, getFileCategories } from '@/lib/api-client'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 // ============================================================
 // Kategorien
@@ -289,6 +290,9 @@ export function TerminFileCard({
   terminId: string
   className?: string
 }) {
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
+
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -481,17 +485,25 @@ export function TerminFileCard({
 
               {/* Drop Zone */}
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
-                }`}
+                style={{
+                  border: `2px dashed ${isDragging ? '#3b82f6' : dark ? '#4a4a4a' : '#d1d5db'}`,
+                  borderRadius: '0.5rem',
+                  padding: '2rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'border-color 0.15s, background 0.15s',
+                  background: isDragging
+                    ? dark ? 'rgba(59,130,246,0.1)' : '#eff6ff'
+                    : 'transparent',
+                }}
                 onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={e => { e.preventDefault(); setIsDragging(false); handleUpload(e.dataTransfer.files) }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Dateien hierher ziehen oder klicken</p>
-                <p className="text-xs text-gray-400 mt-1">Max. 50 MB pro Datei</p>
+                <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: dark ? '#6b7280' : '#9ca3af' }} />
+                <p className="text-sm" style={{ color: dark ? '#a0a0a0' : '#4b5563' }}>Dateien hierher ziehen oder klicken</p>
+                <p className="text-xs mt-1" style={{ color: dark ? '#6b7280' : '#9ca3af' }}>Max. 50 MB pro Datei</p>
                 <input
                   ref={fileInputRef}
                   type="file"
