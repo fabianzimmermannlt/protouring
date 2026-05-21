@@ -1488,7 +1488,7 @@ export function TerminDetail2({
       )}
 
       {/* Zeile 1: Veranstaltung (2/3) + Chat (1/3) */}
-      <div className="grid grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-3 gap-4 items-stretch">
         <div className="col-span-2">
           <VeranstaltungCard
             key={termin.id}

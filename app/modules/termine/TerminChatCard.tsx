@@ -36,7 +36,7 @@ export default function TerminChatCard({ terminId, hideHeader }: { terminId: num
   }
 
   return (
-    <div className="pt-card flex flex-col" style={{ height: '400px' }}>
+    <div className="pt-card flex flex-col" style={{ height: '100%' }}>
       {!hideHeader && <div className="pt-card-header">
         <span className="pt-card-title">Chat</span>
         {isAdmin && !showDeleteConfirm && (
