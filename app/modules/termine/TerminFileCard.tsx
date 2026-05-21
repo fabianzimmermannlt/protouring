@@ -292,7 +292,7 @@ export function TerminFileCard({
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [activeCategories, setActiveCategories] = useState<string[]>([...TERMIN_FILE_CATEGORIES])
+  const [activeCategories, setActiveCategories] = useState<string[]>([...TERMIN_FILE_CATEGORIES].sort((a, b) => a.localeCompare(b, 'de')))
 
   // Upload-Modal
   const [showModal, setShowModal] = useState(false)
@@ -309,7 +309,7 @@ export function TerminFileCard({
   useEffect(() => {
     getFileCategories()
       .then(cats => {
-        const active = cats.filter(c => c.visible === 1).map(c => c.name)
+        const active = cats.filter(c => c.visible === 1).map(c => c.name).sort((a, b) => a.localeCompare(b, 'de'))
         if (active.length > 0) {
           setActiveCategories(active)
           setSelectedCategory(active[0])
@@ -396,7 +396,7 @@ export function TerminFileCard({
     } catch { alert('Datei konnte nicht geöffnet werden') }
   }
 
-  const usedCategories = Object.keys(byCategory)
+  const usedCategories = Object.keys(byCategory).sort((a, b) => a.localeCompare(b, 'de'))
 
   return (
     <>
