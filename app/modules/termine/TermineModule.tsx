@@ -1119,15 +1119,14 @@ function TerminDetailHeader({
     { id: 'details2',       label: 'Details' },
     { id: 'venue',          label: 'Venue' },
     { id: 'partner',        label: 'Partner' },
+    { id: 'advancing',      label: 'Advancing' },
+    { id: 'schedule',       label: 'Schedule' },
     { id: 'travelparty',    label: 'Reisegruppe' },
     { id: 'travel',         label: 'Travel' },
-    { id: 'schedule',       label: 'Schedule' },
     { id: 'hospitality',    label: 'Hospitality' },
-    { id: 'advancing',      label: 'Advancing' },
-    { id: 'agreements',     label: 'Agreements' },
     { id: 'briefing',       label: 'Briefing' },
-    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
     { id: 'guestlist',      label: 'Gästeliste' },
+    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
   ]
 
   const changeView = (view: string) => {
@@ -1901,8 +1900,6 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
           <AdvancingView terminId={selectedTermin.id} isAdmin={isAdmin} />
         ) : selectedView === 'briefing' ? (
           <BriefingView terminId={selectedTermin.id} isAdmin={isAdmin} />
-        ) : selectedView === 'agreements' ? (
-          <AgreementsView terminId={selectedTermin.id} isAdmin={isAdmin} />
         ) : isAdvancingTab || selectedView === 'details2' ? (
           isMobile ? (
             <TerminDetailMobile termin={selectedTermin} termine={sortedTermine} isAdmin={isEditor} canSeeFiles={canSeeFiles}
