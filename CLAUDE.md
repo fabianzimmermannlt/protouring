@@ -2,7 +2,7 @@
 
 ## Second Brain
 Liegt im Obsidian-Vault – dort ist der vollständige Projektkontext:
-`~/Hafen Studios Dropbox/Fabian Zimmermann/Obsidian/Vault/Vault/brain/`
+`~/Hafen Studios Dropbox/Fabian Zimmermann/Obsidian/Vault/Vault/04 Projects/ProTouring/`
 
 Vor jeder Session lesen: `_INDEX.md` → Einstieg, aktueller Stand, letzte Commits.
 
