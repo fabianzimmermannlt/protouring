@@ -227,8 +227,8 @@ body {
 
 .modal-container {
   background: #fff;
-  border-radius: 0.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 0.875rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
   width: 100%;
   max-height: 90vh;
   overflow: hidden;
@@ -237,20 +237,21 @@ body {
 }
 
 .modal-header {
-  background: #1e1e1e;
-  color: #fff;
-  padding: 1rem 1.5rem;
+  background: #fff;
+  color: #111827;
+  padding: 1.125rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-title {
-  font-size: 1.125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 
 .modal-body {
@@ -1563,14 +1564,14 @@ html.dark .data-table thead th.sortable:hover { color: #a8d0fd; background: #1a4
 /* Badges — bleiben bunt, passen gut auf dark */
 
 /* Modal */
-html.dark .modal-container { background: #1e1e1e; }
-html.dark .modal-header { background: #0a0a0a; }
-html.dark .modal-footer { background: #252526; border-color: #3c3c3c; }
-html.dark .modal-body { background: #1e1e1e; }
+html.dark .modal-container { background: #252526; }
+html.dark .modal-header { background: #252526; color: #e6edf3; border-color: #3c3c3c; }
+html.dark .modal-footer { background: #1e1e1e; border-color: #3c3c3c; }
+html.dark .modal-body { background: #252526; }
 
 @media (max-width: 767px) {
   html.dark .modal-header {
-    background: #1e1e1e;
+    background: #252526;
     color: #e6edf3;
     border-color: #3c3c3c;
   }
