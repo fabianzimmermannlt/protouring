@@ -1410,10 +1410,18 @@ body {
   gap: 0.75rem;
 }
 
+.pt-leg-grid-2 > * {
+  min-width: 0;
+}
+
 .pt-leg-grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 0.75rem;
+}
+
+.pt-leg-grid-3 > * {
+  min-width: 0;
 }
 
 /* ── Custom Scrollbars ───────────────────────────────────────────────────────
