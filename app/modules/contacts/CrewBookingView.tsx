@@ -205,10 +205,10 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   </th>
                 </tr>
                 <tr>
-                  <th style={{ ...TH, width: '18%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.date')}</th>
-                  <th style={{ ...TH, width: '34%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.title')}</th>
-                  <th style={{ ...TH, width: '28%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('appointments.card.venue')}</th>
-                  <th style={{ ...TH, width: '20%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.city')}</th>
+                  <th style={{ ...TH, width: 82, textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.date')}</th>
+                  <th style={{ ...TH, textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.title')}</th>
+                  <th style={{ ...TH, textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('appointments.card.venue')}</th>
+                  <th style={{ ...TH, width: 80, textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.city')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -219,7 +219,12 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   return (
                     <tr key={x.id} onMouseEnter={() => setHoveredRow(i)} onMouseLeave={() => setHoveredRow(null)}>
                       <td style={{ ...TD, color: C.textSec }}>
-                        {new Date(x.date + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                        {(() => {
+                          const d = new Date(x.date + 'T00:00:00')
+                          const days = ['So','Mo','Di','Mi','Do','Fr','Sa']
+                          const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                          return <><span style={{ color: C.textMuted, marginRight: 4 }}>{days[d.getDay()]}</span>{dateStr}</>
+                        })()}
                       </td>
                       <td style={{ ...TD, fontWeight: 500, color: C.textPri }} title={x.title || ''}>
                         {x.title || <span style={{ color: C.textMuted, fontStyle: 'italic', fontWeight: 400 }}>–</span>}
@@ -235,7 +240,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
 
           {/* ── Rechte Tabelle: Crew (50%, scrollt horizontal) ── */}
           <div style={{ width: '50%', overflowX: 'auto', flexShrink: 0 }}>
-            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13, minWidth: '100%' }}>
+            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
                   {crew.length > 0 ? (
