@@ -83,14 +83,14 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '7px 12px', fontSize: 13,
     background: inputBg, border: `1px solid ${inputBorder}`,
-    borderRadius: 4, color: inputColor, outline: 'none', boxSizing: 'border-box',
+    borderRadius: 0, color: inputColor, outline: 'none', boxSizing: 'border-box',
   }
 
   const name = [member.firstName, member.lastName].filter(Boolean).join(' ')
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-      <div style={{ background: bg, borderRadius: 6, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: 420, border: `1px solid ${border}` }}>
+      <div style={{ background: bg, borderRadius: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: 420, border: `1px solid ${border}` }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${border}` }}>
@@ -105,7 +105,7 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
         {/* Body */}
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {error && (
-            <div style={{ fontSize: 12, color: '#f87171', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 4, padding: '8px 12px' }}>
+            <div style={{ fontSize: 12, color: '#f87171', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, padding: '8px 12px' }}>
               {error}
             </div>
           )}
@@ -153,7 +153,7 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
           <button
             onClick={handleDelete}
             disabled={deleting}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 13, fontWeight: 500, background: dark ? '#3d1f1f' : '#fef2f2', color: '#ef4444', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 13, fontWeight: 500, background: dark ? '#3d1f1f' : '#fef2f2', color: '#ef4444', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}
           >
             {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
             Entfernen
@@ -161,14 +161,14 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={onClose}
-              style={{ padding: '7px 14px', fontSize: 13, color: labelColor, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 4 }}
+              style={{ padding: '7px 14px', fontSize: 13, color: labelColor, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 0}}
             >
               Abbrechen
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 13, fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 13, fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               Speichern

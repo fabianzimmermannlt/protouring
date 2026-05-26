@@ -41,7 +41,7 @@ function AvailIcon({ status }: { status: 'available' | 'maybe' | 'unavailable' |
   return (
     <span title={cfg.label} style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      width: 16, height: 16, borderRadius: '50%',
+      width: 16, height: 16, borderRadius: 0,
       background: cfg.color, color: status ? 'white' : '#888',
       fontSize: 9, fontWeight: 700, flexShrink: 0,
     }}>{cfg.symbol}</span>
@@ -64,7 +64,7 @@ function BookedToggle({ status, onChange, disabled }: {
           <button key={String(btn.value)} onClick={() => !disabled && onChange(btn.value)}
             disabled={disabled} title={disabled ? '' : btn.title}
             style={{
-              width: 20, height: 20, borderRadius: '50%',
+              width: 20, height: 20, borderRadius: 0,
               background: on ? btn.active : '#2e2e2e',
               color: on ? 'white' : '#555',
               fontSize: 10, fontWeight: 700,
@@ -192,7 +192,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
       {termine.length === 0 ? (
         <p style={{ fontSize: 13, color: C.textSec, fontStyle: 'italic', padding: '16px 0' }}>{t('appointments.empty')}</p>
       ) : (
-        <div style={{ display: 'flex', width: 'fit-content', maxWidth: '100%', border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', width: 'fit-content', maxWidth: '100%', border: `1px solid ${C.border}`, borderRadius: 0, overflow: 'hidden' }}>
 
           {/* ── Linke Tabelle: Termine ── */}
           <div style={{ flexShrink: 0, borderRight: `2px solid ${C.borderSep}` }}>
@@ -281,7 +281,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                           <React.Fragment key={c.id}>
                             <td style={{ width: 40, height: 32, background: bg, borderBottom: `1px solid ${C.border}`, borderLeft: ci > 0 ? `1px solid ${C.border}` : undefined, textAlign: 'center', padding: '0 4px' }}>
                               {c.contactType === 'guest'
-                                ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#22c55e', color: 'white', fontSize: 8, fontWeight: 700 }} title={t('contacts.tooltip.manualNoLogin')}>M</span>
+                                ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: 0, background: '#22c55e', color: 'white', fontSize: 8, fontWeight: 700 }} title={t('contacts.tooltip.manualNoLogin')}>M</span>
                                 : <AvailIcon status={getAvail(x, c.userId ?? null)} />}
                             </td>
                             <td style={{ width: 88, height: 32, background: bg, borderBottom: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, textAlign: 'center', padding: '0 4px' }}>
@@ -313,7 +313,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
           const cfg = AVAIL_CFG[s]
           return (
             <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: cfg.color, color: s === 'null' ? '#888' : 'white', fontSize: 8, fontWeight: 700 }}>{cfg.symbol}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: 0, background: cfg.color, color: s === 'null' ? '#888' : 'white', fontSize: 8, fontWeight: 700 }}>{cfg.symbol}</span>
               <span style={{ color: C.textMuted }}>{cfg.label}</span>
             </span>
           )
@@ -325,7 +325,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
           { color: '#2e2e2e', symbol: '–', label: 'offen',    tc: '#555', border: '1px solid #3a3a3a' },
         ].map(b => (
           <span key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: b.color, color: b.tc, fontSize: 8, fontWeight: 700, border: (b as any).border }}>{b.symbol}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: 0, background: b.color, color: b.tc, fontSize: 8, fontWeight: 700, border: (b as any).border }}>{b.symbol}</span>
             <span style={{ color: C.textMuted }}>{b.label}</span>
           </span>
         ))}

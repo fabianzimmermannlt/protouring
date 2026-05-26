@@ -252,7 +252,7 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
             <span style={{
               position: 'absolute', left: '50%', transform: 'translateX(-50%)',
               fontSize: 10, fontWeight: 700, background: '#f97316', color: '#fff',
-              padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.06em',
+              padding: '2px 8px', borderRadius: 0, textTransform: 'uppercase', letterSpacing: '0.06em',
               whiteSpace: 'nowrap', pointerEvents: 'none',
             }}>
               Noch nicht final
@@ -285,7 +285,7 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
       {menuOpen && menuRect && createPortal(
         <div ref={menuRef} style={{
           position: 'fixed', top: menuRect.bottom + 4, right: window.innerWidth - menuRect.right,
-          background: dropBg, border: `1px solid ${dropBorder}`, borderRadius: 8,
+          background: dropBg, border: `1px solid ${dropBorder}`, borderRadius: 0,
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)', zIndex: 9999, minWidth: 190, padding: '4px 0',
         }}>
           {menuItems.map(item => (

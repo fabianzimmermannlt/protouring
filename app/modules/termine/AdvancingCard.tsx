@@ -63,7 +63,7 @@ function fmtDate(dt: string) {
 function EntryBadge({ type }: { type: EntryType }) {
   const c = typeCfg(type)
   return (
-    <span style={{ background: c.bg, color: c.color, fontSize: '0.6rem', fontWeight: 700, padding: '0.1rem 0.35rem', borderRadius: '0.2rem', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+    <span style={{ background: c.bg, color: c.color, fontSize: '0.6rem', fontWeight: 700, padding: '0.1rem 0.35rem', borderRadius: 0, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
       {c.label.toUpperCase()}
     </span>
   )

@@ -98,7 +98,7 @@ function BandBlock({
   const renderCard = (m: TravelPartyMember, isExcluded: boolean) => (
     <div key={m.id} style={{
       border: `1px solid ${isExcluded ? (dark ? '#3c3c3c' : '#e5e7eb') : (dark ? '#1e3a5f' : '#bfdbfe')}`,
-      borderRadius: '0.75rem', padding: '0.75rem 1rem',
+      borderRadius: 0, padding: '0.75rem 1rem',
       display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
       background: isExcluded ? (dark ? '#2a2a2a' : '#f9fafb') : (dark ? '#0f2744' : '#eff6ff'),
       opacity: isExcluded ? 0.6 : 1,
@@ -334,7 +334,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 style={{
                   background: dark ? '#2d2d2d' : '#ffffff',
                   border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
-                  borderRadius: '0.75rem', padding: '0.75rem 1rem',
+                  borderRadius: 0, padding: '0.75rem 1rem',
                   display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
                   cursor: isAdmin ? 'pointer' : 'default',
                 }}
@@ -396,14 +396,14 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
               style={{
                 position: 'relative',
                 background: dark ? '#2d2d2d' : '#ffffff',
-                borderRadius: '1rem 1rem 0 0',
+                borderRadius: 0,
                 padding: '1rem 1.25rem 2rem',
                 boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
               }}
               onClick={e => e.stopPropagation()}
             >
               {/* Handle */}
-              <div style={{ width: '2.5rem', height: '4px', background: dark ? '#555' : '#e5e7eb', borderRadius: '999px', margin: '0 auto 1rem' }} />
+              <div style={{ width: '2.5rem', height: '4px', background: dark ? '#555' : '#e5e7eb', borderRadius: 0, margin: '0 auto 1rem' }} />
               <p style={{ fontSize: '0.875rem', fontWeight: 600, color: dark ? '#e0e0e0' : '#111827', marginBottom: '1rem' }}>
                 {editingMember.firstName} {editingMember.lastName}
               </p>
@@ -416,7 +416,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                   <div key={field} style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', color: dark ? '#9ca3af' : '#9ca3af', marginBottom: '0.25rem' }}>Funktion {i + 1}</label>
                     <select
-                      style={{ width: '100%', border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? '#e0e0e0' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
+                      style={{ width: '100%', border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`, borderRadius: 0, padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? '#e0e0e0' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
                       value={editRoles[field]}
                       onChange={e => setEditRoles(prev => ({ ...prev, [field]: e.target.value }))}
                     >

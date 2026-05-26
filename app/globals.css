@@ -6,7 +6,7 @@
    Design Tokens – Single Source of Truth
    ============================================================ */
 :root {
-  --card-radius: 0.25rem; /* Kachel-Rundung überall */
+  --card-radius: 0; /* Kachel-Rundung überall */
 }
 
 body {
@@ -44,7 +44,7 @@ body {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 0;
   font-size: 0.875rem;
   color: #111827;
   outline: none;
@@ -71,7 +71,7 @@ body {
   align-self: flex-start;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -106,7 +106,7 @@ body {
 .data-table-wrapper {
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: var(--card-radius);
+  border-radius: 0;
   overflow: hidden;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
   overflow-x: auto;
@@ -199,7 +199,7 @@ body {
 .badge {
   display: inline-block;
   padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
+  border-radius: 0;
   font-size: 0.6875rem;
   font-weight: 500;
   white-space: nowrap;
@@ -227,7 +227,7 @@ body {
 
 .modal-container {
   background: #fff;
-  border-radius: 0.875rem;
+  border-radius: 0;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
   width: 100%;
   max-height: 90vh;
@@ -278,7 +278,7 @@ body {
   }
 
   .modal-container {
-    border-radius: 1rem 1rem 0 0;
+    border-radius: 0;
     max-height: 92dvh;
     box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
   }
@@ -311,7 +311,7 @@ body {
   width: 100%;
   padding: 0.25rem 0.5rem;
   border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
+  border-radius: 0;
   font-size: 0.875rem;
   outline: none;
   transition: box-shadow 0.1s ease;
@@ -354,7 +354,7 @@ body {
 /* Äußere Kachel */
 .pt-card {
   background: #fff;
-  border-radius: var(--card-radius);
+  border-radius: 0;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
   overflow: hidden;
@@ -390,7 +390,7 @@ body {
 /* Gestrichelter "Neu"-Button */
 .pt-card-new {
   width: 100%;
-  border-radius: var(--card-radius);
+  border-radius: 0;
   border: 2px dashed #e5e7eb;
   background: #f9fafb;
   cursor: pointer;
@@ -437,7 +437,7 @@ body {
   .pt-datumzeile-btn {
     padding: 0.4rem 0.6rem;
     background: #f3f4f6;
-    border-radius: 0.5rem;
+    border-radius: 0;
     justify-content: center;
   }
   .pt-datumzeile-center-label {
@@ -524,7 +524,7 @@ body {
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   cursor: pointer;
-  border-radius: 4px 4px 0 0;
+  border-radius: 0;
   transition: color 0.12s, background 0.12s;
   white-space: nowrap;
 }
@@ -633,7 +633,7 @@ body {
 /* Inline Funktion-Dropdown in Reisegruppe-Tabelle */
 .pt-travel-role-select {
   border: 1px solid #e5e7eb;
-  border-radius: 0.375rem;
+  border-radius: 0;
   padding: 0.2rem 0.4rem;
   font-size: 0.8rem;
   color: #3c3c3c;
@@ -663,7 +663,7 @@ body {
   padding: 0.55rem 0.8rem;
   font-size: 0.875rem;
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: 0;
   outline: none;
   margin-bottom: 0.75rem;
 }
@@ -674,7 +674,7 @@ body {
   max-height: 50vh;
   overflow-y: auto;
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: 0;
 }
 
 .pt-picker-row {
@@ -713,7 +713,7 @@ body {
   color: #fff;
   background: #2563eb;
   border: none;
-  border-radius: 0.35rem;
+  border-radius: 0;
   cursor: pointer;
 }
 .pt-picker-add-btn:hover { background: #5b9cf8; }
@@ -830,7 +830,7 @@ body {
 /* Einzelner Button */
 .pt-subnav-btn {
   padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
+  border-radius: 0;
   font-size: 0.75rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -867,7 +867,7 @@ body {
 
 .pt-chip {
   padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
+  border-radius: 0;
   font-size: 0.75rem;
   font-weight: 500;
   color: #4b5563;
@@ -892,7 +892,7 @@ body {
 
 .pt-chat-bubble {
   padding: 0.375rem 0.625rem;
-  border-radius: 1rem;
+  border-radius: 0;
   font-size: 0.8125rem;     /* 13px */
   line-height: 1.4;
   white-space: pre-wrap;
@@ -968,7 +968,7 @@ body {
 .pt-fn-group {
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 0.375rem;
+  border-radius: 0;
   padding: 1rem 1.25rem;
 }
 
@@ -1027,7 +1027,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.3rem 0.75rem;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
@@ -1060,7 +1060,7 @@ body {
   padding: 0.1rem 0.45rem;
   font-size: 0.65rem;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: 0;
   background: #f3f4f6;
   color: #6b7280;
   border: 1px solid #e5e7eb;
@@ -1092,7 +1092,7 @@ body {
 .pt-leg-card {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: var(--card-radius);
+  border-radius: 0;
   padding: 0.65rem 0.9rem;
   margin-bottom: 0.4rem;
   cursor: pointer;
@@ -1170,7 +1170,7 @@ body {
   gap: 0.1rem;
   padding: 0.3rem 0.5rem;
   background: #f3f4f6;
-  border-radius: 4px;
+  border-radius: 0;
   border-left: 2px solid #d1d5db;
 }
 
@@ -1198,7 +1198,7 @@ body {
 .pt-hotel-modal-room {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0.75rem;
 }
 
@@ -1216,7 +1216,7 @@ body {
   justify-content: center;
   gap: 0.35rem;
   padding: 0.45rem 0.5rem;
-  border-radius: 0.375rem;
+  border-radius: 0;
   border: 1px solid #d1d5db;
   background: #f9fafb;
   color: #6b7280;
@@ -1240,7 +1240,7 @@ body {
 /* Person picker in modal */
 .pt-leg-person-picker {
   border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
+  border-radius: 0;
   max-height: 14rem;
   overflow-y: auto;
   background: #fff;
@@ -1275,7 +1275,7 @@ body {
 .pt-leg-person-picker-check {
   width: 1rem;
   height: 1rem;
-  border-radius: 0.25rem;
+  border-radius: 0;
   border: 1px solid #d1d5db;
   background: #fff;
   display: flex;
@@ -1322,13 +1322,13 @@ body {
   flex: 1;
   height: 6px;
   background: #e5e7eb;
-  border-radius: 999px;
+  border-radius: 0;
   overflow: hidden;
 }
 
 .pt-leg-seat-bar-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: 0;
   background: #2563eb;
   transition: width 0.2s;
 }
@@ -1381,7 +1381,7 @@ body {
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem 0.55rem;
-  border-radius: 0.375rem;
+  border-radius: 0;
   border: 1px solid #d1d5db;
   background: #f9fafb;
   color: #3c3c3c;
@@ -1431,7 +1431,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background-color: #d1d5db; /* gray-300 — dezent auf weißem BG */
-  border-radius: 9999px;
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
 
@@ -1442,7 +1442,7 @@ body {
 .scrollbar-dark::-webkit-scrollbar-track { background: #2d2d2d; } /* gray-800 */
 .scrollbar-dark::-webkit-scrollbar-thumb {
   background-color: #4b5563; /* gray-600 */
-  border-radius: 9999px;
+  border-radius: 0;
 }
 .scrollbar-dark::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }
 
@@ -1453,7 +1453,7 @@ body {
 .scrollbar-light::-webkit-scrollbar-track { background: transparent; }
 .scrollbar-light::-webkit-scrollbar-thumb {
   background-color: #d1d5db; /* gray-300 */
-  border-radius: 9999px;
+  border-radius: 0;
 }
 .scrollbar-light::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
 
@@ -1604,7 +1604,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   background: #2d2d2d !important;
   border-color: #3c3c3c !important;
   box-shadow: none !important;
-  border-radius: var(--card-radius) !important;
+  border-radius: 0;
 }
 .l2-content .pt-card-header {
   background: #383838 !important;
@@ -1688,7 +1688,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   background: #2d2d2d !important;
   border-color: #3c3c3c !important;
   box-shadow: none !important;
-  border-radius: var(--card-radius) !important;
+  border-radius: 0;
 }
 .l2-content .data-table thead tr {
   background: #4a4a4a !important;
@@ -1720,7 +1720,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   background: #2d2d2d;
   border-color: #444;
   color: #e5e7eb;
-  border-radius: 4px;
+  border-radius: 0;
   margin-bottom: 0;
   height: 30px;
   padding-top: 0;
@@ -1738,7 +1738,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 }
 .l2-content .btn-primary,
 .l2-content .btn-secondary {
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* QuickCreate Modal — dark input fields via CSS vars */
@@ -1748,7 +1748,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   color: var(--qf-input-color, #111827);
   width: 100%;
   padding: 8px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   font-size: 13px;
   outline: none;
 }
@@ -1809,7 +1809,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   border: none !important;
   border-bottom: 1px solid #555 !important;
   background: transparent !important;
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 .l2-content .detail-input:focus,
 .l2-content input.detail-input:focus,
@@ -1872,7 +1872,7 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   background-color: #60a5fa !important;
   color: #0f172a !important;
   font-weight: 500;
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 .pt-nav-active svg {
   color: #0f172a !important;
@@ -2029,3 +2029,10 @@ html.dark ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
 
 /* Rich content */
 html.dark .rich-content hr { border-color: #3c3c3c; }
+
+/* ============================================================
+   Global: Keine runden Ecken
+   ============================================================ */
+*, *::before, *::after {
+  border-radius: 0 !important;
+}

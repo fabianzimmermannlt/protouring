@@ -487,7 +487,7 @@ export function TerminFileCard({
               <div
                 style={{
                   border: `2px dashed ${isDragging ? '#3b82f6' : dark ? '#4a4a4a' : '#d1d5db'}`,
-                  borderRadius: '0.5rem',
+                  borderRadius: 0,
                   padding: '2rem',
                   textAlign: 'center',
                   cursor: 'pointer',

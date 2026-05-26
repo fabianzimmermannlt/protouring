@@ -428,7 +428,7 @@ function TodoRow({ todo, canEdit, toggling, onToggle, onEdit }: {
         <div className="flex items-center gap-1.5">
           {/* Prioritäts-Dot */}
           <span
-            style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_COLOR[todo.priority], flexShrink: 0 }}
+            style={{ width: 6, height: 6, borderRadius: 0, background: PRIORITY_COLOR[todo.priority], flexShrink: 0 }}
             title={PRIORITY_LABEL[todo.priority]}
           />
           <span className={`text-sm text-gray-800 ${isDone ? 'line-through' : ''}`}>

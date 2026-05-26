@@ -117,7 +117,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
           position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 100,
           background: dark ? '#1e1e1e' : '#fff',
           border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
-          borderRadius: '6px',
+          borderRadius: 0,
           boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.1)',
         }}>
           {/* Inline-Schnellerfassung */}
@@ -138,7 +138,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                   style={{
                     width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.8rem',
                     border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
-                    borderRadius: '4px', outline: 'none',
+                    borderRadius: 0, outline: 'none',
                     background: dark ? '#2d2d2d' : '#fff',
                     color: dark ? '#e0e0e0' : '#111827',
                   }}

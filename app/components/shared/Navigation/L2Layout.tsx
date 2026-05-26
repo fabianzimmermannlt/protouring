@@ -632,16 +632,16 @@ export function L2Layout({
 
       {dirtyDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#2a2a2a', borderRadius: '8px', padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+          <div style={{ background: '#2a2a2a', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <h3 style={{ color: '#e0e0e0', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
             <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button onClick={() => setDirtyDialog(null)}
-                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
                 Abbrechen
               </button>
               <button onClick={() => { setDirtyDialog(null); dirtyDialog.onProceed() }}
-                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
                 Verwerfen
               </button>
               <button onClick={async () => {
@@ -650,7 +650,7 @@ export function L2Layout({
                 setDirtyDialog(null)
                 dirtyDialog.onProceed()
               }}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}>
                 Speichern
               </button>
             </div>

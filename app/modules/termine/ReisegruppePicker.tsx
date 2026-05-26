@@ -94,7 +94,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-      <div style={{ background: bg, borderRadius: 6, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: 560, border: `1px solid ${border}`, display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
+      <div style={{ background: bg, borderRadius: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: 560, border: `1px solid ${border}`, display: 'flex', flexDirection: 'column', maxHeight: '85vh' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
@@ -112,7 +112,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
             placeholder="Suche: Name, Funktion, Stadt …"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '7px 12px', fontSize: 13, background: inputBg, border: `1px solid ${inputBorder}`, borderRadius: 4, color: inputColor, outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '7px 12px', fontSize: 13, background: inputBg, border: `1px solid ${inputBorder}`, borderRadius: 0, color: inputColor, outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
 
@@ -145,7 +145,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
                     <div style={{ fontSize: 13, fontWeight: 500, color: namColor, display: 'flex', alignItems: 'center', gap: 6 }}>
                       {name}
                       {c.contactType === 'guest' && (
-                        <span style={{ fontSize: 10, fontWeight: 600, background: '#dbeafe', color: '#1d4ed8', padding: '1px 5px', borderRadius: 3 }}>Gast</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, background: '#dbeafe', color: '#1d4ed8', padding: '1px 5px', borderRadius: 0}}>Gast</span>
                       )}
                     </div>
                     {(roles || c.residence) && (
@@ -165,7 +165,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
                         fontSize: 12, fontWeight: 500, background: '#3b82f6', color: '#fff',
-                        border: 'none', borderRadius: 4, cursor: adding === c.id ? 'not-allowed' : 'pointer',
+                        border: 'none', borderRadius: 0, cursor: adding === c.id ? 'not-allowed' : 'pointer',
                         opacity: adding === c.id ? 0.6 : 1, flexShrink: 0,
                       }}
                     >
@@ -183,7 +183,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${border}`, flexShrink: 0 }}>
           <button
             onClick={onClose}
-            style={{ padding: '7px 16px', fontSize: 13, fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '7px 16px', fontSize: 13, fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}
           >
             Fertig
           </button>

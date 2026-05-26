@@ -471,10 +471,10 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <div className="flex items-center gap-2 mb-1">
                   {isEditor && (
                     <>
-                      <button onClick={openAddModal} className="btn btn-primary flex-shrink-0" style={{ borderRadius: '4px' }}>
+                      <button onClick={openAddModal} className="btn btn-primary flex-shrink-0" style={{ borderRadius: 0}}>
                         <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                       </button>
-                      <button onClick={() => setShowGastModal(true)} className="btn btn-ghost flex-shrink-0" title={t('contacts.action.createManual')} style={{ borderRadius: '4px' }}>
+                      <button onClick={() => setShowGastModal(true)} className="btn btn-ghost flex-shrink-0" title={t('contacts.action.createManual')} style={{ borderRadius: 0}}>
                         <Plus className="w-4 h-4" />
                       </button>
                     </>
@@ -485,12 +485,12 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="search-input l2-search"
-                    style={{ marginBottom: 0, borderRadius: '4px' }}
+                    style={{ marginBottom: 0, borderRadius: 0}}
                   />
-                  <button onClick={handleCSVExport} className="btn btn-ghost flex-shrink-0" style={{ borderRadius: '4px' }} title="CSV Export">
+                  <button onClick={handleCSVExport} className="btn btn-ghost flex-shrink-0" style={{ borderRadius: 0}} title="CSV Export">
                     <Download className="w-4 h-4" />
                   </button>
-                  <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{ borderRadius: '4px' }} title="CSV Import">
+                  <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{ borderRadius: 0}} title="CSV Import">
                     <Upload className="w-4 h-4" />
                     <input type="file" accept=".csv" onChange={handleCSVImport} className="hidden" />
                   </label>
@@ -560,7 +560,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                             {contact.firstName} {contact.lastName}
                           </span>
                           {contact.contactType === 'guest' && (
-                            <span style={{ fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.45)', padding: '1px 6px', borderRadius: '4px', fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{t('contacts.badge.manual')}</span>
+                            <span style={{ fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.45)', padding: '1px 6px', borderRadius: 0, fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{t('contacts.badge.manual')}</span>
                           )}
                           {contact.invitePending && (
                             <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">{t('contacts.badge.invited')}</span>
@@ -944,12 +944,12 @@ function ContactTable({
             <td>
               {contact.firstName}
               {contact.contactType === 'guest' && (
-                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em' }}>
+                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 0, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em' }}>
                   {t('contacts.badge.manual')}
                 </span>
               )}
               {contact.invitePending && (
-                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
+                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 0, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
                   {t('contacts.badge.invited')}
                 </span>
               )}

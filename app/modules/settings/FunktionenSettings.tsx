@@ -156,11 +156,11 @@ export default function FunktionenSettings() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
             <button onClick={cancelEdit}
-              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -235,7 +235,7 @@ export default function FunktionenSettings() {
               onClick={addCustom}
               disabled={!newCustom.trim() || customNames.includes(newCustom.trim())}
               className="btn btn-primary flex-shrink-0"
-              style={{ borderRadius: '4px', height: '30px', padding: '0 12px', fontSize: '13px' }}
+              style={{ borderRadius: 0, height: '30px', padding: '0 12px', fontSize: '13px' }}
             >
               +
             </button>

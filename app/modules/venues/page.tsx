@@ -203,12 +203,12 @@ export default function VenuesPage() {
         <>
           <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Venues</h1>
           <div className="flex items-center gap-2 mb-2">
-            {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'4px'}}><Plus className="w-4 h-4" /> Neu</button>}
+            {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'0'}}><Plus className="w-4 h-4" /> Neu</button>}
             <input type="text" placeholder={t('venues.searchPlaceholder')} value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'4px'}} />
+              onChange={(e) => setSearchTerm(e.target.value)} className="search-input l2-search" style={{marginBottom:0, borderRadius:'0'}} />
             {isAdmin && <>
-              <button onClick={exportToCSV} className="btn btn-ghost flex-shrink-0" style={{borderRadius:'4px'}} title="CSV Export"><Download className="w-4 h-4" /></button>
-              <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{borderRadius:'4px'}} title="CSV Import"><Upload className="w-4 h-4" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
+              <button onClick={exportToCSV} className="btn btn-ghost flex-shrink-0" style={{borderRadius:'0'}} title="CSV Export"><Download className="w-4 h-4" /></button>
+              <label className="btn btn-ghost flex-shrink-0 cursor-pointer" style={{borderRadius:'0'}} title="CSV Import"><Upload className="w-4 h-4" /><input type="file" accept=".csv" onChange={importFromCSV} className="hidden" /></label>
             </>}
           </div>
         </>

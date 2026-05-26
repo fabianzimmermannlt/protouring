@@ -50,7 +50,7 @@ export default function ColumnToggle({ columns, isVisible, toggle }: ColumnToggl
         right: window.innerWidth - rect.right,
         background: '#ffffff',
         border: '1px solid #e5e7eb',
-        borderRadius: '0.5rem',
+        borderRadius: 0,
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         zIndex: 9999,
         minWidth: '160px',
@@ -99,7 +99,7 @@ export default function ColumnToggle({ columns, isVisible, toggle }: ColumnToggl
           width: '1.4rem', height: '1.4rem',
           color: open ? '#6366f1' : '#9ca3af',
           background: 'none', border: 'none', cursor: 'pointer',
-          borderRadius: '0.2rem',
+          borderRadius: 0,
           transition: 'color 0.15s',
         }}
       >

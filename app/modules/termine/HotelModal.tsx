@@ -127,7 +127,7 @@ function PersonDropdown({
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px',
+          background: '#fff', border: '1px solid #e5e7eb', borderRadius: 0,
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '220px', overflowY: 'auto',
         }}>
           {travelParty.map(m => {

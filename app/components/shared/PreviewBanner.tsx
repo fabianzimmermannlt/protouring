@@ -42,7 +42,7 @@ export default function PreviewBanner() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: '0.4rem',
           padding: '0.25rem 0.5rem 0.25rem 0.65rem',
-          borderRadius: '0.375rem',
+          borderRadius: 0,
           background: '#eff6ff',
           border: '1px solid #bfdbfe',
           color: '#1d4ed8', fontSize: '0.75rem',
@@ -69,7 +69,7 @@ export default function PreviewBanner() {
             title="Seite als andere Rolle anzeigen"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.3rem',
-              padding: '0.25rem 0.6rem', borderRadius: '0.375rem',
+              padding: '0.25rem 0.6rem', borderRadius: 0,
               background: open ? '#e0e7ff' : 'transparent',
               border: '1px solid #e5e7eb',
               color: '#6b7280', fontSize: '0.75rem', cursor: 'pointer',
@@ -84,7 +84,7 @@ export default function PreviewBanner() {
             <div style={{
               position: 'absolute', right: 0, top: 'calc(100% + 0.25rem)',
               background: '#fff', border: '1px solid #e5e7eb',
-              borderRadius: '0.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              borderRadius: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               zIndex: 200, minWidth: '160px', padding: '0.4rem 0',
             }}>
               <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.3rem 0.75rem 0.4rem' }}>
