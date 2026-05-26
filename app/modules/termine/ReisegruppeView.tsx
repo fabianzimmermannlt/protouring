@@ -351,7 +351,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                       {m.firstName} {m.lastName}
                     </span>
                     {m.contactType === 'guest' && (
-                      <span className="pt-guest-badge">Gast</span>
+                      <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: '#9ca3af', borderColor: '#3c3c3c' } : undefined}>Gast</span>
                     )}
                   </div>
                   {functions ? (
@@ -471,7 +471,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 return (
                   <tr key={m.id}>
                     {isVisible('avail')      && <td><AvailCell status={m.availabilityStatus} /></td>}
-                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge">Gast</span>}</td>}
+                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: '#9ca3af', borderColor: '#3c3c3c' } : undefined}>Gast</span>}</td>}
                     {isVisible('firstName')  && <td>{m.firstName || EMPTY}</td>}
                     {isVisible('role1')      && <td>{isAdmin ? <RolleDropdown value={m.role1} options={optsFor('role1')} saving={saving} onChange={v => updateRole(m, 'role1', v)} /> : (m.role1 || EMPTY)}</td>}
                     {isVisible('role2')      && <td>{isAdmin ? <RolleDropdown value={m.role2} options={optsFor('role2')} saving={saving} onChange={v => updateRole(m, 'role2', v)} /> : (m.role2 || EMPTY)}</td>}
