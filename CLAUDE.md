@@ -1,10 +1,17 @@
 # ProTouring – CLAUDE.md
 
+## Session-Start (Pflicht)
+Vor jeder Arbeit diese Dateien lesen:
+1. `~/Hafen Studios Dropbox/Fabian Zimmermann/Obsidian/Vault/Vault/04 Projects/ProTouring/_INDEX.md`
+2. `~/Hafen Studios Dropbox/Fabian Zimmermann/Obsidian/Vault/Vault/04 Projects/ProTouring/ARCHITECTURE.md`
+
+Dann: `git log --oneline -10` + `git status` — um zu sehen was zuletzt committed wurde und ob es uncommitted changes gibt.
+
 ## Second Brain
-Liegt im Obsidian-Vault – dort ist der vollständige Projektkontext:
+Vollständiger Projektkontext:
 `~/Hafen Studios Dropbox/Fabian Zimmermann/Obsidian/Vault/Vault/04 Projects/ProTouring/`
 
-Vor jeder Session lesen: `_INDEX.md` → Einstieg, aktueller Stand, letzte Commits.
+Brain-Updates nur über Cowork (Desktop App), nicht über Claude Code.
 
 ---
 
