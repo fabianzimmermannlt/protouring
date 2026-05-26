@@ -19,6 +19,7 @@ import {
 } from '@/lib/api-client'
 import VehicleFormModal from '@/app/modules/vehicles/VehicleFormModal'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 interface AnreiseModalProps {
   terminId: number
@@ -144,6 +145,8 @@ export default function AnreiseModal({
   onClose, onSaved, onDeleted, onCopiedToAbreise,
 }: AnreiseModalProps) {
   useEscapeKey(onClose)
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
   const isNew = leg === null
   const [form, setForm] = useState<TravelLegFormData>(
     isNew ? emptyForm(legType, terminDate) : legToForm(leg!)
@@ -425,11 +428,11 @@ export default function AnreiseModal({
                   renderValue={v => [v.designation, v.vehicleType ? `(${v.vehicleType})` : '', v.seats ? `· ${v.seats} Sitze` : ''].filter(Boolean).join(' ')}
                   renderItem={(v, selected) => (
                     <div>
-                      <div style={{ fontSize: '0.85rem', color: selected ? '#1d4ed8' : '#111827', fontWeight: selected ? 500 : 400 }}>
+                      <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : (dark ? '#e0e0e0' : '#111827'), fontWeight: selected ? 500 : 400 }}>
                         {v.designation}{v.vehicleType ? ` · ${v.vehicleType}` : ''}
                       </div>
                       {(v.seats || v.licensePlate) && (
-                        <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>
+                        <div style={{ fontSize: '0.72rem', color: dark ? '#9ca3af' : '#6b7280' }}>
                           {[v.seats ? `${v.seats} Sitze` : '', v.licensePlate].filter(Boolean).join(' · ')}
                         </div>
                       )}
