@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronDown, Plus, X } from 'lucide-react'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 interface SearchableDropdownProps<T extends { id: string | number }> {
   value: T | null
@@ -34,6 +35,8 @@ export default function SearchableDropdown<T extends { id: string | number }>({
   onCreateClick,
   renderCreateForm,
 }: SearchableDropdownProps<T>) {
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -86,7 +89,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
       >
         <span style={{
           fontSize: '0.85rem',
-          color: value ? '#111827' : '#9ca3af',
+          color: value ? (dark ? '#e0e0e0' : '#111827') : '#9ca3af',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
         }}>
           {value ? renderValue(value) : placeholder}
@@ -112,8 +115,10 @@ export default function SearchableDropdown<T extends { id: string | number }>({
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 100,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          background: dark ? '#1e1e1e' : '#fff',
+          border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
+          borderRadius: '6px',
+          boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.1)',
         }}>
           {/* Inline-Schnellerfassung */}
           {showCreate && renderCreateForm ? (
@@ -123,7 +128,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
           ) : (
             <>
               {/* Suche */}
-              <div style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ padding: '0.5rem', borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}` }}>
                 <input
                   ref={inputRef}
                   type="text"
@@ -132,7 +137,10 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                   placeholder="Suchen …"
                   style={{
                     width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.8rem',
-                    border: '1px solid #e5e7eb', borderRadius: '4px', outline: 'none',
+                    border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
+                    borderRadius: '4px', outline: 'none',
+                    background: dark ? '#2d2d2d' : '#fff',
+                    color: dark ? '#e0e0e0' : '#111827',
                   }}
                 />
               </div>
@@ -149,11 +157,11 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     }}
                     style={{
                       width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                      fontSize: '0.8rem', color: '#2563eb', background: 'none', border: 'none',
+                      fontSize: '0.8rem', color: '#3b82f6', background: 'none', border: 'none',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
                     }}
-                    onMouseOver={e => (e.currentTarget.style.background = '#eff6ff')}
+                    onMouseOver={e => (e.currentTarget.style.background = dark ? '#1a3a5c' : '#eff6ff')}
                     onMouseOut={e => (e.currentTarget.style.background = 'none')}
                   >
                     <Plus size={12} /> {createLabel}
@@ -167,10 +175,10 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     onClick={() => { onSelect(null); close() }}
                     style={{
                       width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                      fontSize: '0.8rem', color: '#dc2626', background: 'none', border: 'none',
-                      cursor: 'pointer', borderBottom: '1px solid #f3f4f6',
+                      fontSize: '0.8rem', color: '#ef4444', background: 'none', border: 'none',
+                      cursor: 'pointer', borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
                     }}
-                    onMouseOver={e => (e.currentTarget.style.background = '#fef2f2')}
+                    onMouseOver={e => (e.currentTarget.style.background = dark ? '#3b1010' : '#fef2f2')}
                     onMouseOut={e => (e.currentTarget.style.background = 'none')}
                   >
                     Auswahl entfernen
@@ -188,11 +196,11 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     onClick={() => handleSelect(item)}
                     style={{
                       width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                      background: value?.id === item.id ? '#eff6ff' : 'none',
-                      border: 'none', cursor: 'pointer', borderBottom: '1px solid #f9fafb',
+                      background: value?.id === item.id ? (dark ? '#1a3a5c' : '#eff6ff') : 'none',
+                      border: 'none', cursor: 'pointer', borderBottom: `1px solid ${dark ? '#2d2d2d' : '#f9fafb'}`,
                       display: 'block',
                     }}
-                    onMouseOver={e => { if (value?.id !== item.id) e.currentTarget.style.background = '#f9fafb' }}
+                    onMouseOver={e => { if (value?.id !== item.id) e.currentTarget.style.background = dark ? '#2d2d2d' : '#f9fafb' }}
                     onMouseOut={e => { if (value?.id !== item.id) e.currentTarget.style.background = 'none' }}
                   >
                     {renderItem(item, value?.id === item.id)}
