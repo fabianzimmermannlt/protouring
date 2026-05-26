@@ -1564,10 +1564,10 @@ html.dark .data-table thead th.sortable:hover { color: #a8d0fd; background: #1a4
 /* Badges — bleiben bunt, passen gut auf dark */
 
 /* Modal */
-html.dark .modal-container { background: #252526; }
-html.dark .modal-header { background: #252526; color: #e6edf3; border-color: #3c3c3c; }
-html.dark .modal-footer { background: #1e1e1e; border-color: #3c3c3c; }
-html.dark .modal-body { background: #252526; }
+html.dark .modal-container { background: #1e1e1e; }
+html.dark .modal-header { background: #2d2d2d; color: #e6edf3; border-color: #3c3c3c; }
+html.dark .modal-footer { background: #2d2d2d; border-color: #3c3c3c; }
+html.dark .modal-body { background: #1e1e1e; }
 
 @media (max-width: 767px) {
   html.dark .modal-header {
