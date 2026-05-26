@@ -262,7 +262,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                           className="text-xs font-semibold border border-blue-300 rounded px-1 py-0.5 focus:outline-none flex-1"
                         />
                       ) : (
-                        <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide truncate">
+                        <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide truncate">
                           {area.name}
                           {entries.length > 0 && <span className="ml-1 text-gray-400 font-normal normal-case">({entries.length})</span>}
                         </span>
@@ -323,10 +323,10 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <EntryBadge type={entry.type} />
-                                  <span className="text-xs font-medium leading-tight text-gray-800">{entry.title}</span>
+                                  <span className="text-sm font-medium leading-tight text-gray-800">{entry.title}</span>
                                 </div>
                                 {entry.details && (
-                                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{entry.details}</p>
+                                  <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{entry.details}</p>
                                 )}
                                 <p className="text-xs text-gray-300 mt-0.5">
                                   {entry.first_name ? `${entry.first_name}${entry.last_name ? ' ' + entry.last_name : ''}` : ''}{entry.first_name ? ' · ' : ''}{fmtDate(entry.created_at)}
