@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, Loader2, Paperclip, Mail, Phone } from 'lucide-react'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getTravelPartyWithExcluded,
   updateTravelPartyMember,
@@ -77,7 +78,7 @@ function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }
 const EMPTY = <span className="text-gray-400">–</span>
 
 function BandBlock({
-  members, excludedMembers, isMobile, isAdmin, terminId,
+  members, excludedMembers, isMobile, isAdmin, terminId, dark,
   onExclude, onRestore,
 }: {
   members: TravelPartyMember[]
@@ -85,6 +86,7 @@ function BandBlock({
   isMobile: boolean
   isAdmin: boolean
   terminId: number
+  dark: boolean
   onExclude: (m: TravelPartyMember) => void
   onRestore: (m: TravelPartyMember) => void
 }) {
@@ -94,13 +96,19 @@ function BandBlock({
   if (active.length === 0 && excluded.length === 0) return null
 
   const renderCard = (m: TravelPartyMember, isExcluded: boolean) => (
-    <div key={m.id} className={`border rounded-xl px-4 py-3 flex items-start gap-3 ${isExcluded ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-blue-50 border-blue-100'}`}>
+    <div key={m.id} style={{
+      border: `1px solid ${isExcluded ? (dark ? '#3c3c3c' : '#e5e7eb') : (dark ? '#1e3a5f' : '#bfdbfe')}`,
+      borderRadius: '0.75rem', padding: '0.75rem 1rem',
+      display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+      background: isExcluded ? (dark ? '#2a2a2a' : '#f9fafb') : (dark ? '#0f2744' : '#eff6ff'),
+      opacity: isExcluded ? 0.6 : 1,
+    }}>
       <div className="flex-1 min-w-0">
-        <div className={`font-semibold text-sm ${isExcluded ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: isExcluded ? (dark ? '#6b7280' : '#9ca3af') : (dark ? '#e0e0e0' : '#111827'), textDecoration: isExcluded ? 'line-through' : 'none' }}>
           {m.firstName} {m.lastName}
         </div>
         {(m.role1 || m.function1) && (
-          <div className="text-xs text-gray-500 mt-0.5">
+          <div style={{ fontSize: '0.75rem', color: dark ? '#9ca3af' : '#6b7280', marginTop: '0.125rem' }}>
             {[m.role1 || m.function1, m.role2 || m.function2, m.role3 || m.function3].filter(Boolean).join(' · ')}
           </div>
         )}
@@ -180,6 +188,8 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
   const [editRoles, setEditRoles] = useState<{ role1: string; role2: string; role3: string }>({ role1: '', role2: '', role3: '' })
   const [sortKey, setSortKey] = useState<SortKey>('lastName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
   const { isVisible, toggle, columns } = useColumnVisibility('reisegruppe', REISEGRUPPE_COLUMNS)
 
   useEffect(() => {
@@ -309,7 +319,13 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             return (
               <div
                 key={m.id}
-                className={`bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-start gap-3 ${isAdmin ? 'cursor-pointer active:bg-gray-50' : ''}`}
+                style={{
+                  background: dark ? '#2d2d2d' : '#ffffff',
+                  border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
+                  borderRadius: '0.75rem', padding: '0.75rem 1rem',
+                  display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+                  cursor: isAdmin ? 'pointer' : 'default',
+                }}
                 onClick={() => isAdmin && openEditModal(m)}
               >
                 {/* Availability */}
@@ -319,7 +335,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900 text-sm">
+                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: dark ? '#e0e0e0' : '#111827' }}>
                       {m.firstName} {m.lastName}
                     </span>
                     {m.contactType === 'guest' && (
@@ -327,9 +343,9 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                     )}
                   </div>
                   {functions ? (
-                    <div className="text-xs text-gray-500 mt-0.5">{functions}</div>
+                    <div style={{ fontSize: '0.75rem', color: dark ? '#9ca3af' : '#6b7280', marginTop: '0.125rem' }}>{functions}</div>
                   ) : isAdmin ? (
-                    <div className="text-xs text-gray-300 mt-0.5 italic">Funktion tippen zum Bearbeiten</div>
+                    <div style={{ fontSize: '0.75rem', color: dark ? '#4b5563' : '#d1d5db', marginTop: '0.125rem', fontStyle: 'italic' }}>Funktion tippen zum Bearbeiten</div>
                   ) : null}
                   <div className="flex flex-wrap gap-3 mt-1.5">
                     {m.email && (
@@ -365,12 +381,18 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
           <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setEditingMember(null)}>
             <div className="absolute inset-0 bg-black/40" />
             <div
-              className="relative bg-white rounded-t-2xl px-5 pt-4 pb-8 shadow-xl"
+              style={{
+                position: 'relative',
+                background: dark ? '#2d2d2d' : '#ffffff',
+                borderRadius: '1rem 1rem 0 0',
+                padding: '1rem 1.25rem 2rem',
+                boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
+              }}
               onClick={e => e.stopPropagation()}
             >
               {/* Handle */}
-              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-              <p className="text-sm font-semibold text-gray-900 mb-4">
+              <div style={{ width: '2.5rem', height: '4px', background: dark ? '#555' : '#e5e7eb', borderRadius: '999px', margin: '0 auto 1rem' }} />
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: dark ? '#e0e0e0' : '#111827', marginBottom: '1rem' }}>
                 {editingMember.firstName} {editingMember.lastName}
               </p>
               {(['role1', 'role2', 'role3'] as const).map((field, i) => {
@@ -379,10 +401,10 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 const usedElsewhere = new Set(otherFields.map(f => editRoles[f]).filter(Boolean))
                 const opts = allOpts.filter(fn => !usedElsewhere.has(fn) || fn === editRoles[field])
                 return (
-                  <div key={field} className="mb-3">
-                    <label className="block text-xs text-gray-400 mb-1">Funktion {i + 1}</label>
+                  <div key={field} style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: dark ? '#9ca3af' : '#9ca3af', marginBottom: '0.25rem' }}>Funktion {i + 1}</label>
                     <select
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white"
+                      style={{ width: '100%', border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? '#e0e0e0' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
                       value={editRoles[field]}
                       onChange={e => setEditRoles(prev => ({ ...prev, [field]: e.target.value }))}
                     >
@@ -470,6 +492,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
         isMobile={isMobile}
         isAdmin={isAdmin}
         terminId={terminId}
+        dark={dark}
         onExclude={handleExcludeArtist}
         onRestore={handleRestoreArtist}
       />
