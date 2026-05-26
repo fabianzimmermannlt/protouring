@@ -127,31 +127,43 @@ function BandBlock({
     </div>
   )
 
-  const renderRow = (m: TravelPartyMember, isExcluded: boolean) => (
-    <tr key={m.id} className={isExcluded ? 'opacity-40' : 'bg-blue-50/40'}>
-      <td style={{ width: '2.5rem' }}>
-        {isExcluded
-          ? <span className="pt-travel-avail pt-travel-avail--unavailable" title="abwesend bei diesem Termin">✗</span>
-          : <span className="pt-travel-avail pt-travel-avail--available" title="immer dabei">✓</span>
-        }
-      </td>
-      <td className={`font-medium ${isExcluded ? 'line-through text-gray-400' : ''}`}>{m.lastName || <span className="text-gray-400">–</span>}</td>
-      <td className={isExcluded ? 'text-gray-400' : ''}>{m.firstName || <span className="text-gray-400">–</span>}</td>
-      <td>{m.role1 || m.function1 || <span className="text-gray-400">–</span>}</td>
-      <td>{m.role2 || m.function2 || <span className="text-gray-400">–</span>}</td>
-      <td>{m.role3 || m.function3 || <span className="text-gray-400">–</span>}</td>
-      <td>{m.email ? <a href={`mailto:${m.email}`}>{m.email}</a> : <span className="text-gray-400">–</span>}</td>
-      <td>{m.phone ? <a href={`tel:${m.phone}`}>{m.phone}</a> : <span className="text-gray-400">–</span>}</td>
-      <td /><td /><td />
-      <td>
-        {isAdmin && (
-          isExcluded
-            ? <button onClick={() => onRestore(m)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Wieder dabei</button>
-            : <button onClick={() => onExclude(m)} className="pt-travel-action-btn pt-travel-action-btn--danger" title="Für diesen Termin entfernen"><Trash2 size={13} /></button>
-        )}
-      </td>
-    </tr>
-  )
+  const renderRow = (m: TravelPartyMember, isExcluded: boolean) => {
+    const dash = <span style={{ color: dark ? '#4b5563' : '#9ca3af' }}>–</span>
+    return (
+      <tr key={m.id} style={{
+        background: isExcluded
+          ? 'transparent'
+          : (dark ? 'rgba(30,58,95,0.4)' : 'rgba(239,246,255,0.6)'),
+        opacity: isExcluded ? 0.5 : 1,
+      }}>
+        <td style={{ width: '2.5rem' }}>
+          {isExcluded
+            ? <span className="pt-travel-avail pt-travel-avail--unavailable" title="abwesend bei diesem Termin">✗</span>
+            : <span className="pt-travel-avail pt-travel-avail--available" title="immer dabei">✓</span>
+          }
+        </td>
+        <td style={{ fontWeight: 500, textDecoration: isExcluded ? 'line-through' : 'none', color: isExcluded ? (dark ? '#6b7280' : '#9ca3af') : (dark ? '#e0e0e0' : undefined) }}>
+          {m.lastName || dash}
+        </td>
+        <td style={{ color: isExcluded ? (dark ? '#6b7280' : '#9ca3af') : (dark ? '#e0e0e0' : undefined) }}>
+          {m.firstName || dash}
+        </td>
+        <td>{m.role1 || m.function1 || dash}</td>
+        <td>{m.role2 || m.function2 || dash}</td>
+        <td>{m.role3 || m.function3 || dash}</td>
+        <td>{m.email ? <a href={`mailto:${m.email}`}>{m.email}</a> : dash}</td>
+        <td>{m.phone ? <a href={`tel:${m.phone}`}>{m.phone}</a> : dash}</td>
+        <td /><td /><td />
+        <td>
+          {isAdmin && (
+            isExcluded
+              ? <button onClick={() => onRestore(m)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Wieder dabei</button>
+              : <button onClick={() => onExclude(m)} className="pt-travel-action-btn pt-travel-action-btn--danger" title="Für diesen Termin entfernen"><Trash2 size={13} /></button>
+          )}
+        </td>
+      </tr>
+    )
+  }
 
   return (
     <div className="mb-4">
