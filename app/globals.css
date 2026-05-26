@@ -2039,8 +2039,15 @@ html.dark ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
 html.dark .rich-content hr { border-color: #3c3c3c; }
 
 /* ============================================================
-   Global: Keine runden Ecken
+   Kreisförmige Elemente (Verfügbarkeits-Dots, Status-Indikatoren)
    ============================================================ */
-*, *::before, *::after {
-  border-radius: 0 !important;
+.badge,
+.pt-avail-dot,
+.pt-avail-ring,
+.pt-status-dot,
+[class*="avail"],
+[class*="status-dot"],
+[class*="dot-"],
+[class*="-dot"] {
+  border-radius: 9999px !important;
 }
