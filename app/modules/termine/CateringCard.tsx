@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Loader2, Pencil, Save, X, Plus, Trash2, UtensilsCrossed, Building2, Banknote, ShoppingBag } from 'lucide-react'
 import { RichTextEditor } from '@/app/components/shared/RichTextEditor'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
+import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getCatering, saveCatering, getCateringOrders, createCateringOrder, updateCateringOrder, deleteCateringOrder,
   getCurrentTenant, getMyContact,
@@ -318,6 +319,8 @@ function OrderEditRow({
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function CateringCard({ terminId, isAdmin }: { terminId: number; isAdmin: boolean }) {
+  const { layout } = useLayout()
+  const dark = layout === 'L2'
   const [catering, setCatering]     = useState<Catering | null>(null)
   const [members, setMembers]       = useState<CateringMember[]>([])
   const [loading, setLoading]       = useState(true)
@@ -430,9 +433,9 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
                 onClick={() => handleTypeChange(opt.value)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all"
                 style={{
-                  borderColor: currentType === opt.value ? opt.color : '#e5e7eb',
-                  background:  currentType === opt.value ? `${opt.color}18` : '#fff',
-                  color:       currentType === opt.value ? opt.color : '#6b7280',
+                  borderColor: currentType === opt.value ? opt.color : (dark ? '#3c3c3c' : '#e5e7eb'),
+                  background:  currentType === opt.value ? `${opt.color}18` : (dark ? '#2a2a2a' : '#fff'),
+                  color:       currentType === opt.value ? opt.color : (dark ? '#9ca3af' : '#6b7280'),
                 }}
               >
                 {opt.icon}
@@ -448,7 +451,7 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
 
         {/* ── Buyout-Betrag ── */}
         {currentType === 'buyout' && (
-          <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-100">
+          <div className="flex items-center gap-2 p-2 rounded-lg border" style={{ background: dark ? '#0d2318' : '#f0fdf4', borderColor: dark ? '#14532d' : '#dcfce7' }}>
             <div className="flex items-center gap-1 flex-1">
               <span className="text-xs text-gray-500 whitespace-nowrap">Pro Person</span>
               {isAdmin ? (
