@@ -17,16 +17,16 @@ const C = {
   bgRow1:     '#1e1e1e',
   bgRow2:     '#232323',
   bgHead:     '#2d2d2d',
-  bgCrewHead: '#222230',
-  bgCrewRow1: '#1e1e28',
-  bgCrewRow2: '#22222e',
-  border:     '#333',
-  borderCrew: '#3a3a55',
-  borderSep:  '#5b5b8a',
+  bgCrewHead: '#2d2d2d',
+  bgCrewRow1: '#1e1e1e',
+  bgCrewRow2: '#232323',
+  border:     '#3c3c3c',
+  borderCrew: '#3c3c3c',
+  borderSep:  '#4b5563',
   textPri:    '#e0e0e0',
   textSec:    '#9ca3af',
-  textMuted:  '#555',
-  textAccent: '#7c7cf8',
+  textMuted:  '#6b7280',
+  textAccent: '#60a5fa',
 }
 
 const AVAIL_CFG: Record<string, { color: string; symbol: string; label: string }> = {
@@ -166,8 +166,8 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
   )
 
   const TH: React.CSSProperties = {
-    height: 30, padding: '0 10px', fontWeight: 500, fontSize: 11,
-    textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+    height: 32, padding: '0 10px', fontWeight: 500, fontSize: 12,
+    textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
   }
 
   return (
@@ -196,7 +196,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
 
           {/* ── Linke Tabelle: Termine ── */}
           <div style={{ flexShrink: 0, borderRight: `2px solid ${C.borderSep}` }}>
-            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 12, width: 432 }}>
+            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13, width: 432 }}>
               <thead>
                 <tr>
                   <th colSpan={4} style={{ ...TH, textAlign: 'left', color: C.textSec, background: C.bgHead, borderBottom: `1px solid ${C.border}` }}>
@@ -239,7 +239,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
 
           {/* ── Rechte Tabelle: Crew ── */}
           <div style={{ overflowX: 'auto', flexShrink: 1 }}>
-            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
                   {crew.length > 0 ? (
