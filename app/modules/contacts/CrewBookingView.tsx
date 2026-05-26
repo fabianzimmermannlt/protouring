@@ -89,6 +89,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
   const [loading,   setLoading]   = useState(true)
   const [selectedFn, setSelectedFn] = useState('')
   const [overrides,  setOverrides]  = useState<Record<string, BookedStatus>>({})
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
 
   useEffect(() => {
     Promise.all([getActiveFunctions(), getContacts(), getTermine()])
@@ -192,11 +193,11 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
       {termine.length === 0 ? (
         <p style={{ fontSize: 13, color: C.textSec, fontStyle: 'italic', padding: '16px 0' }}>{t('appointments.empty')}</p>
       ) : (
-        <div style={{ display: 'flex', width: 'fit-content', maxWidth: '100%', border: `1px solid ${C.border}`, borderRadius: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', width: '100%', border: `1px solid ${C.border}`, overflow: 'hidden' }}>
 
-          {/* ── Linke Tabelle: Termine ── */}
-          <div style={{ flexShrink: 0, borderRight: `2px solid ${C.borderSep}` }}>
-            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13, width: 432 }}>
+          {/* ── Linke Tabelle: Termine (50%) ── */}
+          <div style={{ width: '50%', flexShrink: 0, borderRight: `2px solid ${C.borderSep}`, overflow: 'hidden' }}>
+            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
               <thead>
                 <tr>
                   <th colSpan={4} style={{ ...TH, textAlign: 'left', color: C.textSec, background: C.bgHead, borderBottom: `1px solid ${C.border}` }}>
@@ -204,32 +205,27 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   </th>
                 </tr>
                 <tr>
-                  {[
-                    { label: t('table.date'),   w: 80 },
-                    { label: t('table.title'),  w: 144 },
-                    { label: t('appointments.card.venue'), w: 112 },
-                    { label: t('table.city'),   w: 96 },
-                  ].map(({ label, w }) => (
-                    <th key={label} style={{ ...TH, width: w, textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>
-                      {label}
-                    </th>
-                  ))}
+                  <th style={{ ...TH, width: '18%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.date')}</th>
+                  <th style={{ ...TH, width: '34%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.title')}</th>
+                  <th style={{ ...TH, width: '28%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('appointments.card.venue')}</th>
+                  <th style={{ ...TH, width: '20%', textAlign: 'left', color: C.textMuted, background: C.bgHead, borderBottom: `2px solid ${C.border}` }}>{t('table.city')}</th>
                 </tr>
               </thead>
               <tbody>
                 {termine.map((x, i) => {
-                  const bg = i % 2 === 0 ? C.bgRow1 : C.bgRow2
-                  const TD: React.CSSProperties = { height: 32, padding: '0 10px', background: bg, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                  const hovered = hoveredRow === i
+                  const bg = hovered ? '#2a3a4a' : (i % 2 === 0 ? C.bgRow1 : C.bgRow2)
+                  const TD: React.CSSProperties = { height: 34, padding: '0 10px', background: bg, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'background 0.1s' }
                   return (
-                    <tr key={x.id}>
-                      <td style={{ ...TD, width: 80,  color: C.textSec }}>
+                    <tr key={x.id} onMouseEnter={() => setHoveredRow(i)} onMouseLeave={() => setHoveredRow(null)}>
+                      <td style={{ ...TD, color: C.textSec }}>
                         {new Date(x.date + 'T00:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                       </td>
-                      <td style={{ ...TD, width: 144, fontWeight: 500, color: C.textPri }} title={x.title || ''}>
+                      <td style={{ ...TD, fontWeight: 500, color: C.textPri }} title={x.title || ''}>
                         {x.title || <span style={{ color: C.textMuted, fontStyle: 'italic', fontWeight: 400 }}>–</span>}
                       </td>
-                      <td style={{ ...TD, width: 112, color: C.textSec }}>{x.venueName || '–'}</td>
-                      <td style={{ ...TD, width: 96,  color: C.textSec }}>{x.city || '–'}</td>
+                      <td style={{ ...TD, color: C.textSec }} title={x.venueName || ''}>{x.venueName || '–'}</td>
+                      <td style={{ ...TD, color: C.textSec }}>{x.city || '–'}</td>
                     </tr>
                   )
                 })}
@@ -237,9 +233,9 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
             </table>
           </div>
 
-          {/* ── Rechte Tabelle: Crew ── */}
-          <div style={{ overflowX: 'auto', flexShrink: 1 }}>
-            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}>
+          {/* ── Rechte Tabelle: Crew (50%, scrollt horizontal) ── */}
+          <div style={{ width: '50%', overflowX: 'auto', flexShrink: 0 }}>
+            <table style={{ tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13, minWidth: '100%' }}>
               <thead>
                 <tr>
                   {crew.length > 0 ? (
@@ -247,21 +243,21 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                       {t('contacts.booking.crewFunction').replace('{function}', selectedFn)}
                     </th>
                   ) : (
-                    <th style={{ height: 30, background: C.bgCrewHead, borderBottom: `1px solid ${C.border}` }} />
+                    <th style={{ height: 32, background: C.bgCrewHead, borderBottom: `1px solid ${C.border}` }} />
                   )}
                 </tr>
                 <tr>
                   {crew.map((c, ci) => (
                     <React.Fragment key={c.id}>
-                      <th style={{ width: 40, ...TH, textAlign: 'center', color: C.textMuted, background: C.bgCrewHead, borderBottom: `2px solid ${C.borderCrew}`, borderLeft: ci > 0 ? `1px solid ${C.border}` : undefined }}>
-                        {t('table.availability')}
+                      <th style={{ width: 36, ...TH, textAlign: 'center', color: C.textMuted, background: C.bgCrewHead, borderBottom: `2px solid ${C.border}`, borderLeft: ci > 0 ? `1px solid ${C.border}` : undefined }}>
+                        VERF
                       </th>
-                      <th style={{ width: 88, padding: '2px 8px', textAlign: 'center', background: C.bgCrewHead, borderBottom: `2px solid ${C.borderCrew}`, borderRight: `1px solid ${C.border}`, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 600, fontSize: 11, color: C.textPri, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <th style={{ width: 100, padding: '4px 8px', textAlign: 'center', background: C.bgCrewHead, borderBottom: `2px solid ${C.border}`, borderRight: `1px solid ${C.border}`, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 600, fontSize: 12, color: C.textPri, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {c.firstName} {c.lastName}
                         </div>
                         {c.specification && (
-                          <div style={{ fontWeight: 400, fontSize: 10, color: C.textAccent, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ fontWeight: 400, fontSize: 11, color: C.textAccent, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {c.specification}
                           </div>
                         )}
@@ -272,19 +268,20 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
               </thead>
               <tbody>
                 {termine.map((x, i) => {
-                  const bg = i % 2 === 0 ? C.bgCrewRow1 : C.bgCrewRow2
+                  const hovered = hoveredRow === i
+                  const bg = hovered ? '#2a3a4a' : (i % 2 === 0 ? C.bgCrewRow1 : C.bgCrewRow2)
                   return (
-                    <tr key={x.id}>
+                    <tr key={x.id} onMouseEnter={() => setHoveredRow(i)} onMouseLeave={() => setHoveredRow(null)}>
                       {crew.map((c, ci) => {
                         const cid = Number(c.id)
                         return (
                           <React.Fragment key={c.id}>
-                            <td style={{ width: 40, height: 32, background: bg, borderBottom: `1px solid ${C.border}`, borderLeft: ci > 0 ? `1px solid ${C.border}` : undefined, textAlign: 'center', padding: '0 4px' }}>
+                            <td style={{ width: 36, height: 34, background: bg, borderBottom: `1px solid ${C.border}`, borderLeft: ci > 0 ? `1px solid ${C.border}` : undefined, textAlign: 'center', padding: '0 4px', transition: 'background 0.1s' }}>
                               {c.contactType === 'guest'
                                 ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#22c55e', color: 'white', fontSize: 8, fontWeight: 700 }} title={t('contacts.tooltip.manualNoLogin')}>M</span>
                                 : <AvailIcon status={getAvail(x, c.userId ?? null)} />}
                             </td>
-                            <td style={{ width: 88, height: 32, background: bg, borderBottom: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, textAlign: 'center', padding: '0 4px' }}>
+                            <td style={{ width: 100, height: 34, background: bg, borderBottom: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, textAlign: 'center', padding: '0 4px', transition: 'background 0.1s' }}>
                               <div style={{ display: 'flex', justifyContent: 'center' }}>
                                 <BookedToggle
                                   status={getBooked(x.id, cid, selectedFn)}
