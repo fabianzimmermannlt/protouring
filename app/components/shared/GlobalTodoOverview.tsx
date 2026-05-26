@@ -163,7 +163,7 @@ export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOve
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span
-                      style={{ width: 5, height: 5, borderRadius: 0, background: PRIORITY_COLOR[todo.priority] ?? '#6b7280', flexShrink: 0 }}
+                      style={{ width: 5, height: 5, borderRadius: '50%', background: PRIORITY_COLOR[todo.priority] ?? '#6b7280', flexShrink: 0 }}
                     />
                     <span className={`text-xs text-gray-800 truncate ${todo.status === 'done' ? 'line-through' : ''}`}>
                       {todo.title}

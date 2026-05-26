@@ -41,7 +41,7 @@ function AvailIcon({ status }: { status: 'available' | 'maybe' | 'unavailable' |
   return (
     <span title={cfg.label} style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      width: 16, height: 16, borderRadius: 0,
+      width: 16, height: 16, borderRadius: '50%',
       background: cfg.color, color: status ? 'white' : '#888',
       fontSize: 9, fontWeight: 700, flexShrink: 0,
     }}>{cfg.symbol}</span>
