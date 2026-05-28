@@ -219,7 +219,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   return (
                     <tr key={x.id}
                       onMouseEnter={() => setHoveredRow(i)} onMouseLeave={() => setHoveredRow(null)}
-                      onClick={() => window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: x.id, view: 'details2' } }))}
+                      onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-termin', { detail: { terminId: x.id, view: 'details2' } }))}
                       style={{ cursor: 'pointer' }}>
                       <td style={{ ...TD, color: C.textSec }}>
                         {(() => {
