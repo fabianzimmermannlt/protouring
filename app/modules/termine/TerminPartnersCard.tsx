@@ -110,13 +110,14 @@ export default function TerminPartnersCard({
   terminId: number
   isAdmin: boolean
 }) {
-  const [links, setLinks]             = useState<TerminPartner[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [showPicker, setShowPicker]   = useState(false)
+  const [links, setLinks]               = useState<TerminPartner[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [showPicker, setShowPicker]     = useState(false)
   const [swappingLink, setSwappingLink] = useState<TerminPartner | null>(null)
-  const [adding, setAdding]           = useState(false)
-  const [swappingId, setSwappingId]   = useState<number | null>(null)
-  const [removingId, setRemovingId]   = useState<number | null>(null)
+  const [adding, setAdding]             = useState(false)
+  const [swappingId, setSwappingId]     = useState<number | null>(null)
+  const [removingId, setRemovingId]     = useState<number | null>(null)
+  const [hoveredLinkId, setHoveredLinkId] = useState<number | null>(null)
 
   useEffect(() => {
     getTerminPartners(terminId)
@@ -171,10 +172,18 @@ export default function TerminPartnersCard({
 
       {/* Ein vollständiger Partner-Block pro Eintrag */}
       {links.map(link => (
-        <div key={link.id} style={{ position: 'relative' }}>
-          {/* Aktions-Buttons oben rechts */}
+        <div key={link.id} style={{ position: 'relative' }}
+          onMouseEnter={() => setHoveredLinkId(link.id)}
+          onMouseLeave={() => setHoveredLinkId(null)}
+        >
+          {/* Aktions-Buttons oben rechts – nur sichtbar wenn Card gehovert UND kein dirty-state-Loader aktiv */}
           {isAdmin && (
-            <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: 4 }}>
+            <div style={{
+              position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: 4,
+              opacity: hoveredLinkId === link.id && swappingId !== link.id && removingId !== link.id ? 1 : 0,
+              pointerEvents: hoveredLinkId === link.id && swappingId !== link.id && removingId !== link.id ? 'auto' : 'none',
+              transition: 'opacity 0.15s',
+            }}>
               {/* Wechseln */}
               <button
                 onClick={() => { setSwappingLink(link); setShowPicker(true) }}
