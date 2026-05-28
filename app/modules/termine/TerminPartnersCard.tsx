@@ -37,11 +37,11 @@ function PartnerPickerModal({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Partner verknüpfen</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div style={{ background: '#2d2d2d', border: '1px solid #3c3c3c' }} className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div style={{ borderBottom: '1px solid #3c3c3c' }} className="flex items-center justify-between px-5 py-4">
+          <h3 className="text-sm font-semibold" style={{ color: '#e0e0e0' }}>Partner verknüpfen</h3>
+          <button onClick={onClose} style={{ color: '#9ca3af' }} className="hover:text-white transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -51,26 +51,33 @@ function PartnerPickerModal({
             placeholder="Suchen…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="form-input w-full text-sm"
+            style={{ fontSize: 13 }}
           />
-          <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+          <div className="max-h-64 overflow-y-auto" style={{ border: '1px solid #3c3c3c' }}>
             <button
               onClick={() => setShowCreate(true)}
-              className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-1"
+              className="w-full text-left px-3 py-2 text-xs flex items-center gap-1 transition-colors"
+              style={{ color: '#60a5fa', borderBottom: '1px solid #3c3c3c' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1e1e1e')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <Plus size={11} /> Neuen Partner anlegen
             </button>
             {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-xs text-gray-400 text-center">Keine Partner gefunden</div>
+              <div className="px-3 py-4 text-xs text-center" style={{ color: '#6b7280' }}>Keine Partner gefunden</div>
             ) : filtered.map(p => (
               <button
                 key={p.id}
                 onClick={() => onSelect(p)}
-                className="w-full text-left px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors"
+                className="w-full text-left px-3 py-2.5 text-sm transition-colors"
+                style={{ borderBottom: '1px solid #3c3c3c' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#1e1e1e')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <div className="font-medium text-gray-800">{p.companyName}</div>
+                <div className="font-medium" style={{ color: '#e0e0e0' }}>{p.companyName}</div>
                 {(p.type || p.contactPerson || p.city) && (
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs" style={{ color: '#9ca3af' }}>
                     {[p.type, p.contactPerson, p.city].filter(Boolean).join(' · ')}
                   </div>
                 )}
