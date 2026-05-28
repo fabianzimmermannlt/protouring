@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, X, Loader2 } from 'lucide-react'
+import { Plus, X, Loader2, ArrowLeftRight } from 'lucide-react'
 import {
   getTerminPartners, addTerminPartner, removeTerminPartner,
   getPartners,
@@ -103,11 +103,13 @@ export default function TerminPartnersCard({
   terminId: number
   isAdmin: boolean
 }) {
-  const [links, setLinks]           = useState<TerminPartner[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [showPicker, setShowPicker] = useState(false)
-  const [adding, setAdding]         = useState(false)
-  const [removingId, setRemovingId] = useState<number | null>(null)
+  const [links, setLinks]             = useState<TerminPartner[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [showPicker, setShowPicker]   = useState(false)
+  const [swappingLink, setSwappingLink] = useState<TerminPartner | null>(null)
+  const [adding, setAdding]           = useState(false)
+  const [swappingId, setSwappingId]   = useState<number | null>(null)
+  const [removingId, setRemovingId]   = useState<number | null>(null)
 
   useEffect(() => {
     getTerminPartners(terminId)
@@ -118,12 +120,26 @@ export default function TerminPartnersCard({
 
   const handleSelect = async (partner: Partner) => {
     setShowPicker(false)
-    setAdding(true)
-    try {
-      const tp = await addTerminPartner(terminId, Number(partner.id), '')
-      setLinks(prev => [...prev, tp])
-    } catch { /* ignore */ } finally {
-      setAdding(false)
+    if (swappingLink) {
+      // Wechseln: erst alten entfernen, dann neuen hinzufügen
+      const oldLink = swappingLink
+      setSwappingLink(null)
+      setSwappingId(oldLink.id)
+      try {
+        await removeTerminPartner(terminId, oldLink.id)
+        const tp = await addTerminPartner(terminId, Number(partner.id), '')
+        setLinks(prev => prev.map(l => l.id === oldLink.id ? tp : l))
+      } catch { /* ignore */ } finally {
+        setSwappingId(null)
+      }
+    } else {
+      setAdding(true)
+      try {
+        const tp = await addTerminPartner(terminId, Number(partner.id), '')
+        setLinks(prev => [...prev, tp])
+      } catch { /* ignore */ } finally {
+        setAdding(false)
+      }
     }
   }
 
@@ -149,25 +165,38 @@ export default function TerminPartnersCard({
       {/* Ein vollständiger Partner-Block pro Eintrag */}
       {links.map(link => (
         <div key={link.id} style={{ position: 'relative' }}>
-          {/* Entfernen-Button oben rechts */}
+          {/* Aktions-Buttons oben rechts */}
           {isAdmin && (
-            <button
-              onClick={() => handleRemove(link)}
-              disabled={removingId === link.id}
-              title="Verknüpfung aufheben"
-              style={{
-                position: 'absolute', top: '12px', right: '12px', zIndex: 10,
-                background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-                color: '#9ca3af',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
-            >
-              {removingId === link.id
-                ? <Loader2 size={14} className="animate-spin" />
-                : <X size={14} />
-              }
-            </button>
+            <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: 4 }}>
+              {/* Wechseln */}
+              <button
+                onClick={() => { setSwappingLink(link); setShowPicker(true) }}
+                disabled={swappingId === link.id || removingId === link.id}
+                title="Partner wechseln"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#60a5fa')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+              >
+                {swappingId === link.id
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <ArrowLeftRight size={14} />
+                }
+              </button>
+              {/* Entfernen */}
+              <button
+                onClick={() => handleRemove(link)}
+                disabled={removingId === link.id || swappingId === link.id}
+                title="Verknüpfung aufheben"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+              >
+                {removingId === link.id
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <X size={14} />
+                }
+              </button>
+            </div>
           )}
           <PartnerDetailContent partnerId={String(link.partner_id)} />
         </div>
@@ -202,7 +231,7 @@ export default function TerminPartnersCard({
         <PartnerPickerModal
           existingPartnerIds={links.map(l => l.partner_id)}
           onSelect={handleSelect}
-          onClose={() => setShowPicker(false)}
+          onClose={() => { setShowPicker(false); setSwappingLink(null) }}
         />
       )}
     </div>
