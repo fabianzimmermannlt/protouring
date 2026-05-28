@@ -217,7 +217,10 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                   const bg = hovered ? '#2a3a4a' : (i % 2 === 0 ? C.bgRow1 : C.bgRow2)
                   const TD: React.CSSProperties = { height: 34, padding: '0 10px', background: bg, borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'background 0.1s' }
                   return (
-                    <tr key={x.id} onMouseEnter={() => setHoveredRow(i)} onMouseLeave={() => setHoveredRow(null)}>
+                    <tr key={x.id}
+                      onMouseEnter={() => setHoveredRow(i)} onMouseLeave={() => setHoveredRow(null)}
+                      onClick={() => window.dispatchEvent(new CustomEvent('select-termin', { detail: { id: x.id, view: 'details2' } }))}
+                      style={{ cursor: 'pointer' }}>
                       <td style={{ ...TD, color: C.textSec }}>
                         {(() => {
                           const d = new Date(x.date + 'T00:00:00')
