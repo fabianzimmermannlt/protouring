@@ -313,7 +313,7 @@ export function L2Layout({
   const renderTermineSubs = () => (
     <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
       <button
-        onClick={() => guardDirtyNav(() => { window.dispatchEvent(new CustomEvent('termine-go-to-list')) })}
+        onClick={() => guardDirtyNav(() => { window.dispatchEvent(new CustomEvent('termine-go-to-list')); onSubTabChange?.('') })}
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
           activeTab === 'events' && !activeSubTab && !termineInDetail
             ? 'pt-nav-sub-active'
