@@ -117,7 +117,6 @@ export default function TerminPartnersCard({
   const [adding, setAdding]             = useState(false)
   const [swappingId, setSwappingId]     = useState<number | null>(null)
   const [removingId, setRemovingId]     = useState<number | null>(null)
-  const [hoveredLinkId, setHoveredLinkId] = useState<number | null>(null)
 
   useEffect(() => {
     getTerminPartners(terminId)
@@ -172,49 +171,34 @@ export default function TerminPartnersCard({
 
       {/* Ein vollständiger Partner-Block pro Eintrag */}
       {links.map(link => (
-        <div key={link.id} style={{ position: 'relative' }}
-          onMouseEnter={() => setHoveredLinkId(link.id)}
-          onMouseLeave={() => setHoveredLinkId(null)}
-        >
-          {/* Aktions-Buttons oben rechts – nur sichtbar wenn Card gehovert UND kein dirty-state-Loader aktiv */}
+        <div key={link.id}>
+          <PartnerDetailContent partnerId={String(link.partner_id)} />
           {isAdmin && (
-            <div style={{
-              position: 'absolute', top: '12px', right: '12px', zIndex: 10, display: 'flex', gap: 4,
-              opacity: hoveredLinkId === link.id && swappingId !== link.id && removingId !== link.id ? 1 : 0,
-              pointerEvents: hoveredLinkId === link.id && swappingId !== link.id && removingId !== link.id ? 'auto' : 'none',
-              transition: 'opacity 0.15s',
-            }}>
-              {/* Wechseln */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, padding: '4px 4px 0' }}>
               <button
                 onClick={() => { setSwappingLink(link); setShowPicker(true) }}
                 disabled={swappingId === link.id || removingId === link.id}
                 title="Partner wechseln"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: '#9ca3af' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#60a5fa')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
               >
-                {swappingId === link.id
-                  ? <Loader2 size={14} className="animate-spin" />
-                  : <ArrowLeftRight size={14} />
-                }
+                {swappingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowLeftRight size={12} />}
+                Wechseln
               </button>
-              {/* Entfernen */}
               <button
                 onClick={() => handleRemove(link)}
                 disabled={removingId === link.id || swappingId === link.id}
                 title="Verknüpfung aufheben"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: '#9ca3af' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
               >
-                {removingId === link.id
-                  ? <Loader2 size={14} className="animate-spin" />
-                  : <X size={14} />
-                }
+                {removingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                Entfernen
               </button>
             </div>
           )}
-          <PartnerDetailContent partnerId={String(link.partner_id)} />
         </div>
       ))}
 
