@@ -139,6 +139,10 @@ export function L2Layout({
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set([activeTab]))
+
+  useEffect(() => {
+    setExpandedItems(new Set([activeTab]))
+  }, [activeTab])
   const [allTenantsState, setAllTenantsState] = useState<
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
