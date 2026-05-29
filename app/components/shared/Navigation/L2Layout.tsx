@@ -348,42 +348,35 @@ export function L2Layout({
 
     const isExpanded = expandedItems.has(item.id)
 
+    const toggleExpand = () => setExpandedItems(prev => {
+      const n = new Set(prev)
+      n.has(item.id) ? n.delete(item.id) : n.add(item.id)
+      return n
+    })
+
     return (
       <div key={item.id}>
-        <div className={`flex items-center transition-colors ${
-          isActive ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
-        }`}>
-          <button
-            onClick={() => handleNav(item.id)}
-            className="flex-1 flex items-center gap-2.5 px-3 py-2 text-sm text-left"
-          >
-            <item.icon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">{item.name}</span>
-            {isModule && (
-              <span className="text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
-                ADDON
-              </span>
-            )}
-          </button>
-          {hasSubNav && (
-            <button
-              onClick={e => {
-                e.stopPropagation()
-                setExpandedItems(prev =>
-                  prev.has(item.id) ? new Set<string>() : new Set([item.id])
-                )
-              }}
-              className="pr-3 pl-1 py-2 flex items-center"
-              aria-label="Submenü ein-/ausklappen"
-            >
-              <ChevronDownIcon
-                className={`w-3 h-3 flex-shrink-0 transition-transform ${
-                  isExpanded ? 'rotate-180 text-gray-400' : 'text-gray-500'
-                }`}
-              />
-            </button>
+        <button
+          onClick={() => hasSubNav ? toggleExpand() : handleNav(item.id)}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
+            isActive ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
+          }`}
+        >
+          <item.icon className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1">{item.name}</span>
+          {isModule && (
+            <span className="text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
+              ADDON
+            </span>
           )}
-        </div>
+          {hasSubNav && (
+            <ChevronDownIcon
+              className={`w-3 h-3 flex-shrink-0 transition-transform ${
+                isExpanded ? 'rotate-180 text-gray-400' : 'text-gray-500'
+              }`}
+            />
+          )}
+        </button>
 
         {isExpanded && item.id === 'events' && renderTermineSubs()}
 
