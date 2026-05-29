@@ -13,9 +13,9 @@ import CrewBookingView from './CrewBookingView'
 import { ContactDetailContent } from './ContactDetail'
 import {
   getContacts, createContact, updateContact, updateMyContact, deleteContact, createGuestContact,
-  getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog, getGewerke,
+  getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
   ROLE_LABELS, isAdminRole, isEditorRole, getEffectiveRole,
-  type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup, type Gewerk
+  type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import { parseCSV, col } from '@/lib/csvParser'
@@ -105,13 +105,16 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [gastName, setGastName] = useState('')
   const [gastFunction, setGastFunction] = useState('')
   const [gastSaving, setGastSaving] = useState(false)
-  const [gewerke, setGewerke] = useState<Gewerk[]>([])
+  const [functionOptions, setFunctionOptions] = useState<string[]>([])
 
   const openGastModal = async () => {
     setGastName('')
     setGastFunction('')
-    try { setGewerke(await getGewerke()) } catch {}
-    openGastModal()
+    try {
+      const catalog = await getFunctionCatalog()
+      setFunctionOptions(catalog.flatMap(g => g.functions.filter(f => f.active).map(f => f.name)).sort())
+    } catch {}
+    setShowGastModal(true)
   }
   const [editingGast, setEditingGast] = useState<Contact | null>(null)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
@@ -808,7 +811,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                   className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                 >
                   <option value="">— keine Angabe —</option>
-                  {gewerke.flatMap(g => g.funktionen).sort().map(f => (
+                  {functionOptions.map(f => (
                     <option key={f} value={f}>{f}</option>
                   ))}
                 </select>
