@@ -20,6 +20,7 @@ import { parseCSV, col } from '@/lib/csvParser'
 import { VenueDetailContent } from '@/app/modules/venues/VenueDetail'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import { QuickCreateVenueModal } from '@/app/components/shared/modals/QuickCreateVenueModal'
+import { useColumnOrder } from '@/app/lib/hooks/useColumnOrder'
 
 const EMPTY_FORM = {
   name: '', street: '', postalCode: '', city: '', state: '', country: '',
@@ -298,6 +299,9 @@ function VenueTable({ venues, onDetail, onDelete, isAdmin }: {
   isAdmin: boolean
 }) {
   const { isVisible, toggle, columns } = useColumnVisibility('venue-list', VENUE_COLUMNS)
+  const REORDERABLE_COLS = ['name', 'street', 'zip', 'city', 'state', 'country', 'capacity']
+  const { order: colOrder, onDragStart: colDragStart, onDrop: colDrop } = useColumnOrder('venue-list', REORDERABLE_COLS)
+  const [dragOverCol, setDragOverCol] = useState<number | null>(null)
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     venues as unknown as Record<string, unknown>[],
     'name'
@@ -306,13 +310,41 @@ function VenueTable({ venues, onDetail, onDelete, isAdmin }: {
     <table className="data-table">
       <thead>
         <tr>
-          {isVisible('name')     && <th className="sortable" onClick={() => toggleSort('name')}>Name<span className={`sort-indicator${sortKey === 'name' ? ' active' : ''}`}>{sortKey === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('street')   && <th className="sortable" onClick={() => toggleSort('street')}>Straße<span className={`sort-indicator${sortKey === 'street' ? ' active' : ''}`}>{sortKey === 'street' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('zip')      && <th className="sortable" onClick={() => toggleSort('postalCode')}>PLZ<span className={`sort-indicator${sortKey === 'postalCode' ? ' active' : ''}`}>{sortKey === 'postalCode' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('city')     && <th className="sortable" onClick={() => toggleSort('city')}>Stadt<span className={`sort-indicator${sortKey === 'city' ? ' active' : ''}`}>{sortKey === 'city' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('state')    && <th className="sortable" onClick={() => toggleSort('state')}>Bundesland<span className={`sort-indicator${sortKey === 'state' ? ' active' : ''}`}>{sortKey === 'state' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('country')  && <th className="sortable" onClick={() => toggleSort('country')}>Land<span className={`sort-indicator${sortKey === 'country' ? ' active' : ''}`}>{sortKey === 'country' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('capacity') && <th className="sortable" onClick={() => toggleSort('capacity')}>Kapazität<span className={`sort-indicator${sortKey === 'capacity' ? ' active' : ''}`}>{sortKey === 'capacity' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {(() => {
+            const COL_META: Record<string, { label: string; sortKey: string }> = {
+              name:     { label: 'Name',       sortKey: 'name'       },
+              street:   { label: 'Straße',     sortKey: 'street'     },
+              zip:      { label: 'PLZ',        sortKey: 'postalCode' },
+              city:     { label: 'Stadt',      sortKey: 'city'       },
+              state:    { label: 'Bundesland', sortKey: 'state'      },
+              country:  { label: 'Land',       sortKey: 'country'    },
+              capacity: { label: 'Kapazität',  sortKey: 'capacity'   },
+            }
+            return colOrder.filter(id => isVisible(id)).map((colId, i) => {
+              const m = COL_META[colId]
+              if (!m) return null
+              const isOver = dragOverCol === i
+              return (
+                <th
+                  key={colId}
+                  draggable
+                  onDragStart={() => colDragStart(i)}
+                  onDragOver={e => { e.preventDefault(); setDragOverCol(i) }}
+                  onDragLeave={() => setDragOverCol(null)}
+                  onDrop={() => { colDrop(i); setDragOverCol(null) }}
+                  onDragEnd={() => setDragOverCol(null)}
+                  className="sortable"
+                  style={{ cursor: 'grab', borderLeft: isOver ? '2px solid #60a5fa' : undefined, userSelect: 'none' }}
+                  onClick={() => toggleSort(m.sortKey)}
+                >
+                  {m.label}
+                  <span className={`sort-indicator${sortKey === m.sortKey ? ' active' : ''}`}>
+                    {sortKey === m.sortKey ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                  </span>
+                </th>
+              )
+            })
+          })()}
           <th style={{ width: 32, textAlign: 'right' }}>
             <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
           </th>
@@ -321,13 +353,18 @@ function VenueTable({ venues, onDetail, onDelete, isAdmin }: {
       <tbody>
         {(sorted as unknown as Venue[]).map((venue) => (
           <tr key={venue.id} className="clickable" onClick={() => onDetail(venue.id)}>
-            {isVisible('name')     && <td className="font-medium">{venue.name}</td>}
-            {isVisible('street')   && <td>{venue.street}</td>}
-            {isVisible('zip')      && <td>{venue.postalCode}</td>}
-            {isVisible('city')     && <td>{venue.city}</td>}
-            {isVisible('state')    && <td>{venue.state}</td>}
-            {isVisible('country')  && <td>{venue.country}</td>}
-            {isVisible('capacity') && <td>{venue.capacity}</td>}
+            {colOrder.filter(id => isVisible(id)).map(colId => {
+              switch (colId) {
+                case 'name':     return <td key="name" className="font-medium">{venue.name}</td>
+                case 'street':   return <td key="street">{venue.street}</td>
+                case 'zip':      return <td key="zip">{venue.postalCode}</td>
+                case 'city':     return <td key="city">{venue.city}</td>
+                case 'state':    return <td key="state">{venue.state}</td>
+                case 'country':  return <td key="country">{venue.country}</td>
+                case 'capacity': return <td key="capacity">{venue.capacity}</td>
+                default: return null
+              }
+            })}
             <td style={{ textAlign: 'right', padding: '0 8px' }} onClick={e => e.stopPropagation()}>
               {isAdmin && (
                 <button

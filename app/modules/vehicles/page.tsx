@@ -12,6 +12,7 @@ import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { VehicleDetailContent } from '@/app/modules/vehicles/VehicleDetail'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { useColumnOrder } from '@/app/lib/hooks/useColumnOrder'
 
 export default function VehiclesPage() {
   const t = useT()
@@ -224,6 +225,9 @@ const VEHICLE_COLUMNS = [
 
 function VehicleTable({ vehicles, onEdit, onDelete, isAdmin }: { vehicles: Vehicle[]; onEdit: (v: Vehicle) => void; onDelete: (id: string) => void; isAdmin: boolean }) {
   const { isVisible, toggle, columns } = useColumnVisibility('vehicle-list', VEHICLE_COLUMNS)
+  const REORDERABLE_COLS = ['designation', 'vehicleType', 'driver', 'licensePlate', 'dimensions', 'powerConnection', 'seats', 'sleepingPlaces']
+  const { order: colOrder, onDragStart: colDragStart, onDrop: colDrop } = useColumnOrder('vehicle-list', REORDERABLE_COLS)
+  const [dragOverCol, setDragOverCol] = useState<number | null>(null)
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
     vehicles as unknown as Record<string, unknown>[],
     'designation'
@@ -232,14 +236,42 @@ function VehicleTable({ vehicles, onEdit, onDelete, isAdmin }: { vehicles: Vehic
     <table className="data-table">
       <thead>
         <tr>
-          {isVisible('designation')     && <th className="sortable" onClick={() => toggleSort('designation')}>Bezeichnung<span className={`sort-indicator${sortKey === 'designation' ? ' active' : ''}`}>{sortKey === 'designation' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('vehicleType')     && <th className="sortable" onClick={() => toggleSort('vehicleType')}>Typ<span className={`sort-indicator${sortKey === 'vehicleType' ? ' active' : ''}`}>{sortKey === 'vehicleType' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('driver')          && <th className="sortable" onClick={() => toggleSort('driver')}>Fahrer<span className={`sort-indicator${sortKey === 'driver' ? ' active' : ''}`}>{sortKey === 'driver' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('licensePlate')    && <th className="sortable" onClick={() => toggleSort('licensePlate')}>Kennzeichen<span className={`sort-indicator${sortKey === 'licensePlate' ? ' active' : ''}`}>{sortKey === 'licensePlate' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('dimensions')      && <th className="sortable" onClick={() => toggleSort('dimensions')}>Abmessungen<span className={`sort-indicator${sortKey === 'dimensions' ? ' active' : ''}`}>{sortKey === 'dimensions' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('powerConnection') && <th className="sortable" onClick={() => toggleSort('powerConnection')}>Strom<span className={`sort-indicator${sortKey === 'powerConnection' ? ' active' : ''}`}>{sortKey === 'powerConnection' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('seats')           && <th className="sortable" onClick={() => toggleSort('seats')}>Sitze<span className={`sort-indicator${sortKey === 'seats' ? ' active' : ''}`}>{sortKey === 'seats' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
-          {isVisible('sleepingPlaces')  && <th className="sortable" onClick={() => toggleSort('sleepingPlaces')}>Schlafplätze<span className={`sort-indicator${sortKey === 'sleepingPlaces' ? ' active' : ''}`}>{sortKey === 'sleepingPlaces' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span></th>}
+          {(() => {
+            const COL_META: Record<string, { label: string; sortKey: string }> = {
+              designation:     { label: 'Bezeichnung',  sortKey: 'designation'     },
+              vehicleType:     { label: 'Typ',           sortKey: 'vehicleType'     },
+              driver:          { label: 'Fahrer',        sortKey: 'driver'          },
+              licensePlate:    { label: 'Kennzeichen',   sortKey: 'licensePlate'    },
+              dimensions:      { label: 'Abmessungen',   sortKey: 'dimensions'      },
+              powerConnection: { label: 'Strom',         sortKey: 'powerConnection' },
+              seats:           { label: 'Sitze',         sortKey: 'seats'           },
+              sleepingPlaces:  { label: 'Schlafplätze',  sortKey: 'sleepingPlaces'  },
+            }
+            return colOrder.filter(id => isVisible(id)).map((colId, i) => {
+              const m = COL_META[colId]
+              if (!m) return null
+              const isOver = dragOverCol === i
+              return (
+                <th
+                  key={colId}
+                  draggable
+                  onDragStart={() => colDragStart(i)}
+                  onDragOver={e => { e.preventDefault(); setDragOverCol(i) }}
+                  onDragLeave={() => setDragOverCol(null)}
+                  onDrop={() => { colDrop(i); setDragOverCol(null) }}
+                  onDragEnd={() => setDragOverCol(null)}
+                  className="sortable"
+                  style={{ cursor: 'grab', borderLeft: isOver ? '2px solid #60a5fa' : undefined, userSelect: 'none' }}
+                  onClick={() => toggleSort(m.sortKey)}
+                >
+                  {m.label}
+                  <span className={`sort-indicator${sortKey === m.sortKey ? ' active' : ''}`}>
+                    {sortKey === m.sortKey ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                  </span>
+                </th>
+              )
+            })
+          })()}
           <th style={{ width: 32, textAlign: 'right' }}>
             <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
           </th>
@@ -248,14 +280,19 @@ function VehicleTable({ vehicles, onEdit, onDelete, isAdmin }: { vehicles: Vehic
       <tbody>
         {(sorted as unknown as Vehicle[]).map((vehicle) => (
           <tr key={vehicle.id} className="clickable" onClick={() => onEdit(vehicle)}>
-            {isVisible('designation')     && <td className="font-medium">{vehicle.designation}</td>}
-            {isVisible('vehicleType')     && <td>{vehicle.vehicleType}</td>}
-            {isVisible('driver')          && <td>{vehicle.driver}</td>}
-            {isVisible('licensePlate')    && <td>{vehicle.licensePlate}</td>}
-            {isVisible('dimensions')      && <td>{vehicle.dimensions}</td>}
-            {isVisible('powerConnection') && <td>{vehicle.powerConnection}</td>}
-            {isVisible('seats')           && <td>{vehicle.seats}</td>}
-            {isVisible('sleepingPlaces')  && <td>{vehicle.sleepingPlaces}</td>}
+            {colOrder.filter(id => isVisible(id)).map(colId => {
+              switch (colId) {
+                case 'designation':     return <td key="designation" className="font-medium">{vehicle.designation}</td>
+                case 'vehicleType':     return <td key="vehicleType">{vehicle.vehicleType}</td>
+                case 'driver':          return <td key="driver">{vehicle.driver}</td>
+                case 'licensePlate':    return <td key="licensePlate">{vehicle.licensePlate}</td>
+                case 'dimensions':      return <td key="dimensions">{vehicle.dimensions}</td>
+                case 'powerConnection': return <td key="powerConnection">{vehicle.powerConnection}</td>
+                case 'seats':           return <td key="seats">{vehicle.seats}</td>
+                case 'sleepingPlaces':  return <td key="sleepingPlaces">{vehicle.sleepingPlaces}</td>
+                default: return null
+              }
+            })}
             <td style={{ textAlign: 'right', padding: '0 8px' }} onClick={e => e.stopPropagation()}>
               {isAdmin && (
                 <button
