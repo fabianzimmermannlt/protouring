@@ -278,7 +278,7 @@ export function L2Layout({
       if (id === 'hotels') window.dispatchEvent(new CustomEvent('hotel-show-list'))
       if (id === 'vehicles') window.dispatchEvent(new CustomEvent('vehicle-show-list'))
       onTabChange(id, defaultSub)
-      setExpandedItems(prev => { const n = new Set(prev); n.add(id); return n })
+      setExpandedItems(new Set([id]))
       setShowUserMenu(false)
     })
   }
@@ -369,11 +369,9 @@ export function L2Layout({
             <button
               onClick={e => {
                 e.stopPropagation()
-                setExpandedItems(prev => {
-                  const next = new Set(prev)
-                  next.has(item.id) ? next.delete(item.id) : next.add(item.id)
-                  return next
-                })
+                setExpandedItems(prev =>
+                  prev.has(item.id) ? new Set<string>() : new Set([item.id])
+                )
               }}
               className="pr-3 pl-1 py-2 flex items-center"
               aria-label="Submenü ein-/ausklappen"
