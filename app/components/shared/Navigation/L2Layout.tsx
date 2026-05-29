@@ -587,10 +587,9 @@ export function L2Layout({
               {MODULE_NAV.filter(item => isTenantModuleEnabled(item.id as any)).map(item => renderNavItem(item, true))}
             </>
           )}
-        </nav>
 
-        {/* Einstellungen – ganz unten */}
-        <div className="px-0 pb-3 border-t border-[#333] pt-3">
+          {/* Einstellungen – am Ende der Nav, scrollt mit */}
+          <div className="pt-2 pb-1"><div className="border-t border-[#333]" /></div>
           <button
             onClick={() => setExpandedItems(prev => { const n = new Set(prev); n.has('settings') ? n.delete('settings') : n.add('settings'); return n })}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
@@ -602,7 +601,7 @@ export function L2Layout({
             }`} />
           </button>
           {expandedItems.has('settings') && renderSettingsSubs()}
-        </div>
+        </nav>
       </aside>
 
       {/* ── MAIN AREA ───────────────────────────────────────────────────────── */}
