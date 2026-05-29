@@ -323,12 +323,6 @@ export function L2Layout({
         Übersicht
       </button>
       <button
-        onClick={() => window.dispatchEvent(new CustomEvent('open-new-termin'))}
-        className="w-full text-left px-2 py-1.5 rounded text-xs l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d] transition-colors flex items-center gap-1.5"
-      >
-        <PlusIcon className="w-3 h-3" /> Neuer Termin
-      </button>
-      <button
         onClick={() => guardDirtyNav(() => { handleNav('events'); onSubTabChange?.('crew-booking') })}
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
           activeTab === 'events' && activeSubTab === 'crew-booking'
