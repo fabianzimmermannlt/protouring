@@ -6,10 +6,6 @@ import {
   createTermin,
   updateTermin,
   deleteTermin,
-  TERMIN_ART,
-  TERMIN_ART_SUB,
-  TERMIN_STATUS_BOOKING,
-  TERMIN_STATUS_PUBLIC,
   type Termin,
   type TerminFormData,
 } from '@/lib/api-client'
@@ -69,7 +65,7 @@ export default function TerminModal({
   const field = (key: keyof typeof EMPTY_FORM, value: string | number | boolean | null) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
-  const canSave = !!form.date && !!form.title.trim()
+  const canSave = !!form.date
 
   const handleSave = async (andNew = false) => {
     if (!canSave) return
@@ -138,88 +134,43 @@ export default function TerminModal({
             </div>
           )}
 
-          {/* Datum + Ort */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t('quickCreate.date')} <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={e => field('date', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Ort</label>
-              <input
-                type="text"
-                placeholder="Stadt"
-                value={form.city || ''}
-                onChange={e => field('city', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Titel */}
+          {/* Datum */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              {t('general.title')} <span className="text-red-400">*</span>
+              {t('quickCreate.date')} <span className="text-red-400">*</span>
             </label>
             <input
-              type="text"
-              placeholder={t('termin.titlePlaceholder')}
-              value={form.title}
-              onChange={e => field('title', e.target.value)}
+              type="date"
+              value={form.date}
+              onChange={e => field('date', e.target.value)}
               autoFocus={!isEdit}
               className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
-          {/* Art */}
+          {/* Titel */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t('termin.type')}</label>
-            <div className="grid grid-cols-2 gap-2">
-              <select value={form.art || ''} onChange={e => field('art', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">—</option>
-                {TERMIN_ART.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-              <select value={form.art_sub || ''} onChange={e => field('art_sub', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">—</option>
-                {TERMIN_ART_SUB.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t('termin.status')}</label>
-            <div className="grid grid-cols-2 gap-2">
-              <select value={form.status_booking || ''} onChange={e => field('status_booking', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
-                {TERMIN_STATUS_BOOKING.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select value={form.status_public || ''} onChange={e => field('status_public', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
-                {TERMIN_STATUS_PUBLIC.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Titel als Header */}
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('general.title')}</label>
             <input
-              type="checkbox"
-              checked={!!form.show_title_as_header}
-              onChange={e => field('show_title_as_header', e.target.checked)}
-              className="rounded"
+              type="text"
+              placeholder={t('termin.titlePlaceholder')}
+              value={form.title}
+              onChange={e => field('title', e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <span className="text-xs text-gray-600">{t('termin.showTitleAsHeader')}</span>
-          </label>
+          </div>
+
+          {/* Ort */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Ort</label>
+            <input
+              type="text"
+              placeholder="Stadt"
+              value={form.city || ''}
+              onChange={e => field('city', e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
 
         {/* Footer */}
