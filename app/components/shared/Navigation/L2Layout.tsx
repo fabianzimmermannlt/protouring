@@ -418,10 +418,7 @@ export function L2Layout({
             {kontoItems.map(sub => (
               <button key={sub.id}
                 onClick={() => guardDirtyNav(() => {
-                  onSubTabChange?.(sub.id)
-                  if (activeTab === 'contacts' && sub.id === 'overview') {
-                    window.dispatchEvent(new CustomEvent('contact-show-list'))
-                  }
+                  onTabChange('settings', sub.id)
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
@@ -438,10 +435,7 @@ export function L2Layout({
             {workspaceItems.map(sub => (
               <button key={sub.id}
                 onClick={() => guardDirtyNav(() => {
-                  onSubTabChange?.(sub.id)
-                  if (activeTab === 'contacts' && sub.id === 'overview') {
-                    window.dispatchEvent(new CustomEvent('contact-show-list'))
-                  }
+                  onTabChange('settings', sub.id)
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
@@ -598,18 +592,16 @@ export function L2Layout({
         {/* Einstellungen – ganz unten */}
         <div className="px-0 pb-3 border-t border-[#333] pt-3">
           <button
-            onClick={() => handleNav('settings')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-              activeTab === 'settings' ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
-            }`}
+            onClick={() => setExpandedItems(prev => { const n = new Set(prev); n.has('settings') ? n.delete('settings') : n.add('settings'); return n })}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
           >
             <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">Einstellungen</span>
             <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${
-              activeTab === 'settings' ? 'rotate-180 text-gray-700' : 'text-gray-500'
+              expandedItems.has('settings') ? 'rotate-180 text-gray-400' : 'text-gray-500'
             }`} />
           </button>
-          {activeTab === 'settings' && renderSettingsSubs()}
+          {expandedItems.has('settings') && renderSettingsSubs()}
         </div>
       </aside>
 
