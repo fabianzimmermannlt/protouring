@@ -397,8 +397,8 @@ export function L2Layout({
               <button
                 key={sub.id}
                 onClick={() => guardDirtyNav(() => {
-                  onSubTabChange?.(sub.id)
-                  if (activeTab === 'contacts' && sub.id === 'overview') {
+                  onTabChange(item.id, sub.id)
+                  if (item.id === 'contacts' && sub.id === 'overview') {
                     window.dispatchEvent(new CustomEvent('contact-show-list'))
                   }
                 })}
