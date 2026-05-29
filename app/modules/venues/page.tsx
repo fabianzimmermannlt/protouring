@@ -225,7 +225,7 @@ export default function VenuesPage() {
             onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
         </>
       )}
-      {showQuickCreate && <QuickCreateVenueModal onClose={() => setShowQuickCreate(false)} onCreated={v => { setVenues(prev => [...prev, v]); setShowQuickCreate(false) }} />}
+      {showQuickCreate && <QuickCreateVenueModal onClose={() => setShowQuickCreate(false)} onCreated={v => { setVenues(prev => [...prev, v]); localStorage.setItem('pt_venues_last_id', v.id); setSelectedVenueId(v.id); setShowQuickCreate(false) }} />}
 
       {/* List */}
       {loading ? (
