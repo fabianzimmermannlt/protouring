@@ -139,10 +139,6 @@ export function L2Layout({
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set([activeTab]))
-
-  useEffect(() => {
-    setExpandedItems(new Set([activeTab]))
-  }, [activeTab])
   const [allTenantsState, setAllTenantsState] = useState<
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
@@ -282,7 +278,7 @@ export function L2Layout({
       if (id === 'hotels') window.dispatchEvent(new CustomEvent('hotel-show-list'))
       if (id === 'vehicles') window.dispatchEvent(new CustomEvent('vehicle-show-list'))
       onTabChange(id, defaultSub)
-      setExpandedItems(new Set([id]))
+      setExpandedItems(prev => { const n = new Set(prev); n.add(id); return n })
       setShowUserMenu(false)
     })
   }
