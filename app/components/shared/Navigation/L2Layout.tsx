@@ -570,38 +570,44 @@ export function L2Layout({
         </div>
 
         {/* Main Nav */}
-        <nav className="flex-1 px-0 py-3 overflow-y-auto space-y-0.5">
-          {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item =>
-            renderNavItem(item)
-          )}
+        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+          <nav className="px-0 py-3 space-y-0.5">
+            {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item =>
+              renderNavItem(item)
+            )}
 
-          {/* Module section inside main nav */}
-          {canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
-            <>
-              <div className="pt-2 pb-1">
-                <div className="border-t border-[#333]" />
-              </div>
-              <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
-                Module
-              </p>
-              {MODULE_NAV.filter(item => isTenantModuleEnabled(item.id as any)).map(item => renderNavItem(item, true))}
-            </>
-          )}
+            {/* Module section */}
+            {canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
+              <>
+                <div className="pt-2 pb-1">
+                  <div className="border-t border-[#333]" />
+                </div>
+                <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                  Module
+                </p>
+                {MODULE_NAV.filter(item => isTenantModuleEnabled(item.id as any)).map(item => renderNavItem(item, true))}
+              </>
+            )}
+          </nav>
 
-          {/* Einstellungen – am Ende der Nav, scrollt mit */}
-          <div className="pt-2 pb-1"><div className="border-t border-[#333]" /></div>
-          <button
-            onClick={() => setExpandedItems(prev => { const n = new Set(prev); n.has('settings') ? n.delete('settings') : n.add('settings'); return n })}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
-          >
-            <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1">Einstellungen</span>
-            <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${
-              expandedItems.has('settings') ? 'rotate-180 text-gray-400' : 'text-gray-500'
-            }`} />
-          </button>
-          {expandedItems.has('settings') && renderSettingsSubs()}
-        </nav>
+          {/* Spacer pushes settings to bottom */}
+          <div className="flex-1" />
+
+          {/* Einstellungen – unten, scrollt mit */}
+          <div className="px-0 pb-3 border-t border-[#333] pt-3">
+            <button
+              onClick={() => setExpandedItems(prev => { const n = new Set(prev); n.has('settings') ? n.delete('settings') : n.add('settings'); return n })}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
+            >
+              <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="flex-1">Einstellungen</span>
+              <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${
+                expandedItems.has('settings') ? 'rotate-180 text-gray-400' : 'text-gray-500'
+              }`} />
+            </button>
+            {expandedItems.has('settings') && renderSettingsSubs()}
+          </div>
+        </div>
       </aside>
 
       {/* ── MAIN AREA ───────────────────────────────────────────────────────── */}
