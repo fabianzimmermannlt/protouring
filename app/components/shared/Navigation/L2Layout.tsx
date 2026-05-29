@@ -359,7 +359,7 @@ export function L2Layout({
         <button
           onClick={() => hasSubNav ? toggleExpand() : handleNav(item.id)}
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-            isActive ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
+            isActive && !hasSubNav ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
