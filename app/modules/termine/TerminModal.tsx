@@ -15,7 +15,7 @@ import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 interface TerminModalProps {
   termin?: Termin | null
   onClose: () => void
-  onSaved: (t: Termin) => void
+  onSaved: (t: Termin, andNew?: boolean) => void
   onDeleted?: (id: number) => void
   allowAddAnother?: boolean
 }
@@ -85,7 +85,7 @@ export default function TerminModal({
       } else {
         saved = await createTermin({ ...form, city: form.city || '' })
       }
-      onSaved(saved)
+      onSaved(saved, andNew)
       if (andNew) {
         setForm({ ...EMPTY_FORM })
       } else {

@@ -2278,11 +2278,15 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
         <TerminModal
           termin={editingTermin}
           onClose={closeModal}
-          onSaved={saved => {
+          onSaved={(saved, andNew) => {
             if (editingTermin) {
               setTermine(prev => prev.map(t => t.id === saved.id ? { ...t, ...saved } : t))
             } else {
               setTermine(prev => [...prev, saved])
+              if (!andNew) {
+                closeModal()
+                setTimeout(() => selectTermin(saved.id, 'details2'), 50)
+              }
             }
             window.dispatchEvent(new CustomEvent('termin-list-changed'))
           }}
