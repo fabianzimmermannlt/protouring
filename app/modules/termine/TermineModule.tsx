@@ -42,6 +42,7 @@ import TerminDetailMobile from './TerminDetailMobile'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
+import { useColumnOrder } from '@/app/lib/hooks/useColumnOrder'
 import {
   getTermine,
   createTermin,
@@ -1648,6 +1649,10 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
 
   const { isVisible: isColVisible, toggle: toggleCol, columns: termineColumns } = useColumnVisibility('termine-list', TERMINE_COLUMNS)
 
+  const REORDERABLE_COLS = ['date', 'art', 'statusBooking', 'statusPublic', 'title', 'city', 'venue']
+  const { order: colOrder, onDragStart: colDragStart, onDrop: colDrop } = useColumnOrder('termine-list', REORDERABLE_COLS)
+  const [dragOverCol, setDragOverCol] = useState<number | null>(null)
+
   // ---- Load data ----
 
   const loadData = useCallback(async () => {
@@ -2110,27 +2115,46 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
             <table className="data-table data-table--termine">
               <thead>
                 <tr>
-                  {([
-                    [t('table.date'),   'date',          '7rem',  'date'],
-                    [t('table.type'),   'art',           '8rem',  'art'],
-                    [t('table.status'), 'statusBooking', '11rem', 'statusBooking'],
-                    [t('table.public'), 'statusPublic',  '8rem',  'statusPublic'],
-                    [t('table.title'),  'title',         '14rem', 'title'],
-                    [t('table.city'),   'city',          '8rem',  'city'],
-                    [t('table.venue'),  'venueName',     '11rem', 'venue'],
-                  ] as [string, keyof Termin, string, string][]).map(([label, key, w, colId]) => isColVisible(colId) ? (
-                    <th
-                      key={key as string}
-                      className="sortable"
-                      style={{ width: w }}
-                      onClick={() => toggleTableSort(key)}
-                    >
-                      {label}
-                      <span className={`sort-indicator${tableSortKey === key ? ' active' : ''}`}>
-                        {tableSortKey === key ? (tableSortDir === 'asc' ? '▲' : '▼') : '⇅'}
-                      </span>
-                    </th>
-                  ) : null)}
+                  {(() => {
+                    const COL_META: Record<string, { label: string; sortKey: keyof Termin; width: string }> = {
+                      date:          { label: t('table.date'),   sortKey: 'date',          width: '7rem'  },
+                      art:           { label: t('table.type'),   sortKey: 'art',           width: '8rem'  },
+                      statusBooking: { label: t('table.status'), sortKey: 'statusBooking', width: '11rem' },
+                      statusPublic:  { label: t('table.public'), sortKey: 'statusPublic',  width: '8rem'  },
+                      title:         { label: t('table.title'),  sortKey: 'title',         width: '14rem' },
+                      city:          { label: t('table.city'),   sortKey: 'city',          width: '8rem'  },
+                      venue:         { label: t('table.venue'),  sortKey: 'venueName',     width: '11rem' },
+                    }
+                    return colOrder.filter(id => isColVisible(id)).map((colId, i) => {
+                      const m = COL_META[colId]
+                      if (!m) return null
+                      const isOver = dragOverCol === i
+                      return (
+                        <th
+                          key={colId}
+                          draggable
+                          onDragStart={() => colDragStart(i)}
+                          onDragOver={e => { e.preventDefault(); setDragOverCol(i) }}
+                          onDragLeave={() => setDragOverCol(null)}
+                          onDrop={() => { colDrop(i); setDragOverCol(null) }}
+                          onDragEnd={() => setDragOverCol(null)}
+                          className="sortable"
+                          style={{
+                            width: m.width,
+                            cursor: 'grab',
+                            borderLeft: isOver ? '2px solid #60a5fa' : undefined,
+                            userSelect: 'none',
+                          }}
+                          onClick={() => toggleTableSort(m.sortKey)}
+                        >
+                          {m.label}
+                          <span className={`sort-indicator${tableSortKey === m.sortKey ? ' active' : ''}`}>
+                            {tableSortKey === m.sortKey ? (tableSortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                          </span>
+                        </th>
+                      )
+                    })
+                  })()}
                   {isColVisible('availability') && <th className="text-center" style={{ width: '5.5rem' }}>{t('table.availability')}</th>}
                   {canSeeGebucht && isColVisible('booked') && <th className="text-center" style={{ width: '4rem' }}>{t('table.booked')}</th>}
                   <th style={{ width: '2.5rem', textAlign: 'right' }}>
@@ -2152,29 +2176,34 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                   )
                   return filtered.map(termin => (
                   <tr key={termin.id} className="clickable" onClick={() => selectTermin(termin.id)}>
-                    {isColVisible('date')          && <td style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>}
-                    {isColVisible('art')           && <td style={{ whiteSpace: 'nowrap' }}>
-                      {termin.art
-                        ? <><span className="font-medium text-gray-800">{termin.art}</span>{termin.artSub && <span className="text-gray-400 text-xs ml-1">· {termin.artSub}</span>}</>
-                        : <span className="text-gray-400">–</span>}
-                    </td>}
-                    {isColVisible('statusBooking') && <td style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusBooking ? STATUS_BOOKING_DOT[termin.statusBooking] : undefined) || '#9ca3af' }}>
-                        {termin.statusBooking
-                          ? (STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking)
-                          : '–'}
-                      </span>
-                    </td>}
-                    {isColVisible('statusPublic')  && <td style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusPublic ? STATUS_PUBLIC_DOT[termin.statusPublic] : undefined) || '#9ca3af' }}>
-                        {termin.statusPublic
-                          ? (STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic)
-                          : '–'}
-                      </span>
-                    </td>}
-                    {isColVisible('title')         && <td className="font-medium text-gray-900" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '14rem' }}>{termin.title}</td>}
-                    {isColVisible('city')          && <td className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>{termin.city || <span className="text-gray-300">–</span>}</td>}
-                    {isColVisible('venue')         && <td className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '13rem' }}>{termin.venueName || <span className="text-gray-300">–</span>}</td>}
+                    {colOrder.filter(id => isColVisible(id)).map(colId => {
+                      switch (colId) {
+                        case 'date': return <td key="date" style={{ whiteSpace: 'nowrap' }}>{formatDateTable(termin.date)}</td>
+                        case 'art': return <td key="art" style={{ whiteSpace: 'nowrap' }}>
+                          {termin.art
+                            ? <><span className="font-medium text-gray-800">{termin.art}</span>{termin.artSub && <span className="text-gray-400 text-xs ml-1">· {termin.artSub}</span>}</>
+                            : <span className="text-gray-400">–</span>}
+                        </td>
+                        case 'statusBooking': return <td key="statusBooking" style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusBooking ? STATUS_BOOKING_DOT[termin.statusBooking] : undefined) || '#9ca3af' }}>
+                            {termin.statusBooking
+                              ? (STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking)
+                              : '–'}
+                          </span>
+                        </td>
+                        case 'statusPublic': return <td key="statusPublic" style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusPublic ? STATUS_PUBLIC_DOT[termin.statusPublic] : undefined) || '#9ca3af' }}>
+                            {termin.statusPublic
+                              ? (STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic)
+                              : '–'}
+                          </span>
+                        </td>
+                        case 'title': return <td key="title" className="font-medium text-gray-900" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '14rem' }}>{termin.title}</td>
+                        case 'city': return <td key="city" className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>{termin.city || <span className="text-gray-300">–</span>}</td>
+                        case 'venue': return <td key="venue" className="text-gray-600 text-sm" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '13rem' }}>{termin.venueName || <span className="text-gray-300">–</span>}</td>
+                        default: return null
+                      }
+                    })}
 
                     {/* Verfügbar */}
                     {isColVisible('availability') && <td className="text-center">
