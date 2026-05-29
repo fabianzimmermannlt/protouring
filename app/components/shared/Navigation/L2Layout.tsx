@@ -138,6 +138,7 @@ export function L2Layout({
 
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set([activeTab]))
   const [allTenantsState, setAllTenantsState] = useState<
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
@@ -277,6 +278,7 @@ export function L2Layout({
       if (id === 'hotels') window.dispatchEvent(new CustomEvent('hotel-show-list'))
       if (id === 'vehicles') window.dispatchEvent(new CustomEvent('vehicle-show-list'))
       onTabChange(id, defaultSub)
+      setExpandedItems(prev => { const n = new Set(prev); n.add(id); return n })
       setShowUserMenu(false)
     })
   }
@@ -344,35 +346,50 @@ export function L2Layout({
     const subs = getVisibleSubs(item.id)
     const hasSubNav = subs.length > 0 || item.id === 'events'
 
+    const isExpanded = expandedItems.has(item.id)
+
     return (
       <div key={item.id}>
-        <button
-          onClick={() => handleNav(item.id)}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-            isActive
-              ? 'pt-nav-active'
-              : 'hover:text-white hover:bg-[#2d2d2d]'
-          }`}
-        >
-          <item.icon className="w-4 h-4 flex-shrink-0" />
-          <span className="flex-1">{item.name}</span>
-          {isModule && (
-            <span className="text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
-              ADDON
-            </span>
-          )}
+        <div className={`flex items-center transition-colors ${
+          isActive ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
+        }`}>
+          <button
+            onClick={() => handleNav(item.id)}
+            className="flex-1 flex items-center gap-2.5 px-3 py-2 text-sm text-left"
+          >
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1">{item.name}</span>
+            {isModule && (
+              <span className="text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
+                ADDON
+              </span>
+            )}
+          </button>
           {hasSubNav && (
-            <ChevronDownIcon
-              className={`w-3 h-3 flex-shrink-0 transition-transform ${
-                isActive ? 'rotate-180 text-gray-700' : 'text-gray-500'
-              }`}
-            />
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setExpandedItems(prev => {
+                  const next = new Set(prev)
+                  next.has(item.id) ? next.delete(item.id) : next.add(item.id)
+                  return next
+                })
+              }}
+              className="pr-3 pl-1 py-2 flex items-center"
+              aria-label="Submenü ein-/ausklappen"
+            >
+              <ChevronDownIcon
+                className={`w-3 h-3 flex-shrink-0 transition-transform ${
+                  isExpanded ? 'rotate-180 text-gray-400' : 'text-gray-500'
+                }`}
+              />
+            </button>
           )}
-        </button>
+        </div>
 
-        {isActive && item.id === 'events' && renderTermineSubs()}
+        {isExpanded && item.id === 'events' && renderTermineSubs()}
 
-        {isActive && item.id !== 'appointments' && hasSubNav && (
+        {isExpanded && item.id !== 'appointments' && hasSubNav && (
           <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
             {subs.map(sub => (
               <button
