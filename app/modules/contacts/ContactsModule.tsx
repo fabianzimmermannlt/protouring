@@ -6,7 +6,7 @@ import {
   CheckCircleIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
-import { Loader2, X, Save, Download, Upload, Plus, ArrowLeft } from 'lucide-react'
+import { Loader2, X, Save, Download, Upload, Plus, ArrowLeft, Check } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
@@ -102,6 +102,9 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [error, setError] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showGastModal, setShowGastModal] = useState(false)
+  const [gastName, setGastName] = useState('')
+  const [gastFunction, setGastFunction] = useState('')
+  const [gastSaving, setGastSaving] = useState(false)
   const [editingGast, setEditingGast] = useState<Contact | null>(null)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
 
@@ -373,27 +376,31 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     }
   }
 
-  const handleCreateGast = async (profileData: ProfileData) => {
+  const handleCreateGast = async () => {
+    if (!gastName.trim()) return
+    setGastSaving(true)
     try {
+      const parts = gastName.trim().split(/\s+/)
+      const firstName = parts[0]
+      const lastName = parts.slice(1).join(' ')
       const created = await createGuestContact({
-        firstName: profileData.firstName || '',
-        lastName: profileData.lastName || '',
-        phone: profileData.phone || '',
-        function1: profileData.function1 || '',
-        function2: profileData.function2 || '',
-        function3: profileData.function3 || '',
+        firstName,
+        lastName,
+        phone: '',
+        function1: gastFunction.trim(),
+        function2: '',
+        function3: '',
       })
-      if (created.id) {
-        const updated = await updateContact(created.id, profileToContact(profileData))
-        setContacts(prev => [...prev, updated])
-        window.dispatchEvent(new CustomEvent('contact-created', { detail: { contact: updated } }))
-      } else {
-        setContacts(prev => [...prev, created])
-        window.dispatchEvent(new CustomEvent('contact-created', { detail: { contact: created } }))
-      }
+      setContacts(prev => [...prev, created])
+      window.dispatchEvent(new CustomEvent('contact-created', { detail: { contact: created } }))
       setShowGastModal(false)
+      setGastName('')
+      setGastFunction('')
+      setSelectedContactId(String(created.id))
     } catch (e) {
       setError(t('contacts.error.createFailed'))
+    } finally {
+      setGastSaving(false)
     }
   }
 
@@ -759,24 +766,55 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       )}
 
 
-      {/* Manuell-Anlegen-Modal – gleiche Ansicht wie Bearbeiten */}
+      {/* Manuell-Anlegen-Modal – minimales Formular */}
       {showGastModal && (
-        <div className="modal-overlay">
-          <div className="modal-container max-w-3xl">
-            <div className="modal-header">
-              <h2 className="modal-title">{t('contacts.modal.createManualContact')}</h2>
-              <button onClick={() => setShowGastModal(false)} className="text-gray-400 hover:text-white">
-                <X size={18} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">{t('contacts.modal.createManualContact')}</h3>
+              <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
+                className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={16} />
               </button>
             </div>
-            <ProfileEditor
-              isOpen={true}
-              onClose={() => setShowGastModal(false)}
-              profileData={{} as ProfileData}
-              onSave={handleCreateGast}
-              isAdmin={isAdmin}
-              isSelf={false}
-            />
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Vor- und Nachname"
+                  value={gastName}
+                  onChange={e => setGastName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreateGast()}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Funktion</label>
+                <input
+                  type="text"
+                  placeholder="z.B. FOH Engineer, Stage Manager"
+                  value={gastFunction}
+                  onChange={e => setGastFunction(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreateGast()}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
+              <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
+                className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                {t('general.cancel')}
+              </button>
+              <button onClick={handleCreateGast} disabled={gastSaving || !gastName.trim()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50">
+                {gastSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                {t('general.save')}
+              </button>
+            </div>
           </div>
         </div>
       )}
