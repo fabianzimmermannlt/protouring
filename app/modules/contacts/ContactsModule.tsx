@@ -13,9 +13,9 @@ import CrewBookingView from './CrewBookingView'
 import { ContactDetailContent } from './ContactDetail'
 import {
   getContacts, createContact, updateContact, updateMyContact, deleteContact, createGuestContact,
-  getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
+  getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog, getGewerke,
   ROLE_LABELS, isAdminRole, isEditorRole, getEffectiveRole,
-  type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup
+  type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup, type Gewerk
 } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import { parseCSV, col } from '@/lib/csvParser'
@@ -105,6 +105,14 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [gastName, setGastName] = useState('')
   const [gastFunction, setGastFunction] = useState('')
   const [gastSaving, setGastSaving] = useState(false)
+  const [gewerke, setGewerke] = useState<Gewerk[]>([])
+
+  const openGastModal = async () => {
+    setGastName('')
+    setGastFunction('')
+    try { setGewerke(await getGewerke()) } catch {}
+    openGastModal()
+  }
   const [editingGast, setEditingGast] = useState<Contact | null>(null)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
 
@@ -159,7 +167,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   useEffect(() => {
     const onInvite = () => openAddModal()
-    const onCreate = () => setShowGastModal(true)
+    const onCreate = () => openGastModal()
     window.addEventListener('contact-sidebar-invite', onInvite)
     window.addEventListener('contact-sidebar-create', onCreate)
     return () => {
@@ -464,7 +472,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     <button onClick={openAddModal} className="btn btn-primary">
                       <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                     </button>
-                    <button onClick={() => setShowGastModal(true)} title={t('contacts.action.createManual')} className="btn btn-ghost">
+                    <button onClick={() => openGastModal()} title={t('contacts.action.createManual')} className="btn btn-ghost">
                       <Plus className="w-4 h-4" />
                     </button>
                   </>
@@ -494,7 +502,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       <button onClick={openAddModal} className="btn btn-primary flex-shrink-0" style={{ borderRadius: 0}}>
                         <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                       </button>
-                      <button onClick={() => setShowGastModal(true)} className="btn btn-ghost flex-shrink-0" title={t('contacts.action.createManual')} style={{ borderRadius: 0}}>
+                      <button onClick={() => openGastModal()} className="btn btn-ghost flex-shrink-0" title={t('contacts.action.createManual')} style={{ borderRadius: 0}}>
                         <Plus className="w-4 h-4" />
                       </button>
                     </>
@@ -525,7 +533,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       <button onClick={openAddModal} className="btn btn-primary">
                         <Plus className="w-4 h-4" /> {t('contacts.action.invite')}
                       </button>
-                      <button onClick={() => setShowGastModal(true)} className="btn btn-ghost" title={t('contacts.action.createManual')}>
+                      <button onClick={() => openGastModal()} className="btn btn-ghost" title={t('contacts.action.createManual')}>
                         <Plus className="w-4 h-4" /> {t('contacts.action.createManual')}
                       </button>
                     </div>
@@ -794,14 +802,16 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Funktion</label>
-                <input
-                  type="text"
-                  placeholder="z.B. FOH Engineer, Stage Manager"
+                <select
                   value={gastFunction}
                   onChange={e => setGastFunction(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleCreateGast()}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="">— keine Angabe —</option>
+                  {gewerke.flatMap(g => g.funktionen).sort().map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
