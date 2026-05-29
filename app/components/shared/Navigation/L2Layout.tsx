@@ -139,6 +139,12 @@ export function L2Layout({
   const [artistName, setArtistName] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => new Set([activeTab]))
+
+  useEffect(() => {
+    if (expandedItems.has('settings')) {
+      setTimeout(() => settingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 50)
+    }
+  }, [expandedItems])
   const [allTenantsState, setAllTenantsState] = useState<
     Array<{ id: number; name: string; slug: string; status: string; role: string }>
   >([])
@@ -146,6 +152,7 @@ export function L2Layout({
   const [dirtyDialog, setDirtyDialog] = useState<{ onProceed: () => void } | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const settingsRef = useRef<HTMLDivElement>(null)
 
   const currentUser = getCurrentUser()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
@@ -594,7 +601,7 @@ export function L2Layout({
           <div className="flex-1" />
 
           {/* Einstellungen – unten, scrollt mit */}
-          <div className="px-0 pb-3 border-t border-[#333] pt-3">
+          <div ref={settingsRef} className="px-0 pb-3 border-t border-[#333] pt-3">
             <button
               onClick={() => setExpandedItems(prev => { const n = new Set(prev); n.has('settings') ? n.delete('settings') : n.add('settings'); return n })}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
