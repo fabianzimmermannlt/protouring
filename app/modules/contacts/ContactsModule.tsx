@@ -21,16 +21,29 @@ import { useSortable } from '@/app/hooks/useSortable'
 import { parseCSV, col } from '@/lib/csvParser'
 import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { useColumnVisibility, type ColumnDef } from '@/app/components/shared/useColumnVisibility'
+import { useColumnOrder } from '@/app/lib/hooks/useColumnOrder'
+import ColumnToggle from '@/app/components/shared/ColumnToggle'
 
-const CONTACT_COLS: [string, keyof Contact][] = [
-  ['Vorname', 'firstName'],
-  ['Nachname', 'lastName'],
-  ['Funktion 1', 'function1'],
-  ['Funktion 2', 'function2'],
-  ['Funktion 3', 'function3'],
-  ['Spezifikation', 'specification'],
-  ['Zugriffsrechte', 'accessRights'],
+const CONTACT_COLUMNS: ColumnDef[] = [
+  { id: 'firstName',    label: 'Vorname',        alwaysVisible: true },
+  { id: 'lastName',     label: 'Nachname',        defaultVisible: true },
+  { id: 'function1',    label: 'Funktion 1',      defaultVisible: true },
+  { id: 'function2',    label: 'Funktion 2',      defaultVisible: true },
+  { id: 'function3',    label: 'Funktion 3',      defaultVisible: false },
+  { id: 'specification',label: 'Spezifikation',   defaultVisible: true },
+  { id: 'accessRights', label: 'Zugriffsrechte',  defaultVisible: true },
 ]
+
+const CONTACT_SORT_KEY: Record<string, keyof Contact> = {
+  firstName:    'firstName',
+  lastName:     'lastName',
+  function1:    'function1',
+  function2:    'function2',
+  function3:    'function3',
+  specification:'specification',
+  accessRights: 'accessRights',
+}
 
 export interface ContactsProps {
   activeSubTab?: string
@@ -921,19 +934,44 @@ function ContactTable({
     contacts as unknown as Record<string, unknown>[],
     'lastName'
   )
+  const { isVisible, toggle, columns } = useColumnVisibility('contact-list', CONTACT_COLUMNS)
+  const REORDERABLE_COLS = CONTACT_COLUMNS.map(c => c.id)
+  const { order: colOrder, onDragStart: colDragStart, onDrop: colDrop } = useColumnOrder('contact-list', REORDERABLE_COLS)
+  const [dragOverCol, setDragOverCol] = useState<number | null>(null)
+
   return (
     <table className="data-table">
       <thead>
         <tr>
-          {CONTACT_COLS.map(([label, key]) => (
-            <th key={key as string} className="sortable" onClick={() => toggleSort(key as string)}>
-              {label}
-              <span className={`sort-indicator${sortKey === key ? ' active' : ''}`}>
-                {sortKey === key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-              </span>
-            </th>
-          ))}
+          {colOrder.filter(id => isVisible(id)).map((colId, i) => {
+            const col = CONTACT_COLUMNS.find(c => c.id === colId)
+            if (!col) return null
+            const sortK = CONTACT_SORT_KEY[colId] as string
+            const isOver = dragOverCol === i
+            return (
+              <th
+                key={colId}
+                draggable={!col.alwaysVisible}
+                onDragStart={() => colDragStart(i)}
+                onDragOver={e => { e.preventDefault(); setDragOverCol(i) }}
+                onDragLeave={() => setDragOverCol(null)}
+                onDrop={() => { colDrop(i); setDragOverCol(null) }}
+                onDragEnd={() => setDragOverCol(null)}
+                className="sortable"
+                style={{ cursor: col.alwaysVisible ? 'default' : 'grab', borderLeft: isOver ? '2px solid #60a5fa' : undefined, userSelect: 'none' }}
+                onClick={() => toggleSort(sortK)}
+              >
+                {col.label}
+                <span className={`sort-indicator${sortKey === sortK ? ' active' : ''}`}>
+                  {sortKey === sortK ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                </span>
+              </th>
+            )
+          })}
           {isAdmin && <th className="text-center">Zugang</th>}
+          <th style={{ width: 32, textAlign: 'right' }}>
+            <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -941,25 +979,30 @@ function ContactTable({
           <tr key={contact.id}
             className={`${canEdit ? 'clickable' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}${contact.invitePending ? ' opacity-50 italic' : ''}`}
             onClick={canEdit ? () => onEdit(contact) : undefined}>
-            <td>
-              {contact.firstName}
-              {contact.contactType === 'guest' && (
-                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 0, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em' }}>
-                  {t('contacts.badge.manual')}
-                </span>
-              )}
-              {contact.invitePending && (
-                <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 0, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
-                  {t('contacts.badge.invited')}
-                </span>
-              )}
-            </td>
-            <td>{contact.lastName}</td>
-            <td>{contact.function1}</td>
-            <td>{contact.function2}</td>
-            <td>{contact.function3}</td>
-            <td>{contact.specification}</td>
-            <td>{contact.tenantRole ? (ROLE_LABELS[contact.tenantRole as TenantRole] ?? contact.tenantRole) : contact.accessRights}</td>
+            {colOrder.filter(id => isVisible(id)).map(colId => {
+              switch (colId) {
+                case 'firstName': return <td key="firstName">
+                  {contact.firstName}
+                  {contact.contactType === 'guest' && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 0, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em' }}>
+                      {t('contacts.badge.manual')}
+                    </span>
+                  )}
+                  {contact.invitePending && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 0, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
+                      {t('contacts.badge.invited')}
+                    </span>
+                  )}
+                </td>
+                case 'lastName':      return <td key="lastName">{contact.lastName}</td>
+                case 'function1':     return <td key="function1">{contact.function1}</td>
+                case 'function2':     return <td key="function2">{contact.function2}</td>
+                case 'function3':     return <td key="function3">{contact.function3}</td>
+                case 'specification': return <td key="specification">{contact.specification}</td>
+                case 'accessRights':  return <td key="accessRights">{contact.tenantRole ? (ROLE_LABELS[contact.tenantRole as TenantRole] ?? contact.tenantRole) : contact.accessRights}</td>
+                default: return null
+              }
+            })}
             {isAdmin && (
               <td className="text-center" onClick={e => e.stopPropagation()}>
                 {contact.contactType === 'guest' ? (
