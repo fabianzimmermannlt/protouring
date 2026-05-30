@@ -112,13 +112,13 @@ export default function TerminModal({
     }
   }
 
-  const inputCls = "w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  const inputStyle = { background: '#2d2d2d', borderColor: '#555', color: '#e0e0e0' }
+  const inputCls = "w-full text-sm outline-none"
+  const inputStyle = { background: 'transparent', border: 'none', borderBottom: '1px solid #555', borderRadius: 0, padding: '4px 0', color: '#e0e0e0' }
   const dateInputStyle = { ...inputStyle, colorScheme: 'dark' as const }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ background: '#2d2d2d' }}>
+      <div className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ background: '#2d2d2d' }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #3c3c3c' }}>
