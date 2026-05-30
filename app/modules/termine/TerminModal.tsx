@@ -113,18 +113,19 @@ export default function TerminModal({
   }
 
   const inputCls = "w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  const inputStyle = { background: '#4a4a4a', borderColor: '#555', color: '#e0e0e0' }
+  const inputStyle = { background: '#3c3c3c', borderColor: '#555', color: '#e0e0e0' }
+  const dateInputStyle = { ...inputStyle, colorScheme: 'dark' as const }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" style={{ background: '#2d2d2d' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #3c3c3c' }}>
+          <h3 className="text-sm font-semibold" style={{ color: '#e0e0e0' }}>
             {isEdit ? t('termin.edit') : t('termin.new')}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={onClose} className="transition-colors" style={{ color: '#9ca3af' }}>
             <X size={16} />
           </button>
         </div>
@@ -139,7 +140,7 @@ export default function TerminModal({
 
           {/* Datum */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
+            <label className="block text-xs font-medium mb-1" style={{ color: '#9ca3af' }}>
               {t('quickCreate.date')} <span className="text-red-400">*</span>
             </label>
             <input
@@ -148,13 +149,13 @@ export default function TerminModal({
               onChange={e => field('date', e.target.value)}
               autoFocus={!isEdit}
               className={inputCls}
-              style={inputStyle}
+              style={dateInputStyle}
             />
           </div>
 
           {/* Titel */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{t('general.title')}</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: '#9ca3af' }}>{t('general.title')}</label>
             <input
               type="text"
               placeholder={t('termin.titlePlaceholder')}
@@ -167,7 +168,7 @@ export default function TerminModal({
 
           {/* Ort */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Ort</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: '#9ca3af' }}>Ort</label>
             <input
               type="text"
               placeholder="Stadt"
@@ -180,7 +181,7 @@ export default function TerminModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderTop: '1px solid #3c3c3c' }}>
           <div>
             {isEdit && (
               <button onClick={handleDelete} disabled={deleting}
@@ -192,7 +193,7 @@ export default function TerminModal({
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose}
-              className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+              className="px-3 py-1.5 text-sm rounded-lg transition-colors" style={{ background: '#3c3c3c', color: '#b0b0b0' }}>
               {t('general.cancel')}
             </button>
             {!isEdit && allowAddAnother && (
