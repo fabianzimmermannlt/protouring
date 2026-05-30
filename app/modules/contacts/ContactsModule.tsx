@@ -465,7 +465,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       const updated = await setContactActive(actionContact.id, false)
       setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
       setActionContact(null)
-    } catch { setError('Deaktivieren fehlgeschlagen') }
+    } catch (e) { setError('Deaktivieren fehlgeschlagen: ' + (e instanceof Error ? e.message : String(e))) }
     finally { setActionWorking(false) }
   }
 
@@ -473,7 +473,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     try {
       const updated = await setContactActive(contact.id, true)
       setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
-    } catch { setError('Reaktivieren fehlgeschlagen') }
+    } catch (e) { setError('Reaktivieren fehlgeschlagen: ' + (e instanceof Error ? e.message : String(e))) }
   }
 
   const handleActionDelete = async () => {

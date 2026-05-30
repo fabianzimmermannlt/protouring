@@ -411,7 +411,7 @@ export async function deleteContact(id: string): Promise<void> {
 export async function setContactActive(id: string, active: boolean): Promise<Contact> {
   const data = await request(`/api/contacts/${id}/active`, {
     method: 'PATCH',
-    body: JSON.stringify({ active }),
+    body: { active } as unknown as string,
   }) as { contact: Contact };
   return data.contact;
 }
