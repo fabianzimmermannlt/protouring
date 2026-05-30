@@ -113,7 +113,7 @@ export default function TerminModal({
   }
 
   const inputCls = "w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  const inputStyle = { background: '#3c3c3c', borderColor: '#555', color: '#e0e0e0' }
+  const inputStyle = { background: '#2d2d2d', borderColor: '#555', color: '#e0e0e0' }
   const dateInputStyle = { ...inputStyle, colorScheme: 'dark' as const }
 
   return (
