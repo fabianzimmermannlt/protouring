@@ -40,7 +40,7 @@ export function QuickCreatePartnerModal({ onClose, onCreated }: Props) {
       disabled={!companyName.trim()}
       error={error}
     >
-      <QField label="Firmenname *">
+      <QField label="Firmenname" required>
         <input
           type="text"
           value={companyName}

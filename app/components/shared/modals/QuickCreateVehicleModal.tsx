@@ -41,7 +41,7 @@ export function QuickCreateVehicleModal({ onClose, onCreated }: Props) {
       disabled={!designation.trim()}
       error={error}
     >
-      <QField label="Bezeichnung *">
+      <QField label="Bezeichnung" required>
         <input
           type="text"
           value={designation}

@@ -42,7 +42,7 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
       disabled={!name.trim()}
       error={error}
     >
-      <QField label="Name *">
+      <QField label="Name" required>
         <input
           type="text"
           value={name}
