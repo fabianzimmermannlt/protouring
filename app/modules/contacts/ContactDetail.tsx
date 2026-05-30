@@ -202,9 +202,9 @@ export function ContactDetailContent({ contactId, onInvite, onBack }: { contactI
                   {[contact!.function1, contact!.function2, contact!.function3].filter(Boolean).length > 0 && (
                     <p className="text-sm text-gray-500">{[contact!.function1, contact!.function2, contact!.function3].filter(Boolean).join(' · ')}</p>
                   )}
-                  {role && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{role}</span>}
-                  {contact!.invitePending && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{t('contacts.badge.invitationPending')}</span>}
-                  {contact!.contactType === 'guest' && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{t('contacts.badge.manual')}</span>}
+                  {role && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: '#9ca3af' }}>{role}</span>}
+                  {contact!.invitePending && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24' }}>{t('contacts.badge.invitationPending')}</span>}
+                  {contact!.contactType === 'guest' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{t('contacts.badge.manual')}</span>}
                   {isEditor && onInvite && !contact!.userId && (contact!.contactType === 'guest' || contact!.contactType === 'artist') && (
                     <button onClick={() => onInvite(contact!)}
                       className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors">

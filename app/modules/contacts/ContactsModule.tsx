@@ -591,7 +591,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       onClick={isEditor ? () => handleEdit(contact) : undefined}
                     >
                       {/* Initials avatar */}
-                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa' }}>
                         {initials}
                       </div>
                       {/* Content */}
@@ -604,7 +604,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                             <span style={{ fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.45)', padding: '1px 6px', borderRadius: 0, fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{t('contacts.badge.manual')}</span>
                           )}
                           {contact.invitePending && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">{t('contacts.badge.invited')}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24' }}>{t('contacts.badge.invited')}</span>
                           )}
                         </div>
                         {functions && <div className="text-xs text-gray-500 mt-0.5">{functions}</div>}
@@ -852,7 +852,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="form-label">{t('profile.firstName')} *</label>
+                      <label className="form-label">{t('profile.firstName')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span></label>
                       <input
                         type="text"
                         value={inviteFirstName}
@@ -862,7 +862,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       />
                     </div>
                     <div>
-                      <label className="form-label">{t('profile.lastName')} *</label>
+                      <label className="form-label">{t('profile.lastName')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span></label>
                       <input
                         type="text"
                         value={inviteLastName}
@@ -873,7 +873,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">{t('contacts.form.emailAddress')} *</label>
+                    <label className="form-label">{t('contacts.form.emailAddress')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span></label>
                     <input
                       type="email"
                       value={inviteEmail}
@@ -1012,7 +1012,7 @@ function ContactTable({
                     </span>
                   )}
                   {contact.invitePending && (
-                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 0, background: '#fef9c3', color: '#92400e', letterSpacing: '0.04em' }}>
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 0, background: 'rgba(234,179,8,0.15)', color: '#fbbf24', letterSpacing: '0.04em' }}>
                       {t('contacts.badge.invited')}
                     </span>
                   )}
