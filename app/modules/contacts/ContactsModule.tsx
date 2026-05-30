@@ -1096,10 +1096,16 @@ function ContactTable({
             )
           })}
           {isAdmin && <th className="text-center">Zugang</th>}
-          {onAction && <th style={{ width: 72 }} />}
-          <th style={{ width: 32, textAlign: 'right' }}>
-            <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
-          </th>
+          {onAction && (
+            <th style={{ width: 40, textAlign: 'center' }}>
+              <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+            </th>
+          )}
+          {!onAction && (
+            <th style={{ width: 40, textAlign: 'center' }}>
+              <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -1158,7 +1164,7 @@ function ContactTable({
             )}
             {/* Aktionen-Spalte */}
             {onAction && (
-              <td className="text-right" onClick={e => e.stopPropagation()} style={{ width: 72 }}>
+              <td className="text-center" onClick={e => e.stopPropagation()} style={{ width: 40 }}>
                 {contact.crewToolActive === false ? (
                   <button
                     onClick={() => onReactivate?.(contact)}
