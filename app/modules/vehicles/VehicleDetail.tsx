@@ -14,7 +14,7 @@ function IField({ label, required, value, onChange, placeholder = '', readOnly =
 }) {
   return (
     <div>
-      <label className="detail-label">{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>
+      <label className="detail-label">{label}{required && <span style={{ color: '#f87171', marginLeft: '2px' }}>*</span>}</label>
       <input type="text" value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} readOnly={readOnly} className="detail-input" />
     </div>

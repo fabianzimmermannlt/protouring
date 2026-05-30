@@ -155,6 +155,16 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const isEditor = isEditorRole(getEffectiveRole())
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (showGastModal) { setShowGastModal(false); setGastName(''); setGastFunction('') }
+      else if (showAddModal) { setShowAddModal(false) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [showAddModal, showGastModal])
+
+  useEffect(() => {
     loadContacts()
   }, [])
 
@@ -683,7 +693,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.firstName')} *</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.firstName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
                       <input
                         type="text"
                         value={addInviteFirstName}
@@ -694,7 +704,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.lastName')} *</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.lastName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
                       <input
                         type="text"
                         value={addInviteLastName}
@@ -705,7 +715,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.email')} *</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.email')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
                     <input
                       type="email"
                       value={addInviteEmail}

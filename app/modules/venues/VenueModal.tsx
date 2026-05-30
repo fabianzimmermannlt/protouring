@@ -136,7 +136,8 @@ export default function VenueModal({ venue, onClose, onSaved, onDeleted }: Venue
               {/* Left */}
               <div className="space-y-4">
                 <NameAddressAutocomplete
-                  label={`${t('general.name')} *`}
+                  label={t('general.name')}
+                  required
                   variant="modal"
                   withLatLon
                   value={form.name}
