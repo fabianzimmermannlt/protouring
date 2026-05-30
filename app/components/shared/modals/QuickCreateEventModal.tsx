@@ -203,7 +203,7 @@ export function QuickCreateEventModal({ onClose, onCreated }: Props) {
       error={error}
     >
       <div className="grid grid-cols-2 gap-3">
-        <QField label={t('quickCreate.date')}>
+        <QField label={t('quickCreate.date')} required>
           <input
             type="date"
             value={date}

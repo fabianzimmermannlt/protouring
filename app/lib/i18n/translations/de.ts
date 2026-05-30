@@ -684,7 +684,7 @@ const de = {
   'termin.venueSearchPlaceholder': 'Name oder Stadt…',
   'termin.venueNew':             'Neue Spielstätte anlegen',
   'termin.venueNewLabel':        'Neue Spielstätte',
-  'termin.venueName':            'Name *',
+  'termin.venueName':            'Name',
   'termin.venueCity':            'Stadt',
   'termin.titlePlaceholder':     'z.B. Bandname Live',
   'termin.showTitleAsHeader':    'Eigenen Titel statt Spielstätte in der Überschrift anzeigen',
@@ -692,7 +692,7 @@ const de = {
 
   // ── QuickCreate Event Modal ───────────────────────────────────────────────────
   'quickCreate.newEvent':          'Neues Event',
-  'quickCreate.date':              'Datum *',
+  'quickCreate.date':              'Datum',
   'quickCreate.type':              'Art',
   'quickCreate.titleOptional':     'Titel (optional)',
   'quickCreate.titleHint':         'Leer lassen → Titel wird aus Venue oder Art generiert',
@@ -780,9 +780,9 @@ const de = {
   // ── Partners ──────────────────────────────────────────────────────────────────
   'partners.searchPlaceholder':          'Partner durchsuchen...',
   'partners.companyName':                'Firmenname',
-  'partners.companyRequired':            'Firmenname *',
+  'partners.companyRequired':            'Firmenname',
   'partners.company':                    'Firma',
-  'partners.companyRequired2':           'Firma *',
+  'partners.companyRequired2':           'Firma',
   'partners.type':                       'Art',
   'partners.selectType':                 '– wählen –',
   'partners.selectTypeOption':           '– bitte wählen –',
@@ -862,7 +862,7 @@ const de = {
   'vehicles.cardTrailer':                    'Anhänger',
   'vehicles.cardCapacity':                   'Kapazität & Notizen',
   'vehicles.designation':                    'Bezeichnung',
-  'vehicles.designationRequired':            'Bezeichnung *',
+  'vehicles.designationRequired':            'Bezeichnung',
   'vehicles.designationPlaceholder':         'z.B. Tourbus 1',
   'vehicles.designationFullPlaceholder':     'z.B. Tourbus Mercedes Sprinter',
   'vehicles.vehicleType':                    'Fahrzeugart',

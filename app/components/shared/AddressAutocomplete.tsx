@@ -33,6 +33,7 @@ interface PhotonFeature {
 
 interface NameAddressAutocompleteProps {
   label: string
+  required?: boolean
   value: string
   onChange: (v: string) => void
   onAddressSelect: (result: AddressResult) => void
@@ -45,6 +46,7 @@ interface NameAddressAutocompleteProps {
 
 export function NameAddressAutocomplete({
   label,
+  required,
   value,
   onChange,
   onAddressSelect,
@@ -140,7 +142,7 @@ export function NameAddressAutocomplete({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className={labelClass}>{label}</label>
+      <label className={labelClass}>{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>
       <div className="relative">
         <input
           type="text"

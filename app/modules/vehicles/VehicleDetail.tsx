@@ -9,12 +9,12 @@ import {
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
-function IField({ label, value, onChange, placeholder = '', readOnly = false }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
+function IField({ label, required, value, onChange, placeholder = '', readOnly = false }: {
+  label: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
 }) {
   return (
     <div>
-      <label className="detail-label">{label}</label>
+      <label className="detail-label">{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>
       <input type="text" value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} readOnly={readOnly} className="detail-input" />
     </div>
@@ -175,7 +175,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
             </div>
             <div className="pt-card-body">
               <div className="space-y-2">
-                <IField label={t('vehicles.designationRequired')} value={form.designation ?? ''} onChange={v => f('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} readOnly={ro} />
+                <IField label={t('vehicles.designationRequired')} required value={form.designation ?? ''} onChange={v => f('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} readOnly={ro} />
                 <IField label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} placeholder={t('vehicles.vehicleTypePlaceholder')} readOnly={ro} />
                 <IField label={t('vehicles.driver')} value={form.driver ?? ''} onChange={v => f('driver', v)} readOnly={ro} />
                 <IField label={t('vehicles.licensePlate')} value={form.licensePlate ?? ''} onChange={v => f('licensePlate', v)} readOnly={ro} />

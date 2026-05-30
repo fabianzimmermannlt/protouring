@@ -161,7 +161,7 @@ function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, o
 
           <div>
             <label className="form-label">
-              E-Mail {listSettings.require_email && <span className="text-red-500">*</span>}
+              E-Mail {listSettings.require_email && <span className="text-red-400">*</span>}
             </label>
             <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>

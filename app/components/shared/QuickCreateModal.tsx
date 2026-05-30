@@ -84,10 +84,12 @@ export function QuickCreateModal({
 }
 
 // Reusable field components
-export function QField({ label, children }: { label: string; children: React.ReactNode }) {
+export function QField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="qfield-label block text-xs font-medium mb-1" style={{ color: 'var(--qf-label, #4b5563)' }}>{label}</label>
+      <label className="qfield-label block text-xs font-medium mb-1" style={{ color: 'var(--qf-label, #4b5563)' }}>
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
       {children}
     </div>
   )

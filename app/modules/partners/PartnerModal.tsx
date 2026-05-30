@@ -142,6 +142,7 @@ export default function PartnerModal({ partner, onClose, onSaved, onDeleted }: P
 
               <NameAddressAutocomplete
                 label={t('partners.companyRequired')}
+                required
                 variant="modal"
                 autoFocus
                 value={form.companyName}

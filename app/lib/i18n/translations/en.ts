@@ -680,7 +680,7 @@ const en = {
   'termin.venueSearchPlaceholder': 'Name or city…',
   'termin.venueNew':             'Add new venue',
   'termin.venueNewLabel':        'New Venue',
-  'termin.venueName':            'Name *',
+  'termin.venueName':            'Name',
   'termin.venueCity':            'City',
   'termin.titlePlaceholder':     'e.g. Band Name Live',
   'termin.showTitleAsHeader':    'Show custom title instead of venue in header',
@@ -688,7 +688,7 @@ const en = {
 
   // ── QuickCreate Event Modal ───────────────────────────────────────────────────
   'quickCreate.newEvent':          'New Event',
-  'quickCreate.date':              'Date *',
+  'quickCreate.date':              'Date',
   'quickCreate.type':              'Type',
   'quickCreate.titleOptional':     'Title (optional)',
   'quickCreate.titleHint':         'Leave empty → title is generated from venue or type',
@@ -776,9 +776,9 @@ const en = {
   // ── Partners ──────────────────────────────────────────────────────────────────
   'partners.searchPlaceholder':          'Search partners...',
   'partners.companyName':                'Company Name',
-  'partners.companyRequired':            'Company Name *',
+  'partners.companyRequired':            'Company Name',
   'partners.company':                    'Company',
-  'partners.companyRequired2':           'Company *',
+  'partners.companyRequired2':           'Company',
   'partners.type':                       'Type',
   'partners.selectType':                 '– select –',
   'partners.selectTypeOption':           '– please select –',
@@ -858,7 +858,7 @@ const en = {
   'vehicles.cardTrailer':                    'Trailer',
   'vehicles.cardCapacity':                   'Capacity & Notes',
   'vehicles.designation':                    'Name',
-  'vehicles.designationRequired':            'Name *',
+  'vehicles.designationRequired':            'Name',
   'vehicles.designationPlaceholder':         'e.g. Tour Bus 1',
   'vehicles.designationFullPlaceholder':     'e.g. Tour Bus Mercedes Sprinter',
   'vehicles.vehicleType':                    'Vehicle Type',
