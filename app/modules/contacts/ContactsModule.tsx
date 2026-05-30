@@ -601,7 +601,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                             {contact.firstName} {contact.lastName}
                           </span>
                           {contact.contactType === 'guest' && (
-                            <span style={{ fontSize: '0.65rem', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.45)', padding: '1px 6px', borderRadius: 0, fontWeight: 500, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{t('contacts.badge.manual')}</span>
+                            <span style={{ fontSize: '0.65rem', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '1px 8px', borderRadius: '9999px', fontWeight: 500, whiteSpace: 'nowrap' }}>{t('contacts.badge.manual')}</span>
                           )}
                           {contact.invitePending && (
                             <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24' }}>{t('contacts.badge.invited')}</span>
@@ -1007,7 +1007,7 @@ function ContactTable({
                 case 'firstName': return <td key="firstName">
                   {contact.firstName}
                   {contact.contactType === 'guest' && (
-                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 0, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em' }}>
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, padding: '1px 8px', borderRadius: '9999px', background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>
                       {t('contacts.badge.manual')}
                     </span>
                   )}
