@@ -408,6 +408,14 @@ export async function deleteContact(id: string): Promise<void> {
   await request(`/api/contacts/${id}`, { method: 'DELETE' });
 }
 
+export async function setContactActive(id: string, active: boolean): Promise<Contact> {
+  const data = await request(`/api/contacts/${id}/active`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active }),
+  }) as { contact: Contact };
+  return data.contact;
+}
+
 // Eigener Kontakt-Eintrag im aktuellen Tenant
 export async function getMyContact(): Promise<Contact> {
   const res = await request<{ contact: Contact }>('/api/me/contact');

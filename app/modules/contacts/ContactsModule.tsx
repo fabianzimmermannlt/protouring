@@ -6,14 +6,14 @@ import {
   CheckCircleIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
-import { Loader2, X, Save, Download, Upload, Plus, ArrowLeft, Check } from 'lucide-react'
+import { Loader2, X, Save, Download, Upload, Plus, ArrowLeft, Check, Trash2, UserX, RefreshCw } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { ProfileEditor, ProfileData } from '@/app/components/shared/ProfileEditor'
 import CrewBookingView from './CrewBookingView'
 import { ContactDetailContent } from './ContactDetail'
 import {
   getContacts, createContact, updateContact, updateMyContact, deleteContact, createGuestContact,
-  getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
+  setContactActive, getCurrentUser, getCurrentTenant, createInvite, getFunctionCatalog,
   ROLE_LABELS, isAdminRole, isEditorRole, getEffectiveRole,
   type Contact, type ContactFormData, type TenantRole, type FunctionCatalogGroup
 } from '@/lib/api-client'
@@ -141,6 +141,8 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   // Invite-Modal (von bestehendem Kontakt aus)
   const [inviteContact, setInviteContact] = useState<Contact | null>(null)
+  const [actionContact, setActionContact] = useState<Contact | null>(null) // deactivate/delete popup
+  const [actionWorking, setActionWorking] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteFirstName, setInviteFirstName] = useState('')
   const [inviteLastName, setInviteLastName] = useState('')
@@ -456,6 +458,35 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     }
   }
 
+  const handleDeactivate = async () => {
+    if (!actionContact) return
+    setActionWorking(true)
+    try {
+      const updated = await setContactActive(actionContact.id, false)
+      setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
+      setActionContact(null)
+    } catch { setError('Deaktivieren fehlgeschlagen') }
+    finally { setActionWorking(false) }
+  }
+
+  const handleReactivate = async (contact: Contact) => {
+    try {
+      const updated = await setContactActive(contact.id, true)
+      setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
+    } catch { setError('Reaktivieren fehlgeschlagen') }
+  }
+
+  const handleActionDelete = async () => {
+    if (!actionContact) return
+    setActionWorking(true)
+    try {
+      await deleteContact(actionContact.id)
+      setContacts(prev => prev.filter(c => c.id !== actionContact.id))
+      setActionContact(null)
+    } catch { setError(t('contacts.error.deleteFailed')) }
+    finally { setActionWorking(false) }
+  }
+
   const renderContent = () => {
     switch (activeSubTab) {
       case 'overview':
@@ -639,6 +670,8 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                   canEdit={isEditor}
                   onEdit={handleEdit}
                   onInviteModal={openInviteModal}
+                  onAction={isAdmin ? (c) => setActionContact(c) : undefined}
+                  onReactivate={isAdmin ? handleReactivate : undefined}
                 />
               </div>
             )}
@@ -935,6 +968,73 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
           </div>
         </div>
       )}
+
+      {/* Deaktivieren / Löschen Popup */}
+      {actionContact && (
+        <div className="modal-overlay">
+          <div className="modal-container max-w-sm">
+            <div className="modal-header">
+              <h3 className="modal-title">
+                {actionContact.firstName} {actionContact.lastName}
+              </h3>
+              <button onClick={() => setActionContact(null)} className="text-gray-400 hover:text-white"><X size={16} /></button>
+            </div>
+            <div className="modal-body space-y-3">
+              {actionContact.userId ? (
+                <>
+                  <p className="text-sm text-gray-400">
+                    Dieser Kontakt hat einen aktiven User-Account.
+                  </p>
+                  <button
+                    onClick={handleDeactivate}
+                    disabled={actionWorking}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm rounded-none border border-gray-600 hover:border-yellow-500 hover:bg-yellow-500/10 transition-colors disabled:opacity-50"
+                  >
+                    <UserX className="w-4 h-4 text-yellow-400 shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-200">Deaktivieren</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Bleibt in der Liste, taucht aber nicht mehr bei Crew-Buchung oder Reisegruppe auf</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={handleActionDelete}
+                    disabled={actionWorking}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm rounded-none border border-gray-600 hover:border-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400 shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-200">Endgültig entfernen</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Kontakt und User-Zugang werden vollständig gelöscht</div>
+                    </div>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-400">
+                    Manuellen Kontakt endgültig löschen?
+                  </p>
+                  <button
+                    onClick={handleActionDelete}
+                    disabled={actionWorking}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm rounded-none border border-gray-600 hover:border-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400 shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-200">Löschen</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Kann nicht rückgängig gemacht werden</div>
+                    </div>
+                  </button>
+                </>
+              )}
+              {actionWorking && <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 size={12} className="animate-spin" /> Wird ausgeführt…</div>}
+            </div>
+            <div className="modal-footer">
+              <div />
+              <button onClick={() => setActionContact(null)} className="btn btn-ghost">{t('general.cancel')}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -945,12 +1045,16 @@ function ContactTable({
   canEdit = false,
   onEdit,
   onInviteModal,
+  onAction,
+  onReactivate,
 }: {
   contacts: Contact[]
   isAdmin: boolean
   canEdit?: boolean
   onEdit: (c: Contact) => void
   onInviteModal: (c: Contact, e: React.MouseEvent) => void
+  onAction?: (c: Contact) => void
+  onReactivate?: (c: Contact) => void
 }) {
   const t = useT()
   const { sortKey, sortDir, sorted, toggleSort } = useSortable(
@@ -992,6 +1096,7 @@ function ContactTable({
             )
           })}
           {isAdmin && <th className="text-center">Zugang</th>}
+          {onAction && <th style={{ width: 72 }} />}
           <th style={{ width: 32, textAlign: 'right' }}>
             <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
           </th>
@@ -1000,8 +1105,8 @@ function ContactTable({
       <tbody>
         {(sorted as unknown as Contact[]).map((contact) => (
           <tr key={contact.id}
-            className={`${canEdit ? 'clickable' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}${contact.invitePending ? ' opacity-50 italic' : ''}`}
-            onClick={canEdit ? () => onEdit(contact) : undefined}>
+            className={`${canEdit && contact.crewToolActive !== false ? 'clickable' : ''}${contact.crewToolActive === false ? ' opacity-40' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}${contact.invitePending ? ' opacity-50 italic' : ''}`}
+            onClick={canEdit && contact.crewToolActive !== false ? () => onEdit(contact) : undefined}>
             {colOrder.filter(id => isVisible(id)).map(colId => {
               switch (colId) {
                 case 'firstName': return <td key="firstName">
@@ -1047,6 +1152,28 @@ function ContactTable({
                     title={t('contacts.tooltip.setupLogin')}
                   >
                     <KeyIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </td>
+            )}
+            {/* Aktionen-Spalte */}
+            {onAction && (
+              <td className="text-right" onClick={e => e.stopPropagation()} style={{ width: 72 }}>
+                {contact.crewToolActive === false ? (
+                  <button
+                    onClick={() => onReactivate?.(contact)}
+                    title="Reaktivieren"
+                    className="inline-flex items-center gap-1 text-xs text-green-500 hover:text-green-400 transition-colors"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onAction(contact)}
+                    title="Deaktivieren / Löschen"
+                    className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </td>

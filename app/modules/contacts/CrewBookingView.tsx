@@ -95,7 +95,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
     Promise.all([getActiveFunctions(), getContacts(), getTermine()])
       .then(async ([fns, ctcts, trm]) => {
         setFunctions(fns)
-        setContacts(ctcts.filter(c => c.contactType !== 'artist'))
+        setContacts(ctcts.filter(c => c.contactType !== 'artist' && c.crewToolActive !== false))
         const today = new Date().toISOString().slice(0, 10)
         const upcoming = trm.filter(x => x.date >= today).sort((a, b) => a.date.localeCompare(b.date))
         setTermine(upcoming)

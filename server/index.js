@@ -2701,6 +2701,26 @@ app.put('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, as
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to update contact' }); }
 });
 
+app.patch('/api/contacts/:id/active', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { active } = req.body; // true | false
+    if (typeof active !== 'boolean') return res.status(400).json({ error: 'active (boolean) required' });
+    await db.run(
+      'UPDATE contacts SET crew_tool_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?',
+      [active ? 1 : 0, req.params.id, req.tenant.id]
+    );
+    const row = await db.get(`
+      SELECT c.*, ut.role AS tenant_role, ${USER_GLOBAL_SELECT}
+      FROM contacts c
+      LEFT JOIN user_tenants ut ON ut.user_id = c.user_id AND ut.tenant_id = c.tenant_id AND ut.status = 'active'
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.id = ? AND c.tenant_id = ?
+    `, [req.params.id, req.tenant.id]);
+    if (!row) return res.status(404).json({ error: 'Contact not found' });
+    res.json({ contact: contactFromRow(applyUserGlobals(row)) });
+  } catch (e) { res.status(500).json({ error: 'Failed to update contact active state' }); }
+});
+
 app.delete('/api/contacts/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const existing = await db.get('SELECT id, user_id FROM contacts WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
@@ -3810,7 +3830,7 @@ app.get('/api/termine/:terminId/travel-party/picker', authenticateToken, require
         ON av.termin_id = ? AND av.user_id = c.user_id
       LEFT JOIN termin_travel_party tp
         ON tp.termin_id = ? AND tp.contact_id = c.id
-      WHERE c.tenant_id = ? AND (c.contact_type IS NULL OR c.contact_type != 'artist')
+      WHERE c.tenant_id = ? AND (c.contact_type IS NULL OR c.contact_type != 'artist') AND c.crew_tool_active = 1
       ORDER BY c.last_name COLLATE NOCASE ASC, c.first_name COLLATE NOCASE ASC
     `, [req.params.terminId, req.params.terminId, req.tenant.id]);
     res.json({ contacts: rows });
