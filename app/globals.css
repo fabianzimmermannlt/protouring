@@ -1594,6 +1594,10 @@ html.dark .form-textarea {
   color: #e6edf3;
   border-color: #4b5563;
 }
+html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.6);
+  cursor: pointer;
+}
 html.dark .form-input:focus,
 html.dark .form-select:focus,
 html.dark .form-textarea:focus {
