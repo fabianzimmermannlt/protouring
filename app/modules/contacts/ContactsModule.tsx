@@ -494,11 +494,14 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
         if (!isMobile && isL2 && selectedContactId) {
           return <ContactDetailContent contactId={selectedContactId}
             onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)}
-            onBack={() => { setSelectedContactId(null); localStorage.removeItem('pt_contacts_last_id'); loadContacts() }} />
+            onBack={() => { setSelectedContactId(null); localStorage.removeItem('pt_contacts_last_id'); loadContacts() }}
+            onAction={isAdmin ? () => { const c = contacts.find(x => x.id.toString() === selectedContactId); if (c) setActionContact(c) } : undefined} />
         }
         // Desktop L3 SPA: show detail inline (sidebar handles navigation)
         if (!isMobile && !isL2 && selectedContactId) {
-          return <ContactDetailContent contactId={selectedContactId} onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)} />
+          return <ContactDetailContent contactId={selectedContactId}
+            onInvite={c => openInviteModal(c, { stopPropagation: () => {} } as React.MouseEvent)}
+            onAction={isAdmin ? () => { const c = contacts.find(x => x.id.toString() === selectedContactId); if (c) setActionContact(c) } : undefined} />
         }
         return (
           <div className="module-content">

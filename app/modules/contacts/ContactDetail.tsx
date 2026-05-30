@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText, Mail, X, ArrowLeft } from 'lucide-react'
+import { AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText, Mail, X, ArrowLeft, Trash2 } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
@@ -68,7 +68,7 @@ const SKELETON = (
   </div>
 )
 
-export function ContactDetailContent({ contactId, onInvite, onBack }: { contactId: string; onInvite?: (contact: Contact) => void; onBack?: () => void }) {
+export function ContactDetailContent({ contactId, onInvite, onBack, onAction }: { contactId: string; onInvite?: (contact: Contact) => void; onBack?: () => void; onAction?: () => void }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
@@ -216,7 +216,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack }: { contactI
               </>
           }
         </div>
-        {isDirty && (
+        {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
             <button onClick={cancelEdit}
@@ -229,6 +229,16 @@ export function ContactDetailContent({ contactId, onInvite, onBack }: { contactI
               {t('general.save')}
             </button>
           </div>
+        ) : onAction && !loading && (
+          <button
+            onClick={onAction}
+            title="Deaktivieren / Löschen"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         )}
       </div>
 
