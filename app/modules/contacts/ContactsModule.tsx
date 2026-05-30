@@ -1118,8 +1118,8 @@ function ContactTable({
       <tbody>
         {(sorted as unknown as Contact[]).map((contact) => (
           <tr key={contact.id}
-            className={`${canEdit && contact.crewToolActive !== false ? 'clickable' : ''}${contact.crewToolActive === false ? ' opacity-40' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}${contact.invitePending ? ' opacity-50 italic' : ''}`}
-            onClick={canEdit && contact.crewToolActive !== false ? () => onEdit(contact) : undefined}>
+            className={`${canEdit ? 'clickable' : ''}${contact.crewToolActive === false ? ' opacity-40' : ''}${contact.tenantRole === null && contact.userId ? ' opacity-50' : ''}${contact.invitePending ? ' opacity-50 italic' : ''}`}
+            onClick={canEdit ? () => onEdit(contact) : undefined}>
             {colOrder.filter(id => isVisible(id)).map(colId => {
               switch (colId) {
                 case 'firstName': return <td key="firstName">
