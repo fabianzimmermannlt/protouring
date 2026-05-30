@@ -112,6 +112,9 @@ export default function TerminModal({
     }
   }
 
+  const inputCls = "w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  const inputStyle = { background: '#4a4a4a', borderColor: '#555', color: '#e0e0e0' }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
@@ -144,7 +147,8 @@ export default function TerminModal({
               value={form.date}
               onChange={e => field('date', e.target.value)}
               autoFocus={!isEdit}
-              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={inputCls}
+              style={inputStyle}
             />
           </div>
 
@@ -156,7 +160,8 @@ export default function TerminModal({
               placeholder={t('termin.titlePlaceholder')}
               value={form.title}
               onChange={e => field('title', e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={inputCls}
+              style={inputStyle}
             />
           </div>
 
@@ -168,7 +173,8 @@ export default function TerminModal({
               placeholder="Stadt"
               value={form.city || ''}
               onChange={e => field('city', e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={inputCls}
+              style={inputStyle}
             />
           </div>
         </div>
