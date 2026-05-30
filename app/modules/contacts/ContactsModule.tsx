@@ -32,7 +32,7 @@ const CONTACT_COLUMNS: ColumnDef[] = [
   { id: 'function2',    label: 'Funktion 2',      defaultVisible: true },
   { id: 'function3',    label: 'Funktion 3',      defaultVisible: false },
   { id: 'specification',label: 'Spezifikation',   defaultVisible: true },
-  { id: 'accessRights', label: 'Zugriffsrechte',  defaultVisible: true },
+  { id: 'accessRights', label: 'Rolle',  defaultVisible: true },
 ]
 
 const CONTACT_SORT_KEY: Record<string, keyof Contact> = {
@@ -325,7 +325,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const handleCSVExport = () => {
     const headers = ['Vorname', 'Nachname', 'Funktion 1', 'Funktion 2', 'Funktion 3',
-      'Spezifikation', 'Zugriffsrechte', 'E-Mail', 'Telefon', 'Anschrift', 'PLZ', 'Ort',
+      'Spezifikation', 'Rolle', 'E-Mail', 'Telefon', 'Anschrift', 'PLZ', 'Ort',
       'Steuer-ID', 'Stundensatz', 'Tagessatz', 'Notizen']
     const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`
     const csvContent = [
@@ -708,7 +708,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                       placeholder="email@beispiel.de" className="form-input" />
                   </div>
                   <div>
-                    <label className="form-label">{t('contacts.form.function')}</label>
+                    <label className="form-label">{t('contacts.form.role')}</label>
                     <select value={addInviteRole} onChange={e => setAddInviteRole(e.target.value as TenantRole)} className="form-select">
                       {(Object.entries(ROLE_LABELS) as [TenantRole, string][]).map(([val, label]) => (
                         <option key={val} value={val}>{label}</option>
@@ -883,7 +883,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                     />
                   </div>
                   <div>
-                    <label className="form-label">{t('contacts.form.function')}</label>
+                    <label className="form-label">{t('contacts.form.role')}</label>
                     <select
                       value={inviteRole}
                       onChange={e => setInviteRole(e.target.value as TenantRole)}

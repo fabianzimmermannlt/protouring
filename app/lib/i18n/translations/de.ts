@@ -530,6 +530,7 @@ const de = {
 
   // ── Contacts — Form fields ───────────────────────────────────────────────────
   'contacts.form.function':         'Funktion',
+  'contacts.form.role':             'Rolle',
   'contacts.form.function1':        '1. Funktion',
   'contacts.form.function2':        '2. Funktion',
   'contacts.form.function3':        '3. Funktion',

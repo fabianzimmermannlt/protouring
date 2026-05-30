@@ -526,6 +526,7 @@ const en = {
 
   // ── Contacts — Form fields ───────────────────────────────────────────────────
   'contacts.form.function':         'Function',
+  'contacts.form.role':             'Role',
   'contacts.form.function1':        'Function 1',
   'contacts.form.function2':        'Function 2',
   'contacts.form.function3':        'Function 3',
