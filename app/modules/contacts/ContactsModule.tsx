@@ -673,19 +673,17 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
       {/* Neuer-Kontakt-Modal (nur Einladen) */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">{t('contacts.modal.inviteCrew')}</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
+        <div className="modal-overlay">
+          <div className="modal-container max-w-md">
+            <div className="modal-header">
+              <h3 className="modal-title">{t('contacts.modal.inviteCrew')}</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white">
                 <X size={18} />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
-              <p className="text-xs text-gray-500">
-                {t('contacts.modal.inviteHint')}
-              </p>
+            <div className="modal-body space-y-4">
+              <p className="text-xs text-gray-400">{t('contacts.modal.inviteHint')}</p>
               {addInviteError && (
                 <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{addInviteError}</div>
               )}
@@ -693,45 +691,25 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.firstName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
-                      <input
-                        type="text"
-                        value={addInviteFirstName}
-                        onChange={e => setAddInviteFirstName(e.target.value)}
-                        placeholder="Max"
-                        autoFocus
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                      <label className="form-label">{t('profile.firstName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+                      <input type="text" value={addInviteFirstName} onChange={e => setAddInviteFirstName(e.target.value)}
+                        placeholder="Max" autoFocus className="form-input" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.lastName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
-                      <input
-                        type="text"
-                        value={addInviteLastName}
-                        onChange={e => setAddInviteLastName(e.target.value)}
-                        placeholder="Mustermann"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                      <label className="form-label">{t('profile.lastName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+                      <input type="text" value={addInviteLastName} onChange={e => setAddInviteLastName(e.target.value)}
+                        placeholder="Mustermann" className="form-input" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('profile.email')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
-                    <input
-                      type="email"
-                      value={addInviteEmail}
-                      onChange={e => setAddInviteEmail(e.target.value)}
+                    <label className="form-label">{t('profile.email')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+                    <input type="email" value={addInviteEmail} onChange={e => setAddInviteEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleAddInvite()}
-                      placeholder="email@beispiel.de"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                      placeholder="email@beispiel.de" className="form-input" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('contacts.form.function')}</label>
-                    <select
-                      value={addInviteRole}
-                      onChange={e => setAddInviteRole(e.target.value as TenantRole)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
+                    <label className="form-label">{t('contacts.form.function')}</label>
+                    <select value={addInviteRole} onChange={e => setAddInviteRole(e.target.value as TenantRole)} className="form-select">
                       {(Object.entries(ROLE_LABELS) as [TenantRole, string][]).map(([val, label]) => (
                         <option key={val} value={val}>{label}</option>
                       ))}
@@ -740,47 +718,37 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 </>
               ) : (
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-gray-600">{t('contacts.modal.inviteLink')}</label>
+                  <label className="form-label">{t('contacts.modal.inviteLink')}</label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={addInviteLink}
-                      readOnly
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-xs font-mono bg-gray-50"
-                    />
+                    <input type="text" value={addInviteLink} readOnly className="form-input flex-1 font-mono text-xs" />
                     <button
                       onClick={async () => {
                         const ok = await copyToClipboard(addInviteLink)
-                        if (ok) {
-                          setAddInviteCopied(true)
-                          setTimeout(() => setAddInviteCopied(false), 2500)
-                        }
+                        if (ok) { setAddInviteCopied(true); setTimeout(() => setAddInviteCopied(false), 2500) }
                       }}
-                      className={`px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                        addInviteCopied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
+                      className={`px-3 py-2 text-xs font-medium transition-colors ${addInviteCopied ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                     >
                       {addInviteCopied ? 'Kopiert ✓' : t('general.copy')}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-400">{t('contacts.modal.linkValidity')}</p>
+                  <p className="text-xs text-gray-500">{t('contacts.modal.linkValidity')}</p>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
-              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">
-                {addInviteLink ? t('general.close') : t('general.cancel')}
-              </button>
-              {!addInviteLink && (
-                <button
-                  onClick={handleAddInvite}
-                  disabled={addInviteSaving}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {addInviteSaving ? t('contacts.action.creating') : t('contacts.action.createLink')}
+            <div className="modal-footer">
+              <div />
+              <div className="flex gap-2">
+                <button onClick={() => setShowAddModal(false)} className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200">
+                  {addInviteLink ? t('general.close') : t('general.cancel')}
                 </button>
-              )}
+                {!addInviteLink && (
+                  <button onClick={handleAddInvite} disabled={addInviteSaving}
+                    className="px-4 py-1.5 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                    {addInviteSaving ? t('contacts.action.creating') : t('contacts.action.createLink')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -789,37 +757,28 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
       {/* Manuell-Anlegen-Modal – minimales Formular */}
       {showGastModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900">{t('contacts.modal.createManualContact')}</h3>
+        <div className="modal-overlay">
+          <div className="modal-container max-w-sm">
+            <div className="modal-header">
+              <h3 className="modal-title">{t('contacts.modal.createManualContact')}</h3>
               <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
-                className="text-gray-400 hover:text-gray-600 transition-colors">
+                className="text-gray-400 hover:text-white">
                 <X size={16} />
               </button>
             </div>
-            <div className="px-5 py-4 space-y-3">
+            <div className="modal-body space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Name <span className="text-red-400">*</span>
+                <label className="form-label">
+                  Name<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span>
                 </label>
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Vor- und Nachname"
-                  value={gastName}
-                  onChange={e => setGastName(e.target.value)}
+                <input type="text" autoFocus placeholder="Vor- und Nachname"
+                  value={gastName} onChange={e => setGastName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreateGast()}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                  className="form-input" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Funktion</label>
-                <select
-                  value={gastFunction}
-                  onChange={e => setGastFunction(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                >
+                <label className="form-label">Funktion</label>
+                <select value={gastFunction} onChange={e => setGastFunction(e.target.value)} className="form-select">
                   <option value="">— keine Angabe —</option>
                   {functionOptions.map(f => (
                     <option key={f} value={f}>{f}</option>
@@ -827,16 +786,19 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 </select>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
-              <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
-                className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                {t('general.cancel')}
-              </button>
-              <button onClick={handleCreateGast} disabled={gastSaving || !gastName.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50">
-                {gastSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                {t('general.save')}
-              </button>
+            <div className="modal-footer">
+              <div />
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
+                  className="px-3 py-1.5 text-sm text-gray-400 hover:text-gray-200">
+                  {t('general.cancel')}
+                </button>
+                <button onClick={handleCreateGast} disabled={gastSaving || !gastName.trim()}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                  {gastSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                  {t('general.save')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
