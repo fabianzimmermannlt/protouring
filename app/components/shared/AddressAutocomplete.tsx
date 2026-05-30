@@ -142,7 +142,7 @@ export function NameAddressAutocomplete({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className={labelClass}>{label}{required && <span style={{ color: '#f87171', marginLeft: '2px' }}>*</span>}</label>
+      <label className={labelClass}>{label}{required && <span className="req-star" style={{ marginLeft: '2px' }}>*</span>}</label>
       <div className="relative">
         <input
           type="text"

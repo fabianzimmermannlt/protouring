@@ -1586,6 +1586,7 @@ html.dark .modal-body { background: #2d2d2d; }
 }
 
 html.dark .form-label { color: #d1d5db; }
+.req-star { color: #f87171 !important; }
 html.dark .form-input,
 html.dark .form-select,
 html.dark .form-textarea {

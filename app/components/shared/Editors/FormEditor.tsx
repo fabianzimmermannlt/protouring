@@ -198,7 +198,7 @@ export function FormEditor({
               {field.type !== 'checkbox' && (
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   {field.label}
-                  {field.required && <span className="text-red-400 ml-1">*</span>}
+                  {field.required && <span className="req-star" style={{ marginLeft: "4px" }}>*</span>}
                 </label>
               )}
               {renderField(field)}
@@ -218,7 +218,7 @@ export function FormEditor({
                 {field.type !== 'checkbox' && (
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     {field.label}
-                    {field.required && <span className="text-red-400 ml-1">*</span>}
+                    {field.required && <span className="req-star" style={{ marginLeft: "4px" }}>*</span>}
                   </label>
                 )}
                 {renderField(field)}

@@ -88,7 +88,7 @@ export function QField({ label, required, children }: { label: string; required?
   return (
     <div>
       <label className="qfield-label block text-xs font-medium mb-1" style={{ color: 'var(--qf-label, #4b5563)' }}>
-        {label}{required && <span style={{ color: '#f87171', marginLeft: '2px' }}>*</span>}
+        {label}{required && <span className="req-star" style={{ marginLeft: '2px' }}>*</span>}
       </label>
       {children}
     </div>

@@ -691,18 +691,18 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="form-label">{t('profile.firstName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+                      <label className="form-label">{t('profile.firstName')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span></label>
                       <input type="text" value={addInviteFirstName} onChange={e => setAddInviteFirstName(e.target.value)}
                         placeholder="Max" autoFocus className="form-input" />
                     </div>
                     <div>
-                      <label className="form-label">{t('profile.lastName')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+                      <label className="form-label">{t('profile.lastName')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span></label>
                       <input type="text" value={addInviteLastName} onChange={e => setAddInviteLastName(e.target.value)}
                         placeholder="Mustermann" className="form-input" />
                     </div>
                   </div>
                   <div>
-                    <label className="form-label">{t('profile.email')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span></label>
+                    <label className="form-label">{t('profile.email')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span></label>
                     <input type="email" value={addInviteEmail} onChange={e => setAddInviteEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleAddInvite()}
                       placeholder="email@beispiel.de" className="form-input" />
@@ -769,7 +769,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
             <div className="modal-body space-y-3">
               <div>
                 <label className="form-label">
-                  Name<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span>
+                  Name<span className="req-star" style={{ marginLeft: '2px' }}>*</span>
                 </label>
                 <input type="text" autoFocus placeholder="Vor- und Nachname"
                   value={gastName} onChange={e => setGastName(e.target.value)}

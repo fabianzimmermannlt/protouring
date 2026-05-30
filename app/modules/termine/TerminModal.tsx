@@ -131,7 +131,7 @@ export default function TerminModal({
           )}
           <div>
             <label className="form-label">
-              {t('quickCreate.date')}<span style={{ color: '#f87171', marginLeft: '2px' }}>*</span>
+              {t('quickCreate.date')}<span className="req-star" style={{ marginLeft: '2px' }}>*</span>
             </label>
             <input type="date" value={form.date} onChange={e => field('date', e.target.value)}
               autoFocus={!isEdit} className="form-input" style={{ colorScheme: 'dark' }} />
