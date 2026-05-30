@@ -47,7 +47,7 @@ export function QuickCreateContactModal({ onClose, onCreated }: Props) {
       error={error}
     >
       <div className="grid grid-cols-2 gap-3">
-        <QField label="Vorname *">
+        <QField label="Vorname" required>
           <input
             type="text"
             value={firstName}
@@ -57,7 +57,7 @@ export function QuickCreateContactModal({ onClose, onCreated }: Props) {
             className={inputCls}
           />
         </QField>
-        <QField label="Nachname *">
+        <QField label="Nachname" required>
           <input
             type="text"
             value={lastName}
