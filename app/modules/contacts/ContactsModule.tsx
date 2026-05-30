@@ -1096,7 +1096,6 @@ function ContactTable({
             )
           })}
           {isAdmin && <th className="text-center">Zugang</th>}
-          {onAction && <th style={{ width: 72 }} />}
           <th style={{ width: 32, textAlign: 'right' }}>
             <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
           </th>
@@ -1133,49 +1132,48 @@ function ContactTable({
             })}
             {isAdmin && (
               <td className="text-center" onClick={e => e.stopPropagation()}>
-                {contact.contactType === 'guest' ? (
-                  <span title={t('contacts.tooltip.manualNoLogin')} className="inline-flex items-center justify-center text-gray-300">
-                    <UserIcon className="w-4 h-4" />
-                  </span>
-                ) : contact.userId ? (
-                  <button
-                    onClick={e => onInviteModal(contact, e)}
-                    className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-800 transition-colors"
-                    title={t('contacts.tooltip.loginActive')}
-                  >
-                    <CheckCircleIcon className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={e => onInviteModal(contact, e)}
-                    className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
-                    title={t('contacts.tooltip.setupLogin')}
-                  >
-                    <KeyIcon className="w-4 h-4" />
-                  </button>
-                )}
-              </td>
-            )}
-            {/* Aktionen-Spalte */}
-            {onAction && (
-              <td className="text-right" onClick={e => e.stopPropagation()} style={{ width: 72 }}>
-                {contact.crewToolActive === false ? (
-                  <button
-                    onClick={() => onReactivate?.(contact)}
-                    title="Reaktivieren"
-                    className="inline-flex items-center gap-1 text-xs text-green-500 hover:text-green-400 transition-colors"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onAction(contact)}
-                    title="Deaktivieren / Löschen"
-                    className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="inline-flex items-center gap-2">
+                  {contact.contactType === 'guest' ? (
+                    <span title={t('contacts.tooltip.manualNoLogin')} className="inline-flex items-center justify-center text-gray-300">
+                      <UserIcon className="w-4 h-4" />
+                    </span>
+                  ) : contact.userId ? (
+                    <button
+                      onClick={e => onInviteModal(contact, e)}
+                      className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-800 transition-colors"
+                      title={t('contacts.tooltip.loginActive')}
+                    >
+                      <CheckCircleIcon className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e => onInviteModal(contact, e)}
+                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                      title={t('contacts.tooltip.setupLogin')}
+                    >
+                      <KeyIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                  {onAction && (
+                    contact.crewToolActive === false ? (
+                      <button
+                        onClick={() => onReactivate?.(contact)}
+                        title="Reaktivieren"
+                        className="inline-flex items-center text-xs text-green-500 hover:text-green-400 transition-colors"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onAction(contact)}
+                        title="Deaktivieren / Löschen"
+                        className="inline-flex items-center text-xs text-gray-600 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )
+                  )}
+                </div>
               </td>
             )}
           </tr>
