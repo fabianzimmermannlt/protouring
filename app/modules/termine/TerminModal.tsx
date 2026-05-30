@@ -141,7 +141,7 @@ export default function TerminModal({
           {/* Datum */}
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: '#9ca3af' }}>
-              {t('quickCreate.date')} <span className="text-red-400">*</span>
+              {t('quickCreate.date')}
             </label>
             <input
               type="date"
