@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText, Mail, X, ArrowLeft, Trash2 } from 'lucide-react'
+import { AlertCircle, Save, Loader2, User, Phone, Briefcase, Globe, Utensils, Shirt, CreditCard, FileText, Mail, X, ArrowLeft, Trash2, RefreshCw } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
@@ -68,7 +68,7 @@ const SKELETON = (
   </div>
 )
 
-export function ContactDetailContent({ contactId, onInvite, onBack, onAction }: { contactId: string; onInvite?: (contact: Contact) => void; onBack?: () => void; onAction?: () => void }) {
+export function ContactDetailContent({ contactId, onInvite, onBack, onAction, onReactivate, activeOverride }: { contactId: string; onInvite?: (contact: Contact) => void; onBack?: () => void; onAction?: () => void; onReactivate?: () => void; activeOverride?: boolean }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
@@ -229,16 +229,26 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction }: 
               {t('general.save')}
             </button>
           </div>
-        ) : onAction && !loading && (
-          <button
-            onClick={onAction}
-            title="Deaktivieren / Löschen"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af', flexShrink: 0 }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+        ) : !loading && contact && (onAction || onReactivate) && (
+          (activeOverride === false || (activeOverride === undefined && contact.crewToolActive === false)) ? (
+            <button
+              onClick={onReactivate}
+              title="Reaktivieren"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#22c55e', flexShrink: 0 }}
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onAction}
+              title="Deaktivieren / Löschen"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af', flexShrink: 0 }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )
         )}
       </div>
 
