@@ -2997,7 +2997,7 @@ app.get('/api/files/download/:fileId', authenticateToken, requireTenant, async (
     if (!canReadFile(file, req.user.id)) return res.status(403).json({ error: 'Access denied' });
     const filePath = path.join(__dirname, 'uploads', String(req.tenant.id), file.entity_type, file.entity_id, file.stored_name);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File missing on disk' });
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.original_name)}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.original_name)}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
     res.setHeader('Content-Type', file.mime_type);
     res.sendFile(path.resolve(filePath));
   } catch (err) {

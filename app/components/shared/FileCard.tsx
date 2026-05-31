@@ -229,17 +229,11 @@ export function FileCard({
       const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = blobUrl
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      // Für PDFs und Bilder: im Tab öffnen. Für andere: Download.
-      if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
-        window.open(blobUrl, '_blank')
-      } else {
-        a.download = file.originalName
-        a.click()
-      }
-      // Blob-URL nach kurzer Zeit freigeben
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000)
+      a.download = file.originalName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000)
     } catch {
       alert('Datei konnte nicht geöffnet werden')
     }
