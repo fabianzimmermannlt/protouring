@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { createHotel, type Hotel } from '@/lib/api-client'
-import { QuickCreateModal, QField, inputCls } from '@/app/components/shared/QuickCreateModal'
+import { QuickCreateModal, QField } from '@/app/components/shared/QuickCreateModal'
+import { NameAddressAutocomplete, type AddressResult } from '@/app/components/shared/AddressAutocomplete'
 
 interface Props {
   onClose: () => void
@@ -11,6 +12,7 @@ interface Props {
 
 export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
   const [name, setName] = useState('')
+  const [address, setAddress] = useState<Partial<AddressResult>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -19,7 +21,12 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
     setSaving(true); setError('')
     try {
       const hotel = await createHotel({
-        name: name.trim(), street: '', postalCode: '', city: '', state: '', country: '',
+        name: name.trim(),
+        street: address.street || '',
+        postalCode: address.postalCode || '',
+        city: address.city || '',
+        state: address.state || '',
+        country: address.country || '',
         email: '', phone: '', website: '', reception: '',
         checkIn: '', checkOut: '', earlyCheckIn: '', lateCheckOut: '',
         breakfast: '', breakfastWeekend: '', parking: '', additionalInfo: '',
@@ -43,14 +50,17 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
       error={error}
     >
       <QField label="Name" required>
-        <input
-          type="text"
+        <NameAddressAutocomplete
+          label=""
           value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+          onChange={setName}
+          onAddressSelect={a => {
+            if (a.name) setName(a.name)
+            setAddress(a)
+          }}
           placeholder="z.B. Ibis München Hauptbahnhof"
           autoFocus
-          className={inputCls}
+          variant="inline"
         />
       </QField>
     </QuickCreateModal>
