@@ -931,7 +931,7 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE termin_artist_members ADD COLUMN contact_id INTEGER REFERENCES contacts(id)`) } catch {}
 
   // One-time migration: copy artist_members → contacts, set contact_id back-reference
-  {
+  try {
     const unmigrated = await db.all(`SELECT * FROM artist_members WHERE contact_id IS NULL`)
     for (const am of unmigrated) {
       const r = await db.run(
@@ -949,7 +949,7 @@ async function initDatabase() {
         SELECT contact_id FROM artist_members WHERE artist_members.id = termin_artist_members.artist_member_id
       ) WHERE contact_id IS NULL AND artist_member_id IS NOT NULL
     `)
-  }
+  } catch (e) { console.warn('artist_members migration skipped:', e.message) }
 
   // Tabelle für deaktivierte Funktionen pro Tenant
   await db.run(`
