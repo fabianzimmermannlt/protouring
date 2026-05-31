@@ -257,7 +257,14 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
   const handleToggleStatus = async (todo: Todo) => {
     setTogglingId(todo.id)
     try {
-      const updated = await updateTodo(terminId, todo.id, { status: STATUS_NEXT[todo.status] })
+      const updated = await updateTodo(terminId, todo.id, {
+        title:             todo.title,
+        description:       todo.description ?? undefined,
+        status:            STATUS_NEXT[todo.status],
+        priority:          todo.priority,
+        assignedContactId: todo.assignedContactId ?? undefined,
+        deadline:          todo.deadline ?? undefined,
+      })
       setTodos(prev => prev.map(t => t.id === updated.id ? updated : t))
     } finally { setTogglingId(null) }
   }
