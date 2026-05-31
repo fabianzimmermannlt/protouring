@@ -13,7 +13,7 @@ import {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 const STATUS_NEXT: Record<TodoStatus, TodoStatus> = {
-  open:        'in_progress',
+  open:        'done',
   in_progress: 'done',
   done:        'open',
 }
