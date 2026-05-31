@@ -3000,11 +3000,17 @@ app.get('/api/files/view/:fileId', async (req, res) => {
     try { decoded = jwt.verify(token, JWT_SECRET) } catch { return res.status(403).json({ error: 'Ungültiger Token' }) }
     const user = await db.get('SELECT * FROM users WHERE id = ?', [decoded.id])
     if (!user) return res.status(401).json({ error: 'User nicht gefunden' })
-    const tenant = await db.get(
-      `SELECT t.*, tm.role FROM tenants t
-       JOIN tenant_memberships tm ON t.id = tm.tenant_id
-       WHERE t.slug = ? AND tm.user_id = ?`, [slug, user.id]
-    )
+    let tenant
+    if (user.isSuperadmin) {
+      tenant = await db.get('SELECT id, name, slug FROM tenants WHERE slug = ?', [slug])
+      if (tenant) tenant = { ...tenant, role: 'admin' }
+    } else {
+      tenant = await db.get(
+        `SELECT t.id, t.name, t.slug, ut.role FROM tenants t
+         JOIN user_tenants ut ON t.id = ut.tenant_id
+         WHERE t.slug = ? AND ut.user_id = ? AND ut.status IN ('active', 'inactive')`, [slug, user.id]
+      )
+    }
     if (!tenant) return res.status(403).json({ error: 'Kein Zugriff' })
     const file = await db.get('SELECT * FROM files WHERE id = ? AND tenant_id = ?', [req.params.fileId, tenant.id])
     if (!file) return res.status(404).json({ error: 'Datei nicht gefunden' })
