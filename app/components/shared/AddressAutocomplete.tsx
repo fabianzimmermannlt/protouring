@@ -187,15 +187,15 @@ export function NameAddressAutocomplete({
       </div>
 
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm">
+        <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm">
           {suggestions.map((f, i) => (
             <li
               key={i}
-              className="flex items-start gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0"
+              className="flex items-start gap-2 px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
               onMouseDown={e => { e.preventDefault(); handleSelect(f) }}
             >
               <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-              <span className="leading-snug text-gray-700">{formatSuggestion(f)}</span>
+              <span className="leading-snug text-gray-700 dark:text-gray-200">{formatSuggestion(f)}</span>
             </li>
           ))}
         </ul>
