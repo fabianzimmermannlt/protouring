@@ -1670,6 +1670,14 @@ const requireEditor = (req, res, next) => {
   next()
 }
 
+// Wie requireEditor, aber crew_plus darf auch (z.B. eigene ToDos abhaken)
+const requireEditorOrCrewPlus = (req, res, next) => {
+  if (!['admin', 'agency', 'tourmanagement', 'crew_plus'].includes(req.tenant.role)) {
+    return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+  }
+  next()
+}
+
 // ============================================
 // HELPERS
 // ============================================
@@ -5139,7 +5147,7 @@ app.post('/api/termine/:terminId/todos', authenticateToken, requireTenant, requi
 });
 
 // PUT /api/termine/:terminId/todos/:id
-app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, requireEditorOrCrewPlus, async (req, res) => {
   try {
     const { title, description, status, priority, assignedContactId, deadline } = req.body;
     await db.run(`
