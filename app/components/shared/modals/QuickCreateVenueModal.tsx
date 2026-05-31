@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { createVenue, type Venue } from '@/lib/api-client'
-import { QuickCreateModal, QField, inputCls } from '@/app/components/shared/QuickCreateModal'
+import { QuickCreateModal, QField } from '@/app/components/shared/QuickCreateModal'
+import { NameAddressAutocomplete, type AddressResult } from '@/app/components/shared/AddressAutocomplete'
 
 interface Props {
   onClose: () => void
@@ -10,17 +11,31 @@ interface Props {
 }
 
 export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
-  const [name, setName] = useState('')
+  const [displayValue, setDisplayValue] = useState('')
+  const [selectedAddress, setSelectedAddress] = useState<Partial<AddressResult> | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const handleAddressSelect = (a: AddressResult) => {
+    const parts = [a.name, a.street, [a.postalCode, a.city].filter(Boolean).join(' ')].filter(Boolean)
+    setDisplayValue(parts.join(', '))
+    setSelectedAddress(a)
+  }
+
   const handleSubmit = async () => {
-    if (!name.trim()) { setError('Name ist erforderlich'); return }
+    const venueName = selectedAddress?.name || displayValue.split(',')[0].trim()
+    if (!venueName) { setError('Name ist erforderlich'); return }
     setSaving(true); setError('')
     try {
       const venue = await createVenue({
-        name: name.trim(), street: '', postalCode: '', city: '', state: '', country: '',
-        latitude: '', longitude: '',
+        name: venueName,
+        street: selectedAddress?.street || '',
+        postalCode: selectedAddress?.postalCode || '',
+        city: selectedAddress?.city || '',
+        state: selectedAddress?.state || '',
+        country: selectedAddress?.country || '',
+        latitude: selectedAddress?.latitude || '',
+        longitude: selectedAddress?.longitude || '',
         website: '', arrival: '', arrivalStreet: '', arrivalPostalCode: '', arrivalCity: '',
         capacity: '', capacitySeated: '', stageDimensions: '', clearanceHeight: '',
         merchandiseFee: '', merchandiseStand: '', wardrobe: '', showers: '', wifi: '',
@@ -30,7 +45,6 @@ export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
       onClose()
     } catch (e) {
       setError((e as Error).message || 'Fehler beim Anlegen')
-    } finally {
       setSaving(false)
     }
   }
@@ -41,18 +55,19 @@ export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
       onClose={onClose}
       onSubmit={handleSubmit}
       submitting={saving}
-      disabled={!name.trim()}
+      disabled={!displayValue.trim()}
       error={error}
     >
       <QField label="Name" required>
-        <input
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+        <NameAddressAutocomplete
+          label=""
+          value={displayValue}
+          onChange={v => { setDisplayValue(v); setSelectedAddress(null) }}
+          onAddressSelect={handleAddressSelect}
           placeholder="z.B. Batschkapp Frankfurt"
           autoFocus
-          className={inputCls}
+          variant="inline"
+          withLatLon
         />
       </QField>
     </QuickCreateModal>
