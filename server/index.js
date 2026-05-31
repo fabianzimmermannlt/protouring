@@ -3004,12 +3004,16 @@ app.get('/api/files/view/:fileId', async (req, res) => {
       tenant = await db.get('SELECT id, name, slug FROM tenants WHERE slug = ?', [slug])
       if (tenant) tenant = { ...tenant, role: 'admin' }
     } else {
+      // DEBUG
+      const debugRows = await db.all('SELECT ut.user_id, ut.tenant_id, ut.status, ut.role, t.slug FROM user_tenants ut JOIN tenants t ON t.id = ut.tenant_id WHERE ut.user_id = ?', [decoded.id])
+      console.log('[VIEW DEBUG] decoded.id=', decoded.id, 'slug=', slug, 'user_tenants rows=', JSON.stringify(debugRows))
       tenant = await db.get(
         `SELECT t.id, t.name, t.slug, ut.role FROM tenants t
          JOIN user_tenants ut ON t.id = ut.tenant_id
          WHERE t.slug = ? AND ut.user_id = ? AND ut.status IN ('active', 'inactive')`,
         [slug, decoded.id]
       )
+      console.log('[VIEW DEBUG] tenant result=', tenant)
     }
     if (!tenant) return res.status(403).json({ error: 'Kein Zugriff' })
     const file = await db.get('SELECT * FROM files WHERE id = ? AND tenant_id = ?', [req.params.fileId, tenant.id])
