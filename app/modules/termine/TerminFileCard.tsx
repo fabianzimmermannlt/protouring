@@ -372,15 +372,15 @@ export function TerminFileCard({
 
   async function handleRename(fileId: string, newName: string) {
     try {
-      const updated = await apiPatchFile(fileId, { originalName: newName.trim() })
-      setFiles(prev => prev.map(f => f.id === updated.id ? { ...f, originalName: updated.originalName } : f))
+      await apiPatchFile(fileId, { originalName: newName.trim() })
+      await load() // State immer aus DB laden – kein Risiko durch State-Vergleich
     } catch { alert('Umbenennen fehlgeschlagen') }
   }
 
   async function handleMoveCategory(fileId: string, newCategory: string) {
     try {
-      const updated = await apiPatchFile(fileId, { category: newCategory })
-      setFiles(prev => prev.map(f => f.id === updated.id ? { ...f, category: updated.category } : f))
+      await apiPatchFile(fileId, { category: newCategory })
+      await load()
     } catch { alert('Kategorie ändern fehlgeschlagen') }
   }
 
