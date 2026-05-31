@@ -181,7 +181,7 @@ function TodoForm({
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-const CAN_CREATE_ROLES = ['admin', 'agency', 'tourmanagement', 'artist', 'crew_plus']
+const CAN_CREATE_ROLES = ['admin', 'agency', 'tourmanagement', 'artist']
 
 type TodoFilter = 'open' | 'overdue' | 'done' | 'all'
 
