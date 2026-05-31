@@ -3011,13 +3011,7 @@ app.get('/api/files/view/:fileId', async (req, res) => {
         [slug, decoded.id]
       )
     }
-    if (!tenant) {
-      const debugRows = await db.all(
-        'SELECT ut.user_id, ut.tenant_id, ut.status, ut.role, t.slug FROM user_tenants ut JOIN tenants t ON t.id = ut.tenant_id WHERE ut.user_id = ?',
-        [decoded.id]
-      )
-      return res.status(403).json({ error: 'Kein Zugriff', debug: { userId: decoded.id, slug, rows: debugRows } })
-    }
+    if (!tenant) return res.status(403).json({ error: 'Kein Zugriff' })
     const file = await db.get('SELECT * FROM files WHERE id = ? AND tenant_id = ?', [req.params.fileId, tenant.id])
     if (!file) return res.status(404).json({ error: 'Datei nicht gefunden' })
     if (!canReadFile(file, decoded.id)) return res.status(403).json({ error: 'Kein Lesezugriff' })
