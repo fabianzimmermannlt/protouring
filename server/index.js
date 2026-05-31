@@ -2998,23 +2998,23 @@ app.get('/api/files/view/:fileId', async (req, res) => {
     if (!token || !slug) return res.status(401).json({ error: 'token und slug erforderlich' })
     let decoded
     try { decoded = jwt.verify(token, JWT_SECRET) } catch { return res.status(403).json({ error: 'Ungültiger Token' }) }
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [decoded.id])
-    if (!user) return res.status(401).json({ error: 'User nicht gefunden' })
+    // Direkt decoded.id / decoded.isSuperadmin verwenden – genau wie requireTenant middleware
     let tenant
-    if (user.isSuperadmin) {
+    if (decoded.isSuperadmin) {
       tenant = await db.get('SELECT id, name, slug FROM tenants WHERE slug = ?', [slug])
       if (tenant) tenant = { ...tenant, role: 'admin' }
     } else {
       tenant = await db.get(
         `SELECT t.id, t.name, t.slug, ut.role FROM tenants t
          JOIN user_tenants ut ON t.id = ut.tenant_id
-         WHERE t.slug = ? AND ut.user_id = ? AND ut.status IN ('active', 'inactive')`, [slug, user.id]
+         WHERE t.slug = ? AND ut.user_id = ? AND ut.status IN ('active', 'inactive')`,
+        [slug, decoded.id]
       )
     }
     if (!tenant) return res.status(403).json({ error: 'Kein Zugriff' })
     const file = await db.get('SELECT * FROM files WHERE id = ? AND tenant_id = ?', [req.params.fileId, tenant.id])
     if (!file) return res.status(404).json({ error: 'Datei nicht gefunden' })
-    if (!canReadFile(file, user.id)) return res.status(403).json({ error: 'Kein Lesezugriff' })
+    if (!canReadFile(file, decoded.id)) return res.status(403).json({ error: 'Kein Lesezugriff' })
     const filePath = path.join(__dirname, 'uploads', String(tenant.id), file.entity_type, file.entity_id, file.stored_name)
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Datei fehlt auf Disk' })
     res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.original_name)}`)
