@@ -844,14 +844,21 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                       fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
                         .then(r => r.blob())
                         .then(blob => {
-                          const url = URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = f.originalName
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                          setTimeout(() => URL.revokeObjectURL(url), 10_000)
+                          if (f.mimeType.startsWith('image/') || f.mimeType.includes('pdf')) {
+                            const namedFile = new File([blob], f.originalName, { type: f.mimeType })
+                            const url = URL.createObjectURL(namedFile)
+                            window.open(url, '_blank')
+                            setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                          } else {
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = f.originalName
+                            document.body.appendChild(a)
+                            a.click()
+                            document.body.removeChild(a)
+                            setTimeout(() => URL.revokeObjectURL(url), 10_000)
+                          }
                         })
                     }}
                     className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left">

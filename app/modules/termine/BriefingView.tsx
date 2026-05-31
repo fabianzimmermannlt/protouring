@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Loader2, Plus, Trash2, ChevronDown, ChevronUp, Save,
-  FileText, Upload, AlertCircle, File, X, ExternalLink
+  FileText, Upload, AlertCircle, File as FileIcon, X, ExternalLink
 } from 'lucide-react'
 import {
   getBriefings, addBriefingSection, updateBriefingSection, deleteBriefingSection,
@@ -161,14 +161,21 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
       const res = await fetch(`${API_BASE}/api/files/${file.id}/download`, { headers: authHeaders() })
       if (!res.ok) return
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file.original_name
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      if (file.mime_type.startsWith('image/') || file.mime_type.includes('pdf')) {
+        const namedFile = new File([blob], file.original_name, { type: file.mime_type })
+        const url = URL.createObjectURL(namedFile)
+        window.open(url, '_blank')
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.original_name
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
     } catch { /* silent */ }
   }
 
@@ -206,7 +213,7 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
     <div className="space-y-1">
       {files.map(f => (
         <div key={f.id} className="group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50">
-          <File className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <FileIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <button
             onClick={() => openFile(f)}
             className="flex-1 text-left text-xs text-blue-600 hover:text-blue-800 truncate"

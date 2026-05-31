@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Upload, File, Trash2, Edit, AlertCircle, X, ChevronDown, ChevronRight, FolderInput } from 'lucide-react'
+import { Upload, File as FileIcon, Trash2, Edit, AlertCircle, X, ChevronDown, ChevronRight, FolderInput } from 'lucide-react'
 import { getAuthToken, getCurrentTenant, getFileCategories } from '@/lib/api-client'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
@@ -389,14 +389,23 @@ export function TerminFileCard({
       const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error()
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file.originalName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
+        // Im Browser anzeigen – named File damit Chrome den richtigen Dateinamen zeigt
+        const namedFile = new File([blob], file.originalName, { type: file.mimeType })
+        const url = URL.createObjectURL(namedFile)
+        window.open(url, '_blank')
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      } else {
+        // Alles andere: Download mit korrektem Dateinamen
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.originalName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
     } catch { alert('Datei konnte nicht geöffnet werden') }
   }
 
@@ -430,7 +439,7 @@ export function TerminFileCard({
             </div>
           ) : usedCategories.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-20 text-gray-400">
-              <File className="w-6 h-6 mb-1" />
+              <FileIcon className="w-6 h-6 mb-1" />
               <span className="text-xs">Keine Dateien</span>
             </div>
           ) : (

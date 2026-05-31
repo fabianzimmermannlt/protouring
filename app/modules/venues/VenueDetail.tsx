@@ -5,7 +5,7 @@ import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   Upload, Trash2, X, AlertCircle, Plus, Save, Check,
-  File, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
+  File as FileIcon, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
   Image as ImageIcon, ExternalLink, Loader2, UserCircle, Phone, Mail, ArrowLeft,
 } from 'lucide-react'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
@@ -257,14 +257,21 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
       const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error()
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file.originalName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
+        const namedFile = new File([blob], file.originalName, { type: file.mimeType })
+        const url = URL.createObjectURL(namedFile)
+        window.open(url, '_blank')
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.originalName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
     } catch { alert(t('general.fileOpenError')) }
   }
 
@@ -518,7 +525,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                         </div>
                         {isEditor && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><File className="w-3 h-3" /></button>
+                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><FileIcon className="w-3 h-3" /></button>
                             <button onClick={() => handleDeleteContact(c.id)} className="text-gray-400 hover:text-red-600 p-0.5"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         )}
@@ -573,14 +580,14 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
         {/* Dokumente */}
         <div className="pt-card">
           <div className="pt-card-header">
-            <span className="pt-card-title"><File className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardDocs')}</span>
+            <span className="pt-card-title"><FileIcon className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardDocs')}</span>
             {isEditor && <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="pt-card-body">
             {filesLoading ? (
               <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : Object.keys(docsByCategory).length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-20 text-gray-400"><File className="w-6 h-6 mb-1" /><span className="text-xs">{t('venues.noDocs')}</span></div>
+              <div className="flex flex-col items-center justify-center h-20 text-gray-400"><FileIcon className="w-6 h-6 mb-1" /><span className="text-xs">{t('venues.noDocs')}</span></div>
             ) : (
               Object.entries(docsByCategory).map(([cat, catFiles]) => (
                 <DocCategorySection key={cat} category={cat} files={catFiles}

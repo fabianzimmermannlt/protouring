@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Upload, File, Trash2, Edit, AlertCircle, X, Download } from 'lucide-react'
+import { Upload, File as FileIcon, Trash2, Edit, AlertCircle, X, Download } from 'lucide-react'
 import { getAuthToken, getCurrentTenant } from '@/lib/api-client'
 
 // ============================================================
@@ -226,14 +226,21 @@ export function FileCard({
       const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error('Fehler beim Laden')
       const blob = await res.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = file.originalName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000)
+      if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
+        const namedFile = new File([blob], file.originalName, { type: file.mimeType })
+        const url = URL.createObjectURL(namedFile)
+        window.open(url, '_blank')
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.originalName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
     } catch {
       alert('Datei konnte nicht geöffnet werden')
     }
@@ -263,7 +270,7 @@ export function FileCard({
             <div className="flex items-center justify-center h-20 text-sm text-gray-400">Lade…</div>
           ) : files.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-20 text-gray-400">
-              <File className="w-6 h-6 mb-1" />
+              <FileIcon className="w-6 h-6 mb-1" />
               <span className="text-xs">Keine Dateien</span>
             </div>
           ) : (
