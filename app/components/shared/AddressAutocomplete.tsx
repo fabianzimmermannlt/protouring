@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MapPin, Loader2 } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
-import { buildMapboxUrl, parseMapboxFeature, type MapboxFeature } from '@/lib/mapbox'
+import { buildGeoapifyUrl, parseGeoapifyFeature, type GeoapifyFeature } from '@/lib/geoapify'
 import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 
 export interface AddressResult {
@@ -32,7 +32,7 @@ interface PhotonFeature {
   }
 }
 
-const USE_MAPBOX = !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+const USE_GEOAPIFY = !!process.env.NEXT_PUBLIC_GEOAPIFY_KEY
 
 interface NameAddressAutocompleteProps {
   label: string
@@ -59,7 +59,7 @@ export function NameAddressAutocomplete({
   autoFocus = false,
 }: NameAddressAutocompleteProps) {
   const { language } = useLanguage()
-  const [suggestions, setSuggestions] = useState<(PhotonFeature | MapboxFeature)[]>([])
+  const [suggestions, setSuggestions] = useState<(PhotonFeature | GeoapifyFeature)[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -69,11 +69,11 @@ export function NameAddressAutocomplete({
     if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
     setLoading(true)
     try {
-      if (USE_MAPBOX) {
-        const url = buildMapboxUrl(q, 6, language)
+      if (USE_GEOAPIFY) {
+        const url = buildGeoapifyUrl(q, 6, language)
         const res = await fetch(url)
         const data = await res.json()
-        const features: MapboxFeature[] = data.features ?? []
+        const features: GeoapifyFeature[] = data.features ?? []
         setSuggestions(features)
         setOpen(features.length > 0)
       } else {
@@ -97,11 +97,11 @@ export function NameAddressAutocomplete({
     debounceRef.current = setTimeout(() => search(val), 350)
   }
 
-  const handleSelect = (f: PhotonFeature | MapboxFeature) => {
-    if (USE_MAPBOX) {
-      const mb = f as MapboxFeature
-      const parsed = parseMapboxFeature(mb)
-      onChange(parsed.name || mb.place_name.split(',')[0])
+  const handleSelect = (f: PhotonFeature | GeoapifyFeature) => {
+    if (USE_GEOAPIFY) {
+      const geo = f as GeoapifyFeature
+      const parsed = parseGeoapifyFeature(geo)
+      onChange(parsed.name || geo.properties.formatted?.split(',')[0] || '')
       onAddressSelect({
         name: parsed.name,
         street: parsed.street,
@@ -135,9 +135,10 @@ export function NameAddressAutocomplete({
     setOpen(false)
   }
 
-  const formatSuggestion = (f: PhotonFeature | MapboxFeature): string => {
-    if (USE_MAPBOX) {
-      return (f as MapboxFeature).place_name
+  const formatSuggestion = (f: PhotonFeature | GeoapifyFeature): string => {
+    if (USE_GEOAPIFY) {
+      const p = (f as GeoapifyFeature).properties
+      return p.formatted || p.address_line1 || ''
     }
     const p = (f as PhotonFeature).properties
     const parts = [
