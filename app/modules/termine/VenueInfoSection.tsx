@@ -841,15 +841,15 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                 {docs.map(f => (
                   <button key={f.id}
                     onClick={() => {
-                      fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
-                        .then(r => r.blob())
-                        .then(blob => {
-                          if (f.mimeType.startsWith('image/') || f.mimeType.includes('pdf')) {
-                            const namedFile = new File([blob], f.originalName, { type: f.mimeType })
-                            const url = URL.createObjectURL(namedFile)
-                            window.open(url, '_blank')
-                            setTimeout(() => URL.revokeObjectURL(url), 60_000)
-                          } else {
+                      if (f.mimeType.startsWith('image/') || f.mimeType.includes('pdf')) {
+                        const tok = getAuthToken()
+                        const ten = getCurrentTenant()
+                        const viewUrl = `${API_BASE}/api/files/view/${f.id}?token=${encodeURIComponent(tok ?? '')}&slug=${encodeURIComponent(ten?.slug ?? '')}`
+                        window.open(viewUrl, '_blank')
+                      } else {
+                        fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
+                          .then(r => r.blob())
+                          .then(blob => {
                             const url = URL.createObjectURL(blob)
                             const a = document.createElement('a')
                             a.href = url
@@ -858,8 +858,8 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                             a.click()
                             document.body.removeChild(a)
                             setTimeout(() => URL.revokeObjectURL(url), 10_000)
-                          }
-                        })
+                          })
+                      }
                     }}
                     className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left">
                     <span className="text-base leading-none">{fileIcon(f.mimeType)}</span>

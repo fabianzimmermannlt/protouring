@@ -2989,6 +2989,37 @@ function canWriteFile(file, userId) {
   return String(file.uploaded_by) === String(userId);
 }
 
+// VIEW: GET /api/files/view/:fileId?token=JWT&slug=TENANT  ← direkte Browser-Navigation (PDF im Tab)
+// Token per Query-Param, damit kein fetch+Blob nötig ist und Content-Disposition: inline greift
+app.get('/api/files/view/:fileId', async (req, res) => {
+  try {
+    const token = req.query.token
+    const slug = req.query.slug
+    if (!token || !slug) return res.status(401).json({ error: 'token und slug erforderlich' })
+    let decoded
+    try { decoded = jwt.verify(token, JWT_SECRET) } catch { return res.status(403).json({ error: 'Ungültiger Token' }) }
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [decoded.id])
+    if (!user) return res.status(401).json({ error: 'User nicht gefunden' })
+    const tenant = await db.get(
+      `SELECT t.*, tm.role FROM tenants t
+       JOIN tenant_memberships tm ON t.id = tm.tenant_id
+       WHERE t.slug = ? AND tm.user_id = ?`, [slug, user.id]
+    )
+    if (!tenant) return res.status(403).json({ error: 'Kein Zugriff' })
+    const file = await db.get('SELECT * FROM files WHERE id = ? AND tenant_id = ?', [req.params.fileId, tenant.id])
+    if (!file) return res.status(404).json({ error: 'Datei nicht gefunden' })
+    if (!canReadFile(file, user.id)) return res.status(403).json({ error: 'Kein Lesezugriff' })
+    const filePath = path.join(__dirname, 'uploads', String(tenant.id), file.entity_type, file.entity_id, file.stored_name)
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Datei fehlt auf Disk' })
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.original_name)}`)
+    res.setHeader('Content-Type', file.mime_type)
+    res.sendFile(path.resolve(filePath))
+  } catch (err) {
+    console.error('GET /api/files/view error:', err)
+    res.status(500).json({ error: 'Fehler beim Laden' })
+  }
+})
+
 // SERVE: GET /api/files/download/:fileId  ← muss VOR der List-Route stehen!
 app.get('/api/files/download/:fileId', authenticateToken, requireTenant, async (req, res) => {
   try {

@@ -254,15 +254,15 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
 
   async function openFile(file: FileItem) {
     try {
-      const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
-      if (!res.ok) throw new Error()
-      const blob = await res.blob()
       if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
-        const namedFile = new File([blob], file.originalName, { type: file.mimeType })
-        const url = URL.createObjectURL(namedFile)
-        window.open(url, '_blank')
-        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+        const token = getAuthToken()
+        const tenant = getCurrentTenant()
+        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
+        window.open(viewUrl, '_blank')
       } else {
+        const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
+        if (!res.ok) throw new Error()
+        const blob = await res.blob()
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url

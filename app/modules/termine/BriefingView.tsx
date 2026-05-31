@@ -158,15 +158,15 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
 
   const openFile = async (file: BriefingFile) => {
     try {
-      const res = await fetch(`${API_BASE}/api/files/${file.id}/download`, { headers: authHeaders() })
-      if (!res.ok) return
-      const blob = await res.blob()
       if (file.mime_type.startsWith('image/') || file.mime_type.includes('pdf')) {
-        const namedFile = new File([blob], file.original_name, { type: file.mime_type })
-        const url = URL.createObjectURL(namedFile)
-        window.open(url, '_blank')
-        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+        const token = getAuthToken()
+        const tenant = getCurrentTenant()
+        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
+        window.open(viewUrl, '_blank')
       } else {
+        const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
+        if (!res.ok) return
+        const blob = await res.blob()
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url

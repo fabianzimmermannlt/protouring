@@ -386,17 +386,17 @@ export function TerminFileCard({
 
   async function openFile(file: FileItem) {
     try {
-      const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
-      if (!res.ok) throw new Error()
-      const blob = await res.blob()
       if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
-        // Im Browser anzeigen – named File damit Chrome den richtigen Dateinamen zeigt
-        const namedFile = new File([blob], file.originalName, { type: file.mimeType })
-        const url = URL.createObjectURL(namedFile)
-        window.open(url, '_blank')
-        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+        // Direkt im Browser öffnen – Server setzt Content-Disposition: inline mit korrektem Namen
+        const token = getAuthToken()
+        const tenant = getCurrentTenant()
+        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
+        window.open(viewUrl, '_blank')
       } else {
-        // Alles andere: Download mit korrektem Dateinamen
+        // Alles andere: Blob herunterladen mit korrektem Dateinamen
+        const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
+        if (!res.ok) throw new Error()
+        const blob = await res.blob()
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
