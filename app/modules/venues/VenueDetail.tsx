@@ -417,8 +417,10 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                   <IField label={t('address.postalCode')} value={form.postalCode ?? ''} onChange={v => f('postalCode', v)} readOnly={ro} />
                   <IField label={t('address.city')} value={form.city ?? ''} onChange={v => f('city', v)} readOnly={ro} />
                 </div>
-                <IField label={t('address.state')} value={form.state ?? ''} onChange={v => f('state', v)} readOnly={ro} />
-                <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} readOnly={ro} />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label={t('address.state')} value={form.state ?? ''} onChange={v => f('state', v)} readOnly={ro} />
+                  <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} readOnly={ro} />
+                </div>
                 <IField label={t('general.website')} value={form.website ?? ''} onChange={v => f('website', v)} placeholder="https://..." readOnly={ro} />
                 <div className="grid grid-cols-2 gap-2">
                   <IField label={t('address.latitude')} value={form.latitude ?? ''} onChange={v => f('latitude', v)} placeholder="48.137154" readOnly={ro} />

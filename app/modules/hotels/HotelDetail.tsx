@@ -199,7 +199,10 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
                   <IField label={t('address.postalCode')} value={form.postalCode ?? ''} onChange={v => f('postalCode', v)} readOnly={ro} />
                   <IField label={t('address.city')} value={form.city ?? ''} onChange={v => f('city', v)} readOnly={ro} />
                 </div>
-                <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} readOnly={ro} />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label={t('address.state')} value={form.state ?? ''} onChange={v => f('state', v)} readOnly={ro} />
+                  <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} readOnly={ro} />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <IField label={t('general.phone')} value={form.phone ?? ''} onChange={v => f('phone', v)} readOnly={ro} />
                   <IField label={t('general.email')} value={form.email ?? ''} onChange={v => f('email', v)} readOnly={ro} />
