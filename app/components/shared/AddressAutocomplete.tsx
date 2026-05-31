@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MapPin, Loader2 } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
+import { buildMapboxUrl, parseMapboxFeature, type MapboxFeature } from '@/lib/mapbox'
 import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 
 export interface AddressResult {
@@ -31,6 +32,8 @@ interface PhotonFeature {
   }
 }
 
+const USE_MAPBOX = !!process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+
 interface NameAddressAutocompleteProps {
   label: string
   required?: boolean
@@ -56,7 +59,7 @@ export function NameAddressAutocomplete({
   autoFocus = false,
 }: NameAddressAutocompleteProps) {
   const { language } = useLanguage()
-  const [suggestions, setSuggestions] = useState<PhotonFeature[]>([])
+  const [suggestions, setSuggestions] = useState<(PhotonFeature | MapboxFeature)[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -66,18 +69,27 @@ export function NameAddressAutocomplete({
     if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
     setLoading(true)
     try {
-      const url = buildPhotonUrl(q, 6, language)
-      const res = await fetch(url)
-      const data = await res.json()
-      const features: PhotonFeature[] = data.features ?? []
-      setSuggestions(features)
-      setOpen(features.length > 0)
+      if (USE_MAPBOX) {
+        const url = buildMapboxUrl(q, 6, language)
+        const res = await fetch(url)
+        const data = await res.json()
+        const features: MapboxFeature[] = data.features ?? []
+        setSuggestions(features)
+        setOpen(features.length > 0)
+      } else {
+        const url = buildPhotonUrl(q, 6, language)
+        const res = await fetch(url)
+        const data = await res.json()
+        const features: PhotonFeature[] = data.features ?? []
+        setSuggestions(features)
+        setOpen(features.length > 0)
+      }
     } catch {
       setSuggestions([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [language])
 
   const handleChange = (val: string) => {
     onChange(val)
@@ -85,33 +97,49 @@ export function NameAddressAutocomplete({
     debounceRef.current = setTimeout(() => search(val), 350)
   }
 
-  const handleSelect = (f: PhotonFeature) => {
-    const p = f.properties
-    const city = p.city || p.town || p.village || ''
-    const street = [p.street, p.housenumber].filter(Boolean).join(' ')
-    const name = p.name || ''
-
-    if (name) onChange(name)
-
-    onAddressSelect({
-      name,
-      street,
-      postalCode: p.postcode || '',
-      city,
-      state: p.state || '',
-      country: p.country || '',
-      ...(withLatLon ? {
-        latitude: String(f.geometry.coordinates[1]),
-        longitude: String(f.geometry.coordinates[0]),
-      } : {}),
-    })
-
+  const handleSelect = (f: PhotonFeature | MapboxFeature) => {
+    if (USE_MAPBOX) {
+      const mb = f as MapboxFeature
+      const parsed = parseMapboxFeature(mb)
+      onChange(parsed.name || mb.place_name.split(',')[0])
+      onAddressSelect({
+        name: parsed.name,
+        street: parsed.street,
+        postalCode: parsed.postalCode,
+        city: parsed.city,
+        state: parsed.state,
+        country: parsed.country,
+        ...(withLatLon ? { latitude: parsed.latitude, longitude: parsed.longitude } : {}),
+      })
+    } else {
+      const ph = f as PhotonFeature
+      const p = ph.properties
+      const city = p.city || p.town || p.village || ''
+      const street = [p.street, p.housenumber].filter(Boolean).join(' ')
+      const name = p.name || ''
+      if (name) onChange(name)
+      onAddressSelect({
+        name,
+        street,
+        postalCode: p.postcode || '',
+        city,
+        state: p.state || '',
+        country: p.country || '',
+        ...(withLatLon ? {
+          latitude: String(ph.geometry.coordinates[1]),
+          longitude: String(ph.geometry.coordinates[0]),
+        } : {}),
+      })
+    }
     setSuggestions([])
     setOpen(false)
   }
 
-  const formatSuggestion = (f: PhotonFeature) => {
-    const p = f.properties
+  const formatSuggestion = (f: PhotonFeature | MapboxFeature): string => {
+    if (USE_MAPBOX) {
+      return (f as MapboxFeature).place_name
+    }
+    const p = (f as PhotonFeature).properties
     const parts = [
       p.name,
       p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street,
