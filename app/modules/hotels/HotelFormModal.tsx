@@ -24,6 +24,7 @@ const EMPTY_FORM: HotelFormData = {
   lateCheckOut: '',
   breakfast: '',
   breakfastWeekend: '',
+  parking: '',
   additionalInfo: '',
 }
 
@@ -56,6 +57,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
           lateCheckOut: hotel.lateCheckOut,
           breakfast: hotel.breakfast,
           breakfastWeekend: hotel.breakfastWeekend,
+          parking: hotel.parking,
           additionalInfo: hotel.additionalInfo,
         }
       : { ...EMPTY_FORM }

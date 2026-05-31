@@ -726,6 +726,8 @@ async function initDatabase() {
     // Venues: GPS-Koordinaten
     `ALTER TABLE venues ADD COLUMN latitude TEXT`,
     `ALTER TABLE venues ADD COLUMN longitude TEXT`,
+    // Hotels: Parkplatz
+    `ALTER TABLE hotels ADD COLUMN parking TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_materials.modell: NOT NULL Constraint entfernen (war produkt TEXT NOT NULL)
@@ -2744,7 +2746,8 @@ const hotelFromRow = (r) => ({
   phone: r.phone||'', website: r.website||'', reception: r.reception||'',
   checkIn: r.check_in||'', checkOut: r.check_out||'', earlyCheckIn: r.early_check_in||'',
   lateCheckOut: r.late_check_out||'', breakfast: r.breakfast||'',
-  breakfastWeekend: r.breakfast_weekend||'', additionalInfo: r.additional_info||'',
+  breakfastWeekend: r.breakfast_weekend||'', parking: r.parking||'',
+  additionalInfo: r.additional_info||'',
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -2769,12 +2772,12 @@ app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (
     const result = await db.run(`
       INSERT INTO hotels (tenant_id, name, street, postal_code, city, state, country, email,
         phone, website, reception, check_in, check_out, early_check_in, late_check_out,
-        breakfast, breakfast_weekend, additional_info)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        breakfast, breakfast_weekend, parking, additional_info)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `, [req.tenant.id, h.name||'', h.street||'', h.postalCode||'', h.city||'', h.state||'',
         h.country||'', h.email||'', h.phone||'', h.website||'', h.reception||'',
         h.checkIn||'', h.checkOut||'', h.earlyCheckIn||'', h.lateCheckOut||'',
-        h.breakfast||'', h.breakfastWeekend||'', h.additionalInfo||'']);
+        h.breakfast||'', h.breakfastWeekend||'', h.parking||'', h.additionalInfo||'']);
     const row = await db.get('SELECT * FROM hotels WHERE id = ?', [result.lastID]);
     res.status(201).json({ hotel: hotelFromRow(row) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to create hotel' }); }
@@ -2788,12 +2791,12 @@ app.put('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, asyn
     await db.run(`
       UPDATE hotels SET name=?, street=?, postal_code=?, city=?, state=?, country=?, email=?,
         phone=?, website=?, reception=?, check_in=?, check_out=?, early_check_in=?,
-        late_check_out=?, breakfast=?, breakfast_weekend=?, additional_info=?, updated_at=datetime('now')
+        late_check_out=?, breakfast=?, breakfast_weekend=?, parking=?, additional_info=?, updated_at=datetime('now')
       WHERE id=? AND tenant_id=?
     `, [h.name||'', h.street||'', h.postalCode||'', h.city||'', h.state||'', h.country||'',
         h.email||'', h.phone||'', h.website||'', h.reception||'', h.checkIn||'', h.checkOut||'',
         h.earlyCheckIn||'', h.lateCheckOut||'', h.breakfast||'', h.breakfastWeekend||'',
-        h.additionalInfo||'', id, req.tenant.id]);
+        h.parking||'', h.additionalInfo||'', id, req.tenant.id]);
     const row = await db.get('SELECT * FROM hotels WHERE id = ?', [id]);
     res.json({ hotel: hotelFromRow(row) });
   } catch (e) { res.status(500).json({ error: 'Failed to update hotel' }); }

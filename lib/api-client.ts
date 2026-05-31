@@ -925,7 +925,7 @@ export interface Hotel {
   id: string; name: string; street: string; postalCode: string; city: string;
   state: string; country: string; email: string; phone: string; website: string;
   reception: string; checkIn: string; checkOut: string; earlyCheckIn: string;
-  lateCheckOut: string; breakfast: string; breakfastWeekend: string; additionalInfo: string;
+  lateCheckOut: string; breakfast: string; breakfastWeekend: string; parking: string; additionalInfo: string;
   createdAt?: string; updatedAt?: string;
 }
 export type HotelFormData = Omit<Hotel, 'id' | 'createdAt' | 'updatedAt'>;

@@ -210,7 +210,7 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
             </div>
           </div>
 
-          {/* Check-in / Check-out */}
+          {/* Check-in / Check-out / Services */}
           <div className="pt-card">
             <div className="pt-card-header">
               <span className="pt-card-title"><Clock className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardCheckin')}</span>
@@ -221,21 +221,15 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
                   <IField label={t('hotels.checkin')} value={form.checkIn ?? ''} onChange={v => f('checkIn', v)} placeholder={t('hotels.checkinPlaceholder')} readOnly={ro} />
                   <IField label={t('hotels.checkout')} value={form.checkOut ?? ''} onChange={v => f('checkOut', v)} placeholder={t('hotels.checkoutPlaceholder')} readOnly={ro} />
                 </div>
-                <IField label={t('hotels.earlyCheckin')} value={form.earlyCheckIn ?? ''} onChange={v => f('earlyCheckIn', v)} placeholder={t('hotels.earlyCheckinPlaceholder')} readOnly={ro} />
-                <IField label={t('hotels.lateCheckout')} value={form.lateCheckOut ?? ''} onChange={v => f('lateCheckOut', v)} placeholder={t('hotels.lateCheckoutPlaceholder')} readOnly={ro} />
-              </div>
-            </div>
-          </div>
-
-          {/* Services */}
-          <div className="pt-card md:col-span-2">
-            <div className="pt-card-header">
-              <span className="pt-card-title"><Coffee className="w-3.5 h-3.5 inline mr-1" />{t('hotels.cardServices')}</span>
-            </div>
-            <div className="pt-card-body">
-              <div className="space-y-2">
-                <IField label={t('hotels.breakfast')} value={form.breakfast ?? ''} onChange={v => f('breakfast', v)} placeholder={t('hotels.breakfastPlaceholder')} readOnly={ro} />
-                <IField label={t('hotels.breakfastWeekend')} value={form.breakfastWeekend ?? ''} onChange={v => f('breakfastWeekend', v)} readOnly={ro} />
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label={t('hotels.earlyCheckin')} value={form.earlyCheckIn ?? ''} onChange={v => f('earlyCheckIn', v)} placeholder={t('hotels.earlyCheckinPlaceholder')} readOnly={ro} />
+                  <IField label={t('hotels.lateCheckout')} value={form.lateCheckOut ?? ''} onChange={v => f('lateCheckOut', v)} placeholder={t('hotels.lateCheckoutPlaceholder')} readOnly={ro} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <IField label={t('hotels.breakfast')} value={form.breakfast ?? ''} onChange={v => f('breakfast', v)} placeholder={t('hotels.breakfastPlaceholder')} readOnly={ro} />
+                  <IField label={t('hotels.breakfastWeekend')} value={form.breakfastWeekend ?? ''} onChange={v => f('breakfastWeekend', v)} readOnly={ro} />
+                </div>
+                <IField label="Parkplatz" value={form.parking ?? ''} onChange={v => f('parking', v)} placeholder="Parkinfos..." readOnly={ro} />
                 <ITextarea label={t('hotels.additionalInfo')} value={form.additionalInfo ?? ''} onChange={v => f('additionalInfo', v)} readOnly={ro} />
               </div>
             </div>

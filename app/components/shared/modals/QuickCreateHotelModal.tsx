@@ -22,7 +22,7 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
         name: name.trim(), street: '', postalCode: '', city: '', state: '', country: '',
         email: '', phone: '', website: '', reception: '',
         checkIn: '', checkOut: '', earlyCheckIn: '', lateCheckOut: '',
-        breakfast: '', breakfastWeekend: '', additionalInfo: '',
+        breakfast: '', breakfastWeekend: '', parking: '', additionalInfo: '',
       })
       onCreated(hotel)
       onClose()

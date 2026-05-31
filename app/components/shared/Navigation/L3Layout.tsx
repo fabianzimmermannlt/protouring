@@ -837,7 +837,7 @@ export function L3Layout({
             city: col(row, 3), state: col(row, 4), country: col(row, 5),
             website: col(row, 6), email: '', phone: '', reception: '',
             checkIn: '', checkOut: '', earlyCheckIn: '', lateCheckOut: '',
-            breakfast: '', breakfastWeekend: '', additionalInfo: '',
+            breakfast: '', breakfastWeekend: '', parking: '', additionalInfo: '',
           })
           setHotelsList(prev => [...prev, created])
           count++
