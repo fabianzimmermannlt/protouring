@@ -423,9 +423,9 @@ function TodoRow({ todo, canEdit, toggling, onToggle, onEdit }: {
       {/* Status-Toggle */}
       <button
         onClick={onToggle}
-        disabled={toggling}
-        title={`Weiter zu: ${STATUS_LABEL[STATUS_NEXT[todo.status]]}`}
-        className="mt-0.5 flex-shrink-0 hover:opacity-70 transition-opacity"
+        disabled={toggling || (isDone && !canEdit)}
+        title={isDone && !canEdit ? 'Nur Editoren können Erledigtes wieder öffnen' : `Weiter zu: ${STATUS_LABEL[STATUS_NEXT[todo.status]]}`}
+        className={`mt-0.5 flex-shrink-0 transition-opacity ${isDone && !canEdit ? 'cursor-default opacity-40' : 'hover:opacity-70'}`}
       >
         {toggling
           ? <Loader2 size={14} className="animate-spin text-gray-300" />
