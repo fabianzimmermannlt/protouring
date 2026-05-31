@@ -183,7 +183,7 @@ function TodoForm({
 
 const CAN_CREATE_ROLES = ['admin', 'agency', 'tourmanagement', 'artist', 'crew_plus']
 
-type TodoFilter = 'open' | 'overdue' | 'all'
+type TodoFilter = 'open' | 'overdue' | 'done' | 'all'
 
 export default function ToDoCard({ terminId }: { terminId: number }) {
   const [todos, setTodos]           = useState<Todo[]>([])
@@ -272,7 +272,9 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
     ? visibleTodos
     : filter === 'overdue'
       ? visibleTodos.filter(isOverdue)
-      : visibleTodos.filter(t => t.status !== 'done')
+      : filter === 'done'
+        ? doneTodos
+        : visibleTodos.filter(t => t.status !== 'done')
 
   const overdueCount = visibleTodos.filter(isOverdue).length
 
@@ -285,6 +287,7 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
   const filterTabs: { id: TodoFilter; label: string }[] = [
     { id: 'open',    label: 'Offen' },
     { id: 'overdue', label: overdueCount > 0 ? `Überfällig (${overdueCount})` : 'Überfällig' },
+    { id: 'done',    label: doneTodos.length > 0 ? `Erledigt (${doneTodos.length})` : 'Erledigt' },
     { id: 'all',     label: 'Alle' },
   ]
 
@@ -340,11 +343,11 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
           </div>
         ) : filteredTodos.length === 0 ? (
           <div className="pt-card-body text-sm text-gray-400 text-center py-4">
-            {filter === 'overdue' ? 'Keine überfälligen Aufgaben' : filter === 'open' ? 'Keine offenen Aufgaben' : 'Noch keine Aufgaben'}
+            {filter === 'overdue' ? 'Keine überfälligen Aufgaben' : filter === 'open' ? 'Keine offenen Aufgaben' : filter === 'done' ? 'Keine erledigten Aufgaben' : 'Noch keine Aufgaben'}
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {filteredTodos.filter(t => t.status !== 'done').map(todo => (
+            {filteredTodos.filter(t => filter === 'done' || t.status !== 'done').map(todo => (
               <TodoRow
                 key={todo.id}
                 todo={todo}

@@ -1079,8 +1079,8 @@ function TerminDetailHeader({
   const tabs = [
     { id: 'details2',       label: 'Details' },
     { id: 'venue',          label: 'Venue' },
-    { id: 'partner',        label: 'Partner' },
-    { id: 'advancing',      label: 'Advancing' },
+    ...(isEditor ? [{ id: 'partner',   label: 'Partner' }]  : []),
+    ...(isEditor ? [{ id: 'advancing', label: 'Advancing' }] : []),
     { id: 'schedule',       label: 'Schedule' },
     { id: 'travelparty',    label: 'Reisegruppe' },
     { id: 'travel',         label: 'Travel' },
