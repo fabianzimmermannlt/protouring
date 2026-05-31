@@ -255,17 +255,24 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
   }
 
   const handleToggleStatus = async (todo: Todo) => {
+    const newStatus = STATUS_NEXT[todo.status]
+    // Optimistisch sofort updaten → alle Filter gleichzeitig konsistent
+    setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, status: newStatus } : t))
     setTogglingId(todo.id)
     try {
       const updated = await updateTodo(terminId, todo.id, {
         title:             todo.title,
         description:       todo.description ?? undefined,
-        status:            STATUS_NEXT[todo.status],
+        status:            newStatus,
         priority:          todo.priority,
         assignedContactId: todo.assignedContactId ?? undefined,
         deadline:          todo.deadline ?? undefined,
       })
+      // Server-Antwort übernehmen (enthält ggf. aktualisierte Felder)
       setTodos(prev => prev.map(t => t.id === updated.id ? updated : t))
+    } catch {
+      // Bei Fehler: zurücksetzen
+      setTodos(prev => prev.map(t => t.id === todo.id ? todo : t))
     } finally { setTogglingId(null) }
   }
 
