@@ -32,7 +32,7 @@ interface PhotonFeature {
   }
 }
 
-const USE_GEOAPIFY = !!process.env.NEXT_PUBLIC_GEOAPIFY_KEY
+const USE_GEOAPIFY = true // Geoapify als primärer Geocoding-Dienst
 
 interface NameAddressAutocompleteProps {
   label: string

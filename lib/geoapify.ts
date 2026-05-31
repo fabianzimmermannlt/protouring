@@ -25,7 +25,7 @@ export interface GeoapifyFeature {
 }
 
 export function buildGeoapifyUrl(query: string, limit = 6, lang = 'de'): string {
-  const key = process.env.NEXT_PUBLIC_GEOAPIFY_KEY
+  const key = process.env.NEXT_PUBLIC_GEOAPIFY_KEY || 'fd5eb442dd624f3d912f16d0491e0232'
   if (!key) return ''
 
   const params = new URLSearchParams({
