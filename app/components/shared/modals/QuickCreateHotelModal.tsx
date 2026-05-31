@@ -12,16 +12,15 @@ interface Props {
 
 export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
   const [name, setName] = useState('')
-  const [address, setAddress] = useState<Partial<AddressResult>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async () => {
-    if (!name.trim()) { setError('Name ist erforderlich'); return }
+  const save = async (hotelName: string, address: Partial<AddressResult> = {}) => {
+    if (!hotelName.trim()) { setError('Name ist erforderlich'); return }
     setSaving(true); setError('')
     try {
       const hotel = await createHotel({
-        name: name.trim(),
+        name: hotelName.trim(),
         street: address.street || '',
         postalCode: address.postalCode || '',
         city: address.city || '',
@@ -35,7 +34,6 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
       onClose()
     } catch (e) {
       setError((e as Error).message || 'Fehler beim Anlegen')
-    } finally {
       setSaving(false)
     }
   }
@@ -44,7 +42,7 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
     <QuickCreateModal
       title="Neues Hotel"
       onClose={onClose}
-      onSubmit={handleSubmit}
+      onSubmit={() => save(name)}
       submitting={saving}
       disabled={!name.trim()}
       error={error}
@@ -55,8 +53,10 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
           value={name}
           onChange={setName}
           onAddressSelect={a => {
-            if (a.name) setName(a.name)
-            setAddress(a)
+            const hotelName = a.name || name
+            setName(hotelName)
+            // Direkt speichern und zur Detailseite navigieren
+            save(hotelName, a)
           }}
           placeholder="z.B. Ibis München Hauptbahnhof"
           autoFocus
