@@ -162,8 +162,13 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
       if (!res.ok) return
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = file.original_name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
     } catch { /* silent */ }
   }
 

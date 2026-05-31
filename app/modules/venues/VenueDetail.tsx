@@ -258,12 +258,13 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
       if (!res.ok) throw new Error()
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-      if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
-        window.open(url, '_blank')
-      } else {
-        const a = document.createElement('a'); a.href = url; a.download = file.originalName; a.click()
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = file.originalName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
     } catch { alert(t('general.fileOpenError')) }
   }
 

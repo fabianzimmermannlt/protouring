@@ -845,8 +845,13 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                         .then(r => r.blob())
                         .then(blob => {
                           const url = URL.createObjectURL(blob)
-                          window.open(url, '_blank')
-                          setTimeout(() => URL.revokeObjectURL(url), 60_000)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = f.originalName
+                          document.body.appendChild(a)
+                          a.click()
+                          document.body.removeChild(a)
+                          setTimeout(() => URL.revokeObjectURL(url), 10_000)
                         })
                     }}
                     className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 group w-full text-left">
