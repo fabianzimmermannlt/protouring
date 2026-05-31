@@ -11,21 +11,30 @@ interface Props {
 }
 
 export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
-  const [name, setName] = useState('')
+  const [displayValue, setDisplayValue] = useState('')
+  const [selectedAddress, setSelectedAddress] = useState<Partial<AddressResult> | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const save = async (hotelName: string, address: Partial<AddressResult> = {}) => {
-    if (!hotelName.trim()) { setError('Name ist erforderlich'); return }
+  const handleAddressSelect = (a: AddressResult) => {
+    // Vollständige Adresse als Anzeigetext im Input
+    const parts = [a.name, a.street, [a.postalCode, a.city].filter(Boolean).join(' ')].filter(Boolean)
+    setDisplayValue(parts.join(', '))
+    setSelectedAddress(a)
+  }
+
+  const handleSubmit = async () => {
+    const hotelName = selectedAddress?.name || displayValue.split(',')[0].trim()
+    if (!hotelName) { setError('Name ist erforderlich'); return }
     setSaving(true); setError('')
     try {
       const hotel = await createHotel({
-        name: hotelName.trim(),
-        street: address.street || '',
-        postalCode: address.postalCode || '',
-        city: address.city || '',
-        state: address.state || '',
-        country: address.country || '',
+        name: hotelName,
+        street: selectedAddress?.street || '',
+        postalCode: selectedAddress?.postalCode || '',
+        city: selectedAddress?.city || '',
+        state: selectedAddress?.state || '',
+        country: selectedAddress?.country || '',
         email: '', phone: '', website: '', reception: '',
         checkIn: '', checkOut: '', earlyCheckIn: '', lateCheckOut: '',
         breakfast: '', breakfastWeekend: '', parking: '', additionalInfo: '',
@@ -42,22 +51,17 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
     <QuickCreateModal
       title="Neues Hotel"
       onClose={onClose}
-      onSubmit={() => save(name)}
+      onSubmit={handleSubmit}
       submitting={saving}
-      disabled={!name.trim()}
+      disabled={!displayValue.trim()}
       error={error}
     >
       <QField label="Name" required>
         <NameAddressAutocomplete
           label=""
-          value={name}
-          onChange={setName}
-          onAddressSelect={a => {
-            const hotelName = a.name || name
-            setName(hotelName)
-            // Direkt speichern und zur Detailseite navigieren
-            save(hotelName, a)
-          }}
+          value={displayValue}
+          onChange={v => { setDisplayValue(v); setSelectedAddress(null) }}
+          onAddressSelect={handleAddressSelect}
           placeholder="z.B. Ibis München Hauptbahnhof"
           autoFocus
           variant="inline"
