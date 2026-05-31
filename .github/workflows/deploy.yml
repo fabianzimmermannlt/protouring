@@ -13,13 +13,10 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          NEXT_PUBLIC_GEOAPIFY_KEY: ${{ secrets.NEXT_PUBLIC_GEOAPIFY_KEY }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: NEXT_PUBLIC_GEOAPIFY_KEY
           script: |
             set -e
             export NVM_DIR="$HOME/.nvm"
@@ -29,9 +26,8 @@ jobs:
             cd /var/www/protouring
             git pull origin main
 
-            echo "── [2/5] Env-Datei schreiben ─────────────────"
-            echo "NEXT_PUBLIC_API_URL=https://protouring.de/api" > .env.local
-            echo "NEXT_PUBLIC_GEOAPIFY_KEY=${NEXT_PUBLIC_GEOAPIFY_KEY}" >> .env.local
+            echo "── [2/5] Env aktualisieren ───────────────────"
+            grep -q "NEXT_PUBLIC_GEOAPIFY_KEY" .env.local 2>/dev/null || echo "NEXT_PUBLIC_GEOAPIFY_KEY=fd5eb442dd624f3d912f16d0491e0232" >> .env.local
 
             echo "── [3/5] Abhängigkeiten installieren ─────────"
             rm -rf node_modules
@@ -40,10 +36,10 @@ jobs:
             echo "── [4/5] Build ───────────────────────────────"
             npm run build
 
-            echo "── [5/6] App neu starten ─────────────────────"
+            echo "── [5/5] App neu starten ─────────────────────"
             pm2 restart ecosystem.config.js --update-env
 
-            echo "── [6/6] Status prüfen ───────────────────────"
+            echo "── [6/5] Status prüfen ───────────────────────"
             pm2 status
 
             echo "✓ Deploy erfolgreich: $(date '+%Y-%m-%d %H:%M:%S')"
