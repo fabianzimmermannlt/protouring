@@ -24,7 +24,8 @@ jobs:
 
             echo "── [1/5] Code aktualisieren ──────────────────"
             cd /var/www/protouring
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
 
             echo "── [2/5] Env aktualisieren ───────────────────"
             grep -q "NEXT_PUBLIC_GEOAPIFY_KEY" .env.local 2>/dev/null || echo "NEXT_PUBLIC_GEOAPIFY_KEY=fd5eb442dd624f3d912f16d0491e0232" >> .env.local
