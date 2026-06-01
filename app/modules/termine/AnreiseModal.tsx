@@ -144,7 +144,6 @@ export default function AnreiseModal({
   abreiseLegs = [],
   onClose, onSaved, onDeleted, onCopiedToAbreise,
 }: AnreiseModalProps) {
-  useEscapeKey(onClose)
   const { layout } = useLayout()
   const dark = layout === 'L2'
   const isNew = leg === null
@@ -165,6 +164,18 @@ export default function AnreiseModal({
   const [calcError, setCalcError] = useState<string | null>(null)
   const [personPickerOpen, setPersonPickerOpen] = useState(false)
   const notesRef = useRef<RichTextEditorFieldHandle>(null)
+
+  // Dirty-Guard: Formular + zugewiesene Personen (separater State) + Notiz (onInput)
+  const [initialFormJson] = useState(() => JSON.stringify(isNew ? emptyForm(legType, terminDate) : legToForm(leg!)))
+  const [initialMembersJson] = useState(() => JSON.stringify([...(leg?.persons.map(p => p.travelPartyMemberId) ?? [])].sort((a, b) => a - b)))
+  const [notesDirty, setNotesDirty] = useState(false)
+  const [showDirty, setShowDirty] = useState(false)
+  const isDirty = () =>
+    notesDirty
+    || JSON.stringify(form) !== initialFormJson
+    || JSON.stringify(Array.from(selectedMemberIds).sort((a, b) => a - b)) !== initialMembersJson
+  const requestClose = () => { if (isDirty()) setShowDirty(true); else onClose() }
+  useEscapeKey(requestClose)
 
   const calcRoute = async (profileKey: typeof VEHICLE_PROFILES[number]['key']) => {
     if (!form.departureLocation || !form.arrivalLocation) {
@@ -300,7 +311,7 @@ export default function AnreiseModal({
       <div className="modal-container" style={{ maxWidth: '680px' }}>
         <div className="modal-header">
           <h2 className="modal-title">{isNew ? `${legTypeLabel} hinzufügen` : `${legTypeLabel} bearbeiten`}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={18} /></button>
+          <button onClick={requestClose} className="text-gray-400 hover:text-white"><X size={18} /></button>
         </div>
 
         <div className="modal-body space-y-4">
@@ -683,6 +694,7 @@ export default function AnreiseModal({
               ref={notesRef}
               initialContent={form.notes}
               minHeight="min-h-20"
+              onInput={() => setNotesDirty(true)}
             />
           </div>
 
@@ -719,7 +731,7 @@ export default function AnreiseModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={requestClose} className="btn btn-ghost">Abbrechen</button>
             <button onClick={handleSave} disabled={saving} className="btn btn-primary">
               {saving ? <><Loader2 size={14} className="animate-spin" /> Speichern…</> : 'Speichern'}
             </button>
@@ -738,6 +750,24 @@ export default function AnreiseModal({
           setVehicleFormModalOpen(false)
         }}
       />
+    )}
+
+    {showDirty && (
+      <div className="modal-overlay" style={{ zIndex: 10000 }}>
+        <div className="modal-container" style={{ maxWidth: '380px' }}>
+          <div className="modal-header"><h2 className="modal-title">Ungespeicherte Änderungen</h2></div>
+          <div className="modal-body">
+            <p style={{ fontSize: '0.9rem', margin: 0 }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
+          </div>
+          <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowDirty(false)} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={() => { setShowDirty(false); onClose() }} className="btn btn-ghost">Verwerfen</button>
+            <button onClick={async () => { setShowDirty(false); await handleSave() }} disabled={saving} className="btn btn-primary">
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Speichern…</> : 'Speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
     )}
   </>
   )

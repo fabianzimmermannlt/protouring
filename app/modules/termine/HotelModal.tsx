@@ -84,7 +84,6 @@ export default function HotelModal({
   terminId, stay, travelParty, assignedInOtherStays, terminDate,
   onClose, onSaved, onDeleted,
 }: HotelModalProps) {
-  useEscapeKey(onClose)
   const isNew = stay === null
   const [form, setForm] = useState<HotelStayFormData>(
     isNew ? emptyForm(terminDate) : stayToForm(stay!)
@@ -96,6 +95,14 @@ export default function HotelModal({
   const [error, setError] = useState<string | null>(null)
   const [personPickerRoom, setPersonPickerRoom] = useState<number | null>(null) // roomIdx mit offenem Popover
   const notesRef = useRef<RichTextEditorFieldHandle>(null)
+
+  // Dirty-Guard: Snapshot des Formulars beim Öffnen, Notiz separat über onInput
+  const [initialFormJson] = useState(() => JSON.stringify(isNew ? emptyForm(terminDate) : stayToForm(stay!)))
+  const [notesDirty, setNotesDirty] = useState(false)
+  const [showDirty, setShowDirty] = useState(false)
+  const isDirty = () => notesDirty || JSON.stringify(form) !== initialFormJson
+  const requestClose = () => { if (isDirty()) setShowDirty(true); else onClose() }
+  useEscapeKey(requestClose)
 
   useEffect(() => {
     getHotels().then(setHotels).catch(() => setHotels([]))
@@ -192,7 +199,7 @@ export default function HotelModal({
       <div className="modal-container" style={{ maxWidth: '680px' }}>
         <div className="modal-header">
           <h2 className="modal-title">{isNew ? 'Hotel hinzufügen' : 'Hotel bearbeiten'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={18} /></button>
+          <button onClick={requestClose} className="text-gray-400 hover:text-white"><X size={18} /></button>
         </div>
 
         <div className="modal-body space-y-4">
@@ -401,6 +408,7 @@ export default function HotelModal({
               ref={notesRef}
               initialContent={form.notes}
               minHeight="min-h-20"
+              onInput={() => setNotesDirty(true)}
             />
           </div>
 
@@ -427,7 +435,7 @@ export default function HotelModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={requestClose} className="btn btn-ghost">Abbrechen</button>
             <button onClick={handleSave} disabled={saving} className="btn btn-primary">
               {saving ? <><Loader2 size={14} className="animate-spin" /> Speichern…</> : 'Speichern'}
             </button>
@@ -446,6 +454,24 @@ export default function HotelModal({
           setHotelFormModalOpen(false)
         }}
       />
+    )}
+
+    {showDirty && (
+      <div className="modal-overlay" style={{ zIndex: 10000 }}>
+        <div className="modal-container" style={{ maxWidth: '380px' }}>
+          <div className="modal-header"><h2 className="modal-title">Ungespeicherte Änderungen</h2></div>
+          <div className="modal-body">
+            <p style={{ fontSize: '0.9rem', margin: 0 }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
+          </div>
+          <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowDirty(false)} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={() => { setShowDirty(false); onClose() }} className="btn btn-ghost">Verwerfen</button>
+            <button onClick={async () => { setShowDirty(false); await handleSave() }} disabled={saving} className="btn btn-primary">
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Speichern…</> : 'Speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </>
   )
