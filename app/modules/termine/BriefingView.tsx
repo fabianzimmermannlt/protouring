@@ -394,7 +394,7 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
       </button>
 
       {addingTo === file.id && (
-        <div className="absolute right-0 bottom-full mb-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[160px]">
+        <div className="absolute right-0 bottom-full mb-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[160px]" onMouseDown={e => e.stopPropagation()}>
           {/* Alle */}
           <button
             onClick={() => toggleGewerk(file, ALLE_ID)}
@@ -450,6 +450,18 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(true)
   const [addingTo, setAddingTo] = useState<string | null>(null) // fileId mit offener Gewerk-Auswahl
+
+  useEffect(() => {
+    if (!addingTo) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAddingTo(null) }
+    const onClickOutside = () => setAddingTo(null)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClickOutside)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onClickOutside)
+    }
+  }, [addingTo])
 
   useEffect(() => {
     const load = async () => {
