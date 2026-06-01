@@ -64,7 +64,7 @@ export function QuickCreateHotelModal({ onClose, onCreated }: Props) {
           onAddressSelect={handleAddressSelect}
           placeholder="z.B. Ibis München Hauptbahnhof"
           autoFocus
-          variant="inline"
+          variant="modal"
         />
       </QField>
     </QuickCreateModal>

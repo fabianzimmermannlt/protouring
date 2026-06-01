@@ -66,7 +66,7 @@ export function QuickCreateVenueModal({ onClose, onCreated }: Props) {
           onAddressSelect={handleAddressSelect}
           placeholder="z.B. Batschkapp Frankfurt"
           autoFocus
-          variant="inline"
+          variant="modal"
           withLatLon
         />
       </QField>
