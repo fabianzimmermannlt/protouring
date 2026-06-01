@@ -566,14 +566,16 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
               </div>
               <div className="space-y-0.5">
                 {docs!.termin.map(f => (
-                  <div key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
-                    <button onClick={() => openFile(f)} className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
-                      <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
-                      <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
-                      <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
-                      <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
-                    </button>
-                    <GewerkLock file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
+                  <div key={f.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+                    <span className="text-base shrink-0 mt-0.5">{fileEmoji(f.mimeType)}</span>
+                    <div className="flex-1 min-w-0">
+                      <button onClick={() => openFile(f)} className="flex items-center gap-1.5 w-full text-left">
+                        <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                        <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
+                        <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
+                      </button>
+                      <GewerkLock file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -588,14 +590,16 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
               </div>
               <div className="space-y-0.5">
                 {docs!.venue.map(f => (
-                  <div key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
-                    <button onClick={() => openFile(f)} className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
-                      <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
-                      <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
-                      <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
-                      <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
-                    </button>
-                    <GewerkLock file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
+                  <div key={f.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+                    <span className="text-base shrink-0 mt-0.5">{fileEmoji(f.mimeType)}</span>
+                    <div className="flex-1 min-w-0">
+                      <button onClick={() => openFile(f)} className="flex items-center gap-1.5 w-full text-left">
+                        <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                        <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
+                        <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
+                      </button>
+                      <GewerkLock file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
+                    </div>
                   </div>
                 ))}
               </div>
