@@ -37,15 +37,15 @@ export function QuickCreateModal({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const bg = dark ? '#4a4a4a' : '#ffffff'
-  const border = dark ? '#555' : '#e5e7eb'
+  const bg = dark ? '#2d2d2d' : '#ffffff'
+  const border = dark ? '#444' : '#e5e7eb'
   const titleColor = dark ? '#e0e0e0' : '#111827'
   const labelColor = dark ? '#b0b0b0' : '#4b5563'
   const bodyBg = dark ? '#4a4a4a' : '#ffffff'
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div style={{ background: bg, borderRadius: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, ['--qf-label' as string]: dark ? '#b0b0b0' : '#4b5563', ['--qf-input-bg' as string]: dark ? '#2d2d2d' : '#fff', ['--qf-input-border' as string]: dark ? '#555' : '#d1d5db', ['--qf-input-color' as string]: dark ? '#e0e0e0' : '#111827' } as React.CSSProperties}>
+      <div style={{ background: bg, borderRadius: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, ['--qf-label' as string]: dark ? '#b0b0b0' : '#4b5563', ['--qf-input-bg' as string]: dark ? '#3c3c3c' : '#fff', ['--qf-input-border' as string]: dark ? '#555' : '#d1d5db', ['--qf-input-color' as string]: dark ? '#e0e0e0' : '#111827' } as React.CSSProperties}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${border}` }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: titleColor, margin: 0 }}>{title}</h3>
