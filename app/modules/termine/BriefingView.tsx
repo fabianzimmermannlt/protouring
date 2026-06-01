@@ -503,7 +503,8 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
         return { ...prev, termin: patch(prev.termin), venue: patch(prev.venue) }
       })
     } catch { /* silent */ }
-    setAddingTo(null)
+    // Alle/Keiner schließen das Dropdown (exklusive Auswahl), einzelne Gewerke nicht
+    if (gewerkId === ALLE_ID || gewerkId === KEINER_ID) setAddingTo(null)
   }
 
   const openFile = async (file: AggFile) => {
@@ -836,10 +837,7 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
 
   return (
     <div className="w-full space-y-3">
-      {/* Alle Dokumente — immer sichtbar, auch ohne Gewerke */}
-      <AllDocsPanel terminId={terminId} gewerke={items.map(i => ({ id: i.gewerk.id, name: i.gewerk.name, color: i.gewerk.color }))} isAdmin={isAdmin} />
-
-      {/* Gewerk-Briefings */}
+      {/* Gewerk-Briefings — volle Breite */}
       {items.length === 0 ? (
         <div className="text-center py-8 text-gray-400">
           <FileText className="w-6 h-6 mx-auto mb-2 opacity-40" />
@@ -861,6 +859,11 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
           ))}
         </>
       )}
+
+      {/* Alle Dokumente — darunter, 50% Breite */}
+      <div className="max-w-xl">
+        <AllDocsPanel terminId={terminId} gewerke={items.map(i => ({ id: i.gewerk.id, name: i.gewerk.name, color: i.gewerk.color }))} isAdmin={isAdmin} />
+      </div>
     </div>
   )
 }
