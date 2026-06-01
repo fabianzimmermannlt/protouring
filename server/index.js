@@ -1521,6 +1521,50 @@ async function initDatabase() {
   await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_termin ON termin_artist_members(termin_id)`)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_artist ON termin_artist_members(artist_member_id)`)
 
+  // Migration: artist_member_id nullable machen.
+  // Legacy-Spalte (ersetzt durch contact_id). Solange sie NOT NULL ist, scheitert die
+  // contact-basierte Auto-Sync (INSERT OR IGNORE überspringt die NOT-NULL-Verletzung still)
+  // → Artists tauchen in betroffenen Terminen nie in der Reisegruppe auf.
+  try {
+    const tamInfo = await db.all(`PRAGMA table_info(termin_artist_members)`)
+    const amCol = tamInfo.find(c => c.name === 'artist_member_id')
+    if (amCol && amCol.notnull === 1) {
+      console.log('Migration: termin_artist_members.artist_member_id → nullable (Rebuild)…')
+      await db.run('PRAGMA foreign_keys = OFF')
+      await db.run(`
+        CREATE TABLE termin_artist_members_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+          tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+          artist_member_id INTEGER REFERENCES artist_members(id) ON DELETE CASCADE,
+          contact_id INTEGER REFERENCES contacts(id),
+          excluded INTEGER NOT NULL DEFAULT 0,
+          role1 TEXT NOT NULL DEFAULT '',
+          role2 TEXT NOT NULL DEFAULT '',
+          role3 TEXT NOT NULL DEFAULT '',
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(termin_id, artist_member_id)
+        )
+      `)
+      // Nur Spalten kopieren, die in der alten Tabelle wirklich existieren (kein Datenverlust)
+      const newCols = ['id','termin_id','tenant_id','artist_member_id','contact_id','excluded','role1','role2','role3','sort_order','created_at','updated_at']
+      const oldCols = tamInfo.map(c => c.name)
+      const copy = newCols.filter(c => oldCols.includes(c)).join(', ')
+      await db.run(`INSERT INTO termin_artist_members_new (${copy}) SELECT ${copy} FROM termin_artist_members`)
+      await db.run(`DROP TABLE termin_artist_members`)
+      await db.run(`ALTER TABLE termin_artist_members_new RENAME TO termin_artist_members`)
+      await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_termin ON termin_artist_members(termin_id)`)
+      await db.run(`CREATE INDEX IF NOT EXISTS idx_termin_artist_members_artist ON termin_artist_members(artist_member_id)`)
+      await db.run('PRAGMA foreign_keys = ON')
+      console.log('Migration: termin_artist_members.artist_member_id ist jetzt nullable ✓')
+    }
+  } catch (e) {
+    console.error('Migration termin_artist_members nullable FAILED:', e.message)
+    try { await db.run('PRAGMA foreign_keys = ON') } catch {}
+  }
+
   // ── Crew Briefing ────────────────────────────────────────────────────────────
 
   // Gewerke (Gruppen von Crew-Mitgliedern per Funktion)
