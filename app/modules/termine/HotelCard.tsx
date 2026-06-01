@@ -169,7 +169,7 @@ export default function HotelCard({
             )}
           </div>
         </div>
-        {!loading && stays.length > 0 && unplannedCount > 0 && (
+        {!loading && unplannedCount > 0 && (
           <span className="pt-leg-unplanned-hint" style={{ marginTop: 0, marginBottom: '-0.4rem' }}>{unplannedCount} nicht eingeplant</span>
         )}
       </div>

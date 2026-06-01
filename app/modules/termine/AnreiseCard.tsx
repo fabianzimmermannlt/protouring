@@ -122,7 +122,7 @@ export default function AnreiseCard({
             </button>
           )}
         </div>
-        {!loading && legs.length > 0 && unplannedCount > 0 && (
+        {!loading && unplannedCount > 0 && (
           <span className="pt-leg-unplanned-hint">{unplannedCount} nicht eingeplant</span>
         )}
       </div>
