@@ -47,7 +47,7 @@ export function QuickCreateModal({
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div style={{ background: bg, borderRadius: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, ['--qf-label' as string]: dark ? '#b0b0b0' : '#4b5563', ['--qf-input-bg' as string]: dark ? '#3c3c3c' : '#fff', ['--qf-input-border' as string]: dark ? '#555' : '#d1d5db', ['--qf-input-color' as string]: dark ? '#e0e0e0' : '#111827' } as React.CSSProperties}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: `1px solid ${border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: bg, borderBottom: `1px solid ${border}` }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: titleColor, margin: 0 }}>{title}</h3>
           <button onClick={onClose} style={{ color: labelColor, background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
             <X size={18} />
@@ -55,7 +55,7 @@ export function QuickCreateModal({
         </div>
 
         {/* Body */}
-        <div className={dark ? 'qcm-body qcm-dark' : 'qcm-body'} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: bodyBg }}>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: bg }}>
           {error && (
             <div style={{ fontSize: '12px', color: '#f87171', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, padding: '8px 12px' }}>{error}</div>
           )}
@@ -63,7 +63,7 @@ export function QuickCreateModal({
         </div>
 
         {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '14px 20px', borderTop: `1px solid ${border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '14px 20px', background: bg, borderTop: `1px solid ${border}` }}>
           <button
             onClick={onClose}
             style={{ padding: '7px 14px', fontSize: '13px', color: labelColor, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 0}}
