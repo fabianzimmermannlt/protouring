@@ -368,29 +368,30 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
   const realIds = ids.filter(id => id !== KEINER_ID)
   const isRestricted = hasKeiner || realIds.length > 0
 
-  const tooltipLabel = hasKeiner
-    ? 'Sichtbar für: Keiner'
-    : realIds.length > 0
-      ? `Sichtbar für: ${realIds.length} Gewerk${realIds.length !== 1 ? 'e' : ''}`
-      : 'Sichtbar für alle'
+  // Inline-Label: immer sichtbar, kein Klick nötig
+  const inlineLabel = hasKeiner
+    ? 'Keiner'
+    : realIds.length === 0
+      ? 'Alle'
+      : realIds.length <= 2
+        ? realIds.map(id => gewerke.find(g => g.id === id)?.name ?? '').filter(Boolean).join(', ')
+        : `${realIds.length} Gewerke`
 
   return (
     <div className="relative shrink-0">
       <button
         onClick={() => setAddingTo(addingTo === file.id ? null : file.id)}
-        title={tooltipLabel}
-        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors ${
+        className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs transition-colors ${
           isRestricted
-            ? 'text-gray-700 bg-gray-100 hover:bg-gray-200'
-            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-50'
+            ? 'text-gray-600 hover:bg-gray-100'
+            : 'text-gray-400 hover:bg-gray-50'
         }`}
       >
         {isRestricted
           ? <Lock className="w-3 h-3 shrink-0" />
           : <Unlock className="w-3 h-3 shrink-0" />
         }
-        {hasKeiner && <span>–</span>}
-        {!hasKeiner && realIds.length > 0 && <span>{realIds.length}</span>}
+        <span>{inlineLabel}</span>
       </button>
 
       {addingTo === file.id && (
@@ -834,7 +835,7 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-3">
+    <div className="w-full space-y-3">
       {/* Alle Dokumente — immer sichtbar, auch ohne Gewerke */}
       <AllDocsPanel terminId={terminId} gewerke={items.map(i => ({ id: i.gewerk.id, name: i.gewerk.name, color: i.gewerk.color }))} isAdmin={isAdmin} />
 
