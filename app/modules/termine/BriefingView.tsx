@@ -98,14 +98,14 @@ function SectionEditor({ section, terminId, gewerkId, onUpdated, onDeleted, canE
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
             Speichern
           </button>
           <button
             onClick={() => { setEditing(false); setForm({ title: section.title, content: section.content }) }}
-            className="px-2.5 py-1 text-xs text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"
+            className="px-2.5 py-1 text-sm text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"
           >
             Abbrechen
           </button>
@@ -119,19 +119,19 @@ function SectionEditor({ section, terminId, gewerkId, onUpdated, onDeleted, canE
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           {section.title && (
-            <div className="text-xs font-semibold text-gray-700 mb-1">{section.title}</div>
+            <div className="text-sm font-semibold text-gray-700 mb-1">{section.title}</div>
           )}
           {section.content ? (
-            <pre className="text-xs text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{section.content}</pre>
+            <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{section.content}</pre>
           ) : (
-            <span className="text-xs text-gray-400 italic">Kein Inhalt</span>
+            <span className="text-sm text-gray-400 italic">Kein Inhalt</span>
           )}
         </div>
         {canEdit && (
           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => setEditing(true)}
-              className="px-2 py-0.5 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+              className="px-2 py-0.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
             >
               Bearbeiten
             </button>
@@ -217,7 +217,7 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
           <FileIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           <button
             onClick={() => openFile(f)}
-            className="flex-1 text-left text-xs text-blue-600 hover:text-blue-800 truncate"
+            className="flex-1 text-left text-sm text-blue-600 hover:text-blue-800 truncate"
           >
             {f.original_name}
           </button>
@@ -234,7 +234,7 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
         </div>
       ))}
       {canEdit && (
-        <label className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors ${uploading ? 'pointer-events-none opacity-50' : ''}`}>
+        <label className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors ${uploading ? 'pointer-events-none opacity-50' : ''}`}>
           {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
           Datei hochladen
           <input type="file" className="hidden" onChange={uploadFile} disabled={uploading} />
@@ -553,7 +553,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
           {loading && <div className="text-xs text-gray-400 py-2">Lädt…</div>}
 
           {!loading && totalCount === 0 && (
-            <div className="text-xs text-gray-400 text-center py-3">
+            <div className="text-sm text-gray-400 text-center py-3">
               Noch keine Dokumente hochgeladen.
             </div>
           )}
@@ -561,7 +561,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
           {/* Termin-Dokumente */}
           {!loading && (docs?.termin.length ?? 0) > 0 && (
             <div>
-              <div className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1.5">
+              <div className="text-sm font-medium text-gray-500 mb-1.5 flex items-center gap-1.5">
                 <FileText className="w-3 h-3" /> Show-Dokumente
               </div>
               <div className="space-y-0.5">
@@ -570,7 +570,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
                     <span className="text-base shrink-0 mt-0.5">{fileEmoji(f.mimeType)}</span>
                     <div className="flex-1 min-w-0">
                       <button onClick={() => openFile(f)} className="flex items-center gap-1.5 w-full text-left">
-                        <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                        <span className="flex-1 text-sm text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
                         <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
                         <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
                       </button>
@@ -585,7 +585,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
           {/* Venue-Dokumente */}
           {!loading && (docs?.venue.length ?? 0) > 0 && (
             <div>
-              <div className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1.5">
+              <div className="text-sm font-medium text-gray-500 mb-1.5 flex items-center gap-1.5">
                 <MapPin className="w-3 h-3" /> {docs!.venueName ?? 'Venue'}
               </div>
               <div className="space-y-0.5">
@@ -594,7 +594,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
                     <span className="text-base shrink-0 mt-0.5">{fileEmoji(f.mimeType)}</span>
                     <div className="flex-1 min-w-0">
                       <button onClick={() => openFile(f)} className="flex items-center gap-1.5 w-full text-left">
-                        <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                        <span className="flex-1 text-sm text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
                         <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
                         <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
                       </button>
@@ -747,14 +747,14 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
                 <button
                   onClick={handleAddSection}
                   disabled={adding || (!newTitle && !newContent)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
                   {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                   Hinzufügen
                 </button>
                 <button
                   onClick={() => { setAddingSection(false); setNewTitle(''); setNewContent('') }}
-                  className="px-2.5 py-1 text-xs text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"
+                  className="px-2.5 py-1 text-sm text-gray-600 hover:text-gray-800 rounded-lg hover:bg-gray-100"
                 >
                   Abbrechen
                 </button>
@@ -766,7 +766,7 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
           {item.briefing && (
             <div>
               {(item.briefing.files.length > 0 || canEdit) && (
-                <div className="text-xs font-medium text-gray-500 mb-1.5">Dateien</div>
+                <div className="text-sm font-medium text-gray-500 mb-1.5">Dateien</div>
               )}
               <BriefingFiles
                 briefingId={item.briefing.id}
@@ -781,7 +781,7 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
           {canEdit && !addingSection && (
             <button
               onClick={() => setAddingSection(true)}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Abschnitt hinzufügen
@@ -789,7 +789,7 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
           )}
 
           {isEmpty && !canEdit && (
-            <div className="text-xs text-gray-400 text-center py-2">Noch kein Briefing vorhanden.</div>
+            <div className="text-sm text-gray-400 text-center py-2">Noch kein Briefing vorhanden.</div>
           )}
         </div>
       )}
@@ -852,7 +852,7 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
         </div>
       ) : (
         <>
-          <div className="text-xs font-semibold text-gray-500 pt-1">Gewerk-Briefings</div>
+          <div className="text-sm font-semibold text-gray-500 pt-1">Gewerk-Briefings</div>
           {items.map(item => (
             <GewerkPanel
               key={item.gewerk.id}
