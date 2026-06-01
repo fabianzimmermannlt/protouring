@@ -2986,9 +2986,11 @@ function canReadFile(file, userId) {
 // - Shared: jeder Tenant-User darf löschen (später: nur Admin)
 // - Private: nur der Uploader
 function canWriteFile(file, userId) {
-  // Geteilte Dateien (shared entity oder termin) → alle Tenant-Mitglieder dürfen schreiben
+  // Geteilte Dateien (shared entity, termin oder venue) → Editoren dürfen schreiben
+  // (Endpoints sind requireEditor-gated; konsistent mit canReadFile)
   if (file.entity_id === 'shared') return true;
   if (file.entity_type === 'termin') return true;
+  if (file.entity_type === 'venue') return true;
   // Persönliche Dateien → nur der Uploader
   return String(file.uploaded_by) === String(userId);
 }
