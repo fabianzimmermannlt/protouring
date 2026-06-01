@@ -697,15 +697,6 @@ export default function AnreiseModal({
               onInput={() => setNotesDirty(true)}
             />
           </div>
-
-          {/* Sichtbarkeit */}
-          <div>
-            <label className="form-label">Sichtbarkeit</label>
-            <select className="form-input" value={form.visibility} onChange={e => set('visibility', e.target.value as 'all' | 'admin')}>
-              <option value="all">Alle Mitglieder</option>
-              <option value="admin">Nur Admins</option>
-            </select>
-          </div>
         </div>
 
         <div className="modal-footer">
