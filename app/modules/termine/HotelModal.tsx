@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Loader2, Plus, Trash2, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Loader2, Plus, Trash2, Check } from 'lucide-react'
 import { RichTextEditorField, type RichTextEditorFieldHandle } from '@/app/components/shared/RichTextEditor'
 import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 import {
@@ -79,86 +79,6 @@ function stayToForm(stay: HotelStay): HotelStayFormData {
   }
 }
 
-// ── Kompakter Personen-Dropdown ──────────────────────────────
-function PersonDropdown({
-  travelParty,
-  selectedIds,
-  blockedIds,
-  onChange,
-}: {
-  travelParty: TravelPartyMember[]
-  selectedIds: number[]
-  blockedIds: Set<number>
-  onChange: (id: number) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  const handleOutsideClick = useCallback((e: MouseEvent) => {
-    if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-  }, [])
-
-  useEffect(() => {
-    if (open) document.addEventListener('mousedown', handleOutsideClick)
-    else document.removeEventListener('mousedown', handleOutsideClick)
-    return () => document.removeEventListener('mousedown', handleOutsideClick)
-  }, [open, handleOutsideClick])
-
-  const selectedNames = travelParty
-    .filter(m => selectedIds.includes(m.id))
-    .map(m => `${m.firstName} ${m.lastName}`)
-
-  return (
-    <div ref={ref} style={{ position: 'relative', marginTop: '0.4rem' }}>
-      {/* Trigger */}
-      <button
-        type="button"
-        className="form-input"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', width: '100%' }}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span style={{ fontSize: '0.8rem', color: selectedNames.length ? '#374151' : '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selectedNames.length > 0 ? selectedNames.join(', ') : 'Personen auswählen …'}
-        </span>
-        <ChevronDown size={13} style={{ flexShrink: 0, marginLeft: '0.4rem', color: '#6b7280', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-
-      {/* Dropdown-Liste */}
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 50,
-          background: '#fff', border: '1px solid #e5e7eb', borderRadius: 0,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '220px', overflowY: 'auto',
-        }}>
-          {travelParty.map(m => {
-            const selected = selectedIds.includes(m.id)
-            const blocked = blockedIds.has(m.id)
-            return (
-              <div
-                key={m.id}
-                onClick={() => !blocked && onChange(m.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  padding: '0.45rem 0.65rem', cursor: blocked ? 'not-allowed' : 'pointer',
-                  opacity: blocked ? 0.4 : 1,
-                  background: selected ? '#eff6ff' : 'transparent',
-                  borderBottom: '1px solid #f3f4f6',
-                }}
-              >
-                <span style={{ fontSize: '0.8rem', color: selected ? '#1d4ed8' : '#374151', flex: 1, fontWeight: selected ? 500 : 400 }}>
-                  {m.firstName} {m.lastName}
-                </span>
-                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
-                  {blocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function HotelModal({
   terminId, stay, travelParty, assignedInOtherStays, terminDate,
@@ -411,14 +331,29 @@ export default function HotelModal({
                       )}
                     </div>
 
-                    {/* Personen-Dropdown für dieses Zimmer */}
+                    {/* Personen-Kästchen für dieses Zimmer */}
                     {travelParty.length > 0 && (
-                      <PersonDropdown
-                        travelParty={travelParty}
-                        selectedIds={room.memberIds}
-                        blockedIds={blocked}
-                        onChange={memberId => togglePersonInRoom(idx, memberId)}
-                      />
+                      <div className="pt-leg-person-picker" style={{ marginTop: '0.4rem' }}>
+                        {travelParty.map(m => {
+                          const selected = room.memberIds.includes(m.id)
+                          const isBlocked = blocked.has(m.id)
+                          return (
+                            <div
+                              key={m.id}
+                              className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${isBlocked ? 'pt-leg-person-picker-row--blocked' : ''}`}
+                              onClick={() => !isBlocked && togglePersonInRoom(idx, m.id)}
+                            >
+                              <div className="pt-leg-person-picker-check">
+                                {selected && <Check size={10} color="white" />}
+                              </div>
+                              <div className="pt-leg-person-name">{m.firstName} {m.lastName}</div>
+                              <div className="pt-leg-person-role">
+                                {isBlocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
                     )}
                     {/* Kapazitäts-Warnung */}
                     {(() => {
