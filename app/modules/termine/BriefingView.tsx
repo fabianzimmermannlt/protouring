@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Loader2, Plus, Trash2, ChevronDown, ChevronUp, Save,
-  FileText, Upload, AlertCircle, File as FileIcon, X, ExternalLink, FolderOpen, MapPin,
+  FileText, AlertCircle, X, ExternalLink, FolderOpen, MapPin,
   Lock, Unlock
 } from 'lucide-react'
 import {
   getBriefings, addBriefingSection, updateBriefingSection, deleteBriefingSection,
   getAuthToken, getCurrentTenant,
-  type BriefingItem, type BriefingSection, type BriefingFile,
+  type BriefingItem, type BriefingSection,
 } from '@/lib/api-client'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (
@@ -131,7 +131,7 @@ function SectionEditor({ section, terminId, gewerkId, onUpdated, onDeleted, canE
           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => setEditing(true)}
-              className="px-2 py-0.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+              className="px-2 py-0.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-100 rounded"
             >
               Bearbeiten
             </button>
@@ -141,105 +141,6 @@ function SectionEditor({ section, terminId, gewerkId, onUpdated, onDeleted, canE
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-// ── FileUpload inline ────────────────────────────────────────────────────────
-
-interface BriefingFilesProps {
-  briefingId: number
-  files: BriefingFile[]
-  onFilesChanged: (files: BriefingFile[]) => void
-  canEdit: boolean
-}
-
-function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingFilesProps) {
-  const [uploading, setUploading] = useState(false)
-
-  const openFile = async (file: BriefingFile) => {
-    try {
-      if (file.mime_type.startsWith('image/') || file.mime_type.includes('pdf')) {
-        const token = getAuthToken()
-        const tenant = getCurrentTenant()
-        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
-        window.open(viewUrl, '_blank')
-      } else {
-        const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
-        if (!res.ok) return
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = file.original_name
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 10_000)
-      }
-    } catch { /* silent */ }
-  }
-
-  const deleteFile = async (fileId: number) => {
-    if (!confirm('Datei löschen?')) return
-    try {
-      await fetch(`${API_BASE}/api/files/${fileId}`, { method: 'DELETE', headers: authHeaders() })
-      onFilesChanged(files.filter(f => f.id !== fileId))
-    } catch { /* silent */ }
-  }
-
-  const uploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch(`${API_BASE}/api/files/crew_briefing/${briefingId}`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: fd,
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      onFilesChanged([...files, data.file])
-    } catch { /* silent */ }
-    finally {
-      setUploading(false)
-      e.target.value = ''
-    }
-  }
-
-  return (
-    <div className="space-y-1">
-      {files.map(f => (
-        <div key={f.id} className="group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50">
-          <FileIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-          <button
-            onClick={() => openFile(f)}
-            className="flex-1 text-left text-sm text-blue-600 hover:text-blue-800 truncate"
-          >
-            {f.original_name}
-          </button>
-          <span className="text-xs text-gray-400 shrink-0">{fmtFileSize(f.size)}</span>
-          {canEdit && (
-            <button
-              onClick={() => deleteFile(f.id)}
-              className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
-          <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
-        </div>
-      ))}
-      {canEdit && (
-        <label className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors ${uploading ? 'pointer-events-none opacity-50' : ''}`}>
-          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-          Datei hochladen
-          <input type="file" className="hidden" onChange={uploadFile} disabled={uploading} />
-        </label>
-      )}
     </div>
   )
 }
@@ -384,7 +285,7 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
         className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs transition-colors ${
           isRestricted
             ? 'text-gray-600 hover:bg-gray-100'
-            : 'text-gray-400 hover:bg-gray-50'
+            : 'text-gray-400 hover:bg-gray-100'
         }`}
       >
         {isRestricted
@@ -400,7 +301,7 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
           <button
             onClick={() => toggleGewerk(file, ALLE_ID)}
             className={`flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded ${
-              !isRestricted ? 'bg-gray-100 font-medium text-gray-800' : 'text-gray-600 hover:bg-gray-50'
+              !isRestricted ? 'bg-gray-100 font-medium text-gray-800' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <Unlock className="w-3 h-3 shrink-0" />
@@ -416,7 +317,7 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
                 key={g.id}
                 onClick={() => toggleGewerk(file, g.id)}
                 className={`flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded ${
-                  checked ? 'font-medium text-gray-800 bg-gray-50' : 'text-gray-600 hover:bg-gray-50'
+                  checked ? 'font-medium text-gray-800 bg-gray-50' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <span className={`w-3.5 h-3.5 shrink-0 flex items-center justify-center border rounded text-[10px] ${
@@ -434,7 +335,7 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
           <button
             onClick={() => toggleGewerk(file, KEINER_ID)}
             className={`flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded ${
-              hasKeiner ? 'bg-gray-100 font-medium text-gray-800' : 'text-gray-500 hover:bg-gray-50'
+              hasKeiner ? 'bg-gray-100 font-medium text-gray-800' : 'text-gray-500 hover:bg-gray-100'
             }`}
           >
             <Lock className="w-3 h-3 shrink-0" />
@@ -536,7 +437,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
     <div className="border border-gray-200 rounded-xl bg-white">
       <button
         onClick={() => setExpanded(p => !p)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left rounded-xl"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors text-left rounded-xl"
       >
         <FolderOpen className="w-4 h-4 text-gray-500 shrink-0" />
         <div className="flex-1 min-w-0">
@@ -566,7 +467,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
               </div>
               <div className="space-y-0.5">
                 {docs!.termin.map(f => (
-                  <div key={f.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+                  <div key={f.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 group">
                     <span className="text-base shrink-0 mt-0.5">{fileEmoji(f.mimeType)}</span>
                     <div className="flex-1 min-w-0">
                       <button onClick={() => openFile(f)} className="flex items-center gap-1.5 w-full text-left">
@@ -590,7 +491,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
               </div>
               <div className="space-y-0.5">
                 {docs!.venue.map(f => (
-                  <div key={f.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+                  <div key={f.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 group">
                     <span className="text-base shrink-0 mt-0.5">{fileEmoji(f.mimeType)}</span>
                     <div className="flex-1 min-w-0">
                       <button onClick={() => openFile(f)} className="flex items-center gap-1.5 w-full text-left">
@@ -668,21 +569,15 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
     })
   }
 
-  const handleFilesChanged = (files: BriefingFile[]) => {
-    if (!item.briefing) return
-    onItemChanged({ ...item, briefing: { ...item.briefing, files } })
-  }
-
   const sectionCount = item.briefing?.sections.length ?? 0
-  const fileCount = item.briefing?.files.length ?? 0
-  const isEmpty = sectionCount === 0 && fileCount === 0
+  const isEmpty = sectionCount === 0
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       {/* Header */}
       <button
         onClick={() => setExpanded(p => !p)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors text-left"
       >
         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.gewerk.color }} />
         <div className="flex-1 min-w-0">
@@ -697,7 +592,6 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
           {!isEmpty && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               {sectionCount > 0 && <span>{sectionCount} Abschnitt{sectionCount !== 1 ? 'e' : ''}</span>}
-              {fileCount > 0 && <span>{fileCount} Datei{fileCount !== 1 ? 'en' : ''}</span>}
             </div>
           )}
           {isEmpty && <span className="text-xs text-gray-400">Leer</span>}
@@ -762,26 +656,11 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
             </div>
           )}
 
-          {/* Dateien */}
-          {item.briefing && (
-            <div>
-              {(item.briefing.files.length > 0 || canEdit) && (
-                <div className="text-sm font-medium text-gray-500 mb-1.5">Dateien</div>
-              )}
-              <BriefingFiles
-                briefingId={item.briefing.id}
-                files={item.briefing.files}
-                onFilesChanged={handleFilesChanged}
-                canEdit={canEdit}
-              />
-            </div>
-          )}
-
           {/* Actions */}
           {canEdit && !addingSection && (
             <button
               onClick={() => setAddingSection(true)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Abschnitt hinzufügen
