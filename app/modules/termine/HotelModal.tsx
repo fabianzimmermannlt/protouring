@@ -94,6 +94,7 @@ export default function HotelModal({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [personPickerRoom, setPersonPickerRoom] = useState<number | null>(null) // roomIdx mit offenem Popover
   const notesRef = useRef<RichTextEditorFieldHandle>(null)
 
   useEffect(() => {
@@ -331,28 +332,51 @@ export default function HotelModal({
                       )}
                     </div>
 
-                    {/* Personen-Kästchen für dieses Zimmer */}
+                    {/* Personen — kompakt + Popover */}
                     {travelParty.length > 0 && (
-                      <div className="pt-leg-person-picker" style={{ marginTop: '0.4rem' }}>
-                        {travelParty.map(m => {
-                          const selected = room.memberIds.includes(m.id)
-                          const isBlocked = blocked.has(m.id)
-                          return (
-                            <div
-                              key={m.id}
-                              className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${isBlocked ? 'pt-leg-person-picker-row--blocked' : ''}`}
-                              onClick={() => !isBlocked && togglePersonInRoom(idx, m.id)}
-                            >
-                              <div className="pt-leg-person-picker-check">
-                                {selected && <Check size={10} color="white" />}
-                              </div>
-                              <div className="pt-leg-person-name">{m.firstName} {m.lastName}</div>
-                              <div className="pt-leg-person-role">
-                                {isBlocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
-                              </div>
-                            </div>
-                          )
-                        })}
+                      <div style={{ marginTop: '0.4rem', position: 'relative' }}>
+                        {personPickerRoom === idx && (
+                          <div className="fixed inset-0 z-40" onClick={() => setPersonPickerRoom(null)} />
+                        )}
+                        {room.memberIds.length > 0 && (
+                          <div className="text-sm mb-1" style={{ color: '#e6edf3' }}>
+                            {travelParty
+                              .filter(m => room.memberIds.includes(m.id))
+                              .map(m => `${m.firstName} ${m.lastName}`)
+                              .join(', ')}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setPersonPickerRoom(personPickerRoom === idx ? null : idx)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: '1px solid #555', color: '#9ca3af', cursor: 'pointer', padding: '3px 8px', fontSize: '0.8rem' }}
+                        >
+                          <Plus size={11} />
+                          {room.memberIds.length === 0 ? 'Personen hinzufügen' : 'Bearbeiten'}
+                        </button>
+                        {personPickerRoom === idx && (
+                          <div className="pt-leg-person-picker" style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: '4px', zIndex: 50, minWidth: '260px', maxHeight: '200px', overflowY: 'auto' }}>
+                            {travelParty.map(m => {
+                              const selected = room.memberIds.includes(m.id)
+                              const isBlocked = blocked.has(m.id)
+                              return (
+                                <div
+                                  key={m.id}
+                                  className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${isBlocked ? 'pt-leg-person-picker-row--blocked' : ''}`}
+                                  onClick={() => !isBlocked && togglePersonInRoom(idx, m.id)}
+                                >
+                                  <div className="pt-leg-person-picker-check">
+                                    {selected && <Check size={10} color="white" />}
+                                  </div>
+                                  <div className="pt-leg-person-name">{m.firstName} {m.lastName}</div>
+                                  <div className="pt-leg-person-role">
+                                    {isBlocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                     {/* Kapazitäts-Warnung */}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Loader2, Car, Train, Plane, MoreHorizontal, Check, Copy, type LucideIcon } from 'lucide-react'
+import { X, Loader2, Car, Train, Plane, MoreHorizontal, Check, Copy, Plus, type LucideIcon } from 'lucide-react'
 import { RichTextEditorField, type RichTextEditorFieldHandle } from '@/app/components/shared/RichTextEditor'
 import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 import {
@@ -163,6 +163,7 @@ export default function AnreiseModal({
   const [error, setError] = useState<string | null>(null)
   const [calcLoading, setCalcLoading] = useState<string | null>(null) // key des gerade berechnenden Profils
   const [calcError, setCalcError] = useState<string | null>(null)
+  const [personPickerOpen, setPersonPickerOpen] = useState(false)
   const notesRef = useRef<RichTextEditorFieldHandle>(null)
 
   const calcRoute = async (profileKey: typeof VEHICLE_PROFILES[number]['key']) => {
@@ -620,37 +621,57 @@ export default function AnreiseModal({
             </div>
           )}
 
-          {/* Personen */}
+          {/* Personen — kompakte Anzeige + Popover */}
           {travelParty.length > 0 && (
             <div>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Personen</span>
-                {unplannedCount > 0 && (
-                  <span className="pt-leg-unplanned-hint">{unplannedCount} noch nicht eingeplant</span>
+              <label className="form-label">Personen</label>
+              {personPickerOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setPersonPickerOpen(false)} />
+              )}
+              <div style={{ position: 'relative' }}>
+                {/* Kompaktanzeige: volle Namen der zugewiesenen Personen */}
+                {selectedMemberIds.size > 0 && (
+                  <div className="text-sm mb-1.5" style={{ color: '#e6edf3' }}>
+                    {travelParty
+                      .filter(m => selectedMemberIds.has(m.id))
+                      .map(m => `${m.firstName} ${m.lastName}`)
+                      .join(', ')}
+                  </div>
                 )}
-              </label>
-              <div className="pt-leg-person-picker">
-                {travelParty.map(m => {
-                  const selected = selectedMemberIds.has(m.id)
-                  const blocked = assignedElsewhere.has(m.id)
-                  return (
-                    <div
-                      key={m.id}
-                      className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${blocked ? 'pt-leg-person-picker-row--blocked' : ''}`}
-                      onClick={() => !blocked && togglePerson(m.id)}
-                    >
-                      <div className="pt-leg-person-picker-check">
-                        {selected && <Check size={10} color="white" />}
-                      </div>
-                      <div className="pt-leg-person-name">
-                        {m.firstName} {m.lastName}
-                      </div>
-                      <div className="pt-leg-person-role">
-                        {blocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
-                      </div>
-                    </div>
-                  )
-                })}
+                {/* Button */}
+                <button
+                  type="button"
+                  onClick={() => setPersonPickerOpen(p => !p)}
+                  className="flex items-center gap-1 text-sm px-2 py-1 rounded"
+                  style={{ background: 'none', border: '1px solid #555', color: '#9ca3af', cursor: 'pointer' }}
+                >
+                  <Plus size={12} />
+                  {selectedMemberIds.size === 0 ? 'Personen hinzufügen' : 'Bearbeiten'}
+                </button>
+                {/* Popover */}
+                {personPickerOpen && (
+                  <div className="pt-leg-person-picker" style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: '4px', zIndex: 50, minWidth: '260px', maxHeight: '220px', overflowY: 'auto' }}>
+                    {travelParty.map(m => {
+                      const selected = selectedMemberIds.has(m.id)
+                      const blocked = assignedElsewhere.has(m.id)
+                      return (
+                        <div
+                          key={m.id}
+                          className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${blocked ? 'pt-leg-person-picker-row--blocked' : ''}`}
+                          onClick={() => !blocked && togglePerson(m.id)}
+                        >
+                          <div className="pt-leg-person-picker-check">
+                            {selected && <Check size={10} color="white" />}
+                          </div>
+                          <div className="pt-leg-person-name">{m.firstName} {m.lastName}</div>
+                          <div className="pt-leg-person-role">
+                            {blocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
