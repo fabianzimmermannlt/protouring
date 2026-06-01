@@ -36,7 +36,7 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
         legType="anreise"
         isAdmin={isAdmin}
         terminDate={termin.date}
-        terminCity={termin.city || ''}
+        terminCity={termin.venueCity || termin.city || ''}
         prevTerminCity={prevTerminCity}
         refreshKey={anreiseRefreshKey}
         onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
@@ -53,7 +53,7 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
         legType="abreise"
         isAdmin={isAdmin}
         terminDate={termin.date}
-        terminCity={termin.city || ''}
+        terminCity={termin.venueCity || termin.city || ''}
         nextTerminCity={nextTerminCity}
         refreshKey={abreiseRefreshKey}
         onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
