@@ -3043,6 +3043,60 @@ app.get('/api/files/download/:fileId', authenticateToken, requireTenant, async (
   }
 });
 
+// AGGREGATED: GET /api/files/termin-aggregated/:terminId  ← Alle Dateien für Briefing
+// Gibt Termin-Dateien + verknüpfte Venue-Dateien zurück (kein Gewerk-Filter, für crew-seitige Übersicht)
+app.get('/api/files/termin-aggregated/:terminId', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const terminId = req.params.terminId
+    const termin = await db.get(
+      'SELECT id, venue_id FROM termine WHERE id = ? AND tenant_id = ?',
+      [terminId, req.tenant.id]
+    )
+    if (!termin) return res.status(404).json({ error: 'Termin nicht gefunden' })
+
+    const terminFiles = await db.all(
+      'SELECT * FROM files WHERE entity_type = ? AND entity_id = ? AND tenant_id = ? ORDER BY created_at DESC',
+      ['termin', String(terminId), req.tenant.id]
+    )
+
+    let venueFiles = []
+    let venueName = null
+    if (termin.venue_id) {
+      const venue = await db.get('SELECT id, name FROM venues WHERE id = ? AND tenant_id = ?', [termin.venue_id, req.tenant.id])
+      if (venue) {
+        venueName = venue.name
+        venueFiles = await db.all(
+          'SELECT * FROM files WHERE entity_type = ? AND entity_id = ? AND tenant_id = ? ORDER BY created_at DESC',
+          ['venue', String(termin.venue_id), req.tenant.id]
+        )
+      }
+    }
+
+    const fileFromRow = (r) => ({
+      id: String(r.id),
+      entityType: r.entity_type,
+      entityId: r.entity_id,
+      category: r.category,
+      originalName: r.original_name,
+      storedName: r.stored_name,
+      mimeType: r.mime_type,
+      size: r.size,
+      uploadedBy: r.uploaded_by,
+      createdAt: r.created_at,
+      url: `/api/files/download/${r.id}`,
+    })
+
+    res.json({
+      termin: terminFiles.map(fileFromRow),
+      venue: venueFiles.map(fileFromRow),
+      venueName,
+    })
+  } catch (err) {
+    console.error('GET /api/files/termin-aggregated error:', err)
+    res.status(500).json({ error: 'Fehler beim Laden' })
+  }
+})
+
 // LIST: GET /api/files/:entityType/:entityId?category=X
 // - category omitted → alle Kategorien zurückgeben
 // - entityId==='shared' oder entityType==='termin' → tenant-weit (keine User-Filterung)

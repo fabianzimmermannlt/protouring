@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Loader2, Plus, Trash2, ChevronDown, ChevronUp, Save,
-  FileText, Upload, AlertCircle, File as FileIcon, X, ExternalLink
+  FileText, Upload, AlertCircle, File as FileIcon, X, ExternalLink, FolderOpen, MapPin
 } from 'lucide-react'
 import {
   getBriefings, addBriefingSection, updateBriefingSection, deleteBriefingSection,
@@ -243,6 +243,158 @@ function BriefingFiles({ briefingId, files, onFilesChanged, canEdit }: BriefingF
   )
 }
 
+// ── Alle Dokumente ───────────────────────────────────────────────────────────
+
+interface AggFile {
+  id: string
+  originalName: string
+  mimeType: string
+  size: number
+  category: string
+}
+
+interface AggDocs {
+  termin: AggFile[]
+  venue: AggFile[]
+  venueName: string | null
+}
+
+function fileEmoji(mime: string): string {
+  if (mime.startsWith('image/')) return '🖼️'
+  if (mime.startsWith('audio/')) return '🎵'
+  if (mime.startsWith('video/')) return '🎥'
+  if (mime.includes('pdf')) return '📄'
+  if (mime.includes('word') || mime.includes('document')) return '📝'
+  if (mime.includes('excel') || mime.includes('spreadsheet')) return '📊'
+  if (mime.includes('zip') || mime.includes('rar')) return '📦'
+  return '📎'
+}
+
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function AllDocsPanel({ terminId }: { terminId: number }) {
+  const [docs, setDocs] = useState<AggDocs | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch(`${API_BASE}/api/files/termin-aggregated/${terminId}`, { headers: authHeaders() })
+        if (res.ok) setDocs(await res.json())
+      } catch { /* silent */ }
+      finally { setLoading(false) }
+    }
+    load()
+  }, [terminId])
+
+  const openFile = async (file: AggFile) => {
+    try {
+      if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
+        const token = getAuthToken()
+        const tenant = getCurrentTenant()
+        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
+        window.open(viewUrl, '_blank')
+      } else {
+        const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })
+        if (!res.ok) return
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.originalName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
+    } catch { /* silent */ }
+  }
+
+  const totalCount = (docs?.termin.length ?? 0) + (docs?.venue.length ?? 0)
+
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+      <button
+        onClick={() => setExpanded(p => !p)}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+      >
+        <FolderOpen className="w-4 h-4 text-gray-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-gray-900">Alle Dokumente</div>
+          <div className="text-xs text-gray-500">
+            {loading ? 'Lädt…' : totalCount === 0 ? 'Keine Dokumente' : `${totalCount} Datei${totalCount !== 1 ? 'en' : ''}`}
+          </div>
+        </div>
+        {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-100 px-4 py-3 space-y-4">
+          {loading && <div className="text-xs text-gray-400 py-2">Lädt…</div>}
+
+          {!loading && totalCount === 0 && (
+            <div className="text-xs text-gray-400 text-center py-3">
+              Noch keine Dokumente hochgeladen.
+            </div>
+          )}
+
+          {/* Termin-Dokumente */}
+          {!loading && (docs?.termin.length ?? 0) > 0 && (
+            <div>
+              <div className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3 h-3" /> Show-Dokumente
+              </div>
+              <div className="space-y-0.5">
+                {docs!.termin.map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => openFile(f)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-left group"
+                  >
+                    <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
+                    <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
+                    <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Venue-Dokumente */}
+          {!loading && (docs?.venue.length ?? 0) > 0 && (
+            <div>
+              <div className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1.5">
+                <MapPin className="w-3 h-3" /> {docs!.venueName ?? 'Venue'}
+              </div>
+              <div className="space-y-0.5">
+                {docs!.venue.map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => openFile(f)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-left group"
+                  >
+                    <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
+                    <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
+                    <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Gewerk-Panel ─────────────────────────────────────────────────────────────
 
 interface GewerkPanelProps {
@@ -471,34 +623,33 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
     )
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="max-w-2xl">
-        <div className="text-center py-12 text-gray-400">
-          <FileText className="w-8 h-8 mx-auto mb-3 opacity-40" />
-          <div className="text-sm font-medium text-gray-500">Keine Gewerke konfiguriert</div>
-          <div className="text-xs text-gray-400 mt-1">
-            Gewerke werden unter Einstellungen → Gewerke angelegt und Funktionen zugeordnet.
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="max-w-2xl space-y-3">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm font-semibold text-gray-800">Crew Briefing</h2>
-      </div>
-      {items.map(item => (
-        <GewerkPanel
-          key={item.gewerk.id}
-          item={item}
-          terminId={terminId}
-          isAdmin={isAdmin}
-          onItemChanged={handleItemChanged}
-        />
-      ))}
+      {/* Alle Dokumente — immer sichtbar, auch ohne Gewerke */}
+      <AllDocsPanel terminId={terminId} />
+
+      {/* Gewerk-Briefings */}
+      {items.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          <FileText className="w-6 h-6 mx-auto mb-2 opacity-40" />
+          <div className="text-xs text-gray-400">
+            Keine Gewerke konfiguriert — unter Einstellungen → Gewerke anlegen.
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="text-xs font-semibold text-gray-500 pt-1">Gewerk-Briefings</div>
+          {items.map(item => (
+            <GewerkPanel
+              key={item.gewerk.id}
+              item={item}
+              terminId={terminId}
+              isAdmin={isAdmin}
+              onItemChanged={handleItemChanged}
+            />
+          ))}
+        </>
+      )}
     </div>
   )
 }
