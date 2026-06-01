@@ -3047,7 +3047,8 @@ app.get('/api/files/download/:fileId', authenticateToken, requireTenant, async (
 });
 
 // AGGREGATED: GET /api/files/termin-aggregated/:terminId  ← Alle Dateien für Briefing
-// Gibt Termin-Dateien + verknüpfte Venue-Dateien zurück (kein Gewerk-Filter, für crew-seitige Übersicht)
+// Gibt Termin-Dateien + verknüpfte Venue-Dateien zurück
+// Admins/Editors sehen alles; Crew sieht nur Dateien ohne Gewerk-Einschränkung oder passend zu ihren Gewerken
 app.get('/api/files/termin-aggregated/:terminId', authenticateToken, requireTenant, async (req, res) => {
   try {
     const terminId = req.params.terminId
@@ -3075,6 +3076,20 @@ app.get('/api/files/termin-aggregated/:terminId', authenticateToken, requireTena
       }
     }
 
+    // Gewerk-Filter: Admins/Editors sehen alles, Crew nur erlaubte Dateien
+    let userGewerkIds = null  // null = kein Filter (Editor), [] = keine Gewerke zugewiesen
+    if (!isEditor(req.tenant.role)) {
+      const myGewerke = await getUserGewerke(req.tenant.id, req.user.id)
+      userGewerkIds = myGewerke.map(g => g.id)
+    }
+
+    const filterByGewerk = (r) => {
+      if (userGewerkIds === null) return true  // Editor: alles sehen
+      const ids = r.gewerk_ids ? JSON.parse(r.gewerk_ids) : []
+      if (ids.length === 0) return true  // Keine Einschränkung → sichtbar für alle
+      return ids.some(id => userGewerkIds.includes(id))
+    }
+
     const fileFromRow = (r) => ({
       id: String(r.id),
       entityType: r.entity_type,
@@ -3091,8 +3106,8 @@ app.get('/api/files/termin-aggregated/:terminId', authenticateToken, requireTena
     })
 
     res.json({
-      termin: terminFiles.map(fileFromRow),
-      venue: venueFiles.map(fileFromRow),
+      termin: terminFiles.filter(filterByGewerk).map(fileFromRow),
+      venue: venueFiles.filter(filterByGewerk).map(fileFromRow),
       venueName,
     })
   } catch (err) {
