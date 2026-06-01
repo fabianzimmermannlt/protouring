@@ -597,6 +597,9 @@ async function initDatabase() {
     console.log('✅ files-Tabelle auf neues Schema migriert');
   }
 
+  // Gewerk-Zuordnung für Dateien (Briefing-Filterung)
+  try { await db.run(`ALTER TABLE files ADD COLUMN gewerk_ids TEXT DEFAULT NULL`) } catch {}
+
   // Seed subscription plans if empty
   const planCount = await db.get('SELECT COUNT(*) as count FROM subscription_plans');
   if (planCount.count === 0) {
@@ -3084,6 +3087,7 @@ app.get('/api/files/termin-aggregated/:terminId', authenticateToken, requireTena
       uploadedBy: r.uploaded_by,
       createdAt: r.created_at,
       url: `/api/files/download/${r.id}`,
+      gewerkIds: r.gewerk_ids ? JSON.parse(r.gewerk_ids) : [],
     })
 
     res.json({
@@ -3183,13 +3187,14 @@ app.delete('/api/files/:fileId', authenticateToken, requireTenant, requireEditor
 // PATCH /api/files/:fileId  — umbenennen und/oder Kategorie ändern
 app.patch('/api/files/:fileId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const { originalName, category } = req.body;
-    if (!originalName && !category) return res.status(400).json({ error: 'originalName or category required' });
+    const { originalName, category, gewerkIds } = req.body;
+    if (!originalName && !category && gewerkIds === undefined) return res.status(400).json({ error: 'originalName, category or gewerkIds required' });
     const file = await db.get('SELECT * FROM files WHERE id=? AND tenant_id=?', [req.params.fileId, req.tenant.id]);
     if (!file) return res.status(404).json({ error: 'File not found' });
     if (!canWriteFile(file, req.user.id)) return res.status(403).json({ error: 'Access denied' });
-    if (originalName) await db.run('UPDATE files SET original_name=? WHERE id=?', [originalName, file.id]);
-    if (category)     await db.run('UPDATE files SET category=? WHERE id=?',       [category,     file.id]);
+    if (originalName)          await db.run('UPDATE files SET original_name=? WHERE id=?', [originalName, file.id]);
+    if (category)              await db.run('UPDATE files SET category=? WHERE id=?',       [category,     file.id]);
+    if (gewerkIds !== undefined) await db.run('UPDATE files SET gewerk_ids=? WHERE id=?', [JSON.stringify(gewerkIds), file.id]);
     const updated = await db.get('SELECT * FROM files WHERE id=?', [file.id]);
     res.json({ file: fileFromRow(updated) });
   } catch (err) {
@@ -3343,6 +3348,7 @@ const fileFromRow = (r) => ({
   uploadedBy: r.uploaded_by,
   createdAt: r.created_at,
   url: `/api/files/download/${r.id}`,
+  gewerkIds: r.gewerk_ids ? JSON.parse(r.gewerk_ids) : [],
 });
 
 // ============================================

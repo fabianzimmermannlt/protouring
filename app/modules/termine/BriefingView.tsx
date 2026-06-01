@@ -251,6 +251,7 @@ interface AggFile {
   mimeType: string
   size: number
   category: string
+  gewerkIds: number[]
 }
 
 interface AggDocs {
@@ -276,10 +277,13 @@ function fmtSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function AllDocsPanel({ terminId }: { terminId: number }) {
+interface GewerkMini { id: number; name: string; color: string }
+
+function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerke: GewerkMini[]; isAdmin: boolean }) {
   const [docs, setDocs] = useState<AggDocs | null>(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(true)
+  const [addingTo, setAddingTo] = useState<string | null>(null) // fileId mit offener Gewerk-Auswahl
 
   useEffect(() => {
     const load = async () => {
@@ -292,6 +296,26 @@ function AllDocsPanel({ terminId }: { terminId: number }) {
     }
     load()
   }, [terminId])
+
+  async function toggleGewerk(file: AggFile, gewerkId: number) {
+    const current = file.gewerkIds ?? []
+    const next = current.includes(gewerkId) ? current.filter(id => id !== gewerkId) : [...current, gewerkId]
+    try {
+      const res = await fetch(`${API_BASE}/api/files/${file.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ gewerkIds: next }),
+      })
+      if (!res.ok) return
+      const { file: updated } = await res.json()
+      setDocs(prev => {
+        if (!prev) return prev
+        const patch = (list: AggFile[]) => list.map(f => f.id === updated.id ? { ...f, gewerkIds: updated.gewerkIds } : f)
+        return { ...prev, termin: patch(prev.termin), venue: patch(prev.venue) }
+      })
+    } catch { /* silent */ }
+    setAddingTo(null)
+  }
 
   const openFile = async (file: AggFile) => {
     try {
@@ -352,16 +376,63 @@ function AllDocsPanel({ terminId }: { terminId: number }) {
               </div>
               <div className="space-y-0.5">
                 {docs!.termin.map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => openFile(f)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-left group"
-                  >
-                    <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
-                    <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
-                    <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
-                    <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
-                  </button>
+                  <div key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+                    <button onClick={() => openFile(f)} className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
+                      <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
+                      <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                      <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
+                      <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
+                    </button>
+                    {/* Gewerk-Chips */}
+                    {gewerke.length > 0 && isAdmin && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {(f.gewerkIds ?? []).length === 0 ? (
+                          <span className="text-xs text-gray-300 italic">Alle</span>
+                        ) : (
+                          (f.gewerkIds ?? []).map(gId => {
+                            const g = gewerke.find(x => x.id === gId)
+                            if (!g) return null
+                            return (
+                              <button
+                                key={gId}
+                                onClick={() => toggleGewerk(f, gId)}
+                                title={`${g.name} entfernen`}
+                                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium text-white"
+                                style={{ backgroundColor: g.color }}
+                              >
+                                {g.name} ×
+                              </button>
+                            )
+                          })
+                        )}
+                        {/* Gewerk hinzufügen */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setAddingTo(addingTo === f.id ? null : f.id)}
+                            className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 text-xs"
+                            title="Gewerk zuweisen"
+                          >+</button>
+                          {addingTo === f.id && (
+                            <div className="absolute right-0 top-6 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max">
+                              {gewerke.filter(g => !(f.gewerkIds ?? []).includes(g.id)).map(g => (
+                                <button
+                                  key={g.id}
+                                  onClick={() => toggleGewerk(f, g.id)}
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded"
+                                >
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                                  {g.name}
+                                </button>
+                              ))}
+                              {gewerke.every(g => (f.gewerkIds ?? []).includes(g.id)) && (
+                                <span className="px-2 py-1 text-xs text-gray-400 italic">Alle zugewiesen</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -375,16 +446,63 @@ function AllDocsPanel({ terminId }: { terminId: number }) {
               </div>
               <div className="space-y-0.5">
                 {docs!.venue.map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => openFile(f)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-left group"
-                  >
-                    <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
-                    <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
-                    <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
-                    <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
-                  </button>
+                  <div key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group">
+                    <button onClick={() => openFile(f)} className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
+                      <span className="text-base shrink-0">{fileEmoji(f.mimeType)}</span>
+                      <span className="flex-1 text-xs text-blue-600 group-hover:text-blue-800 truncate">{f.originalName}</span>
+                      <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
+                      <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
+                    </button>
+                    {/* Gewerk-Chips */}
+                    {gewerke.length > 0 && isAdmin && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {(f.gewerkIds ?? []).length === 0 ? (
+                          <span className="text-xs text-gray-300 italic">Alle</span>
+                        ) : (
+                          (f.gewerkIds ?? []).map(gId => {
+                            const g = gewerke.find(x => x.id === gId)
+                            if (!g) return null
+                            return (
+                              <button
+                                key={gId}
+                                onClick={() => toggleGewerk(f, gId)}
+                                title={`${g.name} entfernen`}
+                                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium text-white"
+                                style={{ backgroundColor: g.color }}
+                              >
+                                {g.name} ×
+                              </button>
+                            )
+                          })
+                        )}
+                        {/* Gewerk hinzufügen */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setAddingTo(addingTo === f.id ? null : f.id)}
+                            className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 text-xs"
+                            title="Gewerk zuweisen"
+                          >+</button>
+                          {addingTo === f.id && (
+                            <div className="absolute right-0 top-6 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-max">
+                              {gewerke.filter(g => !(f.gewerkIds ?? []).includes(g.id)).map(g => (
+                                <button
+                                  key={g.id}
+                                  onClick={() => toggleGewerk(f, g.id)}
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded"
+                                >
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                                  {g.name}
+                                </button>
+                              ))}
+                              {gewerke.every(g => (f.gewerkIds ?? []).includes(g.id)) && (
+                                <span className="px-2 py-1 text-xs text-gray-400 italic">Alle zugewiesen</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -626,7 +744,7 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
   return (
     <div className="max-w-2xl space-y-3">
       {/* Alle Dokumente — immer sichtbar, auch ohne Gewerke */}
-      <AllDocsPanel terminId={terminId} />
+      <AllDocsPanel terminId={terminId} gewerke={items.map(i => ({ id: i.gewerk.id, name: i.gewerk.name, color: i.gewerk.color }))} isAdmin={isAdmin} />
 
       {/* Gewerk-Briefings */}
       {items.length === 0 ? (
