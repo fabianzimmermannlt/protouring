@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Loader2, Plus, Trash2, ChevronDown, ChevronUp, Save,
-  FileText, Upload, AlertCircle, File as FileIcon, X, ExternalLink, FolderOpen, MapPin
+  FileText, Upload, AlertCircle, File as FileIcon, X, ExternalLink, FolderOpen, MapPin,
+  Lock, Unlock
 } from 'lucide-react'
 import {
   getBriefings, addBriefingSection, updateBriefingSection, deleteBriefingSection,
@@ -280,6 +281,7 @@ function fmtSize(bytes: number): string {
 interface GewerkMini { id: number; name: string; color: string }
 
 const KEINER_ID = -1
+const ALLE_ID = 0  // Sentinel: zurücksetzen auf "Alle"
 
 function GewerkChips({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewerk }: {
   file: AggFile
@@ -351,6 +353,98 @@ function GewerkChips({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewe
   )
 }
 
+// ── Lock-Variante (barrierefreier, kein Farb-Encoding) ────────────────────────
+function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewerk }: {
+  file: AggFile
+  gewerke: GewerkMini[]
+  isAdmin: boolean
+  addingTo: string | null
+  setAddingTo: (id: string | null) => void
+  toggleGewerk: (file: AggFile, gewerkId: number) => void
+}) {
+  if (!isAdmin || gewerke.length === 0) return null
+  const ids = file.gewerkIds ?? []
+  const hasKeiner = ids.includes(KEINER_ID)
+  const realIds = ids.filter(id => id !== KEINER_ID)
+  const isRestricted = hasKeiner || realIds.length > 0
+
+  const tooltipLabel = hasKeiner
+    ? 'Sichtbar für: Keiner'
+    : realIds.length > 0
+      ? `Sichtbar für: ${realIds.length} Gewerk${realIds.length !== 1 ? 'e' : ''}`
+      : 'Sichtbar für alle'
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setAddingTo(addingTo === file.id ? null : file.id)}
+        title={tooltipLabel}
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-colors ${
+          isRestricted
+            ? 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-50'
+        }`}
+      >
+        {isRestricted
+          ? <Lock className="w-3 h-3 shrink-0" />
+          : <Unlock className="w-3 h-3 shrink-0" />
+        }
+        {hasKeiner && <span>–</span>}
+        {!hasKeiner && realIds.length > 0 && <span>{realIds.length}</span>}
+      </button>
+
+      {addingTo === file.id && (
+        <div className="absolute right-0 bottom-full mb-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[160px]">
+          {/* Alle */}
+          <button
+            onClick={() => toggleGewerk(file, ALLE_ID)}
+            className={`flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded ${
+              !isRestricted ? 'bg-gray-100 font-medium text-gray-800' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Unlock className="w-3 h-3 shrink-0" />
+            Alle
+          </button>
+
+          {/* Gewerke */}
+          <div className="border-t border-gray-100 my-1" />
+          {gewerke.map(g => {
+            const checked = realIds.includes(g.id)
+            return (
+              <button
+                key={g.id}
+                onClick={() => toggleGewerk(file, g.id)}
+                className={`flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded ${
+                  checked ? 'font-medium text-gray-800 bg-gray-50' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <span className={`w-3.5 h-3.5 shrink-0 flex items-center justify-center border rounded text-[10px] ${
+                  checked ? 'border-gray-600 bg-gray-600 text-white' : 'border-gray-300'
+                }`}>
+                  {checked && '✓'}
+                </span>
+                {g.name}
+              </button>
+            )
+          })}
+
+          {/* Keiner */}
+          <div className="border-t border-gray-100 my-1" />
+          <button
+            onClick={() => toggleGewerk(file, KEINER_ID)}
+            className={`flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded ${
+              hasKeiner ? 'bg-gray-100 font-medium text-gray-800' : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            <Lock className="w-3 h-3 shrink-0" />
+            Keiner
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerke: GewerkMini[]; isAdmin: boolean }) {
   const [docs, setDocs] = useState<AggDocs | null>(null)
   const [loading, setLoading] = useState(true)
@@ -372,11 +466,11 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
   async function toggleGewerk(file: AggFile, gewerkId: number) {
     const current = file.gewerkIds ?? []
     let next: number[]
-    if (gewerkId === KEINER_ID) {
-      // Keiner ist exklusiv: entweder an oder aus, keine Mischung
+    if (gewerkId === ALLE_ID) {
+      next = []
+    } else if (gewerkId === KEINER_ID) {
       next = current.includes(KEINER_ID) ? [] : [KEINER_ID]
     } else {
-      // Echtes Gewerk: Keiner-Marker entfernen, dann normal toggl
       const withoutKeiner = current.filter(id => id !== KEINER_ID)
       next = withoutKeiner.includes(gewerkId)
         ? withoutKeiner.filter(id => id !== gewerkId)
@@ -465,7 +559,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
                       <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
                       <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
                     </button>
-                    <GewerkChips file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
+                    <GewerkLock file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
                   </div>
                 ))}
               </div>
@@ -487,7 +581,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
                       <span className="text-xs text-gray-400 shrink-0">{fmtSize(f.size)}</span>
                       <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-blue-400 shrink-0" />
                     </button>
-                    <GewerkChips file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
+                    <GewerkLock file={f} gewerke={gewerke} isAdmin={isAdmin} addingTo={addingTo} setAddingTo={setAddingTo} toggleGewerk={toggleGewerk} />
                   </div>
                 ))}
               </div>
