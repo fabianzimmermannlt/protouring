@@ -259,7 +259,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                           onChange={e => setEditingAreaName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleRenameArea(area.id); if (e.key === 'Escape') setEditingAreaId(null) }}
                           onClick={e => e.stopPropagation()}
-                          className="text-xs font-semibold border border-blue-300 rounded px-1 py-0.5 focus:outline-none flex-1"
+                          className="text-sm font-semibold border border-blue-300 rounded px-1 py-0.5 focus:outline-none flex-1"
                         />
                       ) : (
                         <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide truncate">
@@ -295,7 +295,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                               <select
                                 value={editForm.type}
                                 onChange={e => setEditForm(f => ({ ...f, type: e.target.value as EntryType }))}
-                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
+                                className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
                               >
                                 {ENTRY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                               </select>
@@ -304,18 +304,18 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                                 value={editForm.title}
                                 onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
                                 placeholder="Titel *"
-                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
                               />
                               <textarea
                                 value={editForm.details}
                                 onChange={e => setEditForm(f => ({ ...f, details: e.target.value }))}
                                 placeholder="Details (optional)"
                                 rows={2}
-                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-none"
+                                className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-none"
                               />
                               <div className="flex gap-1">
-                                <button onClick={handleSaveEntry} disabled={saving} className="text-xs bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50">Speichern</button>
-                                <button onClick={() => setEditingEntry(null)} className="text-xs text-gray-500 hover:text-gray-700">Abbrechen</button>
+                                <button onClick={handleSaveEntry} disabled={saving} className="text-sm bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50">Speichern</button>
+                                <button onClick={() => setEditingEntry(null)} className="text-sm text-gray-500 hover:text-gray-700">Abbrechen</button>
                               </div>
                             </div>
                           ) : (
@@ -350,7 +350,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                             <select
                               value={entryForm.type}
                               onChange={e => setEntryForm(f => ({ ...f, type: e.target.value as EntryType }))}
-                              className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
+                              className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none"
                             >
                               {ENTRY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
@@ -360,24 +360,24 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                               onChange={e => setEntryForm(f => ({ ...f, title: e.target.value }))}
                               onKeyDown={e => e.key === 'Escape' && setAddingEntryForArea(null)}
                               placeholder="Titel *"
-                              className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                              className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
                             />
                             <textarea
                               value={entryForm.details}
                               onChange={e => setEntryForm(f => ({ ...f, details: e.target.value }))}
                               placeholder="Details (optional)"
                               rows={2}
-                              className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-none"
+                              className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-none"
                             />
                             <div className="flex gap-1">
-                              <button onClick={() => handleAddEntry(area.id)} disabled={saving} className="text-xs bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50">Hinzufügen</button>
-                              <button onClick={() => { setAddingEntryForArea(null); setEntryForm(EMPTY_FORM) }} className="text-xs text-gray-500 hover:text-gray-700">Abbrechen</button>
+                              <button onClick={() => handleAddEntry(area.id)} disabled={saving} className="text-sm bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50">Hinzufügen</button>
+                              <button onClick={() => { setAddingEntryForArea(null); setEntryForm(EMPTY_FORM) }} className="text-sm text-gray-500 hover:text-gray-700">Abbrechen</button>
                             </div>
                           </div>
                         ) : (
                           <button
                             onClick={() => { setAddingEntryForArea(area.id); setEntryForm(EMPTY_FORM) }}
-                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors py-0.5"
+                            className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-600 transition-colors py-0.5"
                           >
                             <Plus className="w-3 h-3" /> Eintrag hinzufügen
                           </button>
@@ -398,11 +398,11 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                   onChange={e => setAreaName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddArea(); if (e.key === 'Escape') setAddingArea(false) }}
                   placeholder="Bereichsname…"
-                  className="w-full text-xs border border-blue-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-full text-sm border border-blue-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
                 />
                 <div className="flex gap-1">
-                  <button onClick={handleAddArea} disabled={saving} className="text-xs bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-700 disabled:opacity-50">Erstellen</button>
-                  <button onClick={() => setAddingArea(false)} className="text-xs text-gray-500 hover:text-gray-700">Abbrechen</button>
+                  <button onClick={handleAddArea} disabled={saving} className="text-sm bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-700 disabled:opacity-50">Erstellen</button>
+                  <button onClick={() => setAddingArea(false)} className="text-sm text-gray-500 hover:text-gray-700">Abbrechen</button>
                 </div>
               </div>
             )}
@@ -410,14 +410,14 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
             {areas.length === 0 && !addingArea && (
               <div className="flex flex-col items-center justify-center py-8 text-center px-4">
                 <ClipboardList className="w-6 h-6 mb-2 text-gray-300" />
-                <p className="text-xs font-medium text-gray-500 mb-1">Noch kein Advancing angelegt</p>
-                <p className="text-xs text-gray-400 leading-relaxed max-w-xs">
+                <p className="text-sm font-medium text-gray-500 mb-1">Noch kein Advancing angelegt</p>
+                <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
                   Hier sammelst du alle Absprachen mit der Venue — sortiert nach Bereichen wie <span className="italic">Technik, Catering</span> oder <span className="italic">Hospitality</span>.
                 </p>
                 {canEdit && (
                   <button
                     onClick={() => setAddingArea(true)}
-                    className="mt-3 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                    className="mt-3 text-sm text-blue-500 hover:text-blue-700 font-medium transition-colors"
                   >
                     + Ersten Bereich anlegen
                   </button>
