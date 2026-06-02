@@ -17,7 +17,7 @@ import {
   type LegType,
   type TransportType,
 } from '@/lib/api-client'
-import VehicleFormModal from '@/app/modules/vehicles/VehicleFormModal'
+import TravelVehicleQuickCreate from './TravelVehicleQuickCreate'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
@@ -732,10 +732,9 @@ export default function AnreiseModal({
     </div>
 
     {vehicleFormModalOpen && (
-      <VehicleFormModal
-        vehicle={null}
+      <TravelVehicleQuickCreate
         onClose={() => setVehicleFormModalOpen(false)}
-        onSaved={v => {
+        onCreated={v => {
           setVehicles(prev => [...prev, v])
           set('vehicleId', v.id)
           setVehicleFormModalOpen(false)

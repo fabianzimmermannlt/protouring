@@ -16,7 +16,7 @@ import {
   type Hotel,
   type RoomType,
 } from '@/lib/api-client'
-import HotelFormModal from '@/app/modules/hotels/HotelFormModal'
+import TravelHotelQuickCreate from './TravelHotelQuickCreate'
 import { ROOM_TYPE_LABELS } from './HotelCard'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
@@ -432,10 +432,9 @@ export default function HotelModal({
     </div>
 
     {hotelFormModalOpen && (
-      <HotelFormModal
-        hotel={null}
+      <TravelHotelQuickCreate
         onClose={() => setHotelFormModalOpen(false)}
-        onSaved={h => {
+        onCreated={h => {
           setHotels(prev => [...prev, h])
           set('hotelId', Number(h.id))
           setHotelFormModalOpen(false)
