@@ -481,7 +481,7 @@ export function L2Layout({
               {showUserMenu && (
                 <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                   <button
-                    onClick={() => { setShowUserMenu(false); onTabChange('settings', 'profil') }}
+                    onClick={() => { setShowUserMenu(false); window.dispatchEvent(new CustomEvent('pt:open-settings', { detail: { subTab: 'profil' } })) }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
                     <UserCircleIcon className="w-4 h-4 text-gray-400" />
@@ -603,16 +603,12 @@ export function L2Layout({
           {/* Einstellungen – unten, scrollt mit */}
           <div ref={settingsRef} className="px-0 pb-3 border-t border-[#333] pt-3">
             <button
-              onClick={() => setExpandedItems(prev => { const n = new Set(prev); n.has('settings') ? n.delete('settings') : n.add('settings'); return n })}
+              onClick={() => window.dispatchEvent(new CustomEvent('pt:open-settings', { detail: { subTab: 'profil' } }))}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
             >
               <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">Einstellungen</span>
-              <ChevronDownIcon className={`w-3 h-3 flex-shrink-0 transition-transform ${
-                expandedItems.has('settings') ? 'rotate-180 text-gray-400' : 'text-gray-500'
-              }`} />
             </button>
-            {expandedItems.has('settings') && renderSettingsSubs()}
           </div>
         </div>
       </aside>

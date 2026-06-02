@@ -7,6 +7,7 @@ import DeskModule from './modules/desk/page'
 import HotelsPage from './modules/hotels/page'
 import VehiclesPage from './modules/vehicles/page'
 import SettingsModule from './modules/settings/SettingsModule'
+import SettingsModal from './modules/settings/SettingsModal'
 import ContactsModule from './modules/contacts/ContactsModule'
 import PartnersPage from './modules/partners/page'
 import VenuesPage from './modules/venues/page'
@@ -33,6 +34,7 @@ function ProTouringAppInner() {
   const [activeTab, setActiveTab] = useState('desk')
   const [activeSubTab, setActiveSubTab] = useState('')
   const [authChecked, setAuthChecked] = useState(false)
+  const [settingsModal, setSettingsModal] = useState<{ open: boolean; sub: string }>({ open: false, sub: 'profil' })
   const activeTabRef = useRef('desk') // Ref für stale-closure-sichere Tab-Zugriffe
   const { layout } = useLayout() // Hook muss vor jedem bedingten Return stehen
 
@@ -109,6 +111,16 @@ function ProTouringAppInner() {
     return () => window.removeEventListener('navigate-to-contact', handler)
   }, [])
 
+  // Globales Event: Settings-Popup öffnen (von Sidebar, Profil-Menü etc.)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const sub = (e as CustomEvent<{ subTab?: string }>).detail?.subTab || 'profil'
+      setSettingsModal({ open: true, sub })
+    }
+    window.addEventListener('pt:open-settings', handler)
+    return () => window.removeEventListener('pt:open-settings', handler)
+  }, [])
+
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -162,6 +174,13 @@ function ProTouringAppInner() {
 
   return (
     <>
+      {/* Settings-Popup (global, über allen Layouts) */}
+      <SettingsModal
+        open={settingsModal.open}
+        initialSubTab={settingsModal.sub}
+        onClose={() => setSettingsModal(s => ({ ...s, open: false }))}
+      />
+
       {/* ── MOBILE: Flex-Column mit 100dvh, kein fixed positioning ── */}
       <div className="md:hidden flex flex-col bg-gray-100" style={{ height: '100dvh' }}>
         {/* Slim Header + Sub-Nav */}
