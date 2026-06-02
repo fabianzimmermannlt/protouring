@@ -347,10 +347,26 @@ function GewerkLock({ file, gewerke, isAdmin, addingTo, setAddingTo, toggleGewer
   )
 }
 
+// Akkordeon-Zustand: standardmäßig zugeklappt, gemerkt pro Panel (localStorage)
+function usePersistedExpanded(key: string): [boolean, () => void] {
+  const [expanded, setExpanded] = useState(false)
+  useEffect(() => {
+    try { if (localStorage.getItem(key) === '1') setExpanded(true) } catch { /* ignore */ }
+  }, [key])
+  const toggle = useCallback(() => {
+    setExpanded(prev => {
+      const next = !prev
+      try { localStorage.setItem(key, next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }, [key])
+  return [expanded, toggle]
+}
+
 function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerke: GewerkMini[]; isAdmin: boolean }) {
   const [docs, setDocs] = useState<AggDocs | null>(null)
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, toggleExpanded] = usePersistedExpanded('pt-briefing-alldocs')
   const [addingTo, setAddingTo] = useState<string | null>(null) // fileId mit offener Gewerk-Auswahl
 
   useEffect(() => {
@@ -436,7 +452,7 @@ function AllDocsPanel({ terminId, gewerke, isAdmin }: { terminId: number; gewerk
     )}
     <div className="border border-gray-200 rounded-xl bg-white">
       <button
-        onClick={() => setExpanded(p => !p)}
+        onClick={toggleExpanded}
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors text-left rounded-xl"
       >
         <FolderOpen className="w-4 h-4 text-gray-500 shrink-0" />
@@ -523,7 +539,7 @@ interface GewerkPanelProps {
 }
 
 function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProps) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, toggleExpanded] = usePersistedExpanded(`pt-briefing-gewerk:${item.gewerk.id}`)
   const [addingSection, setAddingSection] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
@@ -576,7 +592,7 @@ function GewerkPanel({ item, terminId, isAdmin, onItemChanged }: GewerkPanelProp
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       {/* Header */}
       <button
-        onClick={() => setExpanded(p => !p)}
+        onClick={toggleExpanded}
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors text-left"
       >
         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.gewerk.color }} />
