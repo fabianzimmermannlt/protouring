@@ -76,7 +76,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl flex overflow-hidden"
+        className="pt-settings-modal bg-white rounded-xl shadow-2xl flex overflow-hidden"
         style={{ width: 'min(1080px, 95vw)', height: 'min(85vh, 780px)' }}
         onClick={e => e.stopPropagation()}
       >

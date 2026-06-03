@@ -2054,3 +2054,27 @@ html.dark .rich-content hr { border-color: #3c3c3c; }
 [class*="-dot"] {
   border-radius: 9999px !important;
 }
+
+/* ── Settings-Popup: durchgehend helle Eingaben, auch wenn die App im Dark Mode ist ── */
+html.dark .pt-settings-modal .form-label { color: #374151; }
+html.dark .pt-settings-modal input:not([type="checkbox"]):not([type="radio"]),
+html.dark .pt-settings-modal textarea,
+html.dark .pt-settings-modal select,
+html.dark .pt-settings-modal .form-input,
+html.dark .pt-settings-modal .form-select,
+html.dark .pt-settings-modal .form-textarea,
+html.dark .pt-settings-modal .detail-input {
+  background: #ffffff;
+  color: #111827;
+  border-color: #d1d5db;
+}
+html.dark .pt-settings-modal input::placeholder,
+html.dark .pt-settings-modal textarea::placeholder { color: #9ca3af; }
+html.dark .pt-settings-modal input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+html.dark .pt-settings-modal .form-input:focus,
+html.dark .pt-settings-modal .form-select:focus,
+html.dark .pt-settings-modal .form-textarea:focus,
+html.dark .pt-settings-modal .detail-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
