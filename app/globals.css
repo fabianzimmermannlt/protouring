@@ -2081,6 +2081,7 @@ html.dark .pt-settings-modal .form-textarea {
   color: #e6edf3 !important;
   border-color: #555 !important;
 }
-/* Karten einheitlich: Body wie Header/Inhaltsbereich (#2d2d2d) statt extra-dunkel (#1e1e1e) */
+/* Karten wie Venues/Details: Body #2d2d2d, Kopfzeile dezent heller #383838 */
 html.dark .pt-settings-modal .pt-card { background: #2d2d2d; border-color: #3c3c3c; }
-html.dark .pt-settings-modal .pt-card-header { background: #2d2d2d; }
+html.dark .pt-settings-modal .pt-card-header { background: #383838; border-bottom-color: #4a4a4a; }
+html.dark .pt-settings-modal .pt-card-title { color: #d4d4d4; }
