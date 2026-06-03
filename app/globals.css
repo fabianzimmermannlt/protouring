@@ -2081,3 +2081,6 @@ html.dark .pt-settings-modal .form-textarea {
   color: #e6edf3 !important;
   border-color: #555 !important;
 }
+/* Karten einheitlich: Body wie Header/Inhaltsbereich (#2d2d2d) statt extra-dunkel (#1e1e1e) */
+html.dark .pt-settings-modal .pt-card { background: #2d2d2d; border-color: #3c3c3c; }
+html.dark .pt-settings-modal .pt-card-header { background: #2d2d2d; }
