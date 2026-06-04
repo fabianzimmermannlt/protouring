@@ -21,6 +21,7 @@ import {
 import { Loader2, Save, X, AlertCircle } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
+import { SettingsAreaShell } from './SettingsAreaShell'
 import GewerkSettings from './GewerkSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
 import { useLanguage, useT } from '@/app/lib/i18n/LanguageContext'
@@ -98,14 +99,13 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'contacts':
         return (
-          <div className="space-y-4">
-            <h2 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Kontakte</h2>
+          <SettingsAreaShell title="Kontakte">
             <AccordionSection title="Funktionen" defaultOpen stateKey="settings-kontakte-funktionen">
               <div className="p-4">
                 <FunktionenSettings hideTitle />
               </div>
             </AccordionSection>
-          </div>
+          </SettingsAreaShell>
         )
 
       case 'guestlist':

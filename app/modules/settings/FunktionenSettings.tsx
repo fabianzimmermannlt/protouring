@@ -55,10 +55,14 @@ export default function FunktionenSettings({ hideTitle = false }: { hideTitle?: 
     setIsDirty(dirty)
   }, [catalog, customNames, loading])
 
-  // Global dirty flag for L2 nav guard
+  // Global dirty flag for L2 nav guard + Event für gemeinsame Settings-Speichern-Leiste
   useEffect(() => {
     ;(window as any).__pt_isDirty = isDirty
-    return () => { ;(window as any).__pt_isDirty = false }
+    window.dispatchEvent(new CustomEvent('pt:settings-dirty', { detail: { dirty: isDirty } }))
+    return () => {
+      ;(window as any).__pt_isDirty = false
+      window.dispatchEvent(new CustomEvent('pt:settings-dirty', { detail: { dirty: false } }))
+    }
   }, [isDirty])
 
   const saveEdit = async (): Promise<boolean> => {
@@ -76,10 +80,11 @@ export default function FunktionenSettings({ hideTitle = false }: { hideTitle?: 
     }
   }
 
-  // Always-fresh save reference (no deps — runs every render)
+  // Always-fresh save/cancel references (no deps — runs every render)
   useEffect(() => {
     ;(window as any).__pt_save = saveEdit
-    return () => { ;(window as any).__pt_save = null }
+    ;(window as any).__pt_cancel = cancelEdit
+    return () => { ;(window as any).__pt_save = null; (window as any).__pt_cancel = null }
   })
 
   const cancelEdit = () => {
@@ -158,7 +163,7 @@ export default function FunktionenSettings({ hideTitle = false }: { hideTitle?: 
             </p>
           </div>
         )}
-        {isDirty && (
+        {isDirty && !hideTitle && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
             <button onClick={cancelEdit}
