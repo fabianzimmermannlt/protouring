@@ -24,7 +24,7 @@ function catalogSig(catalog: FunctionCatalogGroup[], custom: string[]) {
   return [...active, ...custom.slice().sort()].join('|')
 }
 
-export default function FunktionenSettings() {
+export default function FunktionenSettings({ hideTitle = false }: { hideTitle?: boolean } = {}) {
   const t = useT()
   const [catalog, setCatalog] = useState<FunctionCatalogGroup[]>([])
   const [customNames, setCustomNames] = useState<string[]>([])
@@ -146,12 +146,18 @@ export default function FunktionenSettings() {
 
       {/* Header + dirty bar */}
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
-        <div>
-          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Funktionen</h1>
-          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
+        {hideTitle ? (
+          <p className="pt-fn-subtitle">
             {t('settings.funktionen.activeCount').replace('{active}', String(totalActive)).replace('{total}', String(totalAll))}
           </p>
-        </div>
+        ) : (
+          <div>
+            <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Funktionen</h1>
+            <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
+              {t('settings.funktionen.activeCount').replace('{active}', String(totalActive)).replace('{total}', String(totalAll))}
+            </p>
+          </div>
+        )}
         {isDirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
