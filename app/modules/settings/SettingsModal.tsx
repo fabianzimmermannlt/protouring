@@ -58,7 +58,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       key={s.id}
       onClick={() => setSubTab(s.id)}
       className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
-        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-700 hover:bg-gray-200'
+        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-300 hover:bg-[#2d2d2d] hover:text-white'
       }`}
     >
       {s.name}
@@ -82,7 +82,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       >
         {/* Linke Navigationsleiste */}
         <div className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto py-3 px-2">
-          <div className="px-3 pb-1 text-base font-semibold text-gray-900">Einstellungen</div>
+          <div className="px-3 pb-1 text-base font-semibold text-gray-100">Einstellungen</div>
           {konto.length > 0 && <>{groupTitle('Konto')}<div className="space-y-0.5">{konto.map(railButton)}</div></>}
           {workspace.length > 0 && <>{groupTitle('Workspace')}<div className="space-y-0.5">{workspace.map(railButton)}</div></>}
         </div>
