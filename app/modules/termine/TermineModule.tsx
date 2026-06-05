@@ -1080,13 +1080,13 @@ function TerminDetailHeader({
     { id: 'details2',       label: 'Details' },
     { id: 'venue',          label: 'Venue' },
     ...(isEditor ? [{ id: 'partner',   label: 'Partner' }]  : []),
-    ...(isEditor ? [{ id: 'advancing', label: 'Advancing' }] : []),
     { id: 'schedule',       label: 'Schedule' },
     { id: 'travelparty',    label: 'Reisegruppe' },
     { id: 'travel',         label: 'Travel' },
     { id: 'hospitality',    label: 'Hospitality' },
-    { id: 'briefing',       label: 'Briefing' },
     { id: 'guestlist',      label: 'Gästeliste' },
+    ...(isEditor ? [{ id: 'advancing', label: 'Advancing' }] : []),
+    { id: 'briefing',       label: 'Briefing' },
     ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
   ]
 
