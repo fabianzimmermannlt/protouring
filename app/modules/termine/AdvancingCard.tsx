@@ -248,7 +248,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
               return (
                 <div key={area.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
                   {/* Area Header */}
-                  <div className="flex items-center gap-1 px-4 py-3 group">
+                  <div className="flex items-center gap-1 px-4 py-3 group bg-[#383838]">
                     <button onClick={() => toggleCollapse(area.id)} className="flex items-center gap-1 flex-1 min-w-0 text-left">
                       {isOpen
                         ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
