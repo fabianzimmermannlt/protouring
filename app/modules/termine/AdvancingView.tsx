@@ -12,12 +12,8 @@ interface AdvancingViewProps {
 export default function AdvancingView({ terminId, isAdmin }: AdvancingViewProps) {
   return (
     <div className="flex flex-col gap-4" style={{ maxWidth: '1200px' }}>
-      <div className="grid grid-cols-3 gap-4 items-start">
-        <div className="col-span-2">
-          <AdvancingCard terminId={terminId} isAdmin={isAdmin} />
-        </div>
-        <ToDoCard terminId={terminId} />
-      </div>
+      <ToDoCard terminId={terminId} />
+      <AdvancingCard terminId={terminId} isAdmin={isAdmin} />
       <TerminFileCard terminId={String(terminId)} />
     </div>
   )
