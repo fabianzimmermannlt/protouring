@@ -326,7 +326,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                                   <span className="text-sm font-medium leading-tight text-gray-800">{entry.title}</span>
                                 </div>
                                 {entry.details && (
-                                  <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{entry.details}</p>
+                                  <p className="text-sm text-gray-500 mt-0.5 leading-relaxed whitespace-pre-wrap break-words">{entry.details}</p>
                                 )}
                                 <p className="text-xs text-gray-300 mt-0.5">
                                   {entry.first_name ? `${entry.first_name}${entry.last_name ? ' ' + entry.last_name : ''}` : ''}{entry.first_name ? ' · ' : ''}{fmtDate(entry.created_at)}
