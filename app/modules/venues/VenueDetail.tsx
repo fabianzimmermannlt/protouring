@@ -9,6 +9,7 @@ import {
   Image as ImageIcon, ExternalLink, Loader2, UserCircle, Phone, Mail, ArrowLeft,
 } from 'lucide-react'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
+import { AutoGrowTextarea } from '@/app/components/shared/AutoGrowTextarea'
 import {
   getAuthToken, getCurrentTenant, getCurrentUser,
   isEditorRole, getEffectiveRole, type Venue, type VenueContact,
@@ -733,7 +734,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
   return (
     <div>
       <label className="detail-label">{label}</label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={2}
+      <AutoGrowTextarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={2}
         readOnly={readOnly} className="detail-input resize-none" />
     </div>
   )

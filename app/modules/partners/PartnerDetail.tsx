@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { AutoGrowTextarea } from '@/app/components/shared/AutoGrowTextarea'
 
 const PARTNER_TYPES = [
   'Veranstaltende', 'Autovermietung', 'Trucking-Firma', 'Reisebüro', 'Technik-Lieferant',
@@ -49,7 +50,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
   return (
     <div>
       <label className="detail-label">{label}</label>
-      <textarea value={value} onChange={e => onChange(e.target.value)}
+      <AutoGrowTextarea value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} rows={3} readOnly={readOnly}
         className="detail-input resize-none" />
     </div>
