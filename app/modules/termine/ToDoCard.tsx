@@ -282,13 +282,22 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const isOverdue = (t: Todo) => t.status !== 'done' && !!t.deadline && new Date(t.deadline) < today
 
-  const filteredTodos = filter === 'all'
+  // Sortierung: Fälligkeitsdatum aufsteigend (frühestes zuerst), danach ohne Datum alphabetisch nach Titel
+  const byDueThenTitle = (a: Todo, b: Todo) => {
+    if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline)
+    if (a.deadline) return -1
+    if (b.deadline) return 1
+    return a.title.localeCompare(b.title, 'de', { sensitivity: 'base' })
+  }
+
+  const filteredTodos = (filter === 'all'
     ? visibleTodos
     : filter === 'overdue'
       ? visibleTodos.filter(isOverdue)
       : filter === 'done'
         ? doneTodos
         : visibleTodos.filter(t => t.status !== 'done')
+  ).slice().sort(byDueThenTitle)
 
   const overdueCount = visibleTodos.filter(isOverdue).length
 
