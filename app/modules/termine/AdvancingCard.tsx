@@ -220,20 +220,21 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="pt-card">
-      <div className="pt-card-header">
-        <span className="pt-card-title">
-          <ClipboardList className="w-3.5 h-3.5 inline mr-1" />
+    <div>
+      {/* Titelzeile */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="flex items-center gap-1.5" style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>
+          <ClipboardList className="w-4 h-4" />
           Advancing
-        </span>
+        </h2>
         {canEdit && (
           <button onClick={() => { setAddingArea(true); setAreaName('') }} className="text-gray-400 hover:text-blue-600 transition-colors" title="Bereich hinzufügen">
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      <div className="pt-card-body space-y-0">
+      <div className="space-y-3">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /><span className="text-xs">Lade…</span>
@@ -245,9 +246,9 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
               const isOpen = !collapsed[area.id]
 
               return (
-                <div key={area.id} className="border-b border-gray-100 last:border-0">
+                <div key={area.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
                   {/* Area Header */}
-                  <div className="flex items-center gap-1 px-0 py-2 group">
+                  <div className="flex items-center gap-1 px-4 py-3 group">
                     <button onClick={() => toggleCollapse(area.id)} className="flex items-center gap-1 flex-1 min-w-0 text-left">
                       {isOpen
                         ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -287,7 +288,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
 
                   {/* Entries */}
                   {isOpen && (
-                    <div className="pl-4 pb-2 space-y-1">
+                    <div className="px-4 pb-3 space-y-1 border-t border-gray-100">
                       {entries.map(entry => (
                         <div key={entry.id}>
                           {editingEntry?.id === entry.id ? (
