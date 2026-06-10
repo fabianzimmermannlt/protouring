@@ -1,23 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import { Edit2 } from 'lucide-react'
-import AnreiseCard from './AnreiseCard'
-import HotelCard from './HotelCard'
 import LokaleKontakteCard from './LokaleKontakteCard'
-import ZeitplaeneCard from './ZeitplaeneCard'
-import CateringCard from './CateringCard'
-import AdvancingCard from './AdvancingCard'
 import SonstigesCard from './SonstigesCard'
 import TerminChatCard from './TerminChatCard'
 import TerminFileCard from './TerminFileCard'
 import ToDoCard from './ToDoCard'
-import ReisegruppeView from './ReisegruppeView'
-import GaestelisteView from './GaestelisteView'
-import BriefingView from './BriefingView'
-import AdvanceSheetView from './AdvanceSheetView'
 import ContentBoard from '@/app/components/shared/ContentBoard'
-import { getCurrentUser, isEditorRole, getEffectiveRole } from '@/lib/api-client'
+import { getCurrentUser } from '@/lib/api-client'
 import type { Termin } from '@/lib/api-client'
 import { AccordionSection as Section } from '@/app/components/shared/AccordionSection'
 
@@ -64,16 +54,12 @@ export default function TerminDetailMobile({
 }: Props) {
   const currentUser = getCurrentUser()
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
-  const isEditor = isEditorRole(getEffectiveRole())
 
   const pageTitle = termin.showTitleAsHeader
     ? [termin.city, termin.title].filter(Boolean).join(' · ')
     : termin.venueId
       ? [termin.venueName, termin.venueCity].filter(Boolean).join(' · ') || termin.title || ''
       : [termin.city, termin.title].filter(Boolean).join(' · ') || termin.title || ''
-
-  const [abreiseRefreshKey, setAbreiseRefreshKey] = useState(0)
-  const [anreiseRefreshKey, setAnreiseRefreshKey] = useState(0)
 
   return (
     <div className="flex flex-col gap-2 pb-4">
@@ -113,74 +99,12 @@ export default function TerminDetailMobile({
         </div>
       </div>
 
-      {/* ── 1. Reise & Hotel ────────────────────────────── */}
-      <Section title="Reise & Hotel" defaultOpen stateKey="termin_reise">
-        <AnreiseCard
-          terminId={termin.id}
-          legType="anreise"
-          isAdmin={isAdmin}
-          terminDate={termin.date}
-          terminCity={termin.city || ''}
-          refreshKey={anreiseRefreshKey}
-          onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
-        />
-        <div className="border-t border-gray-100">
-          <HotelCard
-            terminId={termin.id}
-            isAdmin={isAdmin}
-            terminDate={termin.date}
-          />
-        </div>
-        <div className="border-t border-gray-100">
-          <AnreiseCard
-            terminId={termin.id}
-            legType="abreise"
-            isAdmin={isAdmin}
-            terminDate={termin.date}
-            terminCity={termin.city || ''}
-            refreshKey={abreiseRefreshKey}
-            onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
-          />
-        </div>
-      </Section>
+      {/* Hinweis: Reise/Hotel, Zeitplan, Hospitality, Reisegruppe, Gästeliste,
+          Advancing, Briefing, Advance Sheet haben mobil eigene Chips (oben) —
+          „Details" zeigt nur den Überblick + detailspezifische Inhalte. */}
 
-      {/* ── Reisegruppe ─────────────────────────────────── */}
-      <Section title="Reisegruppe" stateKey="termin_reisegruppe">
-        <ReisegruppeView terminId={termin.id} isAdmin={isEditor} />
-      </Section>
-
-      {/* ── 2. Zeitplan ─────────────────────────────────── */}
-      <Section title="Zeitplan" defaultOpen stateKey="termin_zeitplan">
-        <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
-      </Section>
-
-      {/* ── 3. Hospitality ──────────────────────────────── */}
-      <Section title="Hospitality" defaultOpen stateKey="termin_catering">
-        <CateringCard terminId={termin.id} isAdmin={isAdmin} />
-      </Section>
-
-      {/* ── Gästeliste ──────────────────────────────────── */}
-      <Section title="Gästeliste" stateKey="termin_guestlist">
-        <GaestelisteView key={termin.id} terminId={termin.id} />
-      </Section>
-
-      {/* ── 4. Advancing ────────────────────────────────── */}
-      <Section title="Advancing" stateKey="termin_advancing">
-        <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
-      </Section>
-
-      {/* ── Briefing ────────────────────────────────────── */}
-      <Section title="Briefing" stateKey="termin_briefing">
-        <BriefingView terminId={termin.id} isAdmin={isAdmin} />
-      </Section>
-
-      {/* ── 5. Sonstiges ────────────────────────────────── */}
-      <Section title="Sonstiges" stateKey="termin_sonstiges">
-        <SonstigesCard terminId={termin.id} isAdmin={isAdmin} />
-      </Section>
-
-      {/* ── 7. Spielstätte & Partner ────────────────────── */}
-      <Section title="Spielstätte & Partner" stateKey="termin_spielstaette">
+      {/* ── Spielstätte & Partner ───────────────────────── */}
+      <Section title="Spielstätte & Partner" defaultOpen stateKey="termin_spielstaette">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm px-4 py-3">
           <dt className="text-gray-400 font-medium">Spielstätte</dt>
           <dd className="text-gray-800">{termin.venueName || <span className="text-gray-300">–</span>}</dd>
@@ -195,31 +119,29 @@ export default function TerminDetailMobile({
         </dl>
       </Section>
 
-      {/* ── 8. Lokale Kontakte ──────────────────────────── */}
-      <Section title="Lokale Kontakte" stateKey="termin_kontakte">
-        <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
-      </Section>
-
-      {/* ── 9. Aufgaben ─────────────────────────────────── */}
+      {/* ── Aufgaben ────────────────────────────────────── */}
       <Section title="Aufgaben" defaultOpen stateKey="termin_aufgaben">
         <ToDoCard terminId={termin.id} />
       </Section>
 
-      {/* ── 10. Dateien ─────────────────────────────────── */}
+      {/* ── Lokale Kontakte ─────────────────────────────── */}
+      <Section title="Lokale Kontakte" stateKey="termin_kontakte">
+        <LokaleKontakteCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── Sonstiges ───────────────────────────────────── */}
+      <Section title="Sonstiges" stateKey="termin_sonstiges">
+        <SonstigesCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── Dateien ─────────────────────────────────────── */}
       {canSeeFiles && (
         <Section title="Dateien" stateKey="termin_dateien">
           <TerminFileCard terminId={String(termin.id)} />
         </Section>
       )}
 
-      {/* ── Advance Sheet ───────────────────────────────── */}
-      {isEditor && (
-        <Section title="Advance Sheet" stateKey="termin_advance_sheet">
-          <AdvanceSheetView terminId={termin.id} />
-        </Section>
-      )}
-
-      {/* ── 11. Private Notiz ───────────────────────────── */}
+      {/* ── Private Notiz ───────────────────────────────── */}
       <Section title="Private Notiz" stateKey="termin_notiz">
         <div className="p-3">
           <ContentBoard

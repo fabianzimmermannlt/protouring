@@ -1948,8 +1948,8 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
               className="search-input l2-search"
               style={{ marginBottom: 0, borderRadius: 0, flex: 1 }}
             />
-            {/* Filter-Pills */}
-            {(['aktuell', 'vergangen', 'alle'] as const).map(f => {
+            {/* Filter-Pills — mobil über die Header-Chips, daher hier nur Desktop */}
+            {!isMobile && (['aktuell', 'vergangen', 'alle'] as const).map(f => {
               const labels = { aktuell: t('appointments.filter.current'), vergangen: t('appointments.filter.past'), alle: t('appointments.filter.all') }
               const active = listView === 'list' && termineFilter === f
               return (
@@ -1964,7 +1964,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                 </button>
               )
             })}
-            {canDo(effectiveRole, CAN_SEE_KALENDER) && (
+            {!isMobile && canDo(effectiveRole, CAN_SEE_KALENDER) && (
               <button onClick={() => {
                 setListView('calendar')
                 window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
