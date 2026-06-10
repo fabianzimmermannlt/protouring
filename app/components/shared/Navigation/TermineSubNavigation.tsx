@@ -2,7 +2,7 @@
 
 import { getEffectiveRole, canDo, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
 
-export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist'
+export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'briefing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
 
@@ -102,9 +102,16 @@ export function TermineSubNavigation({
 
   const views = [
     { id: 'details',       label: 'Details',       short: 'Details' },
+    { id: 'venue',         label: 'Venue',         short: 'Venue' },
+    ...(isEditor ? [{ id: 'partner', label: 'Partner', short: 'Partner' }] : []),
+    { id: 'schedule',      label: 'Schedule',      short: 'Schedule' },
     { id: 'travelparty',   label: 'Reisegruppe',   short: 'Crew' },
-    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet', short: 'Advance' }] : []),
+    { id: 'travel',        label: 'Travel',        short: 'Travel' },
+    { id: 'hospitality',   label: 'Hospitality',   short: 'Hospitality' },
     { id: 'guestlist',     label: 'Gästeliste',    short: 'Gäste' },
+    ...(isEditor ? [{ id: 'advancing', label: 'Advancing', short: 'Advancing' }] : []),
+    { id: 'briefing',      label: 'Briefing',      short: 'Briefing' },
+    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet', short: 'Advance' }] : []),
   ] as { id: string; label: string; short: string }[]
 
   return (
