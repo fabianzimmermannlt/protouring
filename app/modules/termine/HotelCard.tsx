@@ -48,12 +48,15 @@ export default function HotelCard({
   isAdmin,
   terminDate,
   legsRefreshKey = 0,
+  collapsible = false,
 }: {
   terminId: number
   isAdmin: boolean
   terminDate: string
   legsRefreshKey?: number
+  collapsible?: boolean
 }) {
+  const [collapsed, setCollapsed] = useState(false)
   const [stays, setStays] = useState<HotelStay[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
   const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([])
@@ -146,7 +149,14 @@ export default function HotelCard({
     <div className="pt-card">
       <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span className="pt-card-title">Hotels</span>
+          {collapsible ? (
+            <button onClick={() => setCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+              {collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+              <span className="pt-card-title">Hotels</span>
+            </button>
+          ) : (
+            <span className="pt-card-title">Hotels</span>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             {stays.length > 0 && (
               <button
@@ -174,7 +184,7 @@ export default function HotelCard({
         )}
       </div>
 
-      <div className="pt-card-body">
+      <div className="pt-card-body" style={{ display: collapsible && collapsed ? 'none' : undefined }}>
         {loading && (
           <div className="pt-leg-empty">
             <Loader2 size={16} className="animate-spin" style={{ display: 'inline' }} />

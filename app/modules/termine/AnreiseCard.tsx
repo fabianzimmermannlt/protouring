@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Loader2, Car, Train, Plane, MoreHorizontal, type LucideIcon } from 'lucide-react'
+import { Plus, Loader2, Car, Train, Plane, MoreHorizontal, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import {
   getTravelLegs,
   getTravelParty,
@@ -22,6 +22,7 @@ interface AnreiseCardProps {
   prevTerminCity?: string   // nur relevant für legType="anreise" (Vortag-Venue)
   nextTerminCity?: string   // nur relevant für legType="abreise/weiterreise" (Folgetag-Venue)
   refreshKey?: number       // inkrementieren triggert Neu-Laden (z.B. nach Kopieren)
+  collapsible?: boolean     // Kopfzeile zum Ein-/Ausklappen (Akkordeon)
   onCopiedToAbreise?: (leg: TravelLeg) => void  // nur für legType="anreise"
   onLegDeleted?: () => void // Callback wenn ein Leg gelöscht wird (für externe Reaktion)
   onLegChanged?: () => void // Callback bei jeder Leg-Änderung (Save, Delete, Person-Update)
@@ -58,8 +59,9 @@ function formatTime(date: string, time: string): string {
 
 export default function AnreiseCard({
   terminId, legType, isAdmin, terminDate, terminCity, prevTerminCity, nextTerminCity,
-  refreshKey, onCopiedToAbreise, onLegDeleted, onLegChanged,
+  refreshKey, onCopiedToAbreise, onLegDeleted, onLegChanged, collapsible = false,
 }: AnreiseCardProps) {
+  const [collapsed, setCollapsed] = useState(false)
   const [allLegs, setAllLegs] = useState<TravelLeg[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -115,7 +117,14 @@ export default function AnreiseCard({
       {/* Kachel-Header */}
       <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span className="pt-card-title">{sectionTitle}</span>
+          {collapsible ? (
+            <button onClick={() => setCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+              {collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+              <span className="pt-card-title">{sectionTitle}</span>
+            </button>
+          ) : (
+            <span className="pt-card-title">{sectionTitle}</span>
+          )}
           {isAdmin && (
             <button onClick={openNew} className="pt-card-add-btn" title="Hinzufügen">
               <Plus size={14} />
@@ -128,7 +137,7 @@ export default function AnreiseCard({
       </div>
 
       {/* Kachel-Body */}
-      <div className="pt-card-body" style={{ padding: '0.75rem 1rem' }}>
+      <div className="pt-card-body" style={{ padding: '0.75rem 1rem', display: collapsible && collapsed ? 'none' : undefined }}>
         {loading ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 size={16} className="animate-spin text-gray-400" />

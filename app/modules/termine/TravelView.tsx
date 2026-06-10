@@ -30,7 +30,7 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
       ? (nextTermin.city || undefined) : undefined
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="flex flex-col gap-4" style={{ maxWidth: '900px' }}>
       <AnreiseCard
         terminId={termin.id}
         legType="anreise"
@@ -41,12 +41,14 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
         refreshKey={anreiseRefreshKey}
         onCopiedToAbreise={() => setAbreiseRefreshKey(k => k + 1)}
         onLegChanged={() => setHotelLegsKey(k => k + 1)}
+        collapsible
       />
       <HotelCard
         terminId={termin.id}
         isAdmin={isAdmin}
         terminDate={termin.date}
         legsRefreshKey={hotelLegsKey}
+        collapsible
       />
       <AnreiseCard
         terminId={termin.id}
@@ -58,6 +60,7 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
         refreshKey={abreiseRefreshKey}
         onLegDeleted={() => setAnreiseRefreshKey(k => k + 1)}
         onLegChanged={() => setHotelLegsKey(k => k + 1)}
+        collapsible
       />
     </div>
   )
