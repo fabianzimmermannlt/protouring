@@ -61,7 +61,7 @@ export default function AnreiseCard({
   terminId, legType, isAdmin, terminDate, terminCity, prevTerminCity, nextTerminCity,
   refreshKey, onCopiedToAbreise, onLegDeleted, onLegChanged, collapsible = false,
 }: AnreiseCardProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(collapsible)
   const [allLegs, setAllLegs] = useState<TravelLeg[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,17 +116,16 @@ export default function AnreiseCard({
     <div className="pt-card">
       {/* Kachel-Header */}
       <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          {collapsible ? (
-            <button onClick={() => setCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-              {collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-              <span className="pt-card-title">{sectionTitle}</span>
-            </button>
-          ) : (
+        <div
+          onClick={collapsible ? () => setCollapsed(c => !c) : undefined}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: collapsible ? 'pointer' : undefined }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {collapsible && (collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />)}
             <span className="pt-card-title">{sectionTitle}</span>
-          )}
+          </span>
           {isAdmin && (
-            <button onClick={openNew} className="pt-card-add-btn" title="Hinzufügen">
+            <button onClick={e => { e.stopPropagation(); openNew() }} className="pt-card-add-btn" title="Hinzufügen">
               <Plus size={14} />
             </button>
           )}

@@ -56,7 +56,7 @@ export default function HotelCard({
   legsRefreshKey?: number
   collapsible?: boolean
 }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(collapsible)
   const [stays, setStays] = useState<HotelStay[]>([])
   const [travelParty, setTravelParty] = useState<TravelPartyMember[]>([])
   const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([])
@@ -148,19 +148,18 @@ export default function HotelCard({
   return (
     <div className="pt-card">
       <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          {collapsible ? (
-            <button onClick={() => setCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-              {collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-              <span className="pt-card-title">Hotels</span>
-            </button>
-          ) : (
+        <div
+          onClick={collapsible ? () => setCollapsed(c => !c) : undefined}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: collapsible ? 'pointer' : undefined }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {collapsible && (collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />)}
             <span className="pt-card-title">Hotels</span>
-          )}
+          </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             {stays.length > 0 && (
               <button
-                onClick={openHotelPdf}
+                onClick={e => { e.stopPropagation(); openHotelPdf() }}
                 className="text-gray-400 hover:text-blue-600 transition-colors"
                 title="Hotelbelegung als PDF"
               >
@@ -173,7 +172,7 @@ export default function HotelCard({
               </button>
             )}
             {isAdmin && (
-              <button className="pt-card-add-btn" onClick={openNew} title="Hotel hinzufügen">
+              <button className="pt-card-add-btn" onClick={e => { e.stopPropagation(); openNew() }} title="Hotel hinzufügen">
                 <Plus size={14} />
               </button>
             )}
