@@ -12,8 +12,12 @@ import SonstigesCard from './SonstigesCard'
 import TerminChatCard from './TerminChatCard'
 import TerminFileCard from './TerminFileCard'
 import ToDoCard from './ToDoCard'
+import ReisegruppeView from './ReisegruppeView'
+import GaestelisteView from './GaestelisteView'
+import BriefingView from './BriefingView'
+import AdvanceSheetView from './AdvanceSheetView'
 import ContentBoard from '@/app/components/shared/ContentBoard'
-import { getCurrentUser } from '@/lib/api-client'
+import { getCurrentUser, isEditorRole, getEffectiveRole } from '@/lib/api-client'
 import type { Termin } from '@/lib/api-client'
 import { AccordionSection as Section } from '@/app/components/shared/AccordionSection'
 
@@ -60,6 +64,7 @@ export default function TerminDetailMobile({
 }: Props) {
   const currentUser = getCurrentUser()
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
+  const isEditor = isEditorRole(getEffectiveRole())
 
   const pageTitle = termin.showTitleAsHeader
     ? [termin.city, termin.title].filter(Boolean).join(' · ')
@@ -139,19 +144,34 @@ export default function TerminDetailMobile({
         </div>
       </Section>
 
+      {/* ── Reisegruppe ─────────────────────────────────── */}
+      <Section title="Reisegruppe" stateKey="termin_reisegruppe">
+        <ReisegruppeView terminId={termin.id} isAdmin={isEditor} />
+      </Section>
+
       {/* ── 2. Zeitplan ─────────────────────────────────── */}
       <Section title="Zeitplan" defaultOpen stateKey="termin_zeitplan">
         <ZeitplaeneCard terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
-      {/* ── 3. Catering ─────────────────────────────────── */}
-      <Section title="Catering" defaultOpen stateKey="termin_catering">
+      {/* ── 3. Hospitality ──────────────────────────────── */}
+      <Section title="Hospitality" defaultOpen stateKey="termin_catering">
         <CateringCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── Gästeliste ──────────────────────────────────── */}
+      <Section title="Gästeliste" stateKey="termin_guestlist">
+        <GaestelisteView key={termin.id} terminId={termin.id} />
       </Section>
 
       {/* ── 4. Advancing ────────────────────────────────── */}
       <Section title="Advancing" stateKey="termin_advancing">
         <AdvancingCard terminId={termin.id} isAdmin={isAdmin} />
+      </Section>
+
+      {/* ── Briefing ────────────────────────────────────── */}
+      <Section title="Briefing" stateKey="termin_briefing">
+        <BriefingView terminId={termin.id} isAdmin={isAdmin} />
       </Section>
 
       {/* ── 5. Sonstiges ────────────────────────────────── */}
@@ -189,6 +209,13 @@ export default function TerminDetailMobile({
       {canSeeFiles && (
         <Section title="Dateien" stateKey="termin_dateien">
           <TerminFileCard terminId={String(termin.id)} />
+        </Section>
+      )}
+
+      {/* ── Advance Sheet ───────────────────────────────── */}
+      {isEditor && (
+        <Section title="Advance Sheet" stateKey="termin_advance_sheet">
+          <AdvanceSheetView terminId={termin.id} />
         </Section>
       )}
 
