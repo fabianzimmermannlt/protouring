@@ -1820,30 +1820,69 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
     }
     const isAdvancingTab = tab === 'events'
 
+    // Mobile-Kopfzeile: Eventname + Datum + Weiter/Zurück + zurück zur Liste
+    const mIdx = sortedTermine.findIndex(t => t.id === selectedTermin.id)
+    const mPrev = mIdx > 0 ? sortedTermine[mIdx - 1] : null
+    const mNext = mIdx >= 0 && mIdx < sortedTermine.length - 1 ? sortedTermine[mIdx + 1] : null
+    const mTitle = selectedTermin.showTitleAsHeader
+      ? [selectedTermin.city, selectedTermin.title].filter(Boolean).join(' · ')
+      : selectedTermin.venueId
+        ? [selectedTermin.venueName, selectedTermin.venueCity].filter(Boolean).join(' · ') || selectedTermin.title || ''
+        : [selectedTermin.city, selectedTermin.title].filter(Boolean).join(' · ') || selectedTermin.title || ''
+
     return (
       <div className="module-content">
-        {!isL3 && !isMobile && (
-          <TerminDetailHeader
-            termin={selectedTermin}
-            termine={sortedTermine}
-            selectedView={selectedView}
-            onNavigate={id => selectTermin(id, selectedView)}
-            onDelete={async () => {
-              const label = [selectedTermin.city, selectedTermin.title, formatDateShort(selectedTermin.date)].filter(Boolean).join(' · ')
-              if (!confirm(`„${label}" endgültig löschen? Alle Daten (Reisegruppe, Travel, Pässe etc.) werden unwiderruflich entfernt.`)) return
-              await deleteTermin(selectedTermin.id)
-              onDeleted()
-            }}
-            isAdmin={isAdmin}
-            isEditor={isEditor}
-          />
+        {!isL3 && (
+          <div className="hidden md:block">
+            <TerminDetailHeader
+              termin={selectedTermin}
+              termine={sortedTermine}
+              selectedView={selectedView}
+              onNavigate={id => selectTermin(id, selectedView)}
+              onDelete={async () => {
+                const label = [selectedTermin.city, selectedTermin.title, formatDateShort(selectedTermin.date)].filter(Boolean).join(' · ')
+                if (!confirm(`„${label}" endgültig löschen? Alle Daten (Reisegruppe, Travel, Pässe etc.) werden unwiderruflich entfernt.`)) return
+                await deleteTermin(selectedTermin.id)
+                onDeleted()
+              }}
+              isAdmin={isAdmin}
+              isEditor={isEditor}
+            />
+          </div>
         )}
-        {!isL3 && isMobile && (
-          <TerminDatumzeile
-            termin={selectedTermin}
-            termine={sortedTermine}
-            onNavigate={id => selectTermin(id, selectedView)}
-          />
+        {!isL3 && (
+          <div className="md:hidden flex items-center gap-2 mb-3">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
+              className="flex items-center gap-1 shrink-0"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af', fontSize: '0.8rem' }}
+              title="Zurück zur Liste"
+            >
+              <ArrowLeft size={16} /> Liste
+            </button>
+            <div className="flex-1 min-w-0 text-center">
+              <div className="text-sm font-medium truncate" style={{ color: '#e0e0e0' }}>{mTitle}</div>
+              <div className="text-xs truncate" style={{ color: '#9ca3af' }}>{formatDateLong(selectedTermin.date)}</div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => mPrev && selectTermin(mPrev.id, selectedView)}
+                disabled={!mPrev}
+                style={{ background: 'none', border: 'none', cursor: mPrev ? 'pointer' : 'default', padding: '4px', color: mPrev ? '#9ca3af' : '#4b5563' }}
+                title="Vorheriges Event"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={() => mNext && selectTermin(mNext.id, selectedView)}
+                disabled={!mNext}
+                style={{ background: 'none', border: 'none', cursor: mNext ? 'pointer' : 'default', padding: '4px', color: mNext ? '#9ca3af' : '#4b5563' }}
+                title="Nächstes Event"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
         )}
         {selectedView === 'venue' ? (
           <VenueView termin={selectedTermin} isAdmin={isAdmin} onUpdated={onUpdated} />

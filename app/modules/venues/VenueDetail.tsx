@@ -364,7 +364,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
   })
 
   const ro = !isEditor
-  const titleColor = isL2 ? '#e0e0e0' : '#111827'
+  const titleColor = '#e0e0e0'  // App ist fest Dark-Mode → Titel immer hell (auch mobil, wo isL2 false ist)
   const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
 
   // ─── Render ───────────────────────────────────────────────────────────────
