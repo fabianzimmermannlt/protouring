@@ -174,7 +174,7 @@ export default function TerminPartnersCard({
         <div key={link.id}>
           <PartnerDetailContent
             partnerId={String(link.partner_id)}
-            belowTitle={isAdmin ? (
+            headerRight={isAdmin ? (
               <>
                 <button
                   onClick={() => { setSwappingLink(link); setShowPicker(true) }}
