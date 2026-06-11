@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, Loader2, Paperclip, Mail, Phone } from 'lucide-react'
-import { useIsMobile } from '@/app/hooks/useIsMobile'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getTravelPartyWithExcluded,
@@ -236,8 +235,6 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
     })
   }, [members, sortKey, sortDir])
 
-  const isMobile = useIsMobile()
-
   const openEditModal = (m: TravelPartyMember) => {
     setEditingMember(m)
     setEditRoles({ role1: m.role1 || '', role2: m.role2 || '', role3: m.role3 || '' })
@@ -322,9 +319,10 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             Noch niemand in der Crew. Mit „+ Hinzufügen" Kontakte auswählen.
           </div>
         </div>
-      ) : isMobile ? (
-        /* ── Mobile Card List ── */
+      ) : (
         <>
+        {/* ── Mobile Karten (nur Handy) ── */}
+        <div className="md:hidden">
         <div className="flex flex-col gap-2 mt-2">
           {sortedMembers.map(m => {
             const functions = [m.role1, m.role2, m.role3].filter(Boolean).join(' · ')
@@ -436,10 +434,9 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             </div>
           </div>
         )}
-        </>
-      ) : (
-        /* ── Desktop Table ── */
-        <div className="data-table-wrapper">
+        </div>
+        {/* ── Desktop Tabelle (nur Web) ── */}
+        <div className="hidden md:block data-table-wrapper">
           <table className="data-table data-table--compact">
             <thead>
               <tr>
@@ -496,18 +493,33 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             </tbody>
           </table>
         </div>
+        </>
       )}
 
-      <BandBlock
-        members={bandMembers}
-        excludedMembers={excludedBandMembers}
-        isMobile={isMobile}
-        isAdmin={isAdmin}
-        terminId={terminId}
-        dark={dark}
-        onExclude={handleExcludeArtist}
-        onRestore={handleRestoreArtist}
-      />
+      <div className="md:hidden">
+        <BandBlock
+          members={bandMembers}
+          excludedMembers={excludedBandMembers}
+          isMobile={true}
+          isAdmin={isAdmin}
+          terminId={terminId}
+          dark={dark}
+          onExclude={handleExcludeArtist}
+          onRestore={handleRestoreArtist}
+        />
+      </div>
+      <div className="hidden md:block">
+        <BandBlock
+          members={bandMembers}
+          excludedMembers={excludedBandMembers}
+          isMobile={false}
+          isAdmin={isAdmin}
+          terminId={terminId}
+          dark={dark}
+          onExclude={handleExcludeArtist}
+          onRestore={handleRestoreArtist}
+        />
+      </div>
 
       {pickerOpen && (
         <ReisegruppePicker
