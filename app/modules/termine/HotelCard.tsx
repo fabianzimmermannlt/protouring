@@ -153,7 +153,11 @@ export default function HotelCard({
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: collapsible ? 'pointer' : undefined }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            {collapsible && (collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />)}
+            {collapsible && (
+              <span className="md:hidden inline-flex items-center">
+                {collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+              </span>
+            )}
             <span className="pt-card-title">Hotels</span>
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -183,7 +187,7 @@ export default function HotelCard({
         )}
       </div>
 
-      <div className="pt-card-body" style={{ display: collapsible && collapsed ? 'none' : undefined }}>
+      <div className={`pt-card-body ${collapsible && collapsed ? 'hidden md:block' : ''}`}>
         {loading && (
           <div className="pt-leg-empty">
             <Loader2 size={16} className="animate-spin" style={{ display: 'inline' }} />

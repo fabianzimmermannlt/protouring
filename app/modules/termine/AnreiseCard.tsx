@@ -121,7 +121,11 @@ export default function AnreiseCard({
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: collapsible ? 'pointer' : undefined }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            {collapsible && (collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />)}
+            {collapsible && (
+              <span className="md:hidden inline-flex items-center">
+                {collapsed ? <ChevronRight size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+              </span>
+            )}
             <span className="pt-card-title">{sectionTitle}</span>
           </span>
           {isAdmin && (
@@ -135,8 +139,8 @@ export default function AnreiseCard({
         )}
       </div>
 
-      {/* Kachel-Body */}
-      <div className="pt-card-body" style={{ padding: '0.75rem 1rem', display: collapsible && collapsed ? 'none' : undefined }}>
+      {/* Kachel-Body — am Desktop immer sichtbar, mobil einklappbar */}
+      <div className={`pt-card-body ${collapsible && collapsed ? 'hidden md:block' : ''}`} style={{ padding: '0.75rem 1rem' }}>
         {loading ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 size={16} className="animate-spin text-gray-400" />

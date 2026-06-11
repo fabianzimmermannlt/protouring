@@ -30,7 +30,7 @@ export default function TravelView({ termin, termine, isAdmin }: TravelViewProps
       ? (nextTermin.city || undefined) : undefined
 
   return (
-    <div className="flex flex-col gap-4" style={{ maxWidth: '900px' }}>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
       <AnreiseCard
         terminId={termin.id}
         legType="anreise"
