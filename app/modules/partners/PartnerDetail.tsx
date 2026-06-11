@@ -164,7 +164,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
             </button>
           </div>
         ) : headerRight ? (
-          <div style={{ flexShrink: 0 }}>{headerRight}</div>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>{headerRight}</div>
         ) : null}
       </div>
 
