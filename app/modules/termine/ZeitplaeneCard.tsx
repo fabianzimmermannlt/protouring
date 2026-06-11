@@ -389,7 +389,7 @@ export default function ZeitplaeneCard({ terminId, isAdmin, layout = 'stack' }: 
   return (
     <>
       {layout === 'grid-2' ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {scheduleCards}{newCard}{isAdmin && editingId !== 'new' && <AddButton />}
         </div>
       ) : (
