@@ -150,7 +150,8 @@ export default function HotelCard({
       <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0' }}>
         <div
           onClick={collapsible ? () => setCollapsed(c => !c) : undefined}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: collapsible ? 'pointer' : undefined }}
+          className={collapsible ? 'cursor-pointer md:cursor-default' : ''}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             {collapsible && (
