@@ -168,7 +168,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
         ) : null}
       </div>
       {belowTitle && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 2, marginBottom: 8 }}>{belowTitle}</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 0, marginBottom: 2 }}>{belowTitle}</div>
       )}
 
       {loadError && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{loadError}</div>}
