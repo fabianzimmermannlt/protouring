@@ -98,7 +98,8 @@ export default function LokaleKontakteCard({ terminId, isAdmin, layout = 'stack'
         </div>
   ))
 
-  const addButton = isAdmin && (
+  // "Neuer Ansprechpartner"-Button vorerst ausgeblendet (Wunsch Fabian) — Logik bleibt, nur nicht gerendert
+  const addButton = false && isAdmin && (
     <button onClick={openNew} className="pt-card-new">
       <div className="flex items-center justify-center gap-2 px-4 py-4 text-gray-300">
         <Plus size={14} />

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 import { AutoGrowTextarea } from '@/app/components/shared/AutoGrowTextarea'
+import { CollapsibleCard } from '@/app/components/shared/CollapsibleCard'
 import {
   getAuthToken, getCurrentTenant, getCurrentUser,
   isEditorRole, getEffectiveRole, type Venue, type VenueContact,
@@ -412,11 +413,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Spielstätte */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardVenue')}</span>
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard title={<><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardVenue')}</>}>
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : (
               <div className="space-y-2">
@@ -443,15 +440,10 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 )}
               </div>
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
         {/* Backstage & Logistics */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><Navigation className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardBackstage')}</span>
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard title={<><Navigation className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardBackstage')}</>}>
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : (
               <div className="space-y-2">
@@ -466,15 +458,10 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 <ITextarea label={t('venues.loadingPath')} value={form.loadingPath ?? ''} onChange={v => f('loadingPath', v)} readOnly={ro} />
               </div>
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
         {/* Technische Specs */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><Ruler className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardTech')}</span>
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard title={<><Ruler className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardTech')}</>}>
             {loading ? <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-4 bg-gray-100 animate-pulse rounded" />)}</div>
             : (
               <div className="space-y-2">
@@ -494,16 +481,13 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 <ITextarea label={t('venues.notesTitle')} value={form.notes ?? ''} onChange={v => f('notes', v)} readOnly={ro} />
               </div>
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
         {/* Ansprechpartner */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><UserCircle className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardContacts')}</span>
-            {isEditor && <button onClick={startAddContact} className="text-gray-400 hover:text-blue-600 transition-colors"><Plus className="w-3.5 h-3.5" /></button>}
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard
+          title={<><UserCircle className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardContacts')}</>}
+          actions={isEditor ? <button onClick={startAddContact} className="text-gray-400 hover:text-blue-600 transition-colors"><Plus className="w-3.5 h-3.5" /></button> : undefined}
+        >
             {contactsLoading ? (
               <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : (
@@ -546,16 +530,14 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 )}
               </>
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
         {/* Fotos */}
-        <div className="pt-card md:col-span-2">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><ImageIcon className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardPhotos')}</span>
-            {isEditor && <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button>}
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard
+          className="md:col-span-2"
+          title={<><ImageIcon className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardPhotos')}</>}
+          actions={isEditor ? <button onClick={() => { setUploadType('photos'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button> : undefined}
+        >
             {filesLoading ? (
               <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : photos.length === 0 ? (
@@ -575,16 +557,13 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 ))}
               </div>
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
         {/* Dokumente */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><FileIcon className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardDocs')}</span>
-            {isEditor && <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button>}
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard
+          title={<><FileIcon className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardDocs')}</>}
+          actions={isEditor ? <button onClick={() => { setUploadType('files'); setShowUploadModal(true) }} className="text-gray-400 hover:text-blue-600 transition-colors"><Upload className="w-3.5 h-3.5" /></button> : undefined}
+        >
             {filesLoading ? (
               <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : Object.keys(docsByCategory).length === 0 ? (
@@ -595,15 +574,10 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                   onDelete={isEditor ? handleDeleteFile : undefined} onOpen={openFile} />
               ))
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
         {/* Shows */}
-        <div className="pt-card">
-          <div className="pt-card-header">
-            <span className="pt-card-title"><Users className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardShows')}</span>
-          </div>
-          <div className="pt-card-body">
+        <CollapsibleCard title={<><Users className="w-3.5 h-3.5 inline mr-1" />{t('venues.cardShows')}</>}>
             {showsLoading ? (
               <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : shows.length === 0 ? (
@@ -623,8 +597,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                 ))}
               </div>
             )}
-          </div>
-        </div>
+        </CollapsibleCard>
 
       </div>
 
