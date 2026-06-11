@@ -9,6 +9,7 @@ import {
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import { AutoGrowTextarea } from '@/app/components/shared/AutoGrowTextarea'
+import { CollapsibleCard } from '@/app/components/shared/CollapsibleCard'
 
 const PARTNER_TYPES = [
   'Veranstaltende', 'Autovermietung', 'Trucking-Firma', 'Reisebüro', 'Technik-Lieferant',
@@ -57,7 +58,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
   )
 }
 
-export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRight }: { partnerId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
+export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRight, belowTitle }: { partnerId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode; belowTitle?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = layout === 'L2'
@@ -166,6 +167,9 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
           <div style={{ flexShrink: 0 }}>{headerRight}</div>
         ) : null}
       </div>
+      {belowTitle && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 2, marginBottom: 8 }}>{belowTitle}</div>
+      )}
 
       {loadError && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{loadError}</div>}
       {saveError && <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-4"><AlertCircle className="w-4 h-4 shrink-0" />{saveError}</div>}
@@ -183,25 +187,16 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Allgemein */}
-          <div className="pt-card">
-            <div className="pt-card-header">
-              <span className="pt-card-title"><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardGeneral')}</span>
-            </div>
-            <div className="pt-card-body">
+          <CollapsibleCard title={<><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardGeneral')}</>}>
               <div className="space-y-2">
                 <IField label={t('partners.company')} value={form.companyName ?? ''} onChange={v => f('companyName', v)} readOnly={ro} />
                 <ISelect label={t('partners.type')} value={form.type ?? ''} onChange={v => f('type', v)} options={PARTNER_TYPES} placeholder={t('partners.selectTypeOption')} readOnly={ro} />
                 <IField label={t('partners.contactPerson')} value={form.contactPerson ?? ''} onChange={v => f('contactPerson', v)} readOnly={ro} />
               </div>
-            </div>
-          </div>
+          </CollapsibleCard>
 
           {/* Adresse */}
-          <div className="pt-card">
-            <div className="pt-card-header">
-              <span className="pt-card-title"><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardAddress')}</span>
-            </div>
-            <div className="pt-card-body">
+          <CollapsibleCard title={<><MapPin className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardAddress')}</>}>
               <div className="space-y-2">
                 <IField label={t('address.street')} value={form.street ?? ''} onChange={v => f('street', v)} readOnly={ro} />
                 <div className="grid grid-cols-[80px_1fr] gap-2">
@@ -211,15 +206,10 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
                 <IField label={t('address.state')} value={form.state ?? ''} onChange={v => f('state', v)} readOnly={ro} />
                 <IField label={t('address.country')} value={form.country ?? ''} onChange={v => f('country', v)} readOnly={ro} />
               </div>
-            </div>
-          </div>
+          </CollapsibleCard>
 
           {/* Kontakt */}
-          <div className="pt-card md:col-span-2">
-            <div className="pt-card-header">
-              <span className="pt-card-title"><Phone className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardContact')}</span>
-            </div>
-            <div className="pt-card-body">
+          <CollapsibleCard className="md:col-span-2" title={<><Phone className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardContact')}</>}>
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <IField label={t('general.email')} value={form.email ?? ''} onChange={v => f('email', v)} readOnly={ro} />
@@ -229,8 +219,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
                 <ITextarea label={t('partners.billingAddress')} value={form.billingAddress ?? ''} onChange={v => f('billingAddress', v)} readOnly={ro} />
                 <ITextarea label={t('venues.notesTitle')} value={form.notes ?? ''} onChange={v => f('notes', v)} readOnly={ro} />
               </div>
-            </div>
-          </div>
+          </CollapsibleCard>
 
         </div>
       )}
