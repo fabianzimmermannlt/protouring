@@ -723,11 +723,6 @@ export default function GaestelisteView({ terminId }: Props) {
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
               )}
-              {isEditor && (
-                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`p-2 rounded-lg ${isLocked ? 'text-green-600 bg-green-50' : 'text-gray-500 hover:bg-gray-100'}`}>
-                  {isLocked ? <LockClosedIcon className="w-5 h-5" /> : <LockOpenIcon className="w-5 h-5" />}
-                </button>
-              )}
             </div>
             <div className="flex gap-1">
               {isEditor && lists.length > 1 && activeListId && (
@@ -750,8 +745,15 @@ export default function GaestelisteView({ terminId }: Props) {
             </div>
           </div>
 
-          {/* Row 2: List tabs */}
-          <div className="mb-3">{listTabs}</div>
+          {/* Row 2: Name + Schloss */}
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex-1 min-w-0">{listTabs}</div>
+            {isEditor && (
+              <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`p-2 rounded-lg flex-shrink-0 ${isLocked ? 'text-green-600 bg-green-50' : 'text-gray-500 hover:bg-gray-100'}`}>
+                {isLocked ? <LockClosedIcon className="w-5 h-5" /> : <LockOpenIcon className="w-5 h-5" />}
+              </button>
+            )}
+          </div>
 
           {/* Limit-Warnungen */}
           {limitWarnings}
@@ -896,16 +898,16 @@ export default function GaestelisteView({ terminId }: Props) {
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
               )}
+            </div>
+
+            {/* Mitte: Name + Schloss (füllt den Platz) */}
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex-1 min-w-0">{listTabs}</div>
               {isEditor && (
                 <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`btn flex-shrink-0 ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
                   {isLocked ? <LockClosedIcon className="w-4 h-4" /> : <LockOpenIcon className="w-4 h-4" />}
                 </button>
               )}
-            </div>
-
-            {/* Mitte: Tabs (füllt den Platz) */}
-            <div className="min-w-0">
-              {listTabs}
             </div>
 
             {/* Rechts: Löschen, Neue Liste, Einstellungen, CSV, PDF */}
