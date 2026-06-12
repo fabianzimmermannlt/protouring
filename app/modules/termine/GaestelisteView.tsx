@@ -720,13 +720,13 @@ export default function GaestelisteView({ terminId }: Props) {
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
               )}
-            </div>
-            <div className="flex gap-1">
               {isEditor && (
                 <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`p-2 rounded-lg ${isLocked ? 'text-green-600 bg-green-50' : 'text-gray-500 hover:bg-gray-100'}`}>
                   {isLocked ? <LockOpenIcon className="w-5 h-5" /> : <LockClosedIcon className="w-5 h-5" />}
                 </button>
               )}
+            </div>
+            <div className="flex gap-1">
               {newListBtn}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
@@ -879,12 +879,17 @@ export default function GaestelisteView({ terminId }: Props) {
         <div className="px-4">
           {/* Toolbar + Tabs in einer Zeile */}
           <div className="flex items-center gap-2 mb-4">
-            {/* Links: Hinzufügen */}
+            {/* Links: Hinzufügen + Sperren */}
             <div className="flex items-center gap-2 shrink-0">
               {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
+                </button>
+              )}
+              {isEditor && (
+                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
                 </button>
               )}
             </div>
@@ -894,14 +899,8 @@ export default function GaestelisteView({ terminId }: Props) {
               {listTabs}
             </div>
 
-            {/* Rechts: Abschließen, Neue Liste, Einstellungen, Löschen, CSV, PDF */}
+            {/* Rechts: Neue Liste, Einstellungen, Löschen, CSV, PDF */}
             <div className="flex items-center gap-2 shrink-0">
-              {isEditor && (
-                <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
-                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-                  {isLocked ? 'Entsperren' : 'Abschließen'}
-                </button>
-              )}
               {newListBtn}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
