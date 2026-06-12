@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Pencil, Save, X, Plus, Trash2, UtensilsCrossed, Building2, Banknote, ShoppingBag, CalendarClock, AlertTriangle } from 'lucide-react'
+import { Loader2, Pencil, Save, X, Plus, Trash2, UtensilsCrossed, Building2, Banknote, ShoppingBag, CalendarClock, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { RichTextEditor } from '@/app/components/shared/RichTextEditor'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import {
@@ -73,7 +73,7 @@ function DietOverview({ members }: { members: CateringMember[] }) {
   }
 
   return (
-    <div className="border-t border-gray-700 pt-3 mt-1">
+    <div>
       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
         Insg. {members.length} {members.length === 1 ? 'Person' : 'Personen'}, davon ernähren sich:
       </div>
@@ -345,6 +345,7 @@ function CateringBlock({
   const [notesOpen, setNotesOpen]       = useState(false)
   const [editingMeta, setEditingMeta]   = useState(false)
   const [saving, setSaving]             = useState(false)
+  const [open, setOpen]                 = useState(true)  // mobil einklappbar; Desktop immer offen
 
   const currency = getCurrency()
   const currSymbol = getCurrencySymbol(currency)
@@ -395,37 +396,49 @@ function CateringBlock({
   }
 
   const cfg = typeCfg(type)
+  const headerTitle = label || (type === 'none' ? 'Neuer Catering-Block' : cfg.label)
   const totalBuyout = buyoutAmount && totalPersons > 0 ? (parseFloat(buyoutAmount) * totalPersons).toFixed(2) : null
 
   return (
-    <div className="rounded-xl border p-3 space-y-3" style={{ borderColor: '#3c3c3c', background: '#262626' }}>
-      {/* Block-Header */}
-      <div className="flex items-center gap-2">
-        {isAdmin ? (
+    <div className="pt-card">
+      {/* Block-Header (mobil zum Ein-/Ausklappen) */}
+      <div className="pt-card-header cursor-pointer md:cursor-default" onClick={() => setOpen(o => !o)}>
+        <span className="pt-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+          <span className="md:hidden inline-flex items-center">
+            {open ? <ChevronDown size={14} className="text-gray-400 shrink-0" /> : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
+          </span>
+          <span className="truncate">{headerTitle}</span>
+          {type !== 'none' && (
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full text-white whitespace-nowrap" style={{ background: cfg.color }}>
+              {cfg.label}
+            </span>
+          )}
+        </span>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+          {saving && <Loader2 size={12} className="animate-spin text-gray-500" />}
+          {isAdmin && (
+            <button onClick={handleDelete} className="text-gray-500 hover:text-red-400 transition-colors" title="Block löschen">
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={`pt-card-body space-y-3 ${open ? '' : 'hidden md:block'}`}>
+
+      {/* Bezeichnung (Admin) */}
+      {isAdmin && (
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bezeichnung</label>
           <input
-            className="form-input text-sm py-0.5 flex-1 min-w-0"
-            placeholder="Bezeichnung (z.B. Hauptcatering / Aftershow)"
+            className="form-input text-sm py-0.5 mt-1"
+            placeholder="z.B. Hauptcatering / Aftershow"
             value={label}
             onChange={e => setLabel(e.target.value)}
             onBlur={() => persist({ label })}
           />
-        ) : (
-          <span className="text-sm font-semibold text-gray-200 flex-1 min-w-0 truncate">
-            {label || cfg.label}
-          </span>
-        )}
-        {type !== 'none' && (
-          <span className="text-xs font-medium px-1.5 py-0.5 rounded-full text-white whitespace-nowrap" style={{ background: cfg.color }}>
-            {cfg.label}
-          </span>
-        )}
-        {saving && <Loader2 size={12} className="animate-spin text-gray-500" />}
-        {isAdmin && (
-          <button onClick={handleDelete} className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0" title="Block löschen">
-            <Trash2 size={13} />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Typ-Auswahl (Admin) */}
       {isAdmin && (
@@ -579,6 +592,8 @@ function CateringBlock({
           )}
         </div>
       )}
+
+      </div>
     </div>
   )
 }
@@ -625,37 +640,35 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
   )
 
   return (
-    <div className="pt-card">
-      <div className="pt-card-header">
-        <span className="pt-card-title">CATERING</span>
-        {adding && <Loader2 size={12} className="animate-spin text-gray-500" />}
-      </div>
+    <div className="space-y-4">
 
-      <div className="pt-card-body space-y-3">
+      {blocks.map(block => (
+        <CateringBlock
+          key={block.id}
+          terminId={terminId}
+          block={block}
+          members={members}
+          isAdmin={isAdmin}
+          myContactId={myContactId}
+          totalPersons={totalPersons}
+          onChanged={updateBlock}
+          onDeleted={() => removeBlock(block.id)}
+        />
+      ))}
 
-        {blocks.map(block => (
-          <CateringBlock
-            key={block.id}
-            terminId={terminId}
-            block={block}
-            members={members}
-            isAdmin={isAdmin}
-            myContactId={myContactId}
-            totalPersons={totalPersons}
-            onChanged={updateBlock}
-            onDeleted={() => removeBlock(block.id)}
-          />
-        ))}
+      {/* Leerzustand (Nicht-Admin) */}
+      {blocks.length === 0 && !isAdmin && (
+        <div className="pt-card">
+          <div className="pt-card-body text-sm text-gray-500 text-center py-4">Kein Catering geplant</div>
+        </div>
+      )}
 
-        {/* Leerzustand / Hinzufügen */}
-        {blocks.length === 0 && !isAdmin && (
-          <div className="text-sm text-gray-500 text-center py-2">Kein Catering geplant</div>
-        )}
-
-        {isAdmin && (
-          blocks.length === 0 ? (
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Catering hinzufügen</div>
+      {/* Hinzufügen */}
+      {isAdmin && (
+        blocks.length === 0 ? (
+          <div className="pt-card">
+            <div className="pt-card-header"><span className="pt-card-title">CATERING HINZUFÜGEN</span></div>
+            <div className="pt-card-body">
               <div className="grid grid-cols-2 gap-1.5">
                 {TYPE_OPTIONS.filter(o => o.value !== 'none').map(opt => (
                   <button
@@ -671,22 +684,29 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
                 ))}
               </div>
             </div>
-          ) : (
-            <button
-              onClick={() => addBlock('order')}
-              disabled={adding}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed text-sm transition-colors"
-              style={{ borderColor: '#3c3c3c', color: '#9ca3af' }}
-            >
-              <Plus size={14} /> Weiterer Catering-Block
-            </button>
-          )
-        )}
+          </div>
+        ) : (
+          <button
+            onClick={() => addBlock('order')}
+            disabled={adding}
+            className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-dashed text-sm transition-colors"
+            style={{ borderColor: '#3c3c3c', color: '#9ca3af' }}
+          >
+            {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Weiterer Catering-Block
+          </button>
+        )
+      )}
 
-        {/* Diät-Übersicht (termin-weit) */}
-        <DietOverview members={members} />
+      {/* Diät-Übersicht (termin-weit) */}
+      {members.length > 0 && (
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">DIÄT-ÜBERSICHT</span></div>
+          <div className="pt-card-body">
+            <DietOverview members={members} />
+          </div>
+        </div>
+      )}
 
-      </div>
     </div>
   )
 }
