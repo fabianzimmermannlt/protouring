@@ -730,15 +730,15 @@ export default function GaestelisteView({ terminId }: Props) {
               )}
             </div>
             <div className="flex gap-1">
+              {isEditor && lists.length > 1 && activeListId && (
+                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500">
+                  <TrashIcon className="w-5 h-5" />
+                </button>
+              )}
               {newListBtn}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
                   <Cog6ToothIcon className="w-5 h-5" />
-                </button>
-              )}
-              {isEditor && lists.length > 1 && activeListId && (
-                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500">
-                  <TrashIcon className="w-5 h-5" />
                 </button>
               )}
               <button onClick={handleCsvExport} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
@@ -902,17 +902,17 @@ export default function GaestelisteView({ terminId }: Props) {
               {listTabs}
             </div>
 
-            {/* Rechts: Neue Liste, Einstellungen, Löschen, CSV, PDF */}
+            {/* Rechts: Löschen, Neue Liste, Einstellungen, CSV, PDF */}
             <div className="flex items-center gap-2 shrink-0">
+              {isEditor && lists.length > 1 && activeListId && (
+                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="btn btn-ghost flex-shrink-0 text-red-500 hover:text-red-600">
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              )}
               {newListBtn}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="btn btn-ghost flex-shrink-0">
                   <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
-                </button>
-              )}
-              {isEditor && lists.length > 1 && activeListId && (
-                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="btn btn-ghost flex-shrink-0 text-red-500 hover:text-red-600">
-                  <TrashIcon className="w-4 h-4" />
                 </button>
               )}
               <button onClick={handleCsvExport} className="btn btn-ghost flex-shrink-0">
