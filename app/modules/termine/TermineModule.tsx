@@ -1850,7 +1850,8 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
             />
           </div>
         )}
-        {!isL3 && (
+        {/* Mobile-Kopfzeile immer (md:hidden), unabhängig vom Layout (L3-Default greift sonst bei Superadmin am Handy) */}
+        {(
           <div className="md:hidden sticky top-0 z-20 flex items-center gap-2 mb-3 py-2" style={{ background: '#1c1c1c', borderBottom: '1px solid #3c3c3c' }}>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
