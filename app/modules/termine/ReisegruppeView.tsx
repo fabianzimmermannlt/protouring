@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Trash2, Loader2, Paperclip, Mail, Phone } from 'lucide-react'
-import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getTravelPartyWithExcluded,
   updateTravelPartyMember,
@@ -199,8 +198,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
   const [editRoles, setEditRoles] = useState<{ role1: string; role2: string; role3: string }>({ role1: '', role2: '', role3: '' })
   const [sortKey, setSortKey] = useState<SortKey>('lastName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true  // App ist fest Dark-Mode → Karten immer dunkel (Layout kann am Handy L3 sein, daher nicht an layout koppeln)
   const { isVisible, toggle, columns } = useColumnVisibility('reisegruppe', REISEGRUPPE_COLUMNS)
 
   useEffect(() => {
