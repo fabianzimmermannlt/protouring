@@ -1854,35 +1854,27 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
         {(
           <div className="md:hidden sticky top-0 z-20 flex items-center gap-2 mb-3 py-2" style={{ background: '#1c1c1c', borderBottom: '1px solid #3c3c3c' }}>
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('termine-go-to-list'))}
-              className="flex items-center gap-1 shrink-0"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af', fontSize: '0.8rem' }}
-              title="Zurück zur Liste"
+              onClick={() => mPrev && selectTermin(mPrev.id, selectedView)}
+              disabled={!mPrev}
+              className="shrink-0"
+              style={{ background: 'none', border: 'none', cursor: mPrev ? 'pointer' : 'default', padding: '4px', color: mPrev ? '#9ca3af' : '#4b5563' }}
+              title="Vorheriges Event"
             >
-              <ArrowLeft size={16} /> Liste
+              <ChevronLeft size={24} />
             </button>
             <div className="flex-1 min-w-0 text-center">
               <div className="text-sm font-medium truncate" style={{ color: '#e0e0e0' }}>{mTitle}</div>
               <div className="text-xs truncate" style={{ color: '#9ca3af' }}>{formatDateLong(selectedTermin.date)}</div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => mPrev && selectTermin(mPrev.id, selectedView)}
-                disabled={!mPrev}
-                style={{ background: 'none', border: 'none', cursor: mPrev ? 'pointer' : 'default', padding: '4px', color: mPrev ? '#9ca3af' : '#4b5563' }}
-                title="Vorheriges Event"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button
-                onClick={() => mNext && selectTermin(mNext.id, selectedView)}
-                disabled={!mNext}
-                style={{ background: 'none', border: 'none', cursor: mNext ? 'pointer' : 'default', padding: '4px', color: mNext ? '#9ca3af' : '#4b5563' }}
-                title="Nächstes Event"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
+            <button
+              onClick={() => mNext && selectTermin(mNext.id, selectedView)}
+              disabled={!mNext}
+              className="shrink-0"
+              style={{ background: 'none', border: 'none', cursor: mNext ? 'pointer' : 'default', padding: '4px', color: mNext ? '#9ca3af' : '#4b5563' }}
+              title="Nächstes Event"
+            >
+              <ChevronRight size={24} />
+            </button>
           </div>
         )}
         {selectedView === 'venue' ? (
