@@ -656,54 +656,46 @@ export default function GaestelisteView({ terminId }: Props) {
 
   // ── Shared helpers ────────────────────────────────────────────
   const listTabs = (
-    <div className="flex items-center gap-2 flex-wrap">
-      {lists.length > 1 ? (
-        <select
-          className="form-select text-sm py-1.5"
-          value={activeListId ?? ''}
-          onChange={e => setActiveListId(Number(e.target.value))}
-        >
-          {lists.map(l => (
-            <option key={l.id} value={l.id}>
-              {l.name}{(l.entry_count ?? 0) > 0 ? ` (${l.entry_count})` : ''}{l.status === 'locked' ? ' 🔒' : ''}
-            </option>
-          ))}
-        </select>
-      ) : (
-        lists[0] && (
-          <span className="text-sm font-medium text-gray-300 inline-flex items-center gap-1">
-            {lists[0].name}
-            {lists[0].status === 'locked' && <LockClosedIcon className="w-3 h-3 opacity-70" />}
-          </span>
-        )
-      )}
-      {isEditor && lists.length > 1 && activeListId && (
-        <button
-          onClick={() => handleDeleteList(activeListId)}
-          title="Aktive Liste löschen"
-          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-        >
-          <XMarkIcon className="w-4 h-4" />
-        </button>
-      )}
-      {isEditor && (
-        <button
-          onClick={handleAddList}
-          disabled={creatingList}
-          title="Weitere Liste"
-          className="px-3 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
-        >
-          +<span className="hidden md:inline"> Weitere Liste</span>
-        </button>
-      )}
-    </div>
+    lists.length > 1 ? (
+      <select
+        className="form-select text-sm py-1.5"
+        value={activeListId ?? ''}
+        onChange={e => setActiveListId(Number(e.target.value))}
+      >
+        {lists.map(l => (
+          <option key={l.id} value={l.id}>
+            {l.name}{(l.entry_count ?? 0) > 0 ? ` (${l.entry_count})` : ''}{l.status === 'locked' ? ' 🔒' : ''}
+          </option>
+        ))}
+      </select>
+    ) : (
+      lists[0] ? (
+        <span className="text-sm font-medium text-gray-300 inline-flex items-center gap-1">
+          {lists[0].name}
+          {lists[0].status === 'locked' && <LockClosedIcon className="w-3 h-3 opacity-70" />}
+        </span>
+      ) : null
+    )
+  )
+
+  // Blauer Front-Button „Neue Liste" (wie in anderen Bereichen)
+  const newListBtn = isEditor && (
+    <button onClick={handleAddList} disabled={creatingList} className="btn btn-primary" title="Neue Liste">
+      <PlusIcon className="w-4 h-4" /><span className="hidden md:inline"> Neue Liste</span>
+    </button>
   )
 
   const statsBar = activeList && (
-    <div className="flex gap-4 text-sm text-gray-500 mt-2 px-1">
+    <div className="flex gap-x-4 gap-y-1 text-sm text-gray-500 mt-2 px-1 flex-wrap">
       <span>{approvedCount} bestätigt</span>
       {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
-      <span>{totalTickets} Tickets gesamt</span>
+      {totalLimit !== null ? (
+        <span className={totalTickets > totalLimit ? 'text-red-600 font-medium' : ''}>
+          {totalTickets} / {totalLimit} Tickets{totalTickets <= totalLimit ? ` · noch ${totalLimit - totalTickets} frei` : ' · überschritten'}
+        </span>
+      ) : (
+        <span>{totalTickets} Tickets gesamt</span>
+      )}
       {wishDeadline && (
         <span className={deadlinePassed ? 'text-red-600 font-medium' : ''}>
           Wunsch-Deadline {new Date(wishDeadline).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}{deadlinePassed ? ' (abgelaufen)' : ''}
@@ -722,22 +714,28 @@ export default function GaestelisteView({ terminId }: Props) {
           {/* Row 1: Action buttons + Icon buttons */}
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex gap-2">
+              {newListBtn}
               {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
               )}
-              {isEditor && (
-                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
-                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-                </button>
-              )}
             </div>
             <div className="flex gap-1">
               {isEditor && (
+                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`p-2 rounded-lg ${isLocked ? 'text-green-600 bg-green-50' : 'text-gray-500 hover:bg-gray-100'}`}>
+                  {isLocked ? <LockOpenIcon className="w-5 h-5" /> : <LockClosedIcon className="w-5 h-5" />}
+                </button>
+              )}
+              {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
                   <Cog6ToothIcon className="w-5 h-5" />
+                </button>
+              )}
+              {isEditor && lists.length > 1 && activeListId && (
+                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-500">
+                  <TrashIcon className="w-5 h-5" />
                 </button>
               )}
               <button onClick={handleCsvExport} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
@@ -881,18 +879,13 @@ export default function GaestelisteView({ terminId }: Props) {
         <div className="px-4">
           {/* Toolbar + Tabs in einer Zeile */}
           <div className="flex items-center gap-2 mb-4">
-            {/* Links: Hinzufügen / Abschließen */}
+            {/* Links: Neue Liste + Hinzufügen */}
             <div className="flex items-center gap-2 shrink-0">
+              {newListBtn}
               {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
-                </button>
-              )}
-              {isEditor && (
-                <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
-                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
-                  {isLocked ? 'Entsperren' : 'Abschließen'}
                 </button>
               )}
             </div>
@@ -902,11 +895,22 @@ export default function GaestelisteView({ terminId }: Props) {
               {listTabs}
             </div>
 
-            {/* Rechts: Einstellungen, CSV, PDF */}
+            {/* Rechts: Abschließen, Einstellungen, Löschen, CSV, PDF */}
             <div className="flex items-center gap-2 shrink-0">
+              {isEditor && (
+                <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
+                  {isLocked ? 'Entsperren' : 'Abschließen'}
+                </button>
+              )}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
                   <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
+                </button>
+              )}
+              {isEditor && lists.length > 1 && activeListId && (
+                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="btn btn-ghost text-red-500 hover:text-red-600">
+                  <TrashIcon className="w-4 h-4" />
                 </button>
               )}
               <button onClick={handleCsvExport} className="btn btn-ghost">
