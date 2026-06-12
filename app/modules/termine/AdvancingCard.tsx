@@ -311,8 +311,8 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                                 value={editForm.details}
                                 onChange={e => setEditForm(f => ({ ...f, details: e.target.value }))}
                                 placeholder="Details (optional)"
-                                rows={2}
-                                className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-none"
+                                rows={4}
+                                className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-y min-h-[6rem]"
                               />
                               <div className="flex gap-1">
                                 <button onClick={handleSaveEntry} disabled={saving} className="text-sm bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50">Speichern</button>
@@ -367,8 +367,8 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
                               value={entryForm.details}
                               onChange={e => setEntryForm(f => ({ ...f, details: e.target.value }))}
                               placeholder="Details (optional)"
-                              rows={2}
-                              className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-none"
+                              rows={4}
+                              className="w-full text-sm border border-gray-200 rounded px-1.5 py-1 focus:outline-none resize-y min-h-[6rem]"
                             />
                             <div className="flex gap-1">
                               <button onClick={() => handleAddEntry(area.id)} disabled={saving} className="text-sm bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50">Hinzufügen</button>

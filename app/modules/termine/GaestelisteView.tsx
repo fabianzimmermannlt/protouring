@@ -54,17 +54,38 @@ interface EntryModalProps {
   entry?: GuestListEntry | null
   travelParty: Array<{ id: number; displayName: string; userId?: number | null }>
   currentUserId?: number
+  currentUserName?: string
+  isEditor: boolean
   onSave: (data: Partial<GuestListEntry>) => Promise<void>
   onClose: () => void
 }
 
-function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, onClose }: EntryModalProps) {
+function EntryModal({ listSettings, entry, travelParty, currentUserId, currentUserName, isEditor, onSave, onClose }: EntryModalProps) {
   const passTypes = listSettings.pass_types ?? DEFAULT_PASS_TYPES
+  // Eigener Anzeigename (fuer Self-Lock bei Nicht-Editoren)
+  const ownName = currentUserName || (travelParty.find(m => m.userId === currentUserId)?.displayName ?? '')
+
   const [firstName, setFirstName] = useState(entry?.first_name ?? '')
   const [lastName, setLastName] = useState(entry?.last_name ?? '')
   const [company, setCompany] = useState(entry?.company ?? '')
-  const [invitedByText, setInvitedByText] = useState(entry?.invited_by_text ?? '')
-  const [invitedByUserId, setInvitedByUserId] = useState<number | null>(entry?.invited_by_user_id ?? currentUserId ?? null)
+  // Editor: frei waehlbar (Dropdown aller Reisegruppe + Freitext). Nicht-Editor: fest auf eigenen Namen.
+  const [invitedByText, setInvitedByText] = useState(isEditor ? (entry?.invited_by_text ?? '') : ownName)
+  const [invitedByUserId, setInvitedByUserId] = useState<number | null>(
+    isEditor ? (entry?.invited_by_user_id ?? null) : (currentUserId ?? null)
+  )
+  // Dropdown-Auswahl: 'manual' = Freitext, sonst die travelParty-Member-id
+  const [invitedBySel, setInvitedBySel] = useState<string>(() => {
+    if (!isEditor) return 'self'
+    if (entry?.invited_by_user_id) {
+      const m = travelParty.find(t => t.userId === entry.invited_by_user_id)
+      if (m) return String(m.id)
+    }
+    if (entry?.invited_by_text) {
+      const m = travelParty.find(t => t.displayName === entry.invited_by_text)
+      return m ? String(m.id) : 'manual'
+    }
+    return 'manual'
+  })
   const [email, setEmail] = useState(entry?.email ?? '')
   const [passes, setPasses] = useState<PassMap>(() => {
     const base: PassMap = {}
@@ -76,7 +97,6 @@ function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, o
   const [error, setError] = useState('')
 
   const total = passTotal(passes)
-  const tpOptions = travelParty.filter(m => m.userId)
 
   const setPass = (t: string, v: number) => setPasses(prev => ({ ...prev, [t]: Math.max(0, v) }))
 
@@ -121,26 +141,35 @@ function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, o
 
           <div>
             <label className="form-label">Eingeladen von</label>
-            {tpOptions.length > 0 ? (
+            {!isEditor ? (
+              /* Crew+/Artist/Crew/Guest: fest auf eigenen Namen */
+              <input className="form-input bg-gray-100 text-gray-500" value={ownName} readOnly disabled />
+            ) : (
+              /* Editor: Dropdown aller Reisegruppe (auch ohne Account) + Freitext */
               <>
                 <select
                   className="form-input"
-                  value={invitedByUserId ?? ''}
+                  value={invitedBySel}
                   onChange={e => {
-                    const uid = parseInt(e.target.value) || null
-                    setInvitedByUserId(uid)
-                    if (uid) {
-                      const m = tpOptions.find(t => t.userId === uid)
-                      if (m) setInvitedByText(m.displayName)
-                    } else {
+                    const v = e.target.value
+                    setInvitedBySel(v)
+                    if (v === 'manual') {
+                      setInvitedByUserId(null)
                       setInvitedByText('')
+                    } else {
+                      const m = travelParty.find(t => String(t.id) === v)
+                      if (m) { setInvitedByUserId(m.userId ?? null); setInvitedByText(m.displayName) }
                     }
                   }}
                 >
-                  <option value="">Manuell eingeben…</option>
-                  {tpOptions.map(m => <option key={m.userId} value={m.userId!}>{m.displayName}</option>)}
+                  <option value="manual">Manuell eingeben…</option>
+                  {travelParty.map(m => (
+                    <option key={m.id} value={String(m.id)}>
+                      {m.displayName}{m.userId ? '' : ' (Kontakt)'}
+                    </option>
+                  ))}
                 </select>
-                {invitedByUserId === null && (
+                {invitedBySel === 'manual' && (
                   <input
                     className="form-input mt-2"
                     placeholder="Name freitext..."
@@ -149,13 +178,6 @@ function EntryModal({ listSettings, entry, travelParty, currentUserId, onSave, o
                   />
                 )}
               </>
-            ) : (
-              <input
-                className="form-input"
-                placeholder="Name freitext..."
-                value={invitedByText}
-                onChange={e => setInvitedByText(e.target.value)}
-              />
             )}
           </div>
 
@@ -400,11 +422,14 @@ export default function GaestelisteView({ terminId }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<GuestListEntry | null>(null)
   const [creatingList, setCreatingList] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<number | undefined>(undefined)
+  const [currentUserName, setCurrentUserName] = useState('')
   const { isVisible, toggle, columns: colDefs } = useColumnVisibility(`guestlist-${terminId}`, GUEST_COL_DEFS)
 
   useEffect(() => {
     import('@/lib/api-client').then(({ getCurrentUser }) => {
-      const u = getCurrentUser(); if (u?.id) setCurrentUserId(u.id)
+      const u = getCurrentUser()
+      if (u?.id) setCurrentUserId(u.id)
+      if (u) setCurrentUserName([u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || '')
     })
   }, [])
 
@@ -1005,6 +1030,8 @@ export default function GaestelisteView({ terminId }: Props) {
           entry={editEntry}
           travelParty={travelParty}
           currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          isEditor={isEditor}
           onSave={handleSaveEntry}
           onClose={() => { setShowAddModal(false); setEditEntry(null) }}
         />
