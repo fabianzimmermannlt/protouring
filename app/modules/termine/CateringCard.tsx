@@ -10,6 +10,7 @@ import {
   getMyContact,
   type Catering, type CateringType, type CateringMember, type CateringOrder,
 } from '@/lib/api-client'
+import { formatMoney } from '@/lib/format'
 
 // App ist fest Dark-Mode
 const dark = true
@@ -397,7 +398,7 @@ function CateringBlock({
 
   const cfg = typeCfg(type)
   const headerTitle = label || (type === 'none' ? 'Neuer Catering-Block' : cfg.label)
-  const totalBuyout = buyoutAmount && totalPersons > 0 ? (parseFloat(buyoutAmount) * totalPersons).toFixed(2) : null
+  const totalBuyout = buyoutAmount && totalPersons > 0 ? parseFloat(buyoutAmount) * totalPersons : null
 
   return (
     <div className="pt-card">
@@ -481,11 +482,11 @@ function CateringBlock({
                 <span className="text-xs text-gray-400">{currency}</span>
               </div>
             ) : (
-              <span className="text-sm font-medium text-green-400">{buyoutAmount ? `${buyoutAmount} ${currency}` : '–'}</span>
+              <span className="text-sm font-medium text-green-400">{buyoutAmount ? formatMoney(buyoutAmount, currency) : '–'}</span>
             )}
           </div>
-          {totalBuyout && (
-            <div className="text-xs text-green-400 font-semibold whitespace-nowrap">= {currSymbol}{totalBuyout} gesamt</div>
+          {totalBuyout != null && (
+            <div className="text-xs text-green-400 font-semibold whitespace-nowrap">= {currSymbol}{formatMoney(totalBuyout)} gesamt</div>
           )}
         </div>
       )}

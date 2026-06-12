@@ -11,6 +11,7 @@ import {
   getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
   type Venue, type VenueContact, type Termin,
 } from '@/lib/api-client'
+import { formatNumber } from '@/lib/format'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 import { QuickCreateVenueModal } from '@/app/components/shared/modals/QuickCreateVenueModal'
 
@@ -679,8 +680,8 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
               </div>
             ) : (
               <>
-                <KV label="Kapazität stehend" value={venue.capacity ? String(venue.capacity) : undefined} />
-                <KV label="Kapazität bestuhlt" value={venue.capacitySeated ? String(venue.capacitySeated) : undefined} />
+                <KV label="Kapazität stehend" value={venue.capacity ? formatNumber(venue.capacity) : undefined} />
+                <KV label="Kapazität bestuhlt" value={venue.capacitySeated ? formatNumber(venue.capacitySeated) : undefined} />
                 <KV label="Bühnenmaße" value={venue.stageDimensions || undefined} />
                 <KV label="Lichte Höhe" value={venue.clearanceHeight || undefined} />
                 <KV label="WLAN" value={venue.wifi || undefined} />

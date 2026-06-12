@@ -12,6 +12,7 @@ import {
   getEffectiveRole,
   type Venue,
 } from '@/lib/api-client'
+import { formatNumber } from '@/lib/format'
 import { useSortable } from '@/app/hooks/useSortable'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
@@ -259,7 +260,7 @@ export default function VenuesPage() {
                 <p className="text-sm font-semibold text-gray-900">{item.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{item.city}</p>
                 {item.capacity && parseInt(item.capacity) > 0 && (
-                  <p className="text-xs text-gray-400 mt-0.5">{t('venues.capacity')}: {item.capacity}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t('venues.capacity')}: {formatNumber(item.capacity)}</p>
                 )}
               </div>
             ))}
@@ -361,7 +362,7 @@ function VenueTable({ venues, onDetail, onDelete, isAdmin }: {
                 case 'city':     return <td key="city">{venue.city}</td>
                 case 'state':    return <td key="state">{venue.state}</td>
                 case 'country':  return <td key="country">{venue.country}</td>
-                case 'capacity': return <td key="capacity">{venue.capacity}</td>
+                case 'capacity': return <td key="capacity">{formatNumber(venue.capacity)}</td>
                 default: return null
               }
             })}
