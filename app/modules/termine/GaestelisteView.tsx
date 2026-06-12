@@ -880,10 +880,10 @@ export default function GaestelisteView({ terminId }: Props) {
       ) : (
         /* ══════════════════════ DESKTOP LAYOUT ══════════════════════ */
         <div className="px-4">
-          {/* Toolbar + Tabs in einer Zeile */}
-          <div className="flex items-center gap-2 mb-4">
+          {/* Toolbar + Tabs in einer Zeile — 3-Spalten-Grid, damit die Mitte fix zentriert bleibt */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-4">
             {/* Links: Hinzufügen + Sperren */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 justify-self-start">
               {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary flex-shrink-0">
                   <PlusIcon className="w-4 h-4" />
@@ -897,13 +897,13 @@ export default function GaestelisteView({ terminId }: Props) {
               )}
             </div>
 
-            {/* Mitte: Tabs */}
-            <div className="flex-1 flex items-center justify-center">
+            {/* Mitte: Tabs (fix zentriert) */}
+            <div className="justify-self-center min-w-0">
               {listTabs}
             </div>
 
             {/* Rechts: Löschen, Neue Liste, Einstellungen, CSV, PDF */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 justify-self-end">
               {isEditor && lists.length > 1 && activeListId && (
                 <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="btn btn-ghost flex-shrink-0 text-red-500 hover:text-red-600">
                   <TrashIcon className="w-4 h-4" />
