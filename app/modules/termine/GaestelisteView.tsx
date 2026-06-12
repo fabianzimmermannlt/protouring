@@ -714,7 +714,6 @@ export default function GaestelisteView({ terminId }: Props) {
           {/* Row 1: Action buttons + Icon buttons */}
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex gap-2">
-              {newListBtn}
               {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
@@ -728,6 +727,7 @@ export default function GaestelisteView({ terminId }: Props) {
                   {isLocked ? <LockOpenIcon className="w-5 h-5" /> : <LockClosedIcon className="w-5 h-5" />}
                 </button>
               )}
+              {newListBtn}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100">
                   <Cog6ToothIcon className="w-5 h-5" />
@@ -879,9 +879,8 @@ export default function GaestelisteView({ terminId }: Props) {
         <div className="px-4">
           {/* Toolbar + Tabs in einer Zeile */}
           <div className="flex items-center gap-2 mb-4">
-            {/* Links: Neue Liste + Hinzufügen */}
+            {/* Links: Hinzufügen */}
             <div className="flex items-center gap-2 shrink-0">
-              {newListBtn}
               {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
@@ -895,7 +894,7 @@ export default function GaestelisteView({ terminId }: Props) {
               {listTabs}
             </div>
 
-            {/* Rechts: Abschließen, Einstellungen, Löschen, CSV, PDF */}
+            {/* Rechts: Abschließen, Neue Liste, Einstellungen, Löschen, CSV, PDF */}
             <div className="flex items-center gap-2 shrink-0">
               {isEditor && (
                 <button onClick={handleLockToggle} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
@@ -903,6 +902,7 @@ export default function GaestelisteView({ terminId }: Props) {
                   {isLocked ? 'Entsperren' : 'Abschließen'}
                 </button>
               )}
+              {newListBtn}
               {isEditor && (
                 <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
                   <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
