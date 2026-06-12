@@ -2839,6 +2839,7 @@ export interface GuestListSettings {
   crew_plus_can_add?: boolean
   export_show_inviter?: boolean
   export_show_email?: boolean
+  wish_deadline?: string | null   // ab diesem Zeitpunkt dürfen nur noch Editoren eintragen
 }
 
 export interface GuestList {

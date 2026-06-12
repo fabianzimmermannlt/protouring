@@ -7431,6 +7431,15 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
     const allowedRoles = ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew', 'guest']
     if (!allowedRoles.includes(role)) return res.status(403).json({ error: 'Keine Berechtigung' })
 
+    // Wunsch-Deadline: nach Ablauf dürfen nur Editoren (admin/agency/tourmanagement) noch eintragen
+    const isEditorRole_ = ['admin', 'agency', 'tourmanagement'].includes(role)
+    if (listSettings.wish_deadline && !isEditorRole_) {
+      const dl = new Date(listSettings.wish_deadline).getTime()
+      if (!Number.isNaN(dl) && Date.now() > dl) {
+        return res.status(403).json({ error: 'Die Wunsch-Deadline ist abgelaufen' })
+      }
+    }
+
     const isDirect = canAddDirectly(role, listSettings)
     const is_wish = isDirect ? 0 : 1
     const status = isDirect ? 'approved' : 'pending'

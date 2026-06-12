@@ -249,6 +249,7 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
   const [crewPlusCanAdd, setCrewPlusCanAdd] = useState(s.crew_plus_can_add ?? false)
   const [exportShowInviter, setExportShowInviter] = useState(s.export_show_inviter ?? true)
   const [exportShowEmail, setExportShowEmail] = useState(s.export_show_email ?? true)
+  const [wishDeadline, setWishDeadline] = useState(s.wish_deadline ?? '')
   const [newPassType, setNewPassType] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -282,6 +283,7 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
       crew_plus_can_add: crewPlusCanAdd,
       export_show_inviter: exportShowInviter,
       export_show_email: exportShowEmail,
+      wish_deadline: wishDeadline || null,
     }, name)
     setSaving(false)
     onClose()
@@ -344,6 +346,24 @@ function SettingsModal({ list, onSave, onClose }: SettingsModalProps) {
                 <input className="form-input" type="number" min="0" value={perInviterLimit} onChange={e => setPerInviterLimit(e.target.value)} placeholder="Unbegrenzt" />
               </div>
             </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <label className="form-label mb-2">Wunsch-Deadline</label>
+            <input
+              type="datetime-local"
+              className="form-input"
+              value={wishDeadline}
+              onChange={e => setWishDeadline(e.target.value)}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Nach diesem Zeitpunkt können nur noch Admin/Tourmanagement/Agency eintragen.
+              {wishDeadline && (
+                <button type="button" onClick={() => setWishDeadline('')} className="ml-2 text-gray-400 hover:text-gray-200 underline">
+                  entfernen
+                </button>
+              )}
+            </p>
           </div>
 
           <div className="border-t pt-4">
@@ -583,6 +603,9 @@ export default function GaestelisteView({ terminId }: Props) {
     })
   }, [entries, searchTerm, sortKey, sortDir])
   const isDirect = canAddDirect(role, listSettings)
+  const wishDeadline = listSettings.wish_deadline ?? null
+  const deadlinePassed = wishDeadline ? new Date(wishDeadline).getTime() < Date.now() : false
+  const addBlockedByDeadline = deadlinePassed && !isEditor
   const pendingCount = entries.filter(e => e.status === 'pending').length
   const approvedCount = entries.filter(e => e.status === 'approved').length
   const activeEntries = entries.filter(e => e.status !== 'rejected')
@@ -634,41 +657,35 @@ export default function GaestelisteView({ terminId }: Props) {
   // ── Shared helpers ────────────────────────────────────────────
   const listTabs = (
     <div className="flex items-center gap-2 flex-wrap">
-      {lists.map(l => (
-        <div key={l.id} className="relative flex items-center">
-          <button
-            onClick={() => setActiveListId(l.id)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              isEditor && lists.length > 1 ? 'pr-6' : ''
-            } ${
-              l.id === activeListId
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-            }`}
-          >
-            {l.name}
-            {l.status === 'locked' && <LockClosedIcon className="w-3 h-3 inline ml-1 opacity-70" />}
-            {(l.entry_count ?? 0) > 0 && (
-              <span className={`ml-1.5 text-xs ${l.id === activeListId ? 'opacity-80' : 'text-gray-400'}`}>
-                {l.entry_count}
-              </span>
-            )}
-          </button>
-          {isEditor && lists.length > 1 && (
-            <button
-              onClick={e => { e.stopPropagation(); handleDeleteList(l.id) }}
-              title="Liste löschen"
-              className={`absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full text-xs transition-colors ${
-                l.id === activeListId
-                  ? 'text-blue-200 hover:text-white hover:bg-blue-500'
-                  : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
-              }`}
-            >
-              <XMarkIcon className="w-3 h-3" />
-            </button>
-          )}
-        </div>
-      ))}
+      {lists.length > 1 ? (
+        <select
+          className="form-select text-sm py-1.5"
+          value={activeListId ?? ''}
+          onChange={e => setActiveListId(Number(e.target.value))}
+        >
+          {lists.map(l => (
+            <option key={l.id} value={l.id}>
+              {l.name}{(l.entry_count ?? 0) > 0 ? ` (${l.entry_count})` : ''}{l.status === 'locked' ? ' 🔒' : ''}
+            </option>
+          ))}
+        </select>
+      ) : (
+        lists[0] && (
+          <span className="text-sm font-medium text-gray-300 inline-flex items-center gap-1">
+            {lists[0].name}
+            {lists[0].status === 'locked' && <LockClosedIcon className="w-3 h-3 opacity-70" />}
+          </span>
+        )
+      )}
+      {isEditor && lists.length > 1 && activeListId && (
+        <button
+          onClick={() => handleDeleteList(activeListId)}
+          title="Aktive Liste löschen"
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+        >
+          <XMarkIcon className="w-4 h-4" />
+        </button>
+      )}
       {isEditor && (
         <button
           onClick={handleAddList}
@@ -687,6 +704,11 @@ export default function GaestelisteView({ terminId }: Props) {
       <span>{approvedCount} bestätigt</span>
       {pendingCount > 0 && <span className="text-amber-600 font-medium">{pendingCount} ausstehend</span>}
       <span>{totalTickets} Tickets gesamt</span>
+      {wishDeadline && (
+        <span className={deadlinePassed ? 'text-red-600 font-medium' : ''}>
+          Wunsch-Deadline {new Date(wishDeadline).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}{deadlinePassed ? ' (abgelaufen)' : ''}
+        </span>
+      )}
       {isLocked && <span className="text-red-600 font-medium flex items-center gap-1"><LockClosedIcon className="w-3 h-3" /> Gesperrt</span>}
     </div>
   )
@@ -700,7 +722,7 @@ export default function GaestelisteView({ terminId }: Props) {
           {/* Row 1: Action buttons + Icon buttons */}
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex gap-2">
-              {canWrite && !isLocked && (
+              {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
@@ -861,7 +883,7 @@ export default function GaestelisteView({ terminId }: Props) {
           <div className="flex items-center gap-2 mb-4">
             {/* Links: Hinzufügen / Abschließen */}
             <div className="flex items-center gap-2 shrink-0">
-              {canWrite && !isLocked && (
+              {canWrite && !isLocked && !addBlockedByDeadline && (
                 <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
