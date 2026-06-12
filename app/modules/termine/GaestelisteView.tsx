@@ -503,12 +503,15 @@ export default function GaestelisteView({ terminId }: Props) {
     ).catch(() => {})
   }, [terminId])
 
+  const [showNewListModal, setShowNewListModal] = useState(false)
+  const [newListName, setNewListName] = useState('')
   const handleAddList = async () => {
     setCreatingList(true)
     try {
-      const name = lists.length === 0 ? 'Gästeliste' : `Liste ${lists.length + 1}`
+      const name = newListName.trim() || (lists.length === 0 ? 'Gästeliste' : `Liste ${lists.length + 1}`)
       const l = await createGuestList(terminId, name)
       setLists(prev => [...prev, l]); setActiveListId(l.id)
+      setShowNewListModal(false); setNewListName('')
     } finally { setCreatingList(false) }
   }
 
@@ -680,7 +683,7 @@ export default function GaestelisteView({ terminId }: Props) {
 
   // Blauer Front-Button „Neue Liste" (wie in anderen Bereichen)
   const newListBtn = isEditor && (
-    <button onClick={handleAddList} disabled={creatingList} className="btn btn-primary" title="Neue Liste">
+    <button onClick={() => { setNewListName(''); setShowNewListModal(true) }} disabled={creatingList} className="btn btn-primary" title="Neue Liste">
       <PlusIcon className="w-4 h-4" /><span className="hidden md:inline"> Neue Liste</span>
     </button>
   )
@@ -1085,6 +1088,36 @@ export default function GaestelisteView({ terminId }: Props) {
               <div className="flex gap-2">
                 <button onClick={() => setConfirmDelete(null)} className="btn btn-ghost">Abbrechen</button>
                 <button onClick={handleDelete} className="btn btn-danger">Entfernen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showNewListModal && (
+        <div className="modal-overlay">
+          <div className="modal-container max-w-sm">
+            <div className="modal-header">
+              <h2 className="modal-title">Neue Liste</h2>
+              <button onClick={() => setShowNewListModal(false)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="modal-body">
+              <label className="form-label">Listenname</label>
+              <input
+                className="form-input"
+                value={newListName}
+                onChange={e => setNewListName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddList(); if (e.key === 'Escape') setShowNewListModal(false) }}
+                placeholder={lists.length === 0 ? 'Gästeliste' : `Liste ${lists.length + 1}`}
+                autoFocus
+              />
+            </div>
+            <div className="modal-footer">
+              <div />
+              <div className="flex gap-2">
+                <button onClick={() => setShowNewListModal(false)} className="btn btn-ghost">Abbrechen</button>
+                <button onClick={handleAddList} disabled={creatingList} className="btn btn-primary disabled:opacity-50">
+                  {creatingList ? 'Erstellen…' : 'Erstellen'}
+                </button>
               </div>
             </div>
           </div>
