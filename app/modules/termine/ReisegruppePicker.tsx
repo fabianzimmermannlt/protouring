@@ -30,7 +30,7 @@ function AvailIcon({ status }: { status: TravelPartyPickerContact['availabilityS
 
 export default function ReisegruppePicker({ terminId, onClose, onAdded }: ReisegruppePickerProps) {
   const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true // App fest Dark-Mode
 
   const [contacts, setContacts] = useState<TravelPartyPickerContact[]>([])
   const [loading, setLoading] = useState(true)

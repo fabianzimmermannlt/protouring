@@ -71,7 +71,7 @@ const SKELETON = (
 export function ContactDetailContent({ contactId, onInvite, onBack, onAction, onReactivate, activeOverride }: { contactId: string; onInvite?: (contact: Contact) => void; onBack?: () => void; onAction?: () => void; onReactivate?: () => void; activeOverride?: boolean }) {
   const t = useT()
   const { layout } = useLayout()
-  const isL2 = layout === 'L2'
+  const isL2 = true // App fest Dark-Mode
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [contact, setContact] = useState<Contact | null>(null)

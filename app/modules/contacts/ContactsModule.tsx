@@ -389,7 +389,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const isMobile = useIsMobile()
   const { layout } = useLayout()
-  const isL2 = layout === 'L2'
+  const isL2 = true // App fest Dark-Mode
 
   const handleEdit = (contact: Contact) => {
     if (isL2) {

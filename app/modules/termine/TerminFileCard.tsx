@@ -291,7 +291,7 @@ export function TerminFileCard({
   className?: string
 }) {
   const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true // App fest Dark-Mode
 
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)

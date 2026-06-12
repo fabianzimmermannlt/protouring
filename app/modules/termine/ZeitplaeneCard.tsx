@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Pencil, Loader2, Copy, BookTemplate, X, Save, Trash2, AlertCircle, MoreHorizontal } from 'lucide-react'
-import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   getTerminSchedules, createTerminSchedule, updateTerminSchedule, deleteTerminSchedule, type TerminSchedule,
   getScheduleTemplates, createScheduleTemplate, type ScheduleTemplate,
@@ -201,8 +200,7 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
   onSaveAsTemplate: () => void
   onDelete: () => void
 }) {
-  const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true  // App ist fest Dark-Mode (nicht an layout koppeln, am Handy kann L3 aktiv sein)
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)

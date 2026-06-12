@@ -19,7 +19,6 @@ import {
 } from '@/lib/api-client'
 import TravelVehicleQuickCreate from './TravelVehicleQuickCreate'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
-import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 interface AnreiseModalProps {
   terminId: number
@@ -144,8 +143,7 @@ export default function AnreiseModal({
   abreiseLegs = [],
   onClose, onSaved, onDeleted, onCopiedToAbreise,
 }: AnreiseModalProps) {
-  const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true  // App ist fest Dark-Mode (nicht an layout koppeln, am Handy kann L3 aktiv sein)
   const isNew = leg === null
   const [form, setForm] = useState<TravelLegFormData>(
     isNew ? emptyForm(legType, terminDate) : legToForm(leg!)

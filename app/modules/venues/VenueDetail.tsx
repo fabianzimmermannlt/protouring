@@ -94,7 +94,7 @@ function fileIcon(mime: string): string {
 export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: string; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
-  const isL2 = layout === 'L2'
+  const isL2 = true // App fest Dark-Mode
   const isMobile = useIsMobile()
 
   const isEditor = isEditorRole(getEffectiveRole())

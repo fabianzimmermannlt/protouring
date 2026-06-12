@@ -37,7 +37,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
 export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRight }: { vehicleId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
-  const isL2 = layout === 'L2'
+  const isL2 = true // App fest Dark-Mode
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)

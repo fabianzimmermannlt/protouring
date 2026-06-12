@@ -320,7 +320,7 @@ function OrderEditRow({
 
 export default function CateringCard({ terminId, isAdmin }: { terminId: number; isAdmin: boolean }) {
   const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true // App fest Dark-Mode
   const [catering, setCatering]     = useState<Catering | null>(null)
   const [members, setMembers]       = useState<CateringMember[]>([])
   const [loading, setLoading]       = useState(true)

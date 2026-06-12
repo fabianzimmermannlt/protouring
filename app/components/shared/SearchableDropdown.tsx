@@ -36,7 +36,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
   renderCreateForm,
 }: SearchableDropdownProps<T>) {
   const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true // App fest Dark-Mode
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [showCreate, setShowCreate] = useState(false)

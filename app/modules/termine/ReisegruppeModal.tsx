@@ -19,7 +19,7 @@ interface ReisegruppeModalProps {
 
 export default function ReisegruppeModal({ terminId, member, onClose, onSaved, onDeleted }: ReisegruppeModalProps) {
   const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true // App fest Dark-Mode
 
   const [role1, setRole1] = useState(member.role1)
   const [role2, setRole2] = useState(member.role2)

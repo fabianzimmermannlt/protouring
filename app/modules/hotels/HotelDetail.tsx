@@ -42,7 +42,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
 export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }: { hotelId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
   const { layout } = useLayout()
-  const isL2 = layout === 'L2'
+  const isL2 = true // App fest Dark-Mode
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [hotel, setHotel] = useState<Hotel | null>(null)

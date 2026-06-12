@@ -28,7 +28,7 @@ export function QuickCreateModal({
 }: QuickCreateModalProps) {
   const t = useT()
   const { layout } = useLayout()
-  const dark = layout === 'L2'
+  const dark = true // App fest Dark-Mode
 
   // Close on Escape
   useEffect(() => {

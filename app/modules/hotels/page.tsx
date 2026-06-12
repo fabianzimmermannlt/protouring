@@ -120,7 +120,7 @@ export default function HotelsPage() {
   const t = useT()
   const isMobile = useIsMobile()
   const { layout } = useLayout()
-  const isL2 = layout === 'L2'
+  const isL2 = true // App fest Dark-Mode
   const isEditor = isEditorRole(getEffectiveRole())
   const isAdmin = getEffectiveRole() === 'admin'
   const [hotels, setHotels] = useState<Hotel[]>([])
