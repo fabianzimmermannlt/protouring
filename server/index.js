@@ -990,12 +990,15 @@ async function initDatabase() {
     CREATE TABLE IF NOT EXISTS termin_catering (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
-      termin_id INTEGER NOT NULL UNIQUE,
+      termin_id INTEGER NOT NULL,
       type TEXT NOT NULL DEFAULT 'none',
+      label TEXT,
       buyout_amount REAL,
       notes TEXT,
       contact_name TEXT,
       contact_phone TEXT,
+      deadline TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -1008,6 +1011,7 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
       termin_id INTEGER NOT NULL,
+      catering_id INTEGER,
       contact_id INTEGER,
       contact_name TEXT,
       order_text TEXT,
@@ -1017,6 +1021,56 @@ async function initDatabase() {
       FOREIGN KEY (termin_id) REFERENCES termine(id) ON DELETE CASCADE
     )
   `)
+
+  // ── Catering: Migration auf Mehrere-Blöcke (1:N) ──────────────────────────
+  // Alt-Schema hatte termin_id UNIQUE + kein label/deadline/sort_order.
+  const catInfo = await db.all("PRAGMA table_info(termin_catering)").catch(() => [])
+  if (catInfo.length && !catInfo.find(c => c.name === 'label')) {
+    await db.run(`
+      CREATE TABLE termin_catering_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id INTEGER NOT NULL,
+        termin_id INTEGER NOT NULL,
+        type TEXT NOT NULL DEFAULT 'none',
+        label TEXT,
+        buyout_amount REAL,
+        notes TEXT,
+        contact_name TEXT,
+        contact_phone TEXT,
+        deadline TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+        FOREIGN KEY (termin_id) REFERENCES termine(id) ON DELETE CASCADE
+      )
+    `)
+    await db.run(`
+      INSERT INTO termin_catering_new (id, tenant_id, termin_id, type, buyout_amount, notes, contact_name, contact_phone, created_at, updated_at)
+      SELECT id, tenant_id, termin_id, type, buyout_amount, notes, contact_name, contact_phone, created_at, updated_at FROM termin_catering
+    `)
+    await db.run('DROP TABLE termin_catering')
+    await db.run('ALTER TABLE termin_catering_new RENAME TO termin_catering')
+    console.log('✅ Migration: termin_catering -> Mehrere-Blöcke (UNIQUE entfernt, label/deadline/sort_order)')
+  }
+  await db.run('CREATE INDEX IF NOT EXISTS idx_termin_catering_termin ON termin_catering(termin_id)')
+
+  // orders.catering_id ergänzen + Backfill auf den bisher einzigen Block des Termins
+  const catOrdInfo = await db.all("PRAGMA table_info(termin_catering_orders)").catch(() => [])
+  if (catOrdInfo.length && !catOrdInfo.find(c => c.name === 'catering_id')) {
+    await db.run('ALTER TABLE termin_catering_orders ADD COLUMN catering_id INTEGER')
+    await db.run(`
+      UPDATE termin_catering_orders
+      SET catering_id = (
+        SELECT tc.id FROM termin_catering tc
+        WHERE tc.termin_id = termin_catering_orders.termin_id
+          AND tc.tenant_id = termin_catering_orders.tenant_id
+        ORDER BY tc.id ASC LIMIT 1
+      )
+      WHERE catering_id IS NULL
+    `)
+    console.log('✅ Migration: termin_catering_orders.catering_id hinzugefügt + Backfill')
+  }
 
   // Buchungs-Absagen (explizit abgesagt, persistent)
   await db.run(`
@@ -5364,13 +5418,21 @@ app.get('/api/todos', authenticateToken, requireTenant, async (req, res) => {
 // CATERING
 // ============================================
 
-// GET /api/termine/:terminId/catering
+// GET /api/termine/:terminId/catering  -> { blocks:[{...,orders:[]}], members:[] }
 app.get('/api/termine/:terminId/catering', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const row = await db.get(
-      'SELECT * FROM termin_catering WHERE termin_id=? AND tenant_id=?',
+    const blocks = await db.all(
+      'SELECT * FROM termin_catering WHERE termin_id=? AND tenant_id=? ORDER BY sort_order ASC, id ASC',
       [req.params.terminId, req.tenant.id]
     );
+    const orders = await db.all(
+      'SELECT * FROM termin_catering_orders WHERE termin_id=? AND tenant_id=? ORDER BY id ASC',
+      [req.params.terminId, req.tenant.id]
+    );
+    const blocksWithOrders = blocks.map(b => ({
+      ...b,
+      orders: orders.filter(o => o.catering_id === b.id),
+    }));
 
     // Diät-Daten aus der Reisegruppe – bevorzuge User-Profil wenn vorhanden
     const members = await db.all(`
@@ -5388,55 +5450,60 @@ app.get('/api/termine/:terminId/catering', authenticateToken, requireTenant, asy
       ORDER BY tp.sort_order ASC, tp.id ASC
     `, [req.params.terminId, req.tenant.id]);
 
-    res.json({ catering: row || null, members });
+    res.json({ blocks: blocksWithOrders, members });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PUT /api/termine/:terminId/catering (upsert)
-app.put('/api/termine/:terminId/catering', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+// POST /api/termine/:terminId/catering  (neuen Block anlegen)
+app.post('/api/termine/:terminId/catering', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const { type, buyout_amount, notes, contact_name, contact_phone } = req.body;
-    const existing = await db.get(
-      'SELECT id FROM termin_catering WHERE termin_id=? AND tenant_id=?',
+    const { type, label, buyout_amount, notes, contact_name, contact_phone, deadline } = req.body;
+    const max = await db.get(
+      'SELECT COALESCE(MAX(sort_order),-1) AS m FROM termin_catering WHERE termin_id=? AND tenant_id=?',
       [req.params.terminId, req.tenant.id]
     );
-    if (existing) {
-      await db.run(
-        `UPDATE termin_catering SET type=?, buyout_amount=?, notes=?, contact_name=?, contact_phone=?, updated_at=CURRENT_TIMESTAMP
-         WHERE termin_id=? AND tenant_id=?`,
-        [type, buyout_amount ?? null, notes ?? null, contact_name ?? null, contact_phone ?? null,
-         req.params.terminId, req.tenant.id]
-      );
-    } else {
-      await db.run(
-        `INSERT INTO termin_catering (tenant_id, termin_id, type, buyout_amount, notes, contact_name, contact_phone)
-         VALUES (?,?,?,?,?,?,?)`,
-        [req.tenant.id, req.params.terminId, type, buyout_amount ?? null, notes ?? null, contact_name ?? null, contact_phone ?? null]
-      );
-    }
-    const row = await db.get('SELECT * FROM termin_catering WHERE termin_id=? AND tenant_id=?', [req.params.terminId, req.tenant.id]);
+    const result = await db.run(
+      `INSERT INTO termin_catering (tenant_id, termin_id, type, label, buyout_amount, notes, contact_name, contact_phone, deadline, sort_order)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [req.tenant.id, req.params.terminId, type ?? 'none', label ?? null, buyout_amount ?? null,
+       notes ?? null, contact_name ?? null, contact_phone ?? null, deadline ?? null, (max?.m ?? -1) + 1]
+    );
+    const row = await db.get('SELECT * FROM termin_catering WHERE id=?', [result.lastID]);
+    res.status(201).json({ ...row, orders: [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/termine/:terminId/catering/:blockId  (Block bearbeiten)
+app.put('/api/termine/:terminId/catering/:blockId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { type, label, buyout_amount, notes, contact_name, contact_phone, deadline } = req.body;
+    await db.run(
+      `UPDATE termin_catering SET type=?, label=?, buyout_amount=?, notes=?, contact_name=?, contact_phone=?, deadline=?, updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND termin_id=? AND tenant_id=?`,
+      [type ?? 'none', label ?? null, buyout_amount ?? null, notes ?? null, contact_name ?? null,
+       contact_phone ?? null, deadline ?? null, req.params.blockId, req.params.terminId, req.tenant.id]
+    );
+    const row = await db.get('SELECT * FROM termin_catering WHERE id=? AND tenant_id=?', [req.params.blockId, req.tenant.id]);
     res.json(row);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/termine/:terminId/catering/orders
-app.get('/api/termine/:terminId/catering/orders', authenticateToken, requireTenant, async (req, res) => {
+// DELETE /api/termine/:terminId/catering/:blockId  (Block + dessen Bestellungen)
+app.delete('/api/termine/:terminId/catering/:blockId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const rows = await db.all(
-      'SELECT * FROM termin_catering_orders WHERE termin_id=? AND tenant_id=? ORDER BY id ASC',
-      [req.params.terminId, req.tenant.id]
-    );
-    res.json(rows);
+    await db.run('DELETE FROM termin_catering_orders WHERE catering_id=? AND tenant_id=?', [req.params.blockId, req.tenant.id]);
+    await db.run('DELETE FROM termin_catering WHERE id=? AND termin_id=? AND tenant_id=?', [req.params.blockId, req.params.terminId, req.tenant.id]);
+    res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/termine/:terminId/catering/orders
-app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTenant, async (req, res) => {
+// POST /api/termine/:terminId/catering/:blockId/orders  (Bestellung in Block)
+app.post('/api/termine/:terminId/catering/:blockId/orders', authenticateToken, requireTenant, async (req, res) => {
   try {
     const isEditor = ['admin', 'agency', 'tourmanagement'].includes(req.tenant.role)
     let { contact_id, contact_name, order_text } = req.body
     if (!isEditor) {
-      // Crew: nur eigenen Kontakt erlaubt
+      // Crew & darunter: nur eigener Kontakt erlaubt (serverseitig erzwungen)
       const myContact = await db.get(
         'SELECT id, first_name, last_name FROM contacts WHERE user_id=? AND tenant_id=?',
         [req.user.id, req.tenant.id]
@@ -5446,17 +5513,17 @@ app.post('/api/termine/:terminId/catering/orders', authenticateToken, requireTen
       contact_name = `${myContact.first_name} ${myContact.last_name}`.trim()
     }
     const result = await db.run(
-      `INSERT INTO termin_catering_orders (tenant_id, termin_id, contact_id, contact_name, order_text)
-       VALUES (?,?,?,?,?)`,
-      [req.tenant.id, req.params.terminId, contact_id ?? null, contact_name ?? null, order_text ?? '']
+      `INSERT INTO termin_catering_orders (tenant_id, termin_id, catering_id, contact_id, contact_name, order_text)
+       VALUES (?,?,?,?,?,?)`,
+      [req.tenant.id, req.params.terminId, req.params.blockId, contact_id ?? null, contact_name ?? null, order_text ?? '']
     )
     const row = await db.get('SELECT * FROM termin_catering_orders WHERE id=?', [result.lastID])
     res.status(201).json(row)
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-// PUT /api/termine/:terminId/catering/orders/:orderId
-app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, async (req, res) => {
+// PUT /api/termine/:terminId/catering/:blockId/orders/:orderId
+app.put('/api/termine/:terminId/catering/:blockId/orders/:orderId', authenticateToken, requireTenant, async (req, res) => {
   try {
     const isEditor = ['admin', 'agency', 'tourmanagement'].includes(req.tenant.role)
     const { order_text } = req.body
@@ -5483,8 +5550,8 @@ app.put('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, re
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-// DELETE /api/termine/:terminId/catering/orders/:orderId
-app.delete('/api/termine/:terminId/catering/orders/:orderId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+// DELETE /api/termine/:terminId/catering/:blockId/orders/:orderId
+app.delete('/api/termine/:terminId/catering/:blockId/orders/:orderId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     await db.run('DELETE FROM termin_catering_orders WHERE id=? AND tenant_id=?', [req.params.orderId, req.tenant.id])
     res.json({ success: true })

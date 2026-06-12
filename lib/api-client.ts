@@ -2365,22 +2365,27 @@ export interface Catering {
   id: number
   terminId: number
   type: CateringType
+  label: string | null
   buyoutAmount: number | null
   notes: string | null
   contactName: string | null
   contactPhone: string | null
+  deadline: string | null
+  sortOrder: number
+  orders: CateringOrder[]
 }
 
 export interface CateringOrder {
   id: number
   terminId: number
+  cateringId: number | null
   contactId: number | null
   contactName: string | null
   orderText: string
 }
 
 export interface CateringData {
-  catering: Catering | null
+  blocks: Catering[]
   members: CateringMember[]
 }
 
@@ -2389,10 +2394,14 @@ function cateringFromRow(r: Record<string, unknown>): Catering {
     id:           r.id as number,
     terminId:     r.termin_id as number,
     type:         (r.type as CateringType) ?? 'none',
+    label:        (r.label as string | null) ?? null,
     buyoutAmount: (r.buyout_amount as number | null) ?? null,
     notes:        (r.notes as string | null) ?? null,
     contactName:  (r.contact_name as string | null) ?? null,
     contactPhone: (r.contact_phone as string | null) ?? null,
+    deadline:     (r.deadline as string | null) ?? null,
+    sortOrder:    (r.sort_order as number) ?? 0,
+    orders:       Array.isArray(r.orders) ? (r.orders as Record<string, unknown>[]).map(cateringOrderFromRow) : [],
   }
 }
 
@@ -2414,59 +2423,75 @@ function cateringOrderFromRow(r: Record<string, unknown>): CateringOrder {
   return {
     id:          r.id as number,
     terminId:    r.termin_id as number,
+    cateringId:  (r.catering_id as number | null) ?? null,
     contactId:   (r.contact_id as number | null) ?? null,
     contactName: (r.contact_name as string | null) ?? null,
     orderText:   (r.order_text as string) ?? '',
   }
 }
 
-export async function getCatering(terminId: number): Promise<CateringData> {
-  const data = await request<{ catering: Record<string, unknown> | null; members: Record<string, unknown>[] }>(
-    `/api/termine/${terminId}/catering`
-  )
+export type CateringBlockInput = Partial<Pick<Catering, 'type' | 'label' | 'buyoutAmount' | 'notes' | 'contactName' | 'contactPhone' | 'deadline'>>
+
+function cateringBlockBody(data: CateringBlockInput) {
   return {
-    catering: data.catering ? cateringFromRow(data.catering) : null,
-    members:  data.members.map(cateringMemberFromRow),
+    type:          data.type ?? 'none',
+    label:         data.label ?? null,
+    buyout_amount: data.buyoutAmount ?? null,
+    notes:         data.notes ?? null,
+    contact_name:  data.contactName ?? null,
+    contact_phone: data.contactPhone ?? null,
+    deadline:      data.deadline ?? null,
   }
 }
 
-export async function saveCatering(terminId: number, data: Partial<Omit<Catering, 'id' | 'terminId'>>): Promise<Catering> {
+export async function getCatering(terminId: number): Promise<CateringData> {
+  const data = await request<{ blocks: Record<string, unknown>[]; members: Record<string, unknown>[] }>(
+    `/api/termine/${terminId}/catering`
+  )
+  return {
+    blocks:  (data.blocks ?? []).map(cateringFromRow),
+    members: (data.members ?? []).map(cateringMemberFromRow),
+  }
+}
+
+export async function createCateringBlock(terminId: number, data: CateringBlockInput): Promise<Catering> {
   const row = await request<Record<string, unknown>>(`/api/termine/${terminId}/catering`, {
-    method: 'PUT',
-    body: {
-      type:          data.type ?? 'none',
-      buyout_amount: data.buyoutAmount ?? null,
-      notes:         data.notes ?? null,
-      contact_name:  data.contactName ?? null,
-      contact_phone: data.contactPhone ?? null,
-    },
+    method: 'POST',
+    body: cateringBlockBody(data),
   })
   return cateringFromRow(row)
 }
 
-export async function getCateringOrders(terminId: number): Promise<CateringOrder[]> {
-  const rows = await request<Record<string, unknown>[]>(`/api/termine/${terminId}/catering/orders`)
-  return rows.map(cateringOrderFromRow)
+export async function updateCateringBlock(terminId: number, blockId: number, data: CateringBlockInput): Promise<Catering> {
+  const row = await request<Record<string, unknown>>(`/api/termine/${terminId}/catering/${blockId}`, {
+    method: 'PUT',
+    body: cateringBlockBody(data),
+  })
+  return cateringFromRow(row)
 }
 
-export async function createCateringOrder(terminId: number, data: { contactId?: number | null; contactName?: string; orderText: string }): Promise<CateringOrder> {
-  const row = await request<Record<string, unknown>>(`/api/termine/${terminId}/catering/orders`, {
+export async function deleteCateringBlock(terminId: number, blockId: number): Promise<void> {
+  await request(`/api/termine/${terminId}/catering/${blockId}`, { method: 'DELETE' })
+}
+
+export async function createCateringOrder(terminId: number, blockId: number, data: { contactId?: number | null; contactName?: string; orderText: string }): Promise<CateringOrder> {
+  const row = await request<Record<string, unknown>>(`/api/termine/${terminId}/catering/${blockId}/orders`, {
     method: 'POST',
     body: { contact_id: data.contactId ?? null, contact_name: data.contactName ?? null, order_text: data.orderText },
   })
   return cateringOrderFromRow(row)
 }
 
-export async function updateCateringOrder(terminId: number, orderId: number, orderText: string): Promise<CateringOrder> {
-  const row = await request<Record<string, unknown>>(`/api/termine/${terminId}/catering/orders/${orderId}`, {
+export async function updateCateringOrder(terminId: number, blockId: number, orderId: number, orderText: string): Promise<CateringOrder> {
+  const row = await request<Record<string, unknown>>(`/api/termine/${terminId}/catering/${blockId}/orders/${orderId}`, {
     method: 'PUT',
     body: { order_text: orderText },
   })
   return cateringOrderFromRow(row)
 }
 
-export async function deleteCateringOrder(terminId: number, orderId: number): Promise<void> {
-  await request(`/api/termine/${terminId}/catering/orders/${orderId}`, { method: 'DELETE' })
+export async function deleteCateringOrder(terminId: number, blockId: number, orderId: number): Promise<void> {
+  await request(`/api/termine/${terminId}/catering/${blockId}/orders/${orderId}`, { method: 'DELETE' })
 }
 
 // ============================================
