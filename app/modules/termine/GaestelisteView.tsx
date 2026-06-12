@@ -683,7 +683,7 @@ export default function GaestelisteView({ terminId }: Props) {
 
   // Blauer Front-Button „Neue Liste" (wie in anderen Bereichen)
   const newListBtn = isEditor && (
-    <button onClick={() => { setNewListName(''); setShowNewListModal(true) }} disabled={creatingList} className="btn btn-primary" title="Neue Liste">
+    <button onClick={() => { setNewListName(''); setShowNewListModal(true) }} disabled={creatingList} className="btn btn-primary flex-shrink-0" title="Neue Liste">
       <PlusIcon className="w-4 h-4" /><span className="hidden md:inline"> Neue Liste</span>
     </button>
   )
@@ -718,14 +718,14 @@ export default function GaestelisteView({ terminId }: Props) {
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex gap-2">
               {canWrite && !isLocked && !addBlockedByDeadline && (
-                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
+                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary flex-shrink-0">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
               )}
               {isEditor && (
                 <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`p-2 rounded-lg ${isLocked ? 'text-green-600 bg-green-50' : 'text-gray-500 hover:bg-gray-100'}`}>
-                  {isLocked ? <LockOpenIcon className="w-5 h-5" /> : <LockClosedIcon className="w-5 h-5" />}
+                  {isLocked ? <LockClosedIcon className="w-5 h-5" /> : <LockOpenIcon className="w-5 h-5" />}
                 </button>
               )}
             </div>
@@ -885,14 +885,14 @@ export default function GaestelisteView({ terminId }: Props) {
             {/* Links: Hinzufügen + Sperren */}
             <div className="flex items-center gap-2 shrink-0">
               {canWrite && !isLocked && !addBlockedByDeadline && (
-                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary">
+                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary flex-shrink-0">
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
               )}
               {isEditor && (
-                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`btn ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
-                  {isLocked ? <LockOpenIcon className="w-4 h-4" /> : <LockClosedIcon className="w-4 h-4" />}
+                <button onClick={handleLockToggle} title={isLocked ? 'Entsperren' : 'Abschließen'} className={`btn flex-shrink-0 ${isLocked ? 'btn-success' : 'btn-ghost'}`}>
+                  {isLocked ? <LockClosedIcon className="w-4 h-4" /> : <LockOpenIcon className="w-4 h-4" />}
                 </button>
               )}
             </div>
@@ -906,19 +906,19 @@ export default function GaestelisteView({ terminId }: Props) {
             <div className="flex items-center gap-2 shrink-0">
               {newListBtn}
               {isEditor && (
-                <button onClick={() => setShowSettings(true)} className="btn btn-ghost">
+                <button onClick={() => setShowSettings(true)} className="btn btn-ghost flex-shrink-0">
                   <Cog6ToothIcon className="w-4 h-4" /> Einstellungen
                 </button>
               )}
               {isEditor && lists.length > 1 && activeListId && (
-                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="btn btn-ghost text-red-500 hover:text-red-600">
+                <button onClick={() => handleDeleteList(activeListId)} title="Liste löschen" className="btn btn-ghost flex-shrink-0 text-red-500 hover:text-red-600">
                   <TrashIcon className="w-4 h-4" />
                 </button>
               )}
-              <button onClick={handleCsvExport} className="btn btn-ghost">
+              <button onClick={handleCsvExport} className="btn btn-ghost flex-shrink-0">
                 <ArrowDownTrayIcon className="w-4 h-4" /> CSV
               </button>
-              <button onClick={handlePdfExport} className="btn btn-ghost">
+              <button onClick={handlePdfExport} className="btn btn-ghost flex-shrink-0">
                 <DocumentTextIcon className="w-4 h-4" /> PDF
               </button>
             </div>
