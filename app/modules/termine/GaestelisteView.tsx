@@ -661,7 +661,7 @@ export default function GaestelisteView({ terminId }: Props) {
   const listTabs = (
     lists.length > 1 ? (
       <select
-        className="form-select text-sm py-1.5"
+        className="form-select text-sm py-1.5 w-full"
         value={activeListId ?? ''}
         onChange={e => setActiveListId(Number(e.target.value))}
       >
@@ -880,12 +880,18 @@ export default function GaestelisteView({ terminId }: Props) {
       ) : (
         /* ══════════════════════ DESKTOP LAYOUT ══════════════════════ */
         <div className="px-4">
-          {/* Toolbar + Tabs in einer Zeile — 3-Spalten-Grid, damit die Mitte fix zentriert bleibt */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-4">
+          {/* Toolbar — Mitte (1fr) füllt, Seiten = Inhaltsbreite. Hinzufügen-Platz wird reserviert,
+              damit die Mitte beim Sperren nicht wächst (Button wird unsichtbar statt entfernt) */}
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 mb-4">
             {/* Links: Hinzufügen + Sperren */}
             <div className="flex items-center gap-2 justify-self-start">
-              {canWrite && !isLocked && !addBlockedByDeadline && (
-                <button onClick={() => { setEditEntry(null); setShowAddModal(true) }} className="btn btn-primary flex-shrink-0">
+              {canWrite && (
+                <button
+                  onClick={() => { setEditEntry(null); setShowAddModal(true) }}
+                  className={`btn btn-primary flex-shrink-0 ${(isLocked || addBlockedByDeadline) ? 'invisible pointer-events-none' : ''}`}
+                  aria-hidden={isLocked || addBlockedByDeadline}
+                  tabIndex={(isLocked || addBlockedByDeadline) ? -1 : undefined}
+                >
                   <PlusIcon className="w-4 h-4" />
                   {isDirect ? 'Hinzufügen' : 'Wunsch'}
                 </button>
@@ -897,8 +903,8 @@ export default function GaestelisteView({ terminId }: Props) {
               )}
             </div>
 
-            {/* Mitte: Tabs (fix zentriert) */}
-            <div className="justify-self-center min-w-0">
+            {/* Mitte: Tabs (füllt den Platz) */}
+            <div className="min-w-0">
               {listTabs}
             </div>
 
