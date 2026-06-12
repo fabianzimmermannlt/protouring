@@ -7,7 +7,9 @@
 
 function toNumber(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null
-  const n = typeof value === 'string' ? parseFloat(value.replace(/\./g, '').replace(',', '.')) : value
+  // Strings sind hier reine Zahl-Strings (z.B. "20.5" aus String(number) oder "25000").
+  // Punkt NICHT als Tausender werten; nur ein evtl. deutsches Dezimalkomma umsetzen.
+  const n = typeof value === 'string' ? parseFloat(value.replace(',', '.')) : value
   return Number.isFinite(n) ? n : null
 }
 

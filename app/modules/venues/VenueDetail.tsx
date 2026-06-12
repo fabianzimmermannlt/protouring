@@ -11,6 +11,7 @@ import {
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
 import { AutoGrowTextarea } from '@/app/components/shared/AutoGrowTextarea'
 import { CollapsibleCard } from '@/app/components/shared/CollapsibleCard'
+import { NumericInput } from '@/app/components/shared/NumericInput'
 import {
   getAuthToken, getCurrentTenant, getCurrentUser,
   isEditorRole, getEffectiveRole, type Venue, type VenueContact,
@@ -466,8 +467,8 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
             : (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <IField label={t('venues.capacityStanding')} value={form.capacity ?? ''} onChange={v => f('capacity', v)} placeholder="z.B. 5000" readOnly={ro} />
-                  <IField label={t('venues.capacitySeated')} value={form.capacitySeated ?? ''} onChange={v => f('capacitySeated', v)} placeholder="z.B. 3000" readOnly={ro} />
+                  <INumber label={t('venues.capacityStanding')} value={form.capacity ?? ''} onChange={v => f('capacity', v)} placeholder="z.B. 5000" readOnly={ro} />
+                  <INumber label={t('venues.capacitySeated')} value={form.capacitySeated ?? ''} onChange={v => f('capacitySeated', v)} placeholder="z.B. 3000" readOnly={ro} />
                 </div>
                 <div className="grid grid-cols-[2fr_1fr] gap-2">
                   <IField label={t('venues.stageDimensions')} value={form.stageDimensions ?? ''} onChange={v => f('stageDimensions', v)} placeholder="z.B. 12x8m" readOnly={ro} />
@@ -697,6 +698,25 @@ function IField({ label, value, onChange, placeholder = '', readOnly = false }: 
       <label className="detail-label">{label}</label>
       <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         readOnly={readOnly} className="detail-input" />
+    </div>
+  )
+}
+
+// Ganzzahl-Feld mit Tausenderpunkten (z.B. Kapazität). value/onChange als String (wie Formular).
+function INumber({ label, value, onChange, placeholder = '', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
+}) {
+  return (
+    <div>
+      <label className="detail-label">{label}</label>
+      <NumericInput
+        value={value ? parseFloat(value) : null}
+        decimals={0}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        className="detail-input"
+        onCommit={n => onChange(n === null ? '' : String(n))}
+      />
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
   type Catering, type CateringType, type CateringMember, type CateringOrder,
 } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
+import { NumericInput } from '@/app/components/shared/NumericInput'
 
 // App ist fest Dark-Mode
 const dark = true
@@ -373,7 +374,6 @@ function CateringBlock({
   const changeType = (t: CateringType) => { setType(t); persist({ type: t }) }
   const handleNotesSave = async (_title: string, html: string) => { setNotes(html); await persist({ notes: html }); setNotesOpen(false) }
   const handleMetaSave = async () => { await persist({ contactName, contactPhone }); setEditingMeta(false) }
-  const handleBuyoutSave = () => persist({ buyoutAmount: buyoutAmount ? parseFloat(buyoutAmount) : null })
   const handleDeadlineSave = () => persist({ deadline })
 
   const handleDelete = async () => {
@@ -469,15 +469,11 @@ function CateringBlock({
             <span className="text-xs text-gray-400 whitespace-nowrap">Pro Person</span>
             {isAdmin ? (
               <div className="flex items-center gap-1">
-                <input
-                  type="number"
+                <NumericInput
+                  value={buyoutAmount === '' ? null : parseFloat(buyoutAmount)}
+                  decimals={2}
                   className="form-input text-sm py-0.5 w-24"
-                  value={buyoutAmount}
-                  onChange={e => setBuyoutAmount(e.target.value)}
-                  onBlur={handleBuyoutSave}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
+                  onCommit={n => { setBuyoutAmount(n === null ? '' : String(n)); persist({ buyoutAmount: n }) }}
                 />
                 <span className="text-xs text-gray-400">{currency}</span>
               </div>
