@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
-  Upload, Trash2, X, AlertCircle, Plus, Save, Check,
+  Upload, Trash2, X, AlertCircle, Plus, Save, Check, Pencil,
   File as FileIcon, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
   Image as ImageIcon, ExternalLink, Loader2, UserCircle, Phone, Mail, ArrowLeft,
 } from 'lucide-react'
@@ -511,7 +511,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                         </div>
                         {isEditor && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><FileIcon className="w-3 h-3" /></button>
+                            <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><Pencil className="w-3 h-3" /></button>
                             <button onClick={() => handleDeleteContact(c.id)} className="text-gray-400 hover:text-red-600 p-0.5"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         )}
