@@ -1074,6 +1074,33 @@ export async function deletePartnerType(id: number): Promise<void> {
   await request(`/api/partner-types/${id}`, { method: 'DELETE' });
 }
 
+// ── Fahrzeug-Typen ────────────────────────────────────────────────────────────
+export interface VehicleType {
+  id: number;
+  name: string;
+  visible: number; // 1 = sichtbar, 0 = ausgeblendet
+  sort_order: number;
+}
+
+export async function getVehicleTypes(): Promise<VehicleType[]> {
+  const data = await request('/api/vehicle-types') as { types: VehicleType[] };
+  return data.types;
+}
+
+export async function createVehicleType(name: string): Promise<VehicleType> {
+  const data = await request('/api/vehicle-types', { method: 'POST', body: { name } }) as { type: VehicleType };
+  return data.type;
+}
+
+export async function toggleVehicleTypeVisible(id: number, visible: boolean): Promise<VehicleType> {
+  const data = await request(`/api/vehicle-types/${id}/visible`, { method: 'PATCH', body: { visible } }) as { type: VehicleType };
+  return data.type;
+}
+
+export async function deleteVehicleType(id: number): Promise<void> {
+  await request(`/api/vehicle-types/${id}`, { method: 'DELETE' });
+}
+
 // ============================================
 // File Categories API
 // ============================================

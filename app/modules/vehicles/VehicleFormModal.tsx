@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Trash2, Save, X } from 'lucide-react'
-import { createVehicle, updateVehicle, deleteVehicle, type Vehicle, type VehicleFormData } from '@/lib/api-client'
+import { createVehicle, updateVehicle, deleteVehicle, getVehicleTypes, type Vehicle, type VehicleFormData } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
-const VEHICLE_TYPES = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
+const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
 
 const MOCK_USERS = [
   'Max Mustermann', 'Erika Mustermann', 'Thomas Schmidt',
@@ -56,6 +56,17 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
         }
       : { ...EMPTY_FORM }
   )
+
+  const [vehicleTypes, setVehicleTypes] = useState<string[]>(VEHICLE_TYPES_FALLBACK)
+
+  useEffect(() => {
+    getVehicleTypes()
+      .then(types => {
+        const visible = types.filter(t => t.visible === 1).map(t => t.name)
+        if (visible.length > 0) setVehicleTypes(visible)
+      })
+      .catch(() => { /* Fallback bleibt erhalten */ })
+  }, [])
 
   const set = (patch: Partial<VehicleFormData>) => setFormData(prev => ({ ...prev, ...patch }))
 
@@ -116,7 +127,7 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
                   className="form-input"
                 >
                   <option value="">{t('vehicles.selectPlaceholder')}</option>
-                  {VEHICLE_TYPES.map(vehicleType => <option key={vehicleType} value={vehicleType}>{vehicleType}</option>)}
+                  {vehicleTypes.map(vehicleType => <option key={vehicleType} value={vehicleType}>{vehicleType}</option>)}
                 </select>
               </div>
 

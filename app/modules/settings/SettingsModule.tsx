@@ -36,13 +36,14 @@ import {
   getIcalToken, regenerateIcalToken, getIcalUrl,
   getActiveFunctions,
   getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
+  getVehicleTypes, createVehicleType, deleteVehicleType, toggleVehicleTypeVisible,
   getFileCategories, createFileCategory, deleteFileCategory, toggleFileCategoryVisible,
   getArtistMembers, createArtistMember, updateArtistMember, deleteArtistMember,
   getTenantSetting, setTenantSetting,
   ROLE_LABELS, CURRENT_USER_KEY,
   type TenantUser, type PendingInvite, type TenantRole, type ContactFormData, type Contact,
   type TenantArtistSettings, type TenantBilling, type UserFormat, type SuperadminUser,
-  type PartnerType, type FileCategory, type ArtistMember, type ArtistMemberFormData,
+  type PartnerType, type VehicleType, type FileCategory, type ArtistMember, type ArtistMemberFormData,
 } from '@/lib/api-client'
 
 import { ProfileEditor, type ProfileData } from '@/app/components/shared/ProfileEditor'
@@ -138,6 +139,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'partners':
         return <PartnerTypesSettings />
+
+      case 'vehicles':
+        return <VehicleTypesSettings />
 
       case 'gewerke':
         return <GewerkSettings />
@@ -2282,6 +2286,277 @@ function PartnerTypesSettings() {
               type="text" value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddOwn()}
               placeholder="Eigene Kategorie…"
+              className="detail-input" style={{ flex: 1, marginBottom: 0 }}
+            />
+            <button onClick={handleAddOwn} disabled={adding || !newName.trim()}
+              className="btn btn-primary flex-shrink-0" style={{ borderRadius: 0, height: '30px', padding: '0 12px', fontSize: '13px' }}>
+              {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : '+'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+// ─── Vehicle Types Settings ───────────────────────────────────────────────────
+
+const VEHICLE_SUGGESTIONS = [
+  { group: 'Fahrzeugtypen', items: ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Coach', 'Sonstiges'] },
+]
+
+function VehicleTypesSettings() {
+  const t = useT()
+  const [types, setTypes] = useState<VehicleType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState('')
+
+  // pendingOverrides: visibility changes for existing DB entries { [id]: 0 | 1 }
+  const [pendingOverrides, setPendingOverrides] = useState<Record<number, 0 | 1>>({})
+  // pendingCreates: catalog names not yet in DB that user activated
+  const [pendingCreates, setPendingCreates] = useState<string[]>([])
+
+  const isDirty = Object.keys(pendingOverrides).length > 0 || pendingCreates.length > 0
+
+  useEffect(() => {
+    getVehicleTypes()
+      .then(data => { setTypes(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    ;(window as any).__pt_isDirty = isDirty
+    return () => { ;(window as any).__pt_isDirty = false }
+  }, [isDirty])
+
+  const saveEdit = async (): Promise<boolean> => {
+    if (!isDirty) return true
+    setSaving(true)
+    try {
+      // Create all pending catalog items (created as visible=1)
+      const created = await Promise.all(
+        pendingCreates.map(name => createVehicleType(name))
+      )
+      // Apply all visibility overrides
+      const overrideEntries = Object.entries(pendingOverrides) as [string, 0 | 1][]
+      await Promise.all(
+        overrideEntries.map(([idStr, visible]) =>
+          toggleVehicleTypeVisible(Number(idStr), visible === 1)
+        )
+      )
+      // Merge into local state
+      setTypes(prev => {
+        const merged = prev.map(vt => {
+          const ov = pendingOverrides[vt.id]
+          return ov !== undefined ? { ...vt, visible: ov } : vt
+        })
+        return [...merged, ...created]
+      })
+      setPendingOverrides({})
+      setPendingCreates([])
+      return true
+    } catch {
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    ;(window as any).__pt_save = saveEdit
+    return () => { ;(window as any).__pt_save = null }
+  })
+
+  const cancelEdit = () => {
+    setPendingOverrides({})
+    setPendingCreates([])
+  }
+
+  // Toggle an existing DB entry's visibility (buffered)
+  function handleToggleExisting(vt: VehicleType) {
+    const currentVisible = pendingOverrides[vt.id] !== undefined ? pendingOverrides[vt.id] : vt.visible
+    const nextVisible: 0 | 1 = currentVisible === 1 ? 0 : 1
+    if (nextVisible === vt.visible) {
+      setPendingOverrides(prev => { const next = { ...prev }; delete next[vt.id]; return next })
+    } else {
+      setPendingOverrides(prev => ({ ...prev, [vt.id]: nextVisible }))
+    }
+  }
+
+  // Toggle a predefined catalog name that has no DB entry yet
+  function handleToggleCatalog(name: string) {
+    if (pendingCreates.includes(name)) {
+      setPendingCreates(prev => prev.filter(n => n !== name))
+    } else {
+      setPendingCreates(prev => [...prev, name])
+    }
+  }
+
+  async function handleAddOwn() {
+    const name = newName.trim()
+    if (!name) return
+    setAdding(true); setError('')
+    try {
+      const created = await createVehicleType(name)
+      setTypes(prev => [...prev, created])
+      setNewName('')
+    } catch (e) {
+      setError((e as Error).message || t('settings.users.saveError'))
+    } finally { setAdding(false) }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm(t('settings.vehicleTypes.deleteConfirm'))) return
+    try {
+      await deleteVehicleType(id)
+      setTypes(prev => prev.filter(vt => vt.id !== id))
+      setPendingOverrides(prev => { const next = { ...prev }; delete next[id]; return next })
+    } catch { /* silent */ }
+  }
+
+  if (loading) return (
+    <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+      <Loader2 className="w-4 h-4 animate-spin" /> {t('settings.vehicleTypes.loading')}
+    </div>
+  )
+
+  const allSuggested = new Set(VEHICLE_SUGGESTIONS.flatMap(g => g.items))
+  const uncategorized = types.filter(vt => !allSuggested.has(vt.name))
+
+  // Chip for predefined catalog items — no X button, no dashed border
+  const renderCatalogChip = (name: string) => {
+    const existing = types.find(vt => vt.name === name)
+    let isActive: boolean
+    if (existing) {
+      const ov = pendingOverrides[existing.id]
+      isActive = ov !== undefined ? ov === 1 : existing.visible === 1
+    } else {
+      isActive = pendingCreates.includes(name)
+    }
+    const handleClick = () => existing ? handleToggleExisting(existing) : handleToggleCatalog(name)
+    return (
+      <button
+        key={name}
+        className={`pt-fn-chip ${isActive ? 'pt-fn-chip--active' : ''}`}
+        onClick={handleClick}
+      >
+        {name}
+      </button>
+    )
+  }
+
+  // Chip for "Eigene" entries — has X delete button
+  const renderOwnChip = (vt: VehicleType) => {
+    const ov = pendingOverrides[vt.id]
+    const isActive = ov !== undefined ? ov === 1 : vt.visible === 1
+    return (
+      <button
+        key={vt.id}
+        className={`pt-fn-chip group ${isActive ? 'pt-fn-chip--active' : ''}`}
+        onClick={() => handleToggleExisting(vt)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+      >
+        {vt.name}
+        <span
+          className="opacity-0 group-hover:opacity-50 transition-opacity"
+          style={{ fontSize: '10px', lineHeight: 1, marginLeft: '2px' }}
+          onClick={e => { e.stopPropagation(); handleDelete(vt.id) }}
+        >✕</span>
+      </button>
+    )
+  }
+
+  return (
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
+        <div>
+          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Fahrzeug-Typen</h1>
+          <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
+            {(() => {
+              const totalAll = VEHICLE_SUGGESTIONS.flatMap(g => g.items).length + uncategorized.length
+              const activeExisting = types.filter(vt => {
+                const ov = pendingOverrides[vt.id]
+                return ov !== undefined ? ov === 1 : vt.visible === 1
+              }).length
+              const activeTotal = activeExisting + pendingCreates.length
+              return `${activeTotal} von ${totalAll} aktiv`
+            })()}
+          </p>
+        </div>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-fn-groups">
+        {VEHICLE_SUGGESTIONS.map(group => {
+          const toggleGroup = (on: boolean) => {
+            const nextOverrides: Record<number, 0 | 1> = { ...pendingOverrides }
+            const nextCreates = new Set(pendingCreates)
+            group.items.forEach(name => {
+              const existing = types.find(vt => vt.name === name)
+              if (existing) {
+                const target: 0 | 1 = on ? 1 : 0
+                if (target !== existing.visible) nextOverrides[existing.id] = target
+                else delete nextOverrides[existing.id]
+              } else {
+                if (on) nextCreates.add(name)
+                else nextCreates.delete(name)
+              }
+            })
+            setPendingOverrides(nextOverrides)
+            setPendingCreates(Array.from(nextCreates))
+          }
+          return (
+          <div key={group.group} className="pt-fn-group">
+            <div className="pt-fn-group-header">
+              <span className="pt-fn-group-name">{group.group}</span>
+              <div className="pt-fn-group-actions">
+                <button className="pt-fn-group-toggle" onClick={() => toggleGroup(true)}>Alle an</button>
+                <span className="pt-fn-group-divider">·</span>
+                <button className="pt-fn-group-toggle" onClick={() => toggleGroup(false)}>Alle aus</button>
+              </div>
+            </div>
+            <div className="pt-fn-chips">
+              {group.items.map(renderCatalogChip)}
+            </div>
+          </div>
+          )
+        })}
+
+        {/* Eigene — nicht im Katalog, nur diese haben X */}
+        <div className="pt-fn-group">
+          <div className="pt-fn-group-header">
+            <span className="pt-fn-group-name">Eigene</span>
+          </div>
+          <div className="pt-fn-chips" style={{ marginBottom: '0.6rem', minHeight: '28px' }}>
+            {uncategorized.length === 0 && (
+              <span className="pt-fn-subtitle" style={{ fontSize: '0.78rem' }}>Noch keine eigenen Einträge</span>
+            )}
+            {uncategorized.map(renderOwnChip)}
+          </div>
+          <div className="flex gap-2 items-center" style={{ maxWidth: '380px' }}>
+            <input
+              type="text" value={newName} onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddOwn()}
+              placeholder="Eigener Fahrzeug-Typ…"
               className="detail-input" style={{ flex: 1, marginBottom: 0 }}
             />
             <button onClick={handleAddOwn} disabled={adding || !newName.trim()}

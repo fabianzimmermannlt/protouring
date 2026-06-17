@@ -58,6 +58,7 @@ const SETTINGS_WORKSPACE: SubItem[] = [
   { id: 'permissions', name: 'Berechtigungen',  editorOnly: true },
   { id: 'contacts',    name: 'Kontakte',         editorOnly: true },
   { id: 'partners',    name: 'Partners',         adminOnly: true },
+  { id: 'vehicles',    name: 'Fahrzeuge',        adminOnly: true },
   { id: 'gewerke',     name: 'Gewerke',          editorOnly: true },
   { id: 'uploads',     name: 'Upload-Kategorien', editorOnly: true },
   { id: 'travel',      name: 'Travel & Hotel',    adminOnly: true },

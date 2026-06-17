@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Save, X, Loader2 } from 'lucide-react'
-import { createVehicle, type Vehicle, type VehicleFormData } from '@/lib/api-client'
+import { createVehicle, getVehicleTypes, type Vehicle, type VehicleFormData } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
@@ -10,7 +10,7 @@ import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 // Bewusst NICHT die geteilte VehicleFormModal — die Stammdaten im Hauptmenü bleiben unverändert.
 // Legt in-place an und gibt den Datensatz per onCreated zurück (kein Seitenwechsel).
 
-const VEHICLE_TYPES = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
+const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
 
 const EMPTY_FORM: VehicleFormData = {
   designation: '',
@@ -38,7 +38,17 @@ export default function TravelVehicleQuickCreate({ onClose, onCreated }: Props) 
   const [form, setForm] = useState<VehicleFormData>({ ...EMPTY_FORM })
   const [showMore, setShowMore] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [vehicleTypes, setVehicleTypes] = useState<string[]>(VEHICLE_TYPES_FALLBACK)
   const set = (patch: Partial<VehicleFormData>) => setForm(prev => ({ ...prev, ...patch }))
+
+  useEffect(() => {
+    getVehicleTypes()
+      .then(types => {
+        const visible = types.filter(t => t.visible === 1).map(t => t.name)
+        if (visible.length > 0) setVehicleTypes(visible)
+      })
+      .catch(() => { /* Fallback bleibt erhalten */ })
+  }, [])
 
   const handleSave = async () => {
     if (!form.designation.trim()) { alert(t('vehicles.designationRequired2')); return }
@@ -78,7 +88,7 @@ export default function TravelVehicleQuickCreate({ onClose, onCreated }: Props) 
             <label className="form-label">{t('vehicles.vehicleType')}</label>
             <select className="form-input" value={form.vehicleType} onChange={e => set({ vehicleType: e.target.value })}>
               <option value="">{t('vehicles.selectPlaceholder')}</option>
-              {VEHICLE_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}
+              {vehicleTypes.map(vt => <option key={vt} value={vt}>{vt}</option>)}
             </select>
           </div>
           <div>

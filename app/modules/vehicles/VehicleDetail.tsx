@@ -5,11 +5,12 @@ import { AlertCircle, Save, Loader2, Truck, Users, X, ArrowLeft } from 'lucide-r
 import {
   isEditorRole, getEffectiveRole,
   getVehicle, updateVehicle, type Vehicle, type VehicleFormData,
+  getVehicleTypes,
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
-const VEHICLE_TYPES = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
+const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
 
 function IField({ label, required, value, onChange, placeholder = '', readOnly = false }: {
   label: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
@@ -66,7 +67,17 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showDirtyDialog, setShowDirtyDialog] = useState(false)
+  const [vehicleTypes, setVehicleTypes] = useState<string[]>(VEHICLE_TYPES_FALLBACK)
   const originalRef = useRef<Record<string, string>>({})
+
+  useEffect(() => {
+    getVehicleTypes()
+      .then(types => {
+        const visible = types.filter(t => t.visible === 1).map(t => t.name)
+        if (visible.length > 0) setVehicleTypes(visible)
+      })
+      .catch(() => { /* Fallback bleibt erhalten */ })
+  }, [])
 
   const loadVehicle = useCallback(async () => {
     setLoading(true)
@@ -194,7 +205,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
             <div className="pt-card-body">
               <div className="space-y-2">
                 <IField label={t('vehicles.designationRequired')} required value={form.designation ?? ''} onChange={v => f('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} readOnly={ro} />
-                <ISelect label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} options={VEHICLE_TYPES} readOnly={ro} />
+                <ISelect label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} options={vehicleTypes} readOnly={ro} />
                 <IField label={t('vehicles.driver')} value={form.driver ?? ''} onChange={v => f('driver', v)} readOnly={ro} />
                 <IField label={t('vehicles.licensePlate')} value={form.licensePlate ?? ''} onChange={v => f('licensePlate', v)} readOnly={ro} />
                 <IField label={t('vehicles.dimensions')} value={form.dimensions ?? ''} onChange={v => f('dimensions', v)} placeholder={t('vehicles.dimensionsPlaceholder')} readOnly={ro} />

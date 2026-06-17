@@ -146,6 +146,7 @@ const de = {
   'settings.sub.permissions':        'Berechtigungen',
   'settings.sub.contacts':           'Kontakte',
   'settings.sub.partners':           'Partner',
+  'settings.sub.vehicles':           'Fahrzeuge',
   'settings.sub.gewerke':            'Gewerke',
   'settings.sub.guestlist':          'Gästeliste',
   'settings.sub.daysheet':           'Daysheet',
@@ -364,6 +365,12 @@ const de = {
   'settings.partnerTypes.deleteConfirm':     'Diesen Partner-Typ wirklich löschen?',
   'settings.partnerTypes.loading':           'Lade…',
   'settings.partnerTypes.saveError':         'Fehler beim Speichern',
+  'settings.vehicleTypes.title':             'Fahrzeug-Typen',
+  'settings.vehicleTypes.description':       'Aktiviere die Typen, die beim Anlegen eines Fahrzeugs zur Auswahl stehen sollen.',
+  'settings.vehicleTypes.newPlaceholder':    'Neuer Typ…',
+  'settings.vehicleTypes.deleteConfirm':     'Diesen Fahrzeug-Typ wirklich löschen?',
+  'settings.vehicleTypes.loading':           'Lade…',
+  'settings.vehicleTypes.saveError':         'Fehler beim Speichern',
 
   // ── Settings — Artist Members ────────────────────────────────────────────────
   'settings.artistMembers.title':            'Artists',

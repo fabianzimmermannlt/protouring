@@ -145,6 +145,7 @@ const en = {
   'settings.sub.permissions':        'Permissions',
   'settings.sub.contacts':           'Contacts',
   'settings.sub.partners':           'Partners',
+  'settings.sub.vehicles':           'Vehicles',
   'settings.sub.gewerke':            'Departments',
   'settings.sub.guestlist':          'Guest List',
   'settings.sub.daysheet':           'Day Sheet',
@@ -363,6 +364,12 @@ const en = {
   'settings.partnerTypes.deleteConfirm':     'Really delete this partner type?',
   'settings.partnerTypes.loading':           'Loading…',
   'settings.partnerTypes.saveError':         'Error saving',
+  'settings.vehicleTypes.title':             'Vehicle Types',
+  'settings.vehicleTypes.description':       'Enable the types that should be available when creating a vehicle.',
+  'settings.vehicleTypes.newPlaceholder':    'New type…',
+  'settings.vehicleTypes.deleteConfirm':     'Really delete this vehicle type?',
+  'settings.vehicleTypes.loading':           'Loading…',
+  'settings.vehicleTypes.saveError':         'Error saving',
 
   // ── Settings — Artist Members ────────────────────────────────────────────────
   'settings.artistMembers.title':            'Artists',

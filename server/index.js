@@ -1184,6 +1184,20 @@ async function initDatabase() {
   // Migration: visible-Spalte nachrüsten falls Tabelle schon existiert
   try { await db.run('ALTER TABLE partner_types ADD COLUMN visible INTEGER DEFAULT 1') } catch {}
 
+  // Fahrzeug-Typen (pro Tenant, konfigurierbar)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS vehicle_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      visible INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  // Migration: visible-Spalte nachrüsten falls Tabelle schon existiert
+  try { await db.run('ALTER TABLE vehicle_types ADD COLUMN visible INTEGER DEFAULT 1') } catch {}
+
   // File-Kategorien (Upload-Bereiche)
   await db.run(`
     CREATE TABLE IF NOT EXISTS file_categories (
@@ -6324,6 +6338,68 @@ app.delete('/api/partner-types/:id', authenticateToken, requireTenant, async (re
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     await db.run('DELETE FROM partner_types WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Fahrzeug-Typen ───────────────────────────────────────────────────────────
+
+const DEFAULT_VEHICLE_TYPES = ['Nightliner','Van','Transporter','LKW','PKW','Limousine','Coach','Sonstiges']
+
+// GET /api/vehicle-types  (seeds fehlende Defaults nach)
+app.get('/api/vehicle-types', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    let rows = await db.all('SELECT * FROM vehicle_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    // Fehlende Defaults immer nachsäen
+    const existingNames = rows.map(r => r.name.toLowerCase())
+    let seeded = false
+    for (let i = 0; i < DEFAULT_VEHICLE_TYPES.length; i++) {
+      if (!existingNames.includes(DEFAULT_VEHICLE_TYPES[i].toLowerCase())) {
+        await db.run(
+          'INSERT INTO vehicle_types (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, ?)',
+          [req.tenant.id, DEFAULT_VEHICLE_TYPES[i], 1000 + i]
+        )
+        seeded = true
+      }
+    }
+    if (seeded) {
+      rows = await db.all('SELECT * FROM vehicle_types WHERE tenant_id = ? ORDER BY sort_order, name', [req.tenant.id])
+    }
+    res.json({ types: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/vehicle-types
+app.post('/api/vehicle-types', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { name, sort_order = 0 } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' })
+  try {
+    const result = await db.run(
+      'INSERT INTO vehicle_types (tenant_id, name, visible, sort_order) VALUES (?, ?, 1, ?)',
+      [req.tenant.id, name.trim(), sort_order]
+    )
+    const row = await db.get('SELECT * FROM vehicle_types WHERE id = ?', [result.lastID])
+    res.json({ type: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PATCH /api/vehicle-types/:id/visible
+app.patch('/api/vehicle-types/:id/visible', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  const { visible } = req.body
+  try {
+    await db.run('UPDATE vehicle_types SET visible = ? WHERE id = ? AND tenant_id = ?', [visible ? 1 : 0, req.params.id, req.tenant.id])
+    const row = await db.get('SELECT * FROM vehicle_types WHERE id = ?', [req.params.id])
+    res.json({ type: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/vehicle-types/:id
+app.delete('/api/vehicle-types/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM vehicle_types WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
