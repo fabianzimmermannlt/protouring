@@ -6,6 +6,7 @@ import {
   isEditorRole, getEffectiveRole,
   getPartner, updatePartner, type Partner, type PartnerFormData,
   getPartnerContacts, createPartnerContact, updatePartnerContact, deletePartnerContact, type PartnerContact,
+  getPartnerTypes,
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
@@ -73,6 +74,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showDirtyDialog, setShowDirtyDialog] = useState(false)
+  const [partnerTypes, setPartnerTypes] = useState<string[]>(PARTNER_TYPES)
   const originalRef = useRef<Record<string, string>>({})
 
   const loadPartner = useCallback(async () => {
@@ -93,6 +95,15 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
   }, [partnerId, onNotFound, t])
 
   useEffect(() => { loadPartner() }, [loadPartner])
+
+  useEffect(() => {
+    getPartnerTypes()
+      .then(data => {
+        const visible = data.filter(pt => pt.visible !== 0).map(pt => pt.name)
+        if (visible.length > 0) setPartnerTypes(visible)
+      })
+      .catch(() => { /* Fallback bleibt */ })
+  }, [])
 
   const f = (key: string, val: string) => {
     const next = { ...form, [key]: val }
@@ -188,7 +199,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
           <CollapsibleCard title={<><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardGeneral')}</>}>
               <div className="space-y-2">
                 <IField label={t('partners.company')} value={form.companyName ?? ''} onChange={v => f('companyName', v)} readOnly={ro} />
-                <ISelect label={t('partners.type')} value={form.type ?? ''} onChange={v => f('type', v)} options={PARTNER_TYPES} placeholder={t('partners.selectTypeOption')} readOnly={ro} />
+                <ISelect label={t('partners.type')} value={form.type ?? ''} onChange={v => f('type', v)} options={partnerTypes} placeholder={t('partners.selectTypeOption')} readOnly={ro} />
                 <IField label={t('partners.contactPerson')} value={form.contactPerson ?? ''} onChange={v => f('contactPerson', v)} readOnly={ro} />
               </div>
           </CollapsibleCard>
