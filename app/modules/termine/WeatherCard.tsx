@@ -47,7 +47,7 @@ const WMO: Record<number, { icon: string; label: string }> = {
 }
 const wmo = (c: number) => WMO[c] ?? { icon: '·', label: '' }
 
-interface HourRow { time: string; temp: number; prob: number | null; precip: number; code: number; wind: number }
+interface HourRow { time: string; temp: number; prob: number | null; precip: number; code: number; wind: number; gust: number }
 
 export default function WeatherCard({ date, lat, lon, locationQuery, locationLabel }: WeatherCardProps) {
   const [loading, setLoading] = useState(true)
@@ -78,7 +78,7 @@ export default function WeatherCard({ date, lat, lon, locationQuery, locationLab
         if (la == null || lo == null) { if (!cancelled) { setError('Kein Ort/Koordinaten für das Event hinterlegt.'); setLoading(false) } return }
 
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}`
-          + `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m`
+          + `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m`
           + `&timezone=auto&start_date=${dateOnly}&end_date=${dateOnly}`
         const data = await fetch(url).then(r => r.json())
         const h = data?.hourly
@@ -91,6 +91,7 @@ export default function WeatherCard({ date, lat, lon, locationQuery, locationLab
           precip: h.precipitation?.[i] ?? 0,
           code: h.weather_code?.[i] ?? 0,
           wind: Math.round(h.wind_speed_10m?.[i] ?? 0),
+          gust: Math.round(h.wind_gusts_10m?.[i] ?? 0),
         }))
         if (!cancelled) { setHours(rows); setLoading(false) }
       } catch {
@@ -126,14 +127,17 @@ export default function WeatherCard({ date, lat, lon, locationQuery, locationLab
                     <span className="font-semibold text-gray-200 text-xs">{hr.temp}°</span>
                     <span className="text-blue-400" style={{ fontSize: 10 }}>{hr.prob != null ? `${hr.prob}%` : '–'}</span>
                     <span className="text-gray-500" style={{ fontSize: 10 }}>{hr.precip > 0 ? `${hr.precip.toFixed(1)}` : '–'}</span>
+                    <span className="text-gray-300" style={{ fontSize: 10 }}>💨{hr.wind}</span>
+                    <span className="text-gray-500" style={{ fontSize: 9 }}>⇡{hr.gust}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-2 text-gray-500" style={{ fontSize: 10 }}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-2 text-gray-500" style={{ fontSize: 10 }}>
               <span>°C</span>
               <span className="text-blue-400">% Regenwahrsch.</span>
               <span>mm = l/m²</span>
+              <span>💨 Wind · ⇡ Böen (km/h)</span>
             </div>
           </>
         )}
