@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Save, X, ArrowLeft, Download, Upload } from 'lucide-react'
-import { getPartners, createPartner, updatePartner, deletePartner, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
+import { getPartners, createPartner, updatePartner, deletePartner, getPartnerTypes, isEditorRole, getEffectiveRole, type Partner, type PartnerFormData } from '@/lib/api-client'
 import { useSortable } from '@/app/hooks/useSortable'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
@@ -12,6 +12,13 @@ import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
 import { useColumnOrder } from '@/app/lib/hooks/useColumnOrder'
+
+const FALLBACK_PARTNER_TYPES = [
+  'Veranstaltende', 'Autovermietung', 'Trucking-Firma', 'Reisebüro', 'Technik-Lieferant',
+  'Backline-Firma', 'Medien-/Videoproduktion', 'Catering-Firma', 'Sicherheits-Firma',
+  'Merchandise-Dienstleister', 'Ticketing-Dienstleister', 'Support-Band', 'Booking Agentur',
+  'Zulieferer Sonstiges', 'Endorser', 'Brand', 'Management', 'Studio', 'Label', 'Marketing',
+]
 
 export default function PartnersPage() {
   const t = useT()
@@ -49,32 +56,20 @@ export default function PartnersPage() {
     notes: ''
   })
 
-  // Partner types for dropdown
-  const partnerTypes = [
-    'Veranstaltende',
-    'Autovermietung',
-    'Trucking-Firma',
-    'Reisebüro',
-    'Technik-Lieferant',
-    'Backline-Firma',
-    'Medien-/Videoproduktion',
-    'Catering-Firma',
-    'Sicherheits-Firma',
-    'Merchandise-Dienstleister',
-    'Ticketing-Dienstleister',
-    'Support-Band',
-    'Booking Agentur',
-    'Zulieferer Sonstiges',
-    'Endorser',
-    'Brand',
-    'Management',
-    'Studio',
-    'Label',
-    'Marketing'
-  ]
+  // Partner types for dropdown (aus Settings konfiguriert, Fallback = Default-Liste)
+  const [partnerTypes, setPartnerTypes] = useState<string[]>(FALLBACK_PARTNER_TYPES)
 
   useEffect(() => {
     getPartners().then(setPartners).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    getPartnerTypes()
+      .then(data => {
+        const visible = data.filter(pt => pt.visible !== 0).map(pt => pt.name)
+        if (visible.length > 0) setPartnerTypes(visible)
+      })
+      .catch(() => { /* Fallback bleibt */ })
   }, [])
 
   // SPA: select-partner event
