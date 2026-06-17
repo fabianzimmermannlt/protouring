@@ -20,7 +20,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { Loader2, Save, X, AlertCircle } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
-import { AccordionSection } from '@/app/components/shared/AccordionSection'
 import { SettingsAreaShell } from './SettingsAreaShell'
 import GewerkSettings from './GewerkSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
@@ -100,11 +99,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
       case 'contacts':
         return (
           <SettingsAreaShell title="Kontakte">
-            <AccordionSection title="Funktionen" defaultOpen stateKey="settings-kontakte-funktionen">
-              <div className="p-4">
-                <FunktionenSettings hideTitle />
-              </div>
-            </AccordionSection>
+            <FunktionenSettings hideTitle />
           </SettingsAreaShell>
         )
 
