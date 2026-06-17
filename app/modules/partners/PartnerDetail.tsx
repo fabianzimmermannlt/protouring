@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { AlertCircle, Save, Loader2, Building2, MapPin, Phone, X, ArrowLeft } from 'lucide-react'
+import { AlertCircle, Save, Loader2, Building2, MapPin, Phone, X, ArrowLeft, Plus, UserCircle, Mail, Trash2, Check, Pencil } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
   getPartner, updatePartner, type Partner, type PartnerFormData,
+  getPartnerContacts, createPartnerContact, updatePartnerContact, deletePartnerContact, type PartnerContact,
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
@@ -218,6 +219,9 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
               </div>
           </CollapsibleCard>
 
+          {/* Ansprechpartner */}
+          <PartnerContactsCard partnerId={partnerId} isEditor={isEditor} />
+
         </div>
       )}
 
@@ -243,6 +247,116 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Ansprechpartner (analog Venue) ───────────────────────────────────────────
+
+function PartnerContactsCard({ partnerId, isEditor }: { partnerId: string; isEditor: boolean }) {
+  const [contacts, setContacts] = useState<PartnerContact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState({ firstName: '', name: '', role: '', phone: '', email: '', notes: '' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getPartnerContacts(partnerId).then(setContacts).catch(() => {}).finally(() => setLoading(false))
+  }, [partnerId])
+
+  const startAdd = () => { setForm({ firstName: '', name: '', role: '', phone: '', email: '', notes: '' }); setEditingId(null); setAdding(true) }
+  const startEdit = (c: PartnerContact) => { setForm({ firstName: c.firstName, name: c.name, role: c.role, phone: c.phone, email: c.email, notes: c.notes }); setEditingId(c.id); setAdding(false) }
+
+  const save = async () => {
+    if (!form.name.trim()) return
+    setSaving(true)
+    try {
+      if (editingId) {
+        const u = await updatePartnerContact(partnerId, editingId, form)
+        setContacts(prev => prev.map(c => c.id === editingId ? u : c))
+      } else {
+        const c = await createPartnerContact(partnerId, form)
+        setContacts(prev => [...prev, c])
+      }
+      setAdding(false); setEditingId(null)
+    } catch { /* silent */ } finally { setSaving(false) }
+  }
+
+  const remove = async (id: string) => {
+    if (!confirm('Ansprechpartner wirklich löschen?')) return
+    try { await deletePartnerContact(partnerId, id); setContacts(prev => prev.filter(c => c.id !== id)) } catch { /* silent */ }
+  }
+
+  return (
+    <CollapsibleCard className="md:col-span-2"
+      title={<><UserCircle className="w-3.5 h-3.5 inline mr-1" />Ansprechpartner</>}
+      actions={isEditor ? <button onClick={startAdd} className="text-gray-400 hover:text-blue-600 transition-colors"><Plus className="w-3.5 h-3.5" /></button> : undefined}
+    >
+      {loading ? (
+        <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lädt…</div>
+      ) : (
+        <>
+          {contacts.map(c => (
+            editingId === c.id ? (
+              <PContactForm key={c.id} form={form} onChange={setForm} onSave={save} onCancel={() => setEditingId(null)} saving={saving} />
+            ) : (
+              <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 group">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-200">{`${c.firstName} ${c.name}`.trim()}</p>
+                    {c.role && <p className="text-xs text-gray-500">{c.role}</p>}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                      {c.phone && <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-xs text-blue-500 hover:underline"><Phone className="w-2.5 h-2.5" />{c.phone}</a>}
+                      {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-1 text-xs text-blue-500 hover:underline"><Mail className="w-2.5 h-2.5" />{c.email}</a>}
+                    </div>
+                    {c.notes && <p className="text-xs text-gray-400 mt-0.5">{c.notes}</p>}
+                  </div>
+                  {isEditor && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button onClick={() => startEdit(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><Pencil className="w-3 h-3" /></button>
+                      <button onClick={() => remove(c.id)} className="text-gray-400 hover:text-red-500 p-0.5"><Trash2 className="w-3 h-3" /></button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          ))}
+          {adding && <PContactForm form={form} onChange={setForm} onSave={save} onCancel={() => setAdding(false)} saving={saving} />}
+          {contacts.length === 0 && !adding && (
+            <div className="flex flex-col items-center justify-center h-16 text-gray-400">
+              <UserCircle className="w-5 h-5 mb-1" /><span className="text-xs">Noch keine Ansprechpartner</span>
+            </div>
+          )}
+        </>
+      )}
+    </CollapsibleCard>
+  )
+}
+
+function PContactForm({ form, onChange, onSave, onCancel, saving }: {
+  form: { firstName: string; name: string; role: string; phone: string; email: string; notes: string }
+  onChange: (f: any) => void; onSave: () => void; onCancel: () => void; saving: boolean
+}) {
+  const f = (key: string, value: string) => onChange((prev: any) => ({ ...prev, [key]: value }))
+  return (
+    <div className="py-2 border-b border-gray-100 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input value={form.firstName} onChange={e => f('firstName', e.target.value)} placeholder="Vorname" className="form-input text-xs py-1" />
+        <input value={form.name} onChange={e => f('name', e.target.value)} placeholder="Name *" className="form-input text-xs py-1" />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder="Rolle / Funktion" className="form-input text-xs py-1" />
+        <input value={form.phone} onChange={e => f('phone', e.target.value)} placeholder="Telefon" className="form-input text-xs py-1" />
+      </div>
+      <input value={form.email} onChange={e => f('email', e.target.value)} placeholder="E-Mail" className="form-input text-xs py-1 w-full" />
+      <input value={form.notes} onChange={e => f('notes', e.target.value)} placeholder="Notiz" className="form-input text-xs py-1 w-full" />
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="btn btn-ghost text-xs py-1 px-2">Abbrechen</button>
+        <button onClick={onSave} disabled={saving || !form.name.trim()} className="btn btn-primary text-xs py-1 px-2 disabled:opacity-50">
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Speichern
+        </button>
+      </div>
     </div>
   )
 }

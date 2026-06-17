@@ -271,6 +271,7 @@ export interface Venue {
 export interface VenueContact {
   id: string;
   venueId: string;
+  firstName: string;
   name: string;
   role: string;
   phone: string;
@@ -322,6 +323,37 @@ export async function updateVenueContact(venueId: string, contactId: string, dat
 
 export async function deleteVenueContact(venueId: string, contactId: string): Promise<void> {
   await request(`/api/venues/${venueId}/contacts/${contactId}`, { method: 'DELETE' });
+}
+
+export interface PartnerContact {
+  id: string;
+  partnerId: string;
+  firstName: string;
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  notes: string;
+  createdAt?: string;
+}
+
+export async function getPartnerContacts(partnerId: string): Promise<PartnerContact[]> {
+  const res = await request<{ contacts: PartnerContact[] }>(`/api/partners/${partnerId}/contacts`);
+  return res.contacts;
+}
+
+export async function createPartnerContact(partnerId: string, data: Omit<PartnerContact, 'id' | 'partnerId' | 'createdAt'>): Promise<PartnerContact> {
+  const res = await request<{ contact: PartnerContact }>(`/api/partners/${partnerId}/contacts`, { method: 'POST', body: data });
+  return res.contact;
+}
+
+export async function updatePartnerContact(partnerId: string, contactId: string, data: Omit<PartnerContact, 'id' | 'partnerId' | 'createdAt'>): Promise<PartnerContact> {
+  const res = await request<{ contact: PartnerContact }>(`/api/partners/${partnerId}/contacts/${contactId}`, { method: 'PUT', body: data });
+  return res.contact;
+}
+
+export async function deletePartnerContact(partnerId: string, contactId: string): Promise<void> {
+  await request(`/api/partners/${partnerId}/contacts/${contactId}`, { method: 'DELETE' });
 }
 
 // ============================================

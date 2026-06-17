@@ -125,7 +125,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
   const [contactsLoading, setContactsLoading] = useState(true)
   const [addingContact, setAddingContact] = useState(false)
   const [editingContactId, setEditingContactId] = useState<string | null>(null)
-  const [contactForm, setContactForm] = useState({ name: '', role: '', phone: '', email: '', notes: '' })
+  const [contactForm, setContactForm] = useState({ firstName: '', name: '', role: '', phone: '', email: '', notes: '' })
   const [savingContact, setSavingContact] = useState(false)
 
   const [photos, setPhotos] = useState<FileItem[]>([])
@@ -280,13 +280,13 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
 
   // ─── Contact handlers ─────────────────────────────────────────────────────
   function startAddContact() {
-    setContactForm({ name: '', role: '', phone: '', email: '', notes: '' })
+    setContactForm({ firstName: '', name: '', role: '', phone: '', email: '', notes: '' })
     setEditingContactId(null)
     setAddingContact(true)
   }
 
   function startEditContact(c: VenueContact) {
-    setContactForm({ name: c.name, role: c.role, phone: c.phone, email: c.email, notes: c.notes })
+    setContactForm({ firstName: c.firstName, name: c.name, role: c.role, phone: c.phone, email: c.email, notes: c.notes })
     setEditingContactId(c.id)
     setAddingContact(false)
   }
@@ -501,7 +501,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                     <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 group">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                          <p className="text-sm font-medium text-gray-800">{`${c.firstName} ${c.name}`.trim()}</p>
                           {c.role && <p className="text-xs text-gray-500">{c.role}</p>}
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                             {c.phone && <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Phone className="w-2.5 h-2.5" />{c.phone}</a>}
@@ -734,7 +734,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
 }
 
 function ContactForm({ form, onChange, onSave, onCancel, saving }: {
-  form: { name: string; role: string; phone: string; email: string; notes: string }
+  form: { firstName: string; name: string; role: string; phone: string; email: string; notes: string }
   onChange: (f: any) => void; onSave: () => void; onCancel: () => void; saving: boolean
 }) {
   const t = useT()
@@ -742,13 +742,14 @@ function ContactForm({ form, onChange, onSave, onCancel, saving }: {
   return (
     <div className="py-2 border-b border-gray-100 space-y-2">
       <div className="grid grid-cols-2 gap-2">
+        <input value={form.firstName} onChange={e => f('firstName', e.target.value)} placeholder="Vorname" className="form-input text-xs py-1" />
         <input value={form.name} onChange={e => f('name', e.target.value)} placeholder={`${t('general.name')} *`} className="form-input text-xs py-1" />
-        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder={t('venues.contactRole')} className="form-input text-xs py-1" />
       </div>
       <div className="grid grid-cols-2 gap-2">
+        <input value={form.role} onChange={e => f('role', e.target.value)} placeholder={t('venues.contactRole')} className="form-input text-xs py-1" />
         <input value={form.phone} onChange={e => f('phone', e.target.value)} placeholder={t('general.phone')} className="form-input text-xs py-1" />
-        <input value={form.email} onChange={e => f('email', e.target.value)} placeholder={t('general.email')} className="form-input text-xs py-1" />
       </div>
+      <input value={form.email} onChange={e => f('email', e.target.value)} placeholder={t('general.email')} className="form-input text-xs py-1 w-full" />
       <input value={form.notes} onChange={e => f('notes', e.target.value)} placeholder={t('venues.contactNote')} className="form-input text-xs py-1 w-full" />
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="btn btn-ghost text-xs py-1 px-2">{t('general.cancel')}</button>
