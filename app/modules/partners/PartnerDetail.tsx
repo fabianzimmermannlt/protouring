@@ -207,7 +207,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
           </CollapsibleCard>
 
           {/* Kontakt */}
-          <CollapsibleCard className="md:col-span-2" title={<><Phone className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardContact')}</>}>
+          <CollapsibleCard title={<><Phone className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardContact')}</>}>
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <IField label={t('general.email')} value={form.email ?? ''} onChange={v => f('email', v)} readOnly={ro} />
@@ -289,7 +289,7 @@ function PartnerContactsCard({ partnerId, isEditor }: { partnerId: string; isEdi
   }
 
   return (
-    <CollapsibleCard className="md:col-span-2"
+    <CollapsibleCard
       title={<><UserCircle className="w-3.5 h-3.5 inline mr-1" />Ansprechpartner</>}
       actions={isEditor ? <button onClick={startAdd} className="text-gray-400 hover:text-blue-600 transition-colors"><Plus className="w-3.5 h-3.5" /></button> : undefined}
     >
