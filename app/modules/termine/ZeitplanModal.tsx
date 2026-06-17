@@ -32,6 +32,7 @@ export default function ZeitplanModal({
   const isEdit = !!schedule
   const [title, setTitle] = useState(schedule?.title ?? '')
   const [notFinal, setNotFinal] = useState(schedule?.notFinal ?? false)
+  const [visibleRoles] = useState<string[]>(schedule?.visibleRoles ?? [])
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,9 +45,9 @@ export default function ZeitplanModal({
     try {
       const saved = isEdit
         ? await updateTerminSchedule(terminId, schedule!.id, {
-            title, content, notFinal, sortOrder: schedule!.sortOrder,
+            title, content, notFinal, visibleRoles, sortOrder: schedule!.sortOrder,
           })
-        : await createTerminSchedule(terminId, { title, content, notFinal, sortOrder })
+        : await createTerminSchedule(terminId, { title, content, notFinal, visibleRoles, sortOrder })
       onSaved(saved)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
