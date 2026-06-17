@@ -9,6 +9,8 @@ import {
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
+const VEHICLE_TYPES = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
+
 function IField({ label, required, value, onChange, placeholder = '', readOnly = false }: {
   label: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
 }) {
@@ -30,6 +32,22 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
       <textarea value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} rows={3} readOnly={readOnly}
         className="detail-input resize-none" />
+    </div>
+  )
+}
+
+function ISelect({ label, value, onChange, options, placeholder = '– bitte wählen –', readOnly = false }: {
+  label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; readOnly?: boolean
+}) {
+  // bestehende Freitext-Werte (nicht in der Liste) bleiben auswählbar erhalten
+  const opts = value && !options.includes(value) ? [value, ...options] : options
+  return (
+    <div>
+      <label className="detail-label">{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} disabled={readOnly} className="detail-input">
+        <option value="">{placeholder}</option>
+        {opts.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
     </div>
   )
 }
@@ -176,7 +194,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
             <div className="pt-card-body">
               <div className="space-y-2">
                 <IField label={t('vehicles.designationRequired')} required value={form.designation ?? ''} onChange={v => f('designation', v)} placeholder={t('vehicles.designationFullPlaceholder')} readOnly={ro} />
-                <IField label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} placeholder={t('vehicles.vehicleTypePlaceholder')} readOnly={ro} />
+                <ISelect label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} options={VEHICLE_TYPES} readOnly={ro} />
                 <IField label={t('vehicles.driver')} value={form.driver ?? ''} onChange={v => f('driver', v)} readOnly={ro} />
                 <IField label={t('vehicles.licensePlate')} value={form.licensePlate ?? ''} onChange={v => f('licensePlate', v)} readOnly={ro} />
                 <IField label={t('vehicles.dimensions')} value={form.dimensions ?? ''} onChange={v => f('dimensions', v)} placeholder={t('vehicles.dimensionsPlaceholder')} readOnly={ro} />
