@@ -6,6 +6,7 @@ import SonstigesCard from './SonstigesCard'
 import TerminChatCard from './TerminChatCard'
 import TerminFileCard from './TerminFileCard'
 import ToDoCard from './ToDoCard'
+import WeatherCard from './WeatherCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
 import { getCurrentUser } from '@/lib/api-client'
 import type { Termin } from '@/lib/api-client'
@@ -122,6 +123,15 @@ export default function TerminDetailMobile({
       {/* ── Aufgaben ────────────────────────────────────── */}
       <Section title="Aufgaben" defaultOpen stateKey="termin_aufgaben">
         <ToDoCard terminId={termin.id} />
+      </Section>
+
+      {/* ── Wetter ──────────────────────────────────────── */}
+      <Section title="Wetter" stateKey="termin_wetter">
+        <WeatherCard
+          date={termin.date}
+          locationQuery={termin.city || termin.venueName || ''}
+          locationLabel={termin.city || ''}
+        />
       </Section>
 
       {/* ── Lokale Kontakte ─────────────────────────────── */}

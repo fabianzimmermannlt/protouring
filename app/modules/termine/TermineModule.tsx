@@ -1468,8 +1468,13 @@ export function TerminDetail2({
 
       {/* Zeile 2: ToDo (2/3) + Private Notiz (1/3) */}
       <div className="grid grid-cols-3 gap-4 items-start">
-        <div className="col-span-2">
+        <div className="col-span-2 flex flex-col gap-4">
           <ToDoCard terminId={termin.id} />
+          <WeatherCard
+            date={termin.date}
+            locationQuery={termin.city || termin.venueName || ''}
+            locationLabel={termin.city || ''}
+          />
         </div>
         <div className="pt-card" style={{ minHeight: '180px', display: 'flex', flexDirection: 'column' }}>
           <ContentBoard
