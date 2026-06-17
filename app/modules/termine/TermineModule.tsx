@@ -27,6 +27,7 @@ import TerminChatCard from './TerminChatCard'
 import ToDoCard from './ToDoCard'
 import CateringCard from './CateringCard'
 import AdvancingCard from './AdvancingCard'
+import WeatherCard from './WeatherCard'
 import SonstigesCard from './SonstigesCard'
 import VenueInfoSection from './VenueInfoSection'
 import ReisegruppeView from './ReisegruppeView'
@@ -1306,6 +1307,11 @@ export function TerminDetail({
           />
           {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
           <ToDoCard terminId={termin.id} />
+          <WeatherCard
+            date={termin.date}
+            locationQuery={termin.city || termin.venueName || ''}
+            locationLabel={termin.city || ''}
+          />
           <div className="pt-card" style={{ minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
             <ContentBoard
               entityType="termin_private"
