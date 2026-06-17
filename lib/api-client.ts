@@ -2755,6 +2755,8 @@ export async function changePassword(currentPassword: string, newPassword: strin
 // FEEDBACK
 // ============================================
 
+export type FeedbackStatus = 'open' | 'in_progress' | 'done' | 'addon' | 'deferred'
+
 export interface FeedbackItem {
   id: number
   userId: number
@@ -2763,7 +2765,7 @@ export interface FeedbackItem {
   topic: string
   description: string | null
   private: boolean
-  status: 'open' | 'in_progress' | 'done'
+  status: FeedbackStatus
   bemerkung: string | null
   createdAt: string
 }
@@ -2777,7 +2779,7 @@ function feedbackFromRow(r: Record<string, unknown>): FeedbackItem {
     topic: r.topic as string,
     description: r.description as string | null,
     private: Boolean(r.private),
-    status: (r.status as 'open' | 'in_progress' | 'done') || 'open',
+    status: (r.status as FeedbackStatus) || 'open',
     bemerkung: r.bemerkung as string | null,
     createdAt: r.created_at as string,
   }
@@ -2797,7 +2799,7 @@ export async function getFeedback(): Promise<FeedbackItem[]> {
   return res.items.map(feedbackFromRow)
 }
 
-export async function updateFeedbackStatus(id: number, status: 'open' | 'in_progress' | 'done'): Promise<FeedbackItem> {
+export async function updateFeedbackStatus(id: number, status: FeedbackStatus): Promise<FeedbackItem> {
   const res = await request<{ item: Record<string, unknown> }>(`/api/feedback/${id}/status`, {
     method: 'PUT',
     body: { status },

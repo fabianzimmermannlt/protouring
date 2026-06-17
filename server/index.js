@@ -7250,7 +7250,7 @@ app.put('/api/feedback/:id/status', authenticateToken, async (req, res) => {
   try {
     if (!req.user.isSuperadmin) return res.status(403).json({ error: 'Nur für Entwickler' })
     const { status } = req.body
-    if (!['open', 'in_progress', 'done'].includes(status)) return res.status(400).json({ error: 'Ungültiger Status' })
+    if (!['open', 'in_progress', 'done', 'addon', 'deferred'].includes(status)) return res.status(400).json({ error: 'Ungültiger Status' })
     await db.run('UPDATE feedback_items SET status=? WHERE id=?', [status, req.params.id])
     const item = await db.get('SELECT * FROM feedback_items WHERE id=?', [req.params.id])
     res.json({ item })

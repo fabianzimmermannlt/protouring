@@ -1,33 +1,41 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader2, Trash2, ChevronDown, Check, Clock, Circle, MessageSquare } from 'lucide-react'
+import { Loader2, Trash2, ChevronDown, Check, Clock, Circle, MessageSquare, Package, PauseCircle } from 'lucide-react'
 import {
   getFeedback, updateFeedbackStatus, updateFeedbackNote, deleteFeedback,
-  type FeedbackItem,
+  type FeedbackItem, type FeedbackStatus,
 } from '@/lib/api-client'
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 
+const STATUS_ORDER: FeedbackStatus[] = ['open', 'in_progress', 'addon', 'deferred', 'done']
+
 const STATUS_LABELS: Record<string, string> = {
   open: 'Offen',
   in_progress: 'In Arbeit',
+  addon: 'Add-On',
+  deferred: 'Zurückgestellt',
   done: 'Erledigt',
 }
 
 const STATUS_COLORS: Record<string, string> = {
   open: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   in_progress: 'bg-blue-100 text-blue-800 border-blue-200',
+  addon: 'bg-purple-100 text-purple-800 border-purple-200',
+  deferred: 'bg-gray-100 text-gray-600 border-gray-300',
   done: 'bg-green-100 text-green-800 border-green-200',
 }
 
 function StatusIcon({ status }: { status: string }) {
   if (status === 'done') return <Check className="w-3 h-3" />
   if (status === 'in_progress') return <Clock className="w-3 h-3" />
+  if (status === 'addon') return <Package className="w-3 h-3" />
+  if (status === 'deferred') return <PauseCircle className="w-3 h-3" />
   return <Circle className="w-3 h-3" />
 }
 
-type FilterType = 'all' | 'open' | 'in_progress' | 'done'
+type FilterType = 'all' | FeedbackStatus
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -47,7 +55,7 @@ export default function FeedbackPage() {
 
   useEffect(() => { load() }, [load])
 
-  const handleStatusChange = async (id: number, status: 'open' | 'in_progress' | 'done') => {
+  const handleStatusChange = async (id: number, status: FeedbackStatus) => {
     try {
       const updated = await updateFeedbackStatus(id, status)
       setItems(prev => prev.map(i => i.id === id ? updated : i))
@@ -71,10 +79,12 @@ export default function FeedbackPage() {
 
   const filtered = filter === 'all' ? items : items.filter(i => i.status === filter)
 
-  const counts = {
+  const counts: Record<FilterType, number> = {
     all: items.length,
     open: items.filter(i => i.status === 'open').length,
     in_progress: items.filter(i => i.status === 'in_progress').length,
+    addon: items.filter(i => i.status === 'addon').length,
+    deferred: items.filter(i => i.status === 'deferred').length,
     done: items.filter(i => i.status === 'done').length,
   }
 
@@ -103,7 +113,7 @@ export default function FeedbackPage() {
 
       {/* Filter-Tabs */}
       <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-lg w-fit">
-        {(['open', 'in_progress', 'done', 'all'] as FilterType[]).map(f => (
+        {(['open', 'in_progress', 'addon', 'deferred', 'done', 'all'] as FilterType[]).map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -158,7 +168,7 @@ function FeedbackCard({
   onDelete,
 }: {
   item: FeedbackItem
-  onStatusChange: (id: number, status: 'open' | 'in_progress' | 'done') => void
+  onStatusChange: (id: number, status: FeedbackStatus) => void
   onNoteChange: (id: number, bemerkung: string | null) => void
   onDelete: (id: number) => void
 }) {
@@ -293,7 +303,7 @@ function FeedbackCard({
 
 function StatusDropdown({ status, onChange }: {
   status: string
-  onChange: (s: 'open' | 'in_progress' | 'done') => void
+  onChange: (s: FeedbackStatus) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -319,7 +329,7 @@ function StatusDropdown({ status, onChange }: {
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden min-w-[140px]">
-          {(['open', 'in_progress', 'done'] as const).map(s => (
+          {STATUS_ORDER.map(s => (
             <button
               key={s}
               onClick={() => { onChange(s); setOpen(false) }}
