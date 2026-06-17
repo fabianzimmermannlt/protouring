@@ -497,6 +497,7 @@ async function initDatabase() {
       title TEXT NOT NULL DEFAULT '',
       content TEXT NOT NULL DEFAULT '',
       not_final BOOLEAN NOT NULL DEFAULT 0,
+      visible_roles TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -625,6 +626,7 @@ async function initDatabase() {
     `ALTER TABLE termine ADD COLUMN show_title_as_header INTEGER DEFAULT 0`,
     // termin_schedules
     `ALTER TABLE termin_schedules ADD COLUMN not_final BOOLEAN NOT NULL DEFAULT 0`,
+    `ALTER TABLE termin_schedules ADD COLUMN visible_roles TEXT`,
     // contacts: user_id FK + fehlende Profilfelder
     `ALTER TABLE contacts ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
     `ALTER TABLE contacts ADD COLUMN hotel_info TEXT`,
@@ -4750,13 +4752,25 @@ app.put('/api/termine/:terminId/hotel-stays/:id/rooms', authenticateToken, requi
 // TERMIN SCHEDULES
 // ============================================
 
+// Sichtbarkeit: Editoren (admin/agency/tourmanagement) + Superadmin sehen alles;
+// sonst nur Zeitpläne ohne Einschränkung (visible_roles leer) oder mit eigener Rolle.
+function visibleSchedulesForRole(schedules, role, isSuperadmin) {
+  const isEditor = !!isSuperadmin || ['admin', 'agency', 'tourmanagement'].includes(role)
+  if (isEditor) return schedules
+  return schedules.filter(s => {
+    const vr = (s.visible_roles || '').trim()
+    if (!vr) return true
+    return vr.split(',').map(x => x.trim()).filter(Boolean).includes(role)
+  })
+}
+
 app.get('/api/termine/:terminId/schedules', authenticateToken, requireTenant, async (req, res) => {
   try {
     const schedules = await db.all(
       'SELECT * FROM termin_schedules WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC',
       [req.params.terminId, req.tenant.id]
     );
-    res.json({ schedules });
+    res.json({ schedules: visibleSchedulesForRole(schedules, req.tenant.role, req.user?.isSuperadmin) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load schedules' });
   }
@@ -4764,10 +4778,10 @@ app.get('/api/termine/:terminId/schedules', authenticateToken, requireTenant, as
 
 app.post('/api/termine/:terminId/schedules', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const { title = '', content = '', not_final = 0, sort_order = 0 } = req.body;
+    const { title = '', content = '', not_final = 0, sort_order = 0, visible_roles = null } = req.body;
     const result = await db.run(
-      'INSERT INTO termin_schedules (termin_id, tenant_id, title, content, not_final, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.params.terminId, req.tenant.id, title, content, not_final ? 1 : 0, sort_order]
+      'INSERT INTO termin_schedules (termin_id, tenant_id, title, content, not_final, visible_roles, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [req.params.terminId, req.tenant.id, title, content, not_final ? 1 : 0, visible_roles || null, sort_order]
     );
     const schedule = await db.get('SELECT * FROM termin_schedules WHERE id = ?', [result.lastID]);
     res.json({ schedule });
@@ -4778,10 +4792,10 @@ app.post('/api/termine/:terminId/schedules', authenticateToken, requireTenant, r
 
 app.put('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
-    const { title = '', content = '', not_final = 0, sort_order } = req.body;
+    const { title = '', content = '', not_final = 0, sort_order, visible_roles } = req.body;
     await db.run(
-      'UPDATE termin_schedules SET title=?, content=?, not_final=?, sort_order=COALESCE(?,sort_order), updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
-      [title, content, not_final ? 1 : 0, sort_order ?? null, req.params.id, req.tenant.id]
+      'UPDATE termin_schedules SET title=?, content=?, not_final=?, visible_roles=COALESCE(?,visible_roles), sort_order=COALESCE(?,sort_order), updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [title, content, not_final ? 1 : 0, visible_roles ?? null, sort_order ?? null, req.params.id, req.tenant.id]
     );
     const schedule = await db.get('SELECT * FROM termin_schedules WHERE id = ?', [req.params.id]);
     res.json({ schedule });
@@ -4981,12 +4995,14 @@ app.get('/api/termine/:terminId/advance-sheet/pdf', async (req, res) => {
       );
     }
 
-    // Zeitpläne
+    // Zeitpläne (rollenbasiert gefiltert)
     if (sections.includes('schedules')) {
-      data.schedules = await db.all(
+      const allSched = await db.all(
         'SELECT * FROM termin_schedules WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC',
         [terminId, tenant.id]
       );
+      const er = user.isSuperadmin ? null : await db.get('SELECT role FROM user_tenants WHERE tenant_id=? AND user_id=?', [tenant.id, user.id]);
+      data.schedules = visibleSchedulesForRole(allSched, er?.role || 'guest', user.isSuperadmin);
     }
 
     // Travel legs
@@ -5155,7 +5171,9 @@ app.get('/api/termine/:terminId/call-sheet/pdf', async (req, res) => {
       data.travelParty = await db.all(`SELECT tp.*, c.first_name, c.last_name, c.function1, c.function2, c.function3, c.email, c.phone FROM termin_travel_party tp JOIN contacts c ON c.id = tp.contact_id WHERE tp.termin_id = ? AND tp.tenant_id = ? ORDER BY c.last_name COLLATE NOCASE ASC`, [terminId, tenant.id]);
     }
     if (sections.includes('schedules')) {
-      data.schedules = await db.all('SELECT * FROM termin_schedules WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC', [terminId, tenant.id]);
+      const allSched = await db.all('SELECT * FROM termin_schedules WHERE termin_id = ? AND tenant_id = ? ORDER BY sort_order ASC, id ASC', [terminId, tenant.id]);
+      const er2 = user.isSuperadmin ? null : await db.get('SELECT role FROM user_tenants WHERE tenant_id=? AND user_id=?', [tenant.id, user.id]);
+      data.schedules = visibleSchedulesForRole(allSched, er2?.role || 'guest', user.isSuperadmin);
     }
     if (sections.includes('travel')) {
       const legRows = await db.all(`SELECT ${LEG_FIELDS} FROM termin_travel_legs tl LEFT JOIN vehicles v ON v.id = tl.vehicle_id WHERE tl.termin_id = ? AND tl.tenant_id = ? ORDER BY tl.leg_type ASC, tl.sort_order ASC, tl.id ASC`, [terminId, tenant.id]);

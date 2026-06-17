@@ -1676,6 +1676,7 @@ export interface TerminSchedule {
   title: string;
   content: string;
   notFinal: boolean;
+  visibleRoles: string[];   // leer = für alle sichtbar; sonst nur diese Rollen (+ Management immer)
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -1691,6 +1692,9 @@ function scheduleFromRow(r: Record<string, unknown>): TerminSchedule {
     title: (r.title as string) ?? '',
     content: (r.content as string) ?? '',
     notFinal: Boolean(r.not_final),
+    visibleRoles: (r.visible_roles as string | null)
+      ? (r.visible_roles as string).split(',').map(x => x.trim()).filter(Boolean)
+      : [],
     sortOrder: (r.sort_order as number) ?? 0,
     createdAt: (r.created_at as string) ?? '',
     updatedAt: (r.updated_at as string) ?? '',
@@ -1705,7 +1709,7 @@ export async function getTerminSchedules(terminId: number): Promise<TerminSchedu
 export async function createTerminSchedule(terminId: number, data: TerminScheduleFormData): Promise<TerminSchedule> {
   const res = await request<{ schedule: Record<string, unknown> }>(`/api/termine/${terminId}/schedules`, {
     method: 'POST',
-    body: { title: data.title, content: data.content, not_final: data.notFinal ? 1 : 0, sort_order: data.sortOrder },
+    body: { title: data.title, content: data.content, not_final: data.notFinal ? 1 : 0, sort_order: data.sortOrder, visible_roles: (data.visibleRoles ?? []).join(',') },
   });
   return scheduleFromRow(res.schedule);
 }
@@ -1713,7 +1717,7 @@ export async function createTerminSchedule(terminId: number, data: TerminSchedul
 export async function updateTerminSchedule(terminId: number, id: number, data: TerminScheduleFormData): Promise<TerminSchedule> {
   const res = await request<{ schedule: Record<string, unknown> }>(`/api/termine/${terminId}/schedules/${id}`, {
     method: 'PUT',
-    body: { title: data.title, content: data.content, not_final: data.notFinal ? 1 : 0, sort_order: data.sortOrder },
+    body: { title: data.title, content: data.content, not_final: data.notFinal ? 1 : 0, sort_order: data.sortOrder, visible_roles: (data.visibleRoles ?? []).join(',') },
   });
   return scheduleFromRow(res.schedule);
 }

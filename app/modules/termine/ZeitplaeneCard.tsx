@@ -6,11 +6,15 @@ import { Plus, Pencil, Loader2, Copy, BookTemplate, X, Save, Trash2, AlertCircle
 import {
   getTerminSchedules, createTerminSchedule, updateTerminSchedule, deleteTerminSchedule, type TerminSchedule,
   getScheduleTemplates, createScheduleTemplate, type ScheduleTemplate,
-  API_BASE, getAuthToken, getCurrentTenant,
+  API_BASE, getAuthToken, getCurrentTenant, ROLE_LABELS,
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import { RichTextEditorField, type RichTextEditorFieldHandle } from '@/app/components/shared/RichTextEditor'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
+
+// Rollen, die als sichtbar gewählt werden können (Management sieht immer alles)
+const SELECTABLE_ROLES = ['artist', 'crew_plus', 'crew', 'guest'] as const
+const roleLabel = (r: string) => (ROLE_LABELS as Record<string, string>)[r] ?? r
 
 function openSchedulePdf(terminId: number, scheduleId: number) {
   const token = getAuthToken()
@@ -131,6 +135,7 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
   const isNew = !schedule
   const [title, setTitle] = useState(schedule?.title ?? '')
   const [notFinal, setNotFinal] = useState(schedule?.notFinal ?? false)
+  const [visibleRoles, setVisibleRoles] = useState<string[]>(schedule?.visibleRoles ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const editorRef = useRef<RichTextEditorFieldHandle>(null)
@@ -140,8 +145,8 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
     const content = editorRef.current?.getHTML() ?? ''
     try {
       const saved = isNew
-        ? await createTerminSchedule(terminId, { title, content, notFinal, sortOrder })
-        : await updateTerminSchedule(terminId, schedule!.id, { title, content, notFinal, sortOrder: schedule!.sortOrder })
+        ? await createTerminSchedule(terminId, { title, content, notFinal, visibleRoles, sortOrder })
+        : await updateTerminSchedule(terminId, schedule!.id, { title, content, notFinal, visibleRoles, sortOrder: schedule!.sortOrder })
       onSaved(saved)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Speichern')
@@ -186,6 +191,29 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
             className="w-3.5 h-3.5 accent-orange-500 cursor-pointer" />
           <span className="text-xs text-gray-500">Noch nicht final</span>
         </label>
+
+        <div className="mt-3">
+          <div className="text-xs text-gray-500 mb-1.5">
+            Sichtbar für <span className="text-gray-600">(leer = alle; Management sieht immer alles)</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {SELECTABLE_ROLES.map(r => {
+              const active = visibleRoles.includes(r)
+              return (
+                <button key={r} type="button"
+                  onClick={() => setVisibleRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r])}
+                  style={{
+                    fontSize: 11, padding: '3px 10px', borderRadius: 0, cursor: 'pointer',
+                    border: `1px solid ${active ? '#3b82f6' : '#3c3c3c'}`,
+                    background: active ? 'rgba(59,130,246,0.12)' : '#2a2a2a',
+                    color: active ? '#60a5fa' : '#9ca3af',
+                  }}>
+                  {roleLabel(r)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -245,6 +273,11 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
         <div className="pt-card-header" style={{ position: 'relative' }}>
           <span className="pt-card-title">
             {s.title || <span className="normal-case font-normal tracking-normal text-gray-400 italic">Ohne Titel</span>}
+            {isAdmin && s.visibleRoles.length > 0 && (
+              <span className="normal-case font-normal tracking-normal" style={{ fontSize: 10, color: '#9ca3af', marginLeft: 6 }} title="Eingeschränkte Sichtbarkeit">
+                🔒 {s.visibleRoles.map(roleLabel).join(', ')}
+              </span>
+            )}
           </span>
           {s.notFinal && (
             <span style={{
@@ -332,7 +365,7 @@ export default function ZeitplaeneCard({ terminId, isAdmin, layout = 'stack' }: 
 
   const handleSelectTemplate = async (t: ScheduleTemplate) => {
     setPickerOpen(false)
-    const created = await createTerminSchedule(terminId, { title: t.name, content: t.content, notFinal: t.notFinal, sortOrder: schedules.length })
+    const created = await createTerminSchedule(terminId, { title: t.name, content: t.content, notFinal: t.notFinal, visibleRoles: [], sortOrder: schedules.length })
     setSchedules(prev => [...prev, created])
   }
 
