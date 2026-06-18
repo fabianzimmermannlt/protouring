@@ -8098,7 +8098,7 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
         type: 'guestlist_wish_pending',
         title: 'Neuer Gästelisten-Wunsch',
         body: `${requester} wünscht ${guestName} auf die Gästeliste${gl?.city ? ` – ${gl.city}` : ''}.`,
-        link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}` : undefined,
+        link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}&view=guestlist` : undefined,
       })
     }
 
@@ -8153,7 +8153,7 @@ app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async
         type: 'guestlist_wish',
         title: approved ? 'Gästelisten-Wunsch freigegeben' : 'Gästelisten-Wunsch abgelehnt',
         body: `${guestName} wurde ${approved ? 'freigegeben' : 'abgelehnt'}${gl?.city ? ` – ${gl.city}` : ''}.`,
-        link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}` : undefined,
+        link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}&view=guestlist` : undefined,
       })
     }
 
