@@ -207,7 +207,7 @@ export default function LandingPage() {
               <span className="text-4xl font-bold text-white">199€</span>
               <span className="text-gray-500 text-sm">/ Jahr</span>
             </div>
-            <p className="mt-1 text-xs text-gray-500"><span className="line-through">249€</span> · Einführungspreis</p>
+            <p className="mt-1 text-xs text-gray-500"><span className="line-through">249€</span> · Early-Bird im 1. Jahr</p>
             <ul className="mt-6 space-y-2.5 text-sm text-gray-300 flex-1">
               <li className="flex gap-2"><Check className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" /> Unbegrenzte Events &amp; Daten</li>
               <li className="flex gap-2"><Check className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" /> Unbegrenzte User</li>
