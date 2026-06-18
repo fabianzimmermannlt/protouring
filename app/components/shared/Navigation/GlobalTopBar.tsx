@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Eye, X, ChevronDown } from 'lucide-react'
 import { searchGlobal, SearchResult, SearchResultType, getRealTenantRole, getPreviewRole, setPreviewRole, ROLE_LABELS } from '@/lib/api-client'
+import NotificationBell from '@/app/components/shared/NotificationBell'
 
 // ── Icons per type ────────────────────────────────────────────────────────────
 const TYPE_LABEL: Record<SearchResultType, string> = {
@@ -253,8 +254,9 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
         )}
       </div>
 
-      {/* ── RIGHT: Preview Button ──────────────────────────────────────────── */}
+      {/* ── RIGHT: Glocke + Preview Button ─────────────────────────────────── */}
       <div className="ml-auto flex-shrink-0 flex items-center gap-2">
+        <NotificationBell />
         {canPreview && (
           <div ref={previewRef} className="relative">
             {previewRole ? (

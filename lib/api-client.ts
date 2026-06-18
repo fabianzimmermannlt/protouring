@@ -223,6 +223,44 @@ export async function resetPassword(token: string, password: string): Promise<{ 
   return request('/api/auth/reset-password', { method: 'POST', body: { token, password }, skipTenant: true });
 }
 
+// ── Benachrichtigungen ───────────────────────────────────────
+export interface AppNotification {
+  id: number
+  type: string
+  title: string
+  body: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
+export interface NotificationPref { label: string; inApp: boolean; email: boolean }
+export type NotificationPrefs = Record<string, NotificationPref>
+
+export async function getNotifications(limit = 30): Promise<{ notifications: AppNotification[] }> {
+  return request(`/api/notifications?limit=${limit}`)
+}
+
+export async function getUnreadCount(): Promise<{ count: number }> {
+  return request('/api/notifications/unread-count')
+}
+
+export async function markNotificationRead(id: number): Promise<{ ok: boolean }> {
+  return request(`/api/notifications/${id}/read`, { method: 'POST' })
+}
+
+export async function markAllNotificationsRead(): Promise<{ ok: boolean }> {
+  return request('/api/notifications/read-all', { method: 'POST' })
+}
+
+export async function getNotificationPrefs(): Promise<{ prefs: NotificationPrefs }> {
+  return request('/api/notifications-prefs', { skipTenant: true })
+}
+
+export async function saveNotificationPrefs(prefs: Record<string, { inApp: boolean; email: boolean }>): Promise<{ ok: boolean }> {
+  return request('/api/notifications-prefs', { method: 'PUT', body: { prefs }, skipTenant: true })
+}
+
 export async function getMyTenants(): Promise<{ tenants: Array<{ id: number; name: string; slug: string; status: string; trial_ends_at: string | null; role: string }> }> {
   return request('/api/me/tenants', { skipTenant: true });
 }

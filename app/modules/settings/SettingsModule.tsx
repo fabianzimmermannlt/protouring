@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { Loader2, Save, X, AlertCircle } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
+import NotificationSettings from './NotificationSettings'
 import { SettingsAreaShell } from './SettingsAreaShell'
 import GewerkSettings from './GewerkSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
@@ -84,19 +85,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
         )
 
       case 'notifications':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <BellIcon className="w-5 h-5" />
-                {t('settings.notifications.title')}
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-gray-600">{t('settings.notifications.placeholder')}</p>
-              </div>
-            </div>
-          </div>
-        )
+        return <NotificationSettings />
 
       case 'contacts':
         return (

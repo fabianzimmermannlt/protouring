@@ -1117,6 +1117,24 @@ async function initDatabase() {
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_pwreset_token ON password_reset_tokens(token)`)
 
+  // notifications — In-App-Benachrichtigungen (tenant-/user-scoped)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT,
+      link TEXT,
+      read_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at, created_at)`)
+  // Kanal-Einstellungen pro Nutzer (JSON, global über Tenants)
+  try { await db.run(`ALTER TABLE users ADD COLUMN notification_prefs TEXT`) } catch {}
+
   await db.run(`
     CREATE TABLE IF NOT EXISTS feedback_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1886,6 +1904,76 @@ function mailLayout({ title, intro, ctaText, ctaUrl, footnote }) {
 </body></html>`
 }
 
+// ── Benachrichtigungen: Kategorien + Helper ──────────────────
+// defInApp/defEmail = Standard-Kanäle, falls Nutzer nichts eingestellt hat.
+const NOTIFICATION_CATEGORIES = {
+  guestlist_wish: { label: 'Gästeliste-Wunsch (Freigabe/Ablehnung)', defInApp: true, defEmail: true },
+  todo_assigned:  { label: 'ToDo zugewiesen', defInApp: true, defEmail: false },
+}
+
+function notifPrefFor(prefsJson, category) {
+  let prefs = {}
+  try { prefs = JSON.parse(prefsJson || '{}') } catch {}
+  const cat = NOTIFICATION_CATEGORIES[category] || { defInApp: true, defEmail: false }
+  const p = prefs[category] || {}
+  return {
+    inApp: p.inApp !== undefined ? !!p.inApp : cat.defInApp,
+    email: p.email !== undefined ? !!p.email : cat.defEmail,
+  }
+}
+
+// Zentrale Benachrichtigungs-Funktion. Respektiert die Nutzer-Einstellungen.
+async function notify({ tenantId, userId, type, title, body, link }) {
+  if (!userId || !title) return
+  try {
+    const user = await db.get('SELECT email, notification_prefs FROM users WHERE id = ?', [userId])
+    if (!user) return
+    const pref = notifPrefFor(user.notification_prefs, type)
+    if (pref.inApp) {
+      await db.run(
+        'INSERT INTO notifications (tenant_id, user_id, type, title, body, link) VALUES (?,?,?,?,?,?)',
+        [tenantId || null, userId, type, title, body || null, link || null]
+      )
+    }
+    if (pref.email && user.email) {
+      const url = link ? `${APP_BASE_URL}${link}` : null
+      await sendMail({
+        to: user.email,
+        subject: title,
+        text: `${title}${body ? `\n\n${body}` : ''}${url ? `\n\nÖffnen: ${url}` : ''}`,
+        html: mailLayout({
+          title: mailEsc(title),
+          intro: mailEsc(body || title),
+          ctaText: url ? 'In ProTouring öffnen' : undefined,
+          ctaUrl: url || undefined,
+        }),
+      })
+    }
+  } catch (e) {
+    console.error('notify() Fehler:', e.message)
+  }
+}
+
+// ToDo-Zuweisung → den verknüpften User-Account des Kontakts benachrichtigen.
+async function notifyTodoAssigned({ tenantId, terminId, assignedContactId, title, actingUserId }) {
+  try {
+    if (!assignedContactId) return
+    const contact = await db.get('SELECT user_id FROM contacts WHERE id = ? AND tenant_id = ?', [assignedContactId, tenantId])
+    if (!contact?.user_id || contact.user_id === actingUserId) return
+    const t = terminId ? await db.get('SELECT city FROM termine WHERE id = ?', [terminId]) : null
+    await notify({
+      tenantId,
+      userId: contact.user_id,
+      type: 'todo_assigned',
+      title: 'Neues ToDo für dich',
+      body: `${title}${t?.city ? ` – ${t.city}` : ''}`,
+      link: terminId ? `/?tab=events&id=${terminId}` : undefined,
+    })
+  } catch (e) {
+    console.error('notifyTodoAssigned Fehler:', e.message)
+  }
+}
+
 // GET Mail-Settings (ohne Passwort) — nur Superadmin
 app.get('/api/admin/mail-settings', authenticateToken, async (req, res) => {
   if (!req.user?.isSuperadmin) return res.status(403).json({ error: 'Nur für Superadmin' })
@@ -2228,6 +2316,88 @@ app.post('/api/auth/reset-password', async (req, res) => {
     console.error('reset-password error:', err)
     res.status(500).json({ error: err.message })
   }
+})
+
+// ============================================
+// ROUTES: BENACHRICHTIGUNGEN
+// ============================================
+
+// GET /api/notifications?limit=30 — Liste für den aktuellen Nutzer
+app.get('/api/notifications', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100)
+    const rows = await db.all(
+      `SELECT * FROM notifications WHERE user_id = ? AND (tenant_id = ? OR tenant_id IS NULL)
+       ORDER BY created_at DESC, id DESC LIMIT ?`,
+      [req.user.id, req.tenant.id, limit]
+    )
+    res.json({ notifications: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/notifications/unread-count
+app.get('/api/notifications/unread-count', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get(
+      `SELECT COUNT(*) AS cnt FROM notifications WHERE user_id = ? AND (tenant_id = ? OR tenant_id IS NULL) AND read_at IS NULL`,
+      [req.user.id, req.tenant.id]
+    )
+    res.json({ count: row?.cnt || 0 })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/notifications/read-all
+app.post('/api/notifications/read-all', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run(
+      `UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE user_id = ? AND (tenant_id = ? OR tenant_id IS NULL) AND read_at IS NULL`,
+      [req.user.id, req.tenant.id]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/notifications/:id/read
+app.post('/api/notifications/:id/read', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run(
+      `UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND read_at IS NULL`,
+      [req.params.id, req.user.id]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/notifications-prefs — Kanal-Einstellungen des Nutzers (global)
+app.get('/api/notifications-prefs', authenticateToken, async (req, res) => {
+  try {
+    const user = await db.get('SELECT notification_prefs FROM users WHERE id = ?', [req.user.id])
+    let prefs = {}
+    try { prefs = JSON.parse(user?.notification_prefs || '{}') } catch {}
+    const out = {}
+    for (const [key, cat] of Object.entries(NOTIFICATION_CATEGORIES)) {
+      const p = prefs[key] || {}
+      out[key] = {
+        label: cat.label,
+        inApp: p.inApp !== undefined ? !!p.inApp : cat.defInApp,
+        email: p.email !== undefined ? !!p.email : cat.defEmail,
+      }
+    }
+    res.json({ prefs: out })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/notifications-prefs — Kanal-Einstellungen speichern
+app.put('/api/notifications-prefs', authenticateToken, async (req, res) => {
+  try {
+    const incoming = req.body?.prefs || {}
+    const clean = {}
+    for (const key of Object.keys(NOTIFICATION_CATEGORIES)) {
+      if (incoming[key]) clean[key] = { inApp: !!incoming[key].inApp, email: !!incoming[key].email }
+    }
+    await db.run('UPDATE users SET notification_prefs = ? WHERE id = ?', [JSON.stringify(clean), req.user.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // ============================================
@@ -5667,6 +5837,7 @@ app.post('/api/termine/:terminId/todos', authenticateToken, requireTenant, requi
       FROM termin_todos t LEFT JOIN contacts c ON c.id = t.assigned_contact_id AND c.tenant_id = t.tenant_id
       WHERE t.id = ?
     `, [result.lastID]);
+    await notifyTodoAssigned({ tenantId: req.tenant.id, terminId: req.params.terminId, assignedContactId, title: title.trim(), actingUserId: req.user.id });
     res.status(201).json(row);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -5675,6 +5846,7 @@ app.post('/api/termine/:terminId/todos', authenticateToken, requireTenant, requi
 app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, requireEditorOrCrewPlus, async (req, res) => {
   try {
     const { title, description, status, priority, assignedContactId, deadline } = req.body;
+    const prev = await db.get('SELECT assigned_contact_id, title FROM termin_todos WHERE id=? AND tenant_id=? AND termin_id=?', [req.params.id, req.tenant.id, req.params.terminId]);
     await db.run(`
       UPDATE termin_todos
       SET title=COALESCE(?,title), description=?, status=COALESCE(?,status),
@@ -5689,6 +5861,10 @@ app.put('/api/termine/:terminId/todos/:id', authenticateToken, requireTenant, re
       FROM termin_todos t LEFT JOIN contacts c ON c.id = t.assigned_contact_id AND c.tenant_id = t.tenant_id
       WHERE t.id = ?
     `, [req.params.id]);
+    // Nur benachrichtigen, wenn ein NEUER Empfänger zugewiesen wurde
+    if (assignedContactId && assignedContactId !== prev?.assigned_contact_id) {
+      await notifyTodoAssigned({ tenantId: req.tenant.id, terminId: req.params.terminId, assignedContactId, title: (title?.trim() || prev?.title || 'ToDo'), actingUserId: req.user.id });
+    }
     res.json(row);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -7919,6 +8095,23 @@ app.patch('/api/guest-list-entries/:id', authenticateToken, requireTenant, async
 
     await db.run(`UPDATE guest_list_entries SET ${updates.join(', ')} WHERE id = ? AND tenant_id = ?`, vals)
     const updated = await db.get('SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name FROM guest_list_entries gle LEFT JOIN users u ON u.id = gle.invited_by_user_id WHERE gle.id = ?', [req.params.id])
+
+    // Benachrichtigung an den Einlader bei Wunsch-Freigabe/Ablehnung
+    if (status !== undefined && status !== entry.status && (status === 'approved' || status === 'rejected')
+        && entry.invited_by_user_id && entry.invited_by_user_id !== req.user.id) {
+      const gl = await db.get('SELECT gl.name, gl.termin_id, t.city FROM guest_lists gl LEFT JOIN termine t ON t.id = gl.termin_id WHERE gl.id = ?', [entry.guest_list_id])
+      const guestName = `${updated.first_name || ''} ${updated.last_name || ''}`.trim() || 'Dein Gast'
+      const approved = status === 'approved'
+      await notify({
+        tenantId: req.tenant.id,
+        userId: entry.invited_by_user_id,
+        type: 'guestlist_wish',
+        title: approved ? 'Gästelisten-Wunsch freigegeben' : 'Gästelisten-Wunsch abgelehnt',
+        body: `${guestName} wurde ${approved ? 'freigegeben' : 'abgelehnt'}${gl?.city ? ` – ${gl.city}` : ''}.`,
+        link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}` : undefined,
+      })
+    }
+
     res.json({ entry: { ...updated, passes: JSON.parse(updated.passes || '{}') } })
   } catch (e) {
     console.error('PATCH entry failed', e)
