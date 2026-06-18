@@ -2348,6 +2348,11 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // GET /api/notifications?limit=30 — Liste für den aktuellen Nutzer
 app.get('/api/notifications', authenticateToken, requireTenant, async (req, res) => {
   try {
+    // Auto-Prune: gelesene älter als 30 Tage entfernen
+    await db.run(
+      `DELETE FROM notifications WHERE user_id = ? AND read_at IS NOT NULL AND read_at < datetime('now','-30 days')`,
+      [req.user.id]
+    )
     const limit = Math.min(parseInt(req.query.limit) || 30, 100)
     const rows = await db.all(
       `SELECT * FROM notifications WHERE user_id = ? AND (tenant_id = ? OR tenant_id IS NULL)
@@ -2387,6 +2392,25 @@ app.post('/api/notifications/:id/read', authenticateToken, requireTenant, async 
       `UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND read_at IS NULL`,
       [req.params.id, req.user.id]
     )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/notifications — alle des Nutzers (im Tenant) leeren
+app.delete('/api/notifications', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run(
+      `DELETE FROM notifications WHERE user_id = ? AND (tenant_id = ? OR tenant_id IS NULL)`,
+      [req.user.id, req.tenant.id]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/notifications/:id — einzelne entfernen
+app.delete('/api/notifications/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('DELETE FROM notifications WHERE id = ? AND user_id = ?', [req.params.id, req.user.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

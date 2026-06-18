@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Bell, Check } from 'lucide-react'
 import {
   getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead,
+  dismissNotification, clearAllNotifications,
   type AppNotification,
 } from '@/lib/api-client'
 
@@ -74,6 +75,17 @@ export default function NotificationBell() {
     setCount(0)
   }
 
+  const dismiss = async (n: AppNotification) => {
+    try { await dismissNotification(n.id) } catch { /* still */ }
+    setItems(prev => prev.filter(x => x.id !== n.id))
+    if (!n.read_at) setCount(c => Math.max(0, c - 1))
+  }
+
+  const clearAll = async () => {
+    try { await clearAllNotifications() } catch { /* still */ }
+    setItems([]); setCount(0)
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -98,11 +110,16 @@ export default function NotificationBell() {
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-[#3a3a3a]">
             <span className="text-sm font-semibold text-gray-100">Benachrichtigungen</span>
-            {items.some(i => !i.read_at) && (
-              <button onClick={markAll} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                <Check size={12} /> Alle gelesen
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {items.some(i => !i.read_at) && (
+                <button onClick={markAll} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                  <Check size={12} /> Alle gelesen
+                </button>
+              )}
+              {items.length > 0 && (
+                <button onClick={clearAll} className="text-xs text-gray-400 hover:text-gray-200">Leeren</button>
+              )}
+            </div>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
@@ -112,12 +129,11 @@ export default function NotificationBell() {
               <p className="px-3 py-8 text-center text-xs text-gray-500">Keine Benachrichtigungen</p>
             ) : (
               items.map(n => (
-                <button
+                <div
                   key={n.id}
-                  onClick={() => onItemClick(n)}
-                  className={`w-full text-left px-3 py-2.5 border-b border-[#2d2d2d] transition-colors hover:bg-[#2a2a2a] ${n.read_at ? '' : 'bg-blue-500/10'}`}
+                  className={`group relative flex items-start border-b border-[#2d2d2d] transition-colors hover:bg-[#2a2a2a] ${n.read_at ? '' : 'bg-blue-500/10'}`}
                 >
-                  <div className="flex items-start gap-2">
+                  <div onClick={() => onItemClick(n)} className="flex items-start gap-2 flex-1 min-w-0 px-3 py-2.5 pr-8 cursor-pointer">
                     {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
                     <div className={`min-w-0 flex-1 ${n.read_at ? 'pl-3.5' : ''}`}>
                       <p className="text-sm text-gray-100 font-medium truncate">{n.title}</p>
@@ -125,7 +141,14 @@ export default function NotificationBell() {
                       <p className="text-[11px] text-gray-500 mt-1">{relTime(n.created_at)}</p>
                     </div>
                   </div>
-                </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); dismiss(n) }}
+                    title="Erledigt – entfernen"
+                    className="absolute right-2 top-2.5 p-1 rounded text-gray-500 hover:text-green-400 hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Check size={15} />
+                  </button>
+                </div>
               ))
             )}
           </div>

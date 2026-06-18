@@ -253,6 +253,14 @@ export async function markAllNotificationsRead(): Promise<{ ok: boolean }> {
   return request('/api/notifications/read-all', { method: 'POST' })
 }
 
+export async function dismissNotification(id: number): Promise<{ ok: boolean }> {
+  return request(`/api/notifications/${id}`, { method: 'DELETE' })
+}
+
+export async function clearAllNotifications(): Promise<{ ok: boolean }> {
+  return request('/api/notifications', { method: 'DELETE' })
+}
+
 export async function getNotificationPrefs(): Promise<{ prefs: NotificationPrefs }> {
   return request('/api/notifications-prefs', { skipTenant: true })
 }
