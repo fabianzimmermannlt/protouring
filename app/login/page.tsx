@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Music, Lock, Mail, User, Building } from 'lucide-react'
 import { login, register, setAuthSession } from '@/lib/api-client'
 
@@ -137,6 +138,11 @@ export default function LoginPage() {
             >
               {loading ? 'Anmelden...' : 'Anmelden'}
             </button>
+            <div className="text-center">
+              <Link href="/forgot-password" className="text-sm text-gray-400 hover:text-yellow-400">
+                Passwort vergessen?
+              </Link>
+            </div>
           </form>
         )}
 

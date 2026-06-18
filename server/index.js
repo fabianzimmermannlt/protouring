@@ -1104,6 +1104,19 @@ async function initDatabase() {
     )
   `)
 
+  // password_reset_tokens — Self-Service Passwort-Reset (Token 1h gültig)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT UNIQUE NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME NOT NULL,
+      used_at DATETIME
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_pwreset_token ON password_reset_tokens(token)`)
+
   await db.run(`
     CREATE TABLE IF NOT EXISTS feedback_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2135,6 +2148,87 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed' });
   }
 });
+
+// ============================================
+// ROUTES: PASSWORT VERGESSEN (Self-Service Reset)
+// ============================================
+
+// POST /api/auth/forgot-password — immer 200, kein Leak ob E-Mail existiert
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase()
+    if (!email) return res.status(400).json({ error: 'E-Mail erforderlich' })
+    const user = await db.get('SELECT id, first_name FROM users WHERE lower(email)=?', [email])
+    if (user) {
+      await db.run('DELETE FROM password_reset_tokens WHERE user_id=? AND used_at IS NULL', [user.id])
+      const token = crypto.randomBytes(32).toString('hex')
+      await db.run(
+        `INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))`,
+        [user.id, token]
+      )
+      const resetUrl = `${APP_BASE_URL}/reset-password?token=${token}`
+      const greet = user.first_name ? `Hallo ${user.first_name},` : 'Hallo,'
+      try {
+        await sendMail({
+          to: email,
+          subject: 'ProTouring – Passwort zurücksetzen',
+          text: `${greet}\n\ndu hast angefordert, dein ProTouring-Passwort zurückzusetzen.\n\nNeues Passwort festlegen: ${resetUrl}\n\nDer Link ist 1 Stunde gültig. Wenn du das nicht warst, ignoriere diese Mail – dein Passwort bleibt unverändert.`,
+          html: mailLayout({
+            title: 'Passwort zurücksetzen',
+            intro: `${mailEsc(greet)}<br><br>du hast angefordert, dein ProTouring-Passwort zurückzusetzen. Klicke auf den Button, um ein neues Passwort festzulegen.`,
+            ctaText: 'Neues Passwort festlegen',
+            ctaUrl: resetUrl,
+            footnote: 'Dieser Link ist 1 Stunde gültig. Wenn du das nicht angefordert hast, kannst du diese E-Mail ignorieren – dein Passwort bleibt unverändert.',
+          }),
+        })
+      } catch (e) {
+        console.error('Reset-Mail Fehler:', e.message)
+      }
+    }
+    // Immer gleiche Antwort (kein User-Enumeration-Leak)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('forgot-password error:', err)
+    res.status(500).json({ error: 'Fehler' })
+  }
+})
+
+// GET /api/auth/reset-password/:token — Token validieren (ohne Auth)
+app.get('/api/auth/reset-password/:token', async (req, res) => {
+  try {
+    const row = await db.get(
+      'SELECT prt.*, u.email FROM password_reset_tokens prt JOIN users u ON u.id=prt.user_id WHERE prt.token=?',
+      [req.params.token]
+    )
+    if (!row) return res.status(404).json({ error: 'Link ungültig' })
+    if (row.used_at) return res.status(410).json({ error: 'Link bereits verwendet' })
+    if (new Date(row.expires_at) < new Date()) return res.status(410).json({ error: 'Link abgelaufen' })
+    res.json({ valid: true, email: row.email })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/auth/reset-password — neues Passwort setzen
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body || {}
+    if (!token || !password) return res.status(400).json({ error: 'Token und Passwort erforderlich' })
+    if (String(password).length < 6) return res.status(400).json({ error: 'Passwort muss mindestens 6 Zeichen lang sein' })
+    const row = await db.get('SELECT * FROM password_reset_tokens WHERE token=?', [token])
+    if (!row) return res.status(404).json({ error: 'Link ungültig' })
+    if (row.used_at) return res.status(410).json({ error: 'Link bereits verwendet' })
+    if (new Date(row.expires_at) < new Date()) return res.status(410).json({ error: 'Link abgelaufen' })
+    const hash = await bcrypt.hash(password, 10)
+    await db.run('UPDATE users SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', [hash, row.user_id])
+    await db.run('UPDATE password_reset_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?', [row.id])
+    await db.run('DELETE FROM password_reset_tokens WHERE user_id=? AND used_at IS NULL', [row.user_id])
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('reset-password error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
 
 // ============================================
 // ROUTES: ADMIN USER MANAGEMENT

@@ -208,6 +208,21 @@ export async function register(data: {
   return request('/api/tenants/register', { method: 'POST', body: data, skipTenant: true });
 }
 
+/** Passwort vergessen: Reset-Mail anfordern (Antwort immer ok, kein Leak) */
+export async function forgotPassword(email: string): Promise<{ ok: boolean }> {
+  return request('/api/auth/forgot-password', { method: 'POST', body: { email }, skipTenant: true });
+}
+
+/** Reset-Token validieren (vor Anzeige des Formulars) */
+export async function validateResetToken(token: string): Promise<{ valid: boolean; email: string }> {
+  return request(`/api/auth/reset-password/${token}`, { skipTenant: true });
+}
+
+/** Neues Passwort mit Reset-Token setzen */
+export async function resetPassword(token: string, password: string): Promise<{ ok: boolean }> {
+  return request('/api/auth/reset-password', { method: 'POST', body: { token, password }, skipTenant: true });
+}
+
 export async function getMyTenants(): Promise<{ tenants: Array<{ id: number; name: string; slug: string; status: string; trial_ends_at: string | null; role: string }> }> {
   return request('/api/me/tenants', { skipTenant: true });
 }
