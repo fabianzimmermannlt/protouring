@@ -1186,6 +1186,23 @@ async function initDatabase() {
   // Migration: visible-Spalte nachrüsten falls Tabelle schon existiert
   try { await db.run('ALTER TABLE partner_types ADD COLUMN visible INTEGER DEFAULT 1') } catch {}
 
+  // App-weite Mail-/SMTP-Einstellungen (Singleton, nur Superadmin pflegt sie)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS app_mail_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      host TEXT,
+      port INTEGER,
+      secure INTEGER DEFAULT 0,
+      username TEXT,
+      password_enc TEXT,
+      from_email TEXT,
+      from_name TEXT,
+      reply_to TEXT,
+      enabled INTEGER DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
   // Fahrzeug-Typen (pro Tenant, konfigurierbar)
   await db.run(`
     CREATE TABLE IF NOT EXISTS vehicle_types (
@@ -1763,6 +1780,116 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// ── Mail / SMTP ───────────────────────────────────────────────────────────────
+// Passwort wird verschlüsselt gespeichert (AES-256-GCM, Key aus JWT_SECRET abgeleitet).
+const MAIL_KEY = crypto.scryptSync(JWT_SECRET, 'pt-mail-settings', 32)
+function encMail(plain) {
+  if (plain == null || plain === '') return null
+  const iv = crypto.randomBytes(12)
+  const c = crypto.createCipheriv('aes-256-gcm', MAIL_KEY, iv)
+  const enc = Buffer.concat([c.update(String(plain), 'utf8'), c.final()])
+  const tag = c.getAuthTag()
+  return [iv.toString('base64'), tag.toString('base64'), enc.toString('base64')].join(':')
+}
+function decMail(stored) {
+  if (!stored) return ''
+  try {
+    const [ivB, tagB, dataB] = String(stored).split(':')
+    const d = crypto.createDecipheriv('aes-256-gcm', MAIL_KEY, Buffer.from(ivB, 'base64'))
+    d.setAuthTag(Buffer.from(tagB, 'base64'))
+    return Buffer.concat([d.update(Buffer.from(dataB, 'base64')), d.final()]).toString('utf8')
+  } catch { return '' }
+}
+
+// Aktive Mail-Konfiguration: DB bevorzugt, sonst Env-Fallback. null = nicht konfiguriert.
+async function getMailConfig() {
+  let row = null
+  try { row = await db.get('SELECT * FROM app_mail_settings WHERE id = 1') } catch {}
+  if (row && row.enabled && row.host) {
+    return {
+      host: row.host, port: row.port || 587, secure: !!row.secure,
+      user: row.username || '', pass: decMail(row.password_enc),
+      fromEmail: row.from_email || '', fromName: row.from_name || '', replyTo: row.reply_to || '',
+    }
+  }
+  if (process.env.MAIL_HOST) {
+    return {
+      host: process.env.MAIL_HOST, port: parseInt(process.env.MAIL_PORT || '587'),
+      secure: process.env.MAIL_SECURE === 'true',
+      user: process.env.MAIL_USER || '', pass: process.env.MAIL_PASS || '',
+      fromEmail: process.env.MAIL_FROM || '', fromName: process.env.MAIL_FROM_NAME || '',
+      replyTo: process.env.MAIL_REPLY_TO || '',
+    }
+  }
+  return null
+}
+
+// Zentrale Versand-Funktion. nodemailer wird lazy geladen → Server crasht nicht, falls noch nicht installiert.
+async function sendMail({ to, subject, html, text, replyTo }) {
+  const cfg = await getMailConfig()
+  if (!cfg) throw new Error('Kein Mailversand konfiguriert (SMTP-Einstellungen fehlen).')
+  let nodemailer
+  try { nodemailer = require('nodemailer') } catch { throw new Error('nodemailer nicht installiert – bitte im server-Ordner "npm install" ausführen.') }
+  const transporter = nodemailer.createTransport({
+    host: cfg.host, port: cfg.port, secure: cfg.secure,
+    auth: cfg.user ? { user: cfg.user, pass: cfg.pass } : undefined,
+  })
+  const from = cfg.fromName ? `${cfg.fromName} <${cfg.fromEmail}>` : cfg.fromEmail
+  return transporter.sendMail({ from, to, subject, html, text, replyTo: replyTo || cfg.replyTo || undefined })
+}
+
+// GET Mail-Settings (ohne Passwort) — nur Superadmin
+app.get('/api/admin/mail-settings', authenticateToken, async (req, res) => {
+  if (!req.user?.isSuperadmin) return res.status(403).json({ error: 'Nur für Superadmin' })
+  try {
+    const row = await db.get('SELECT * FROM app_mail_settings WHERE id = 1')
+    res.json({ settings: {
+      host: row?.host || '', port: row?.port || 587, secure: !!row?.secure,
+      username: row?.username || '', fromEmail: row?.from_email || '',
+      fromName: row?.from_name || '', replyTo: row?.reply_to || '',
+      enabled: !!row?.enabled, hasPassword: !!row?.password_enc,
+    }})
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT Mail-Settings — Passwort nur überschreiben, wenn neues übergeben — nur Superadmin
+app.put('/api/admin/mail-settings', authenticateToken, async (req, res) => {
+  if (!req.user?.isSuperadmin) return res.status(403).json({ error: 'Nur für Superadmin' })
+  try {
+    const { host, port, secure, username, password, fromEmail, fromName, replyTo, enabled } = req.body
+    const existing = await db.get('SELECT * FROM app_mail_settings WHERE id = 1')
+    const passEnc = (password && String(password).length) ? encMail(password) : (existing ? existing.password_enc : null)
+    if (existing) {
+      await db.run(
+        `UPDATE app_mail_settings SET host=?, port=?, secure=?, username=?, password_enc=?, from_email=?, from_name=?, reply_to=?, enabled=?, updated_at=CURRENT_TIMESTAMP WHERE id = 1`,
+        [host || null, port || 587, secure ? 1 : 0, username || null, passEnc, fromEmail || null, fromName || null, replyTo || null, enabled ? 1 : 0]
+      )
+    } else {
+      await db.run(
+        `INSERT INTO app_mail_settings (id, host, port, secure, username, password_enc, from_email, from_name, reply_to, enabled) VALUES (1,?,?,?,?,?,?,?,?,?)`,
+        [host || null, port || 587, secure ? 1 : 0, username || null, passEnc, fromEmail || null, fromName || null, replyTo || null, enabled ? 1 : 0]
+      )
+    }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST Test-Mail — nur Superadmin
+app.post('/api/admin/mail-settings/test', authenticateToken, async (req, res) => {
+  if (!req.user?.isSuperadmin) return res.status(403).json({ error: 'Nur für Superadmin' })
+  try {
+    const to = req.body?.to
+    if (!to) return res.status(400).json({ error: 'Empfänger (to) erforderlich' })
+    await sendMail({
+      to,
+      subject: 'ProTouring – SMTP-Test',
+      text: 'Test erfolgreich. Wenn du diese Mail siehst, funktioniert der Versand.',
+      html: '<p>Test erfolgreich. Wenn du diese Mail siehst, funktioniert der Versand. 🎉</p>',
+    })
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
 
 // Tenant middleware – reads X-Tenant-Slug header, verifies user has access
 const requireTenant = async (req, res, next) => {

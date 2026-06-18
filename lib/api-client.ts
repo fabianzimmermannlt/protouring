@@ -3010,6 +3010,35 @@ export async function superadminGetUsers(): Promise<SuperadminUser[]> {
   return res.users
 }
 
+// ── Mail / SMTP Settings (Superadmin) ─────────────────────────────────────────
+export interface MailSettings {
+  host: string
+  port: number
+  secure: boolean
+  username: string
+  fromEmail: string
+  fromName: string
+  replyTo: string
+  enabled: boolean
+  hasPassword: boolean
+}
+
+export async function getMailSettings(): Promise<MailSettings> {
+  const res = await request<{ settings: MailSettings }>('/api/admin/mail-settings', { skipTenant: true })
+  return res.settings
+}
+
+export async function saveMailSettings(data: {
+  host: string; port: number; secure: boolean; username: string; password?: string
+  fromEmail: string; fromName: string; replyTo: string; enabled: boolean
+}): Promise<void> {
+  await request('/api/admin/mail-settings', { method: 'PUT', body: data, skipTenant: true })
+}
+
+export async function sendTestMail(to: string): Promise<void> {
+  await request('/api/admin/mail-settings/test', { method: 'POST', body: { to }, skipTenant: true })
+}
+
 export async function superadminSetPassword(userId: number, password: string): Promise<void> {
   await request(`/api/superadmin/users/${userId}/password`, {
     method: 'PUT',
