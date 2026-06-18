@@ -1839,6 +1839,40 @@ async function sendMail({ to, subject, html, text, replyTo }) {
   return transporter.sendMail({ from, to, subject, html, text, replyTo: replyTo || cfg.replyTo || undefined })
 }
 
+// Basis-URL der App (für Links in Mails). Auf Hetzner via FRONTEND_URL, sonst Default.
+const APP_BASE_URL = (process.env.FRONTEND_URL || 'https://protouring.de').replace(/\/$/, '')
+
+// Deutsche Rollen-Labels für Mails
+const ROLE_LABELS_DE = {
+  admin: 'Admin', agency: 'Agentur', tourmanagement: 'Tourmanagement',
+  artist: 'Artist', crew_plus: 'Crew+', crew: 'Crew', guest: 'Gast',
+}
+
+// Minimales HTML-Escaping für Mail-Inhalte
+const mailEsc = (s) => String(s ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))
+
+// Einheitliches, robustes Inline-HTML-Layout für alle App-Mails
+function mailLayout({ title, intro, ctaText, ctaUrl, footnote }) {
+  return `<!DOCTYPE html>
+<html lang="de"><body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+        <tr><td style="background:#18181b;padding:20px 28px;"><span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.5px;">ProTouring</span></td></tr>
+        <tr><td style="padding:28px;">
+          <h1 style="margin:0 0 12px;font-size:20px;color:#18181b;">${title}</h1>
+          <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#3f3f46;">${intro}</p>
+          ${ctaUrl ? `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:8px;background:#dc2626;"><a href="${ctaUrl}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">${ctaText}</a></td></tr></table>
+          <p style="margin:20px 0 0;font-size:12px;line-height:1.6;color:#71717a;">Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:<br><a href="${ctaUrl}" style="color:#dc2626;word-break:break-all;">${ctaUrl}</a></p>` : ''}
+          ${footnote ? `<p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;">${footnote}</p>` : ''}
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;font-size:11px;color:#a1a1aa;">ProTouring · Tour-Management</p>
+    </td></tr>
+  </table>
+</body></html>`
+}
+
 // GET Mail-Settings (ohne Passwort) — nur Superadmin
 app.get('/api/admin/mail-settings', authenticateToken, async (req, res) => {
   if (!req.user?.isSuperadmin) return res.status(403).json({ error: 'Nur für Superadmin' })
@@ -5928,7 +5962,38 @@ app.post('/api/settings/invite', authenticateToken, requireTenant, requireAdmin,
       [req.tenant.id, token, email, role, resolvedContactId, req.user.id]
     )
     const invite = await db.get('SELECT * FROM invite_tokens WHERE id=?', [result.lastID])
-    res.status(201).json({ ...invite, invite_url: `/invite/${token}` })
+
+    // Einladungs-Mail verschicken — fehlertolerant: Invite gilt auch, wenn die Mail scheitert
+    let emailSent = false
+    let emailError = null
+    try {
+      const inviter = await db.get('SELECT first_name, last_name FROM users WHERE id=?', [req.user.id])
+      const tenantRow = await db.get('SELECT name FROM tenants WHERE id=?', [req.tenant.id])
+      const inviterName = [inviter?.first_name, inviter?.last_name].filter(Boolean).join(' ').trim()
+      const tenantName = tenantRow?.name || 'ProTouring'
+      const inviteUrl = `${APP_BASE_URL}/invite/${token}`
+      const roleLabel = ROLE_LABELS_DE[role] || role
+      const greet = resolvedFirstName ? `Hallo ${resolvedFirstName},` : 'Hallo,'
+      const byWhom = inviterName ? `${inviterName} hat dich` : 'Du wurdest'
+      await sendMail({
+        to: email,
+        subject: `Einladung zu ${tenantName} – ProTouring`,
+        text: `${greet}\n\n${byWhom} zu "${tenantName}" bei ProTouring eingeladen (Rolle: ${roleLabel}).\n\nEinladung annehmen: ${inviteUrl}\n\nDer Link ist 7 Tage gültig.`,
+        html: mailLayout({
+          title: `Einladung zu ${mailEsc(tenantName)}`,
+          intro: `${mailEsc(greet)}<br><br>${mailEsc(byWhom)} zu <strong>${mailEsc(tenantName)}</strong> bei ProTouring eingeladen – als <strong>${mailEsc(roleLabel)}</strong>. Klicke auf den Button, um die Einladung anzunehmen und dein Konto einzurichten.`,
+          ctaText: 'Einladung annehmen',
+          ctaUrl: inviteUrl,
+          footnote: 'Dieser Einladungslink ist 7 Tage gültig. Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.',
+        }),
+      })
+      emailSent = true
+    } catch (e) {
+      emailError = e.message
+      console.error('Invite-Mail Fehler:', e.message)
+    }
+
+    res.status(201).json({ ...invite, invite_url: `/invite/${token}`, email_sent: emailSent, email_error: emailError })
   } catch (err) {
     console.error('POST /api/settings/invite error:', err)
     res.status(500).json({ error: err.message })

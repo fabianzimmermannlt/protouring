@@ -134,6 +134,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [addInviteLastName, setAddInviteLastName] = useState('')
   const [addInviteRole, setAddInviteRole] = useState<TenantRole>('crew')
   const [addInviteLink, setAddInviteLink] = useState('')
+  const [addInviteEmailSent, setAddInviteEmailSent] = useState<boolean | null>(null)
   const [addInviteCopied, setAddInviteCopied] = useState(false)
   const [addInviteSaving, setAddInviteSaving] = useState(false)
   const [addInviteError, setAddInviteError] = useState('')
@@ -150,6 +151,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
   const [inviteSaving, setInviteSaving] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [inviteLink, setInviteLink] = useState('')
+  const [inviteEmailSent, setInviteEmailSent] = useState<boolean | null>(null)
   const [inviteCopied, setInviteCopied] = useState(false)
 
   const currentTenant = getCurrentTenant()
@@ -243,7 +245,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
 
   const openAddModal = () => {
     setAddInviteEmail(''); setAddInviteFirstName(''); setAddInviteLastName('')
-    setAddInviteRole('crew'); setAddInviteLink('')
+    setAddInviteRole('crew'); setAddInviteLink(''); setAddInviteEmailSent(null)
     setAddInviteCopied(false); setAddInviteError(''); setAddInviteSaving(false)
     setShowAddModal(true)
   }
@@ -256,6 +258,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     try {
       const result = await createInvite(addInviteEmail.trim(), addInviteRole, undefined, addInviteFirstName.trim(), addInviteLastName.trim())
       setAddInviteLink(`${window.location.origin}${result.invite_url}`)
+      setAddInviteEmailSent(result.email_sent ?? false)
     } catch (e: any) {
       setAddInviteError(e?.message ?? t('contacts.error.createFailed'))
     } finally {
@@ -267,6 +270,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
     e.stopPropagation()
     setInviteError('')
     setInviteLink('')
+    setInviteEmailSent(null)
     setInviteCopied(false)
     setInviteEmail(contact.email || '')
     setInviteFirstName(contact.firstName || '')
@@ -287,6 +291,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
       const result = await createInvite(inviteEmail, inviteRole, contactId, inviteFirstName.trim(), inviteLastName.trim())
       const baseUrl = window.location.origin
       setInviteLink(`${baseUrl}${result.invite_url}`)
+      setInviteEmailSent(result.email_sent ?? false)
     } catch (e: any) {
       setInviteError(e?.message ?? t('contacts.error.createFailed'))
     } finally {
@@ -758,6 +763,15 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 </>
               ) : (
                 <div className="space-y-2">
+                  {addInviteEmailSent === true ? (
+                    <div className="p-2 bg-green-900/30 border border-green-700 rounded text-green-300 text-xs">
+                      ✓ Einladung per Mail verschickt an {addInviteEmail.trim()}
+                    </div>
+                  ) : addInviteEmailSent === false ? (
+                    <div className="p-2 bg-amber-900/30 border border-amber-700 rounded text-amber-300 text-xs">
+                      Mailversand nicht möglich – bitte den Link unten manuell weitergeben.
+                    </div>
+                  ) : null}
                   <label className="form-label">{t('contacts.modal.inviteLink')}</label>
                   <div className="flex gap-2">
                     <input type="text" value={addInviteLink} readOnly className="form-input flex-1 font-mono text-xs" />
@@ -937,6 +951,15 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
                 </>
               ) : (
                 <div className="space-y-2">
+                  {inviteEmailSent === true ? (
+                    <div className="p-2 bg-green-900/30 border border-green-700 rounded text-green-300 text-xs">
+                      ✓ Einladung per Mail verschickt an {inviteEmail}
+                    </div>
+                  ) : inviteEmailSent === false ? (
+                    <div className="p-2 bg-amber-900/30 border border-amber-700 rounded text-amber-300 text-xs">
+                      Mailversand nicht möglich – bitte den Link unten manuell weitergeben.
+                    </div>
+                  ) : null}
                   <label className="form-label">{t('contacts.modal.inviteLink')}</label>
                   <div className="flex gap-2">
                     <input
