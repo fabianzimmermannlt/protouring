@@ -358,7 +358,7 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer className="border-t border-gray-900">
-        <div className="max-w-6xl mx-auto px-5 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+        <div className="max-w-6xl mx-auto px-5 py-10 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-gray-500">
           <div className="flex items-center gap-2">
             <span className="h-7 w-7 bg-orange-500 rounded-full flex items-center justify-center">
               <Music className="h-4 w-4 text-white" />
@@ -367,9 +367,15 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-6">
             <a href="mailto:info@protouring.de" className="hover:text-white transition-colors">Kontakt</a>
+            <Link href="/impressum" className="hover:text-white transition-colors">Impressum</Link>
+            <Link href="/datenschutz" className="hover:text-white transition-colors">Datenschutz</Link>
             <Link href="/login" className="hover:text-white transition-colors">Anmelden</Link>
           </div>
-          <span>© {new Date().getFullYear()} ProTouring</span>
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/fz-development-logo.svg" alt="FZ Development" className="h-6 w-6 rounded" />
+            <span>© {new Date().getFullYear()} FZ Development</span>
+          </div>
         </div>
       </footer>
     </div>
