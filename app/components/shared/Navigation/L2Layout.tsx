@@ -41,6 +41,7 @@ import { useRouter } from 'next/navigation'
 import { useLayout } from './LayoutContext'
 import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
+import NotificationBell from '@/app/components/shared/NotificationBell'
 
 // ─── Sub-item definitions ─────────────────────────────────────────────────────
 
@@ -621,8 +622,9 @@ export function L2Layout({
         <header className="h-12 bg-white border-b border-gray-200 flex items-center px-6 flex-shrink-0 gap-4">
           <div className="flex-1" />
 
-          {/* Right: Preview Banner */}
+          {/* Right: Glocke + Preview Banner */}
           <div className="flex-1 flex items-center justify-end gap-3">
+            <NotificationBell />
             <PreviewBanner />
           </div>
         </header>
