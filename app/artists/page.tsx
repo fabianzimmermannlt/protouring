@@ -19,6 +19,7 @@ import {
   type MyTermin, type SuperadminUser, type SuperadminTenant, type AddonModuleId,
 } from '@/lib/api-client'
 import { Shield, Loader2 } from 'lucide-react'
+import { MailSettingsSection } from '@/app/components/shared/MailSettingsSection'
 
 interface Tenant {
   id: number
@@ -254,7 +255,7 @@ function ArtistsPageInner() {
 
 function SuperadminConsole() {
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<'users' | 'tenants'>('users')
+  const [tab, setTab] = useState<'users' | 'tenants' | 'mail'>('users')
 
   // Users
   const [users, setUsers] = useState<SuperadminUser[]>([])
@@ -365,10 +366,10 @@ function SuperadminConsole() {
 
             {/* Tabs */}
             <div className="flex border-b border-gray-800 px-4">
-              {(['users', 'tenants'] as const).map(t => (
+              {(['users', 'tenants', 'mail'] as const).map(t => (
                 <button key={t} onClick={() => setTab(t)}
                   className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-colors ${tab === t ? 'border-red-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
-                  {t === 'users' ? 'User' : 'Artists / Trial'}
+                  {t === 'users' ? 'User' : t === 'tenants' ? 'Artists / Trial' : 'E-Mail'}
                 </button>
               ))}
             </div>
@@ -383,6 +384,9 @@ function SuperadminConsole() {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto">
+
+              {/* ── E-Mail / SMTP Tab ── */}
+              {tab === 'mail' && <div className="p-4"><MailSettingsSection /></div>}
 
               {/* ── Tenants Tab ── */}
               {tab === 'tenants' && (
