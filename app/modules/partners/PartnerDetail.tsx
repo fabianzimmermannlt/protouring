@@ -12,6 +12,7 @@ import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import { AutoGrowTextarea } from '@/app/components/shared/AutoGrowTextarea'
 import { CollapsibleCard } from '@/app/components/shared/CollapsibleCard'
+import { NameAddressAutocomplete, type AddressResult } from '@/app/components/shared/AddressAutocomplete'
 
 const PARTNER_TYPES = [
   'Veranstaltende', 'Autovermietung', 'Trucking-Firma', 'Reisebüro', 'Technik-Lieferant',
@@ -198,7 +199,28 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
           {/* Allgemein */}
           <CollapsibleCard title={<><Building2 className="w-3.5 h-3.5 inline mr-1" />{t('partners.cardGeneral')}</>}>
               <div className="space-y-2">
-                <IField label={t('partners.company')} value={form.companyName ?? ''} onChange={v => f('companyName', v)} readOnly={ro} />
+                {ro ? (
+                  <IField label={t('partners.company')} value={form.companyName ?? ''} onChange={v => f('companyName', v)} readOnly />
+                ) : (
+                  <NameAddressAutocomplete
+                    label={t('partners.company')}
+                    variant="inline"
+                    value={form.companyName ?? ''}
+                    onChange={v => f('companyName', v)}
+                    onAddressSelect={(a: AddressResult) => {
+                      setForm(prev => ({
+                        ...prev,
+                        ...(a.name ? { companyName: a.name } : {}),
+                        ...(a.street ? { street: a.street } : {}),
+                        ...(a.postalCode ? { postalCode: a.postalCode } : {}),
+                        ...(a.city ? { city: a.city } : {}),
+                        ...(a.state ? { state: a.state } : {}),
+                        ...(a.country ? { country: a.country } : {}),
+                      }))
+                      setIsDirty(true)
+                    }}
+                  />
+                )}
                 <ISelect label={t('partners.type')} value={form.type ?? ''} onChange={v => f('type', v)} options={partnerTypes} placeholder={t('partners.selectTypeOption')} readOnly={ro} />
                 <IField label={t('partners.contactPerson')} value={form.contactPerson ?? ''} onChange={v => f('contactPerson', v)} readOnly={ro} />
               </div>
