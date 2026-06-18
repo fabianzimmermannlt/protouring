@@ -349,7 +349,7 @@ function SuperadminConsole() {
         className="w-full flex items-center justify-center gap-2 border border-dashed border-red-800 hover:border-red-500 text-red-500 hover:text-red-400 rounded-xl px-5 py-3 transition-all text-sm font-medium"
       >
         <Shield className="w-4 h-4" />
-        Superadmin — User-Verwaltung
+        Superadmin — Verwaltung
       </button>
 
       {open && (
