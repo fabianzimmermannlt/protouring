@@ -22,6 +22,7 @@ import { LanguageProvider } from '@/app/lib/i18n/LanguageContext'
 import { L2Layout } from '@/app/components/shared/Navigation/L2Layout'
 import { L3Layout } from '@/app/components/shared/Navigation/L3Layout'
 import { getEffectiveRole } from '@/lib/api-client'
+import LandingPage from '@/app/components/landing/LandingPage'
 
 function ProTouringAppInner() {
   const router = useRouter()
@@ -259,6 +260,13 @@ function ProTouringAppInner() {
 }
 
 export default function ProTouringApp() {
+  // Root-Gate: Gäste sehen die Landingpage, eingeloggte User die App.
+  const [gate, setGate] = useState<'checking' | 'guest' | 'app'>('checking')
+  useEffect(() => { setGate(isAuthenticated() ? 'app' : 'guest') }, [])
+
+  if (gate === 'checking') return <div className="min-h-screen bg-gray-950" />
+  if (gate === 'guest') return <LandingPage />
+
   return (
     <LanguageProvider>
       <LayoutProvider>
