@@ -1907,8 +1907,9 @@ function mailLayout({ title, intro, ctaText, ctaUrl, footnote }) {
 // ── Benachrichtigungen: Kategorien + Helper ──────────────────
 // defInApp/defEmail = Standard-Kanäle, falls Nutzer nichts eingestellt hat.
 const NOTIFICATION_CATEGORIES = {
-  guestlist_wish: { label: 'Gästeliste-Wunsch (Freigabe/Ablehnung)', defInApp: true, defEmail: true },
-  todo_assigned:  { label: 'ToDo zugewiesen', defInApp: true, defEmail: false },
+  guestlist_wish_pending: { label: 'Gästeliste: neuer Wunsch (zur Freigabe)', defInApp: true, defEmail: false },
+  guestlist_wish:         { label: 'Gästeliste: Wunsch freigegeben/abgelehnt', defInApp: true, defEmail: true },
+  todo_assigned:          { label: 'ToDo zugewiesen', defInApp: true, defEmail: false },
 }
 
 function notifPrefFor(prefsJson, category) {
@@ -1951,6 +1952,23 @@ async function notify({ tenantId, userId, type, title, body, link }) {
     }
   } catch (e) {
     console.error('notify() Fehler:', e.message)
+  }
+}
+
+// Alle Freigabe-Berechtigten (admin/tourmanagement/agency) eines Tenants benachrichtigen.
+async function notifyTenantEditors({ tenantId, exceptUserId, type, title, body, link }) {
+  try {
+    const editors = await db.all(
+      `SELECT DISTINCT ut.user_id FROM user_tenants ut
+       WHERE ut.tenant_id = ? AND ut.status = 'active' AND ut.role IN ('admin','tourmanagement','agency')`,
+      [tenantId]
+    )
+    for (const e of editors) {
+      if (e.user_id === exceptUserId) continue
+      await notify({ tenantId, userId: e.user_id, type, title, body, link })
+    }
+  } catch (err) {
+    console.error('notifyTenantEditors Fehler:', err.message)
   }
 }
 
@@ -8057,6 +8075,21 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
       [req.params.id, req.tenant.id, first_name, last_name, company || null, invited_by_text || null, invited_by_user_id || null, email || null, JSON.stringify(passes), is_wish, status, notes || null, req.user.id]
     )
     const entry = await db.get('SELECT gle.*, u.first_name as inviter_first_name, u.last_name as inviter_last_name FROM guest_list_entries gle LEFT JOIN users u ON u.id = gle.invited_by_user_id WHERE gle.id = ?', [r.lastID])
+
+    // Neuer Wunsch (pending) → Freigabe-Berechtigte benachrichtigen
+    if (status === 'pending') {
+      const gl = await db.get('SELECT gl.termin_id, t.city FROM guest_lists gl LEFT JOIN termine t ON t.id = gl.termin_id WHERE gl.id = ?', [req.params.id])
+      const who = `${first_name || ''} ${last_name || ''}`.trim() || 'Ein Gast'
+      await notifyTenantEditors({
+        tenantId: req.tenant.id,
+        exceptUserId: req.user.id,
+        type: 'guestlist_wish_pending',
+        title: 'Neuer Gästelisten-Wunsch',
+        body: `${who} wartet auf Freigabe${gl?.city ? ` – ${gl.city}` : ''}.`,
+        link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}` : undefined,
+      })
+    }
+
     res.json({ entry: { ...entry, passes: JSON.parse(entry.passes || '{}') } })
   } catch (e) {
     console.error('POST entry failed', e)
