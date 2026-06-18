@@ -496,8 +496,8 @@ const de = {
   // ── Contacts — Actions ───────────────────────────────────────────────────────
   'contacts.action.invite':        'Einladen',
   'contacts.action.createManual':  'Manuell anlegen',
-  'contacts.action.creating':      'Erstelle…',
-  'contacts.action.createLink':    'Link erstellen',
+  'contacts.action.creating':      'Sende…',
+  'contacts.action.createLink':    'Einladung senden',
   'contacts.action.create':        'Anlegen',
   'contacts.action.renewLink':     'Link erneuern',
 
