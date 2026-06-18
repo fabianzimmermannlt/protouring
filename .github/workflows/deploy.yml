@@ -33,6 +33,8 @@ jobs:
             echo "── [3/5] Abhängigkeiten installieren ─────────"
             rm -rf node_modules
             npm ci
+            echo "── [3b/5] Server-Abhängigkeiten (Backend) ────"
+            cd server && npm install --omit=dev && cd ..
 
             echo "── [4/5] Build ───────────────────────────────"
             npm run build
