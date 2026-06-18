@@ -8084,13 +8084,20 @@ app.post('/api/guest-lists/:id/entries', authenticateToken, requireTenant, async
     // Neuer Wunsch (pending) → Freigabe-Berechtigte benachrichtigen
     if (status === 'pending') {
       const gl = await db.get('SELECT gl.termin_id, t.city FROM guest_lists gl LEFT JOIN termine t ON t.id = gl.termin_id WHERE gl.id = ?', [req.params.id])
-      const who = `${first_name || ''} ${last_name || ''}`.trim() || 'Ein Gast'
+      const guestName = `${first_name || ''} ${last_name || ''}`.trim() || 'einen Gast'
+      // Wer wünscht: bevorzugt der angegebene Einlader, sonst der eingeloggte Ersteller
+      let requester = (invited_by_text || '').trim()
+      if (!requester) {
+        const ru = await db.get('SELECT first_name, last_name FROM users WHERE id = ?', [invited_by_user_id || req.user.id])
+        requester = `${ru?.first_name || ''} ${ru?.last_name || ''}`.trim()
+      }
+      if (!requester) requester = 'Jemand'
       await notifyTenantEditors({
         tenantId: req.tenant.id,
         exceptUserId: req.user.id,
         type: 'guestlist_wish_pending',
         title: 'Neuer Gästelisten-Wunsch',
-        body: `${who} wartet auf Freigabe${gl?.city ? ` – ${gl.city}` : ''}.`,
+        body: `${requester} wünscht ${guestName} auf die Gästeliste${gl?.city ? ` – ${gl.city}` : ''}.`,
         link: gl?.termin_id ? `/?tab=events&id=${gl.termin_id}` : undefined,
       })
     }
