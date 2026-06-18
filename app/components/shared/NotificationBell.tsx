@@ -94,12 +94,12 @@ export default function NotificationBell() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 w-80 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-[9999]"
+          className="absolute right-0 top-full mt-1.5 w-80 bg-[#1f1f1f] rounded-lg shadow-xl border border-[#3a3a3a] overflow-hidden z-[9999]"
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-800">Benachrichtigungen</span>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-[#3a3a3a]">
+            <span className="text-sm font-semibold text-gray-100">Benachrichtigungen</span>
             {items.some(i => !i.read_at) && (
-              <button onClick={markAll} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              <button onClick={markAll} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
                 <Check size={12} /> Alle gelesen
               </button>
             )}
@@ -107,22 +107,22 @@ export default function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <p className="px-3 py-6 text-center text-xs text-gray-400">Lädt…</p>
+              <p className="px-3 py-6 text-center text-xs text-gray-500">Lädt…</p>
             ) : items.length === 0 ? (
-              <p className="px-3 py-8 text-center text-xs text-gray-400">Keine Benachrichtigungen</p>
+              <p className="px-3 py-8 text-center text-xs text-gray-500">Keine Benachrichtigungen</p>
             ) : (
               items.map(n => (
                 <button
                   key={n.id}
                   onClick={() => onItemClick(n)}
-                  className={`w-full text-left px-3 py-2.5 border-b border-gray-50 transition-colors hover:bg-gray-50 ${n.read_at ? '' : 'bg-blue-50/50'}`}
+                  className={`w-full text-left px-3 py-2.5 border-b border-[#2d2d2d] transition-colors hover:bg-[#2a2a2a] ${n.read_at ? '' : 'bg-blue-500/10'}`}
                 >
                   <div className="flex items-start gap-2">
-                    {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                    {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
                     <div className={`min-w-0 flex-1 ${n.read_at ? 'pl-3.5' : ''}`}>
-                      <p className="text-sm text-gray-800 font-medium truncate">{n.title}</p>
-                      {n.body && <p className="text-xs text-gray-500 leading-snug mt-0.5">{n.body}</p>}
-                      <p className="text-[11px] text-gray-400 mt-1">{relTime(n.created_at)}</p>
+                      <p className="text-sm text-gray-100 font-medium truncate">{n.title}</p>
+                      {n.body && <p className="text-xs text-gray-400 leading-snug mt-0.5">{n.body}</p>}
+                      <p className="text-[11px] text-gray-500 mt-1">{relTime(n.created_at)}</p>
                     </div>
                   </div>
                 </button>
