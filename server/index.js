@@ -1958,14 +1958,19 @@ async function notify({ tenantId, userId, type, title, body, link }) {
 // Alle Freigabe-Berechtigten (admin/tourmanagement/agency) eines Tenants benachrichtigen.
 async function notifyTenantEditors({ tenantId, exceptUserId, type, title, body, link }) {
   try {
+    // Editor-Mitglieder des Tenants + Superadmins (dürfen ebenfalls freigeben, sind aber keine Mitglieder)
     const editors = await db.all(
-      `SELECT DISTINCT ut.user_id FROM user_tenants ut
-       WHERE ut.tenant_id = ? AND ut.status = 'active' AND ut.role IN ('admin','tourmanagement','agency')`,
+      `SELECT ut.user_id AS id FROM user_tenants ut
+         WHERE ut.tenant_id = ? AND ut.status = 'active' AND ut.role IN ('admin','tourmanagement','agency')
+       UNION
+       SELECT id FROM users WHERE is_superadmin = 1`,
       [tenantId]
     )
+    const seen = new Set()
     for (const e of editors) {
-      if (e.user_id === exceptUserId) continue
-      await notify({ tenantId, userId: e.user_id, type, title, body, link })
+      if (e.id === exceptUserId || seen.has(e.id)) continue
+      seen.add(e.id)
+      await notify({ tenantId, userId: e.id, type, title, body, link })
     }
   } catch (err) {
     console.error('notifyTenantEditors Fehler:', err.message)
