@@ -222,11 +222,11 @@ export default function HotelModal({
                 renderValue={h => [h.name, h.city].filter(Boolean).join(' · ')}
                 renderItem={(h, selected) => (
                   <div>
-                    <div style={{ fontSize: '0.85rem', color: selected ? '#1d4ed8' : '#111827', fontWeight: selected ? 500 : 400 }}>
+                    <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : '#e0e0e0', fontWeight: selected ? 500 : 400 }}>
                       {h.name}
                     </div>
                     {(h.city || h.phone) && (
-                      <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
                         {[h.city, h.phone].filter(Boolean).join(' · ')}
                       </div>
                     )}
