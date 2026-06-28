@@ -2957,12 +2957,42 @@ app.get('/api/venues', authenticateToken, requireTenant, async (req, res) => {
   }
 });
 
+// Adress-String aus Venue-Feldern
+function venueAddrString(v) {
+  return [v.street, v.postalCode, v.city, v.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
+}
+
+// Serverseitiges Geocoding via Photon (keyless). Gibt {lat, lon} als Strings oder null.
+async function geocodeAddress(query) {
+  if (!query || !query.trim()) return null
+  try {
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 4000)
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=1&lang=de`
+    const r = await fetch(url, { headers: { 'User-Agent': 'ProTouring/1.0' }, signal: ctrl.signal })
+    clearTimeout(to)
+    if (!r.ok) return null
+    const data = await r.json()
+    const c = data?.features?.[0]?.geometry?.coordinates
+    if (Array.isArray(c) && c.length >= 2) return { lat: String(c[1]), lon: String(c[0]) }
+  } catch (e) {
+    console.error('geocodeAddress Fehler:', e.message)
+  }
+  return null
+}
+
 // POST create venue
 app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   const v = req.body;
   if (!v.name || !v.name.trim()) return res.status(400).json({ error: 'Venue name is required' });
 
   try {
+    // Koordinaten automatisch ermitteln, falls Adresse vorhanden aber keine Koordinaten mitgegeben
+    let lat = v.latitude, lon = v.longitude
+    if ((!lat || !lon)) {
+      const g = await geocodeAddress(venueAddrString(v))
+      if (g) { lat = g.lat; lon = g.lon }
+    }
     const result = await db.run(`
       INSERT INTO venues (
         tenant_id, name, street, postal_code, city, state, country, website,
@@ -2976,7 +3006,7 @@ app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (
       v.arrival, v.arrivalStreet, v.arrivalPostalCode, v.arrivalCity,
       v.capacity, v.capacitySeated, v.stageDimensions, v.clearanceHeight,
       v.merchandiseFee, v.merchandiseStand, v.wardrobe, v.showers, v.wifi,
-      v.parking, v.nightlinerParking, v.loadingPath, v.notes, v.latitude, v.longitude, req.user.id
+      v.parking, v.nightlinerParking, v.loadingPath, v.notes, lat, lon, req.user.id
     ]);
 
     const row = await db.get('SELECT * FROM venues WHERE id = ?', [result.lastID]);
@@ -2995,10 +3025,21 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
   try {
     // Verify venue belongs to this tenant
     const existing = await db.get(
-      'SELECT id FROM venues WHERE id = ? AND tenant_id = ?',
+      'SELECT id, street, postal_code, city, country, latitude, longitude FROM venues WHERE id = ? AND tenant_id = ?',
       [id, req.tenant.id]
     );
     if (!existing) return res.status(404).json({ error: 'Venue not found' });
+
+    // Koordinaten bestimmen: gepickte (geänderte) Koordinaten haben Vorrang,
+    // sonst bei fehlenden/veralteten Koordinaten + vorhandener Adresse neu geocoden.
+    let lat = v.latitude, lon = v.longitude
+    const newAddr = venueAddrString(v)
+    const oldAddr = [existing.street, existing.postal_code, existing.city, existing.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
+    const coordsPicked = lat && lon && (lat !== (existing.latitude || '') || lon !== (existing.longitude || ''))
+    if (!coordsPicked && newAddr && (!lat || !lon || newAddr !== oldAddr)) {
+      const g = await geocodeAddress(newAddr)
+      if (g) { lat = g.lat; lon = g.lon }
+    }
 
     await db.run(`
       UPDATE venues SET
@@ -3016,7 +3057,7 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
       v.capacity, v.capacitySeated, v.stageDimensions, v.clearanceHeight,
       v.merchandiseFee, v.merchandiseStand, v.wardrobe, v.showers, v.wifi,
       v.parking, v.nightlinerParking, v.loadingPath, v.notes,
-      v.latitude, v.longitude,
+      lat, lon,
       id, req.tenant.id
     ]);
 
