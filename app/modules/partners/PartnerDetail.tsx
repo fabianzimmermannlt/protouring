@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { AlertCircle, Save, Loader2, Building2, MapPin, Phone, X, ArrowLeft, Plus, UserCircle, Mail, Trash2, Check, Pencil } from 'lucide-react'
+import { AlertCircle, Save, Loader2, Building2, MapPin, Phone, X, ArrowLeft, Plus, UserCircle, Mail, Trash2, Check, Pencil, GripVertical } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
   getPartner, updatePartner, type Partner, type PartnerFormData,
-  getPartnerContacts, createPartnerContact, updatePartnerContact, deletePartnerContact, type PartnerContact,
+  getPartnerContacts, createPartnerContact, updatePartnerContact, deletePartnerContact, reorderPartnerContacts, type PartnerContact,
   getPartnerTypes,
 } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
@@ -321,6 +321,21 @@ function PartnerContactsCard({ partnerId, isEditor }: { partnerId: string; isEdi
     try { await deletePartnerContact(partnerId, id); setContacts(prev => prev.filter(c => c.id !== id)) } catch { /* silent */ }
   }
 
+  // Drag & Drop Reihenfolge
+  const dragIdx = useRef<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+  const [dragging, setDragging] = useState<number | null>(null)
+  const onDrop = async (targetIdx: number) => {
+    const from = dragIdx.current
+    dragIdx.current = null; setDragOver(null); setDragging(null)
+    if (from === null || from === targetIdx) return
+    const next = [...contacts]
+    const [moved] = next.splice(from, 1)
+    next.splice(targetIdx, 0, moved)
+    setContacts(next)
+    try { await reorderPartnerContacts(partnerId, next.map(c => c.id)) } catch { /* silent */ }
+  }
+
   return (
     <CollapsibleCard
       title={<><UserCircle className="w-3.5 h-3.5 inline mr-1" />Ansprechpartner</>}
@@ -330,12 +345,27 @@ function PartnerContactsCard({ partnerId, isEditor }: { partnerId: string; isEdi
         <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Lädt…</div>
       ) : (
         <>
-          {contacts.map(c => (
+          {contacts.map((c, idx) => (
             editingId === c.id ? (
               <PContactForm key={c.id} form={form} onChange={setForm} onSave={save} onCancel={() => setEditingId(null)} saving={saving} />
             ) : (
-              <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 group">
-                <div className="flex items-start justify-between gap-2">
+              <div
+                key={c.id}
+                draggable={isEditor}
+                onDragStart={() => { dragIdx.current = idx; setDragging(idx) }}
+                onDragEnter={() => { if (dragIdx.current !== idx) setDragOver(idx) }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => onDrop(idx)}
+                onDragEnd={() => { dragIdx.current = null; setDragOver(null); setDragging(null) }}
+                className={`relative py-2 border-b border-gray-50 last:border-0 group transition-all duration-150 ${dragging === idx ? 'opacity-40 scale-[.99]' : ''}`}
+              >
+                {dragOver === idx && dragging !== idx && (
+                  <div className="absolute -top-px left-0 right-0 h-0.5 bg-blue-500 rounded-full" />
+                )}
+                <div className="flex items-start gap-2">
+                  {isEditor && (
+                    <span className="mt-0.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0" title="Ziehen zum Sortieren"><GripVertical className="w-4 h-4" /></span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-200">{`${c.firstName} ${c.name}`.trim()}</p>
                     {c.role && <p className="text-xs text-gray-500">{c.role}</p>}

@@ -1474,6 +1474,8 @@ async function initDatabase() {
     )
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_partner_contacts_partner ON partner_contacts(partner_id)`)
+  // Migration: sort_order für manuelles Verschieben der Partner-Ansprechpartner
+  try { await db.run("ALTER TABLE partner_contacts ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0") } catch {}
 
   // Rollen-Migration: user_tenants CHECK-Constraint auf neue Rollen aktualisieren
   const utSchema = await db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_tenants'")
@@ -8960,7 +8962,7 @@ app.delete('/api/venues/:venueId/contacts/:contactId', authenticateToken, requir
 app.get('/api/partners/:id/contacts', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(
-      'SELECT * FROM partner_contacts WHERE partner_id = ? AND tenant_id = ? ORDER BY created_at ASC',
+      'SELECT * FROM partner_contacts WHERE partner_id = ? AND tenant_id = ? ORDER BY sort_order ASC, created_at ASC',
       [req.params.id, req.tenant.id]
     )
     res.json({ contacts: rows.map(r => ({
@@ -8977,10 +8979,12 @@ app.post('/api/partners/:id/contacts', authenticateToken, requireTenant, require
   try {
     const { firstName, name, role, phone, email, notes } = req.body
     if (!name?.trim()) return res.status(400).json({ error: 'Name erforderlich' })
+    const maxRow = await db.get('SELECT MAX(sort_order) AS m FROM partner_contacts WHERE partner_id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    const nextSort = (maxRow?.m ?? -1) + 1
     const result = await db.run(
-      `INSERT INTO partner_contacts (partner_id, tenant_id, first_name, name, role, phone, email, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.params.id, req.tenant.id, firstName || '', name, role || '', phone || '', email || '', notes || '']
+      `INSERT INTO partner_contacts (partner_id, tenant_id, first_name, name, role, phone, email, notes, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.params.id, req.tenant.id, firstName || '', name, role || '', phone || '', email || '', notes || '', nextSort]
     )
     const row = await db.get('SELECT * FROM partner_contacts WHERE id = ?', [result.lastID])
     res.status(201).json({ contact: {
@@ -8988,6 +8992,21 @@ app.post('/api/partners/:id/contacts', authenticateToken, requireTenant, require
       firstName: row.first_name || '', name: row.name, role: row.role || '', phone: row.phone || '',
       email: row.email || '', notes: row.notes || '', createdAt: row.created_at,
     }})
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/partners/:partnerId/contacts/reorder — neue Reihenfolge (VOR :contactId!)
+app.put('/api/partners/:partnerId/contacts/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body?.order) ? req.body.order : []
+    let i = 0
+    for (const cid of order) {
+      await db.run(
+        'UPDATE partner_contacts SET sort_order = ? WHERE id = ? AND partner_id = ? AND tenant_id = ?',
+        [i++, cid, req.params.partnerId, req.tenant.id]
+      )
+    }
+    res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

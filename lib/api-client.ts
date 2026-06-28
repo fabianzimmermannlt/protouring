@@ -422,6 +422,11 @@ export async function deletePartnerContact(partnerId: string, contactId: string)
   await request(`/api/partners/${partnerId}/contacts/${contactId}`, { method: 'DELETE' });
 }
 
+/** Reihenfolge der Partner-Ansprechpartner speichern (Array von Contact-IDs in neuer Reihenfolge) */
+export async function reorderPartnerContacts(partnerId: string, order: string[]): Promise<void> {
+  await request(`/api/partners/${partnerId}/contacts/reorder`, { method: 'PUT', body: { order } });
+}
+
 // ============================================
 // Contacts API
 // ============================================
