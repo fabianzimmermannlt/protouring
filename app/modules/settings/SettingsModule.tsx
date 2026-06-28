@@ -38,6 +38,7 @@ import {
   getActiveFunctions,
   getPartnerTypes, createPartnerType, deletePartnerType, togglePartnerTypeVisible,
   getVehicleTypes, createVehicleType, deleteVehicleType, toggleVehicleTypeVisible,
+  getTravelFactors, saveTravelFactors, type TravelFactors,
   getFileCategories, createFileCategory, deleteFileCategory, toggleFileCategoryVisible,
   getArtistMembers, createArtistMember, updateArtistMember, deleteArtistMember,
   getTenantSetting, setTenantSetting,
@@ -131,7 +132,12 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
         return <PartnerTypesSettings />
 
       case 'vehicles':
-        return <VehicleTypesSettings />
+        return (
+          <div className="space-y-8">
+            <VehicleTypesSettings />
+            <TravelFactorsSettings />
+          </div>
+        )
 
       case 'gewerke':
         return <GewerkSettings />
@@ -2386,6 +2392,63 @@ function PartnerTypesSettings() {
 const VEHICLE_SUGGESTIONS = [
   { group: 'Fahrzeugtypen', items: ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Coach', 'Sonstiges'] },
 ]
+
+function TravelFactorsSettings() {
+  const [factors, setFactors] = useState<TravelFactors>({ pkw: 1.1, nightliner: 1.45, lkw: 1.6 })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    getTravelFactors().then(setFactors).catch(() => {}).finally(() => setLoading(false))
+  }, [])
+
+  const rows: { key: keyof TravelFactors; label: string }[] = [
+    { key: 'pkw', label: 'PKW / Van' },
+    { key: 'nightliner', label: 'Nightliner' },
+    { key: 'lkw', label: 'Nightliner + Trailer' },
+  ]
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const res = await saveTravelFactors(factors)
+      setFactors(res)
+      setSaved(true); setTimeout(() => setSaved(false), 1500)
+    } catch { /* still */ } finally { setSaving(false) }
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-gray-100">Fahrzeit-Faktoren</h3>
+        {saved && <span className="text-xs text-green-400">Gespeichert ✓</span>}
+      </div>
+      <p className="text-sm text-gray-400">
+        Multiplikator auf die reine PKW-Fahrzeit (z.B. für Pausen, langsameres Fahrzeug). 1,0 = keine Verlängerung.
+      </p>
+      <div className="border border-[#3a3a3a] rounded-lg overflow-hidden">
+        {rows.map(r => (
+          <div key={r.key} className="flex items-center justify-between px-4 py-3 border-b border-[#2d2d2d] last:border-b-0">
+            <span className="text-sm text-gray-200">{r.label}</span>
+            <input
+              type="number" step="0.05" min="1" max="3"
+              value={factors[r.key]}
+              onChange={e => setFactors(prev => ({ ...prev, [r.key]: Number(e.target.value) }))}
+              className="w-24 px-3 py-1.5 bg-[#2d2d2d] border border-[#444] rounded-lg text-sm text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        ))}
+      </div>
+      <button onClick={save} disabled={saving}
+        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+        {saving ? 'Speichern…' : 'Speichern'}
+      </button>
+    </div>
+  )
+}
 
 function VehicleTypesSettings() {
   const t = useT()

@@ -1172,6 +1172,19 @@ export async function deleteVehicleType(id: number): Promise<void> {
   await request(`/api/vehicle-types/${id}`, { method: 'DELETE' });
 }
 
+// ── Fahrzeit-Faktoren ────────────────────────────────────────────────────────
+export interface TravelFactors { pkw: number; nightliner: number; lkw: number }
+
+export async function getTravelFactors(): Promise<TravelFactors> {
+  const data = await request('/api/travel-factors') as { factors: TravelFactors };
+  return data.factors;
+}
+
+export async function saveTravelFactors(factors: TravelFactors): Promise<TravelFactors> {
+  const data = await request('/api/travel-factors', { method: 'PUT', body: { factors } }) as { factors: TravelFactors };
+  return data.factors;
+}
+
 // ============================================
 // File Categories API
 // ============================================

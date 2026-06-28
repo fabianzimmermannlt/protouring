@@ -9,7 +9,7 @@ import {
   updateTravelLeg,
   deleteTravelLeg,
   updateTravelLegPersons,
-  getVehicles,
+  getVehicles, getTravelFactors, type TravelFactors,
   type TravelLeg,
   type TravelLegFormData,
   type TravelPartyMember,
@@ -107,8 +107,8 @@ function formatDuration(min: number | null): string {
 // Multiplikatoren auf PKW-Fahrtzeit (OSRM liefert Pkw-Basis)
 const VEHICLE_PROFILES = [
   { key: 'pkw',       label: 'PKW / Van',           factor: 1.1 },
-  { key: 'nightliner',label: 'Nightliner',           factor: 1.3 },
-  { key: 'lkw',       label: 'Nightliner + Trailer', factor: 1.5 },
+  { key: 'nightliner',label: 'Nightliner',           factor: 1.45 },
+  { key: 'lkw',       label: 'Nightliner + Trailer', factor: 1.6 },
 ] as const
 
 async function geocode(location: string): Promise<[number, number] | null> {
@@ -159,6 +159,7 @@ export default function AnreiseModal({
   const [copySuccess, setCopySuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [calcLoading, setCalcLoading] = useState<string | null>(null) // key des gerade berechnenden Profils
+  const [factors, setFactors] = useState<TravelFactors>({ pkw: 1.1, nightliner: 1.45, lkw: 1.6 })
   const [calcError, setCalcError] = useState<string | null>(null)
   const [personPickerOpen, setPersonPickerOpen] = useState(false)
   const notesRef = useRef<RichTextEditorFieldHandle>(null)
@@ -192,7 +193,8 @@ export default function AnreiseModal({
       const route = await getRoute(fromCoord, toCoord)
       if (!route) { setCalcError('Route konnte nicht berechnet werden.'); return }
       const profile = VEHICLE_PROFILES.find(p => p.key === profileKey)!
-      const durationMin = Math.round(route.baseDurationMin * profile.factor)
+      const factor = factors[profileKey] ?? profile.factor
+      const durationMin = Math.round(route.baseDurationMin * factor)
       setForm(prev => ({ ...prev, distanceKm: route.distanceKm, travelDurationMin: durationMin }))
     } finally {
       setCalcLoading(null)
@@ -201,6 +203,7 @@ export default function AnreiseModal({
 
   useEffect(() => {
     getVehicles().then(setVehicles).catch(() => setVehicles([]))
+    getTravelFactors().then(setFactors).catch(() => {})
   }, [])
 
   const set = <K extends keyof TravelLegFormData>(field: K, value: TravelLegFormData[K]) =>

@@ -6976,6 +6976,44 @@ app.delete('/api/vehicle-types/:id', authenticateToken, requireTenant, async (re
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// ── Fahrzeit-Faktoren (Multiplikatoren auf OSRM-PKW-Basiszeit) ─────────────────
+const DEFAULT_TRAVEL_FACTORS = { pkw: 1.1, nightliner: 1.45, lkw: 1.6 }
+
+// GET /api/travel-factors
+app.get('/api/travel-factors', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT value FROM tenant_settings WHERE tenant_id=? AND key=?', [req.tenant.id, 'travel_factors'])
+    let saved = {}
+    try { saved = row?.value ? JSON.parse(row.value) : {} } catch {}
+    const factors = { ...DEFAULT_TRAVEL_FACTORS }
+    for (const k of Object.keys(DEFAULT_TRAVEL_FACTORS)) {
+      const v = Number(saved[k])
+      if (Number.isFinite(v) && v > 0) factors[k] = v
+    }
+    res.json({ factors })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/travel-factors  (Editoren)
+app.put('/api/travel-factors', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const incoming = req.body?.factors || {}
+    const clean = {}
+    for (const k of Object.keys(DEFAULT_TRAVEL_FACTORS)) {
+      const v = Number(incoming[k])
+      clean[k] = (Number.isFinite(v) && v > 0) ? v : DEFAULT_TRAVEL_FACTORS[k]
+    }
+    await db.run(
+      `INSERT INTO tenant_settings (tenant_id, key, value, updated_by, updated_at)
+       VALUES (?, 'travel_factors', ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(tenant_id, key) DO UPDATE SET value=excluded.value, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP`,
+      [req.tenant.id, JSON.stringify(clean), req.user.id]
+    )
+    res.json({ ok: true, factors: clean })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 /// ── File Categories ───────────────────────────────────────────────────────────
 
 const DEFAULT_FILE_CATEGORIES = [
