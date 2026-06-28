@@ -386,6 +386,11 @@ export async function deleteVenueContact(venueId: string, contactId: string): Pr
   await request(`/api/venues/${venueId}/contacts/${contactId}`, { method: 'DELETE' });
 }
 
+/** Reihenfolge der Venue-Ansprechpartner speichern (Array von Contact-IDs in neuer Reihenfolge) */
+export async function reorderVenueContacts(venueId: string, order: string[]): Promise<void> {
+  await request(`/api/venues/${venueId}/contacts/reorder`, { method: 'PUT', body: { order } });
+}
+
 export interface PartnerContact {
   id: string;
   partnerId: string;

@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Loader2, Pencil, Save, Check, X, AlertCircle,
-  MapPin, Navigation, Ruler, UserCircle, FileIcon,
+  MapPin, Navigation, Ruler, UserCircle, FileIcon, ChevronUp, ChevronDown,
   Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2, Upload,
 } from 'lucide-react'
 import {
   getVenue, getVenues, createVenue, updateTermin, getAuthToken, getCurrentTenant, isEditorRole, getEffectiveRole,
-  getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
+  getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact, reorderVenueContacts,
   type Venue, type VenueContact, type Termin,
 } from '@/lib/api-client'
 import { formatNumber } from '@/lib/format'
@@ -403,6 +403,15 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
     } catch { /* silent */ }
   }
 
+  async function moveContact(idx: number, dir: 'up' | 'down') {
+    const j = dir === 'up' ? idx - 1 : idx + 1
+    if (j < 0 || j >= venueContacts.length) return
+    const next = [...venueContacts]
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    setVenueContacts(next)
+    try { await reorderVenueContacts(id, next.map(c => c.id)) } catch { /* silent */ }
+  }
+
   // ─── Computed ──────────────────────────────────────────────────────────────
   const address = venue ? [
     venue.street,
@@ -717,7 +726,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
               </div>
             ) : (
               <>
-                {venueContacts.map(c => (
+                {venueContacts.map((c, idx) => (
                   editingContactId === c.id ? (
                     <ContactForm key={c.id}
                       form={contactForm} onChange={setContactForm}
@@ -745,6 +754,12 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                         </div>
                         {isEditor && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={() => moveContact(idx, 'up')} disabled={idx === 0} className="text-gray-400 hover:text-blue-600 p-0.5 disabled:opacity-30 disabled:hover:text-gray-400" title="Nach oben">
+                              <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => moveContact(idx, 'down')} disabled={idx === venueContacts.length - 1} className="text-gray-400 hover:text-blue-600 p-0.5 disabled:opacity-30 disabled:hover:text-gray-400" title="Nach unten">
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
                             <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5">
                               <Pencil className="w-3 h-3" />
                             </button>

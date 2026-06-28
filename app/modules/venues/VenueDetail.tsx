@@ -5,7 +5,7 @@ import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   Upload, Trash2, X, AlertCircle, Plus, Save, Check, Pencil,
-  File as FileIcon, Globe, MapPin, Users, Ruler, ChevronDown, ChevronRight, Navigation,
+  File as FileIcon, Globe, MapPin, Users, Ruler, ChevronDown, ChevronUp, ChevronRight, Navigation,
   Image as ImageIcon, ExternalLink, Loader2, UserCircle, Phone, Mail, ArrowLeft,
 } from 'lucide-react'
 import { useLightbox, Lightbox } from '@/app/components/shared/Lightbox'
@@ -15,7 +15,7 @@ import { NumericInput } from '@/app/components/shared/NumericInput'
 import {
   getAuthToken, getCurrentTenant, getCurrentUser,
   isEditorRole, getEffectiveRole, type Venue, type VenueContact,
-  getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact,
+  getVenueContacts, createVenueContact, updateVenueContact, deleteVenueContact, reorderVenueContacts,
   getFileCategories,
 } from '@/lib/api-client'
 import VenueModal from '@/app/modules/venues/VenueModal'
@@ -317,6 +317,15 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
     } catch { /* silent */ }
   }
 
+  async function moveContact(idx: number, dir: 'up' | 'down') {
+    const j = dir === 'up' ? idx - 1 : idx + 1
+    if (j < 0 || j >= venueContacts.length) return
+    const next = [...venueContacts]
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    setVenueContacts(next)
+    try { await reorderVenueContacts(venueId, next.map(c => c.id)) } catch { /* silent */ }
+  }
+
   // ─── Form handlers ────────────────────────────────────────────────────────
   const f = (key: string, val: string) => {
     const next = { ...form, [key]: val }
@@ -493,7 +502,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
               <div className="flex items-center justify-center h-16 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('general.loadingShort')}</div>
             ) : (
               <>
-                {venueContacts.map(c => (
+                {venueContacts.map((c, idx) => (
                   editingContactId === c.id ? (
                     <ContactForm key={c.id} form={contactForm} onChange={setContactForm}
                       onSave={saveContact} onCancel={() => setEditingContactId(null)} saving={savingContact} />
@@ -511,6 +520,8 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
                         </div>
                         {isEditor && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button onClick={() => moveContact(idx, 'up')} disabled={idx === 0} className="text-gray-400 hover:text-blue-600 p-0.5 disabled:opacity-30 disabled:hover:text-gray-400" title="Nach oben"><ChevronUp className="w-3 h-3" /></button>
+                            <button onClick={() => moveContact(idx, 'down')} disabled={idx === venueContacts.length - 1} className="text-gray-400 hover:text-blue-600 p-0.5 disabled:opacity-30 disabled:hover:text-gray-400" title="Nach unten"><ChevronDown className="w-3 h-3" /></button>
                             <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5"><Pencil className="w-3 h-3" /></button>
                             <button onClick={() => handleDeleteContact(c.id)} className="text-gray-400 hover:text-red-600 p-0.5"><Trash2 className="w-3 h-3" /></button>
                           </div>
