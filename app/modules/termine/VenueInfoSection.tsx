@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Loader2, Pencil, Save, Check, X, AlertCircle,
-  MapPin, Navigation, Ruler, UserCircle, FileIcon, ChevronUp, ChevronDown,
+  MapPin, Navigation, Ruler, UserCircle, FileIcon, GripVertical,
   Image as ImageIcon, Globe, Phone, Mail, Plus, Trash2, Upload,
 } from 'lucide-react'
 import {
@@ -403,11 +403,17 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
     } catch { /* silent */ }
   }
 
-  async function moveContact(idx: number, dir: 'up' | 'down') {
-    const j = dir === 'up' ? idx - 1 : idx + 1
-    if (j < 0 || j >= venueContacts.length) return
+  // ─── Drag & Drop Reihenfolge ──────────────────────────────────────────────
+  const dragIdx = useRef<number | null>(null)
+  const [dragOver, setDragOver] = useState<number | null>(null)
+  const onContactDrop = async (targetIdx: number) => {
+    const from = dragIdx.current
+    dragIdx.current = null
+    setDragOver(null)
+    if (from === null || from === targetIdx) return
     const next = [...venueContacts]
-    ;[next[idx], next[j]] = [next[j], next[idx]]
+    const [moved] = next.splice(from, 1)
+    next.splice(targetIdx, 0, moved)
     setVenueContacts(next)
     try { await reorderVenueContacts(id, next.map(c => c.id)) } catch { /* silent */ }
   }
@@ -733,8 +739,20 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                       onSave={saveContact} onCancel={() => setEditingContactId(null)}
                       saving={savingContact} />
                   ) : (
-                    <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 group">
-                      <div className="flex items-start justify-between gap-2">
+                    <div
+                      key={c.id}
+                      draggable={isEditor}
+                      onDragStart={() => { dragIdx.current = idx }}
+                      onDragEnter={() => { if (dragIdx.current !== idx) setDragOver(idx) }}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={() => onContactDrop(idx)}
+                      onDragEnd={() => { dragIdx.current = null; setDragOver(null) }}
+                      className={`py-2 border-b border-gray-50 last:border-0 group transition-all ${dragOver === idx ? 'bg-blue-50/60' : ''}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {isEditor && (
+                          <span className="mt-0.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0" title="Ziehen zum Sortieren"><GripVertical className="w-4 h-4" /></span>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-800">{`${c.firstName} ${c.name}`.trim()}</p>
                           {c.role && <p className="text-xs text-gray-500">{c.role}</p>}
@@ -754,12 +772,6 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                         </div>
                         {isEditor && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button onClick={() => moveContact(idx, 'up')} disabled={idx === 0} className="text-gray-400 hover:text-blue-600 p-0.5 disabled:opacity-30 disabled:hover:text-gray-400" title="Nach oben">
-                              <ChevronUp className="w-3 h-3" />
-                            </button>
-                            <button onClick={() => moveContact(idx, 'down')} disabled={idx === venueContacts.length - 1} className="text-gray-400 hover:text-blue-600 p-0.5 disabled:opacity-30 disabled:hover:text-gray-400" title="Nach unten">
-                              <ChevronDown className="w-3 h-3" />
-                            </button>
                             <button onClick={() => startEditContact(c)} className="text-gray-400 hover:text-blue-600 p-0.5">
                               <Pencil className="w-3 h-3" />
                             </button>
