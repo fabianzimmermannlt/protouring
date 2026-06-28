@@ -406,10 +406,12 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
   // ─── Drag & Drop Reihenfolge ──────────────────────────────────────────────
   const dragIdx = useRef<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
+  const [dragging, setDragging] = useState<number | null>(null)
   const onContactDrop = async (targetIdx: number) => {
     const from = dragIdx.current
     dragIdx.current = null
     setDragOver(null)
+    setDragging(null)
     if (from === null || from === targetIdx) return
     const next = [...venueContacts]
     const [moved] = next.splice(from, 1)
@@ -742,13 +744,16 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                     <div
                       key={c.id}
                       draggable={isEditor}
-                      onDragStart={() => { dragIdx.current = idx }}
+                      onDragStart={() => { dragIdx.current = idx; setDragging(idx) }}
                       onDragEnter={() => { if (dragIdx.current !== idx) setDragOver(idx) }}
                       onDragOver={e => e.preventDefault()}
                       onDrop={() => onContactDrop(idx)}
-                      onDragEnd={() => { dragIdx.current = null; setDragOver(null) }}
-                      className={`py-2 border-b border-gray-50 last:border-0 group transition-all ${dragOver === idx ? 'bg-blue-50/60' : ''}`}
+                      onDragEnd={() => { dragIdx.current = null; setDragOver(null); setDragging(null) }}
+                      className={`relative py-2 border-b border-gray-50 last:border-0 group transition-all duration-150 ${dragging === idx ? 'opacity-40 scale-[.99]' : ''}`}
                     >
+                      {dragOver === idx && dragging !== idx && (
+                        <div className="absolute -top-px left-0 right-0 h-0.5 bg-blue-500 rounded-full" />
+                      )}
                       <div className="flex items-start gap-2">
                         {isEditor && (
                           <span className="mt-0.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0" title="Ziehen zum Sortieren"><GripVertical className="w-4 h-4" /></span>
