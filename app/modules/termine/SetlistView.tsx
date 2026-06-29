@@ -48,8 +48,8 @@ function computeTimes(sl: Setlist) {
 }
 
 // Show-Modus-Konfiguration (pro Gerät)
-type ShowCfg = { push: boolean; times: boolean; duration: boolean; delta: boolean; ansagen: boolean; onlyUpcoming: boolean; font: 's' | 'm' | 'l' }
-const DEFAULT_CFG: ShowCfg = { push: true, times: true, duration: true, delta: true, ansagen: true, onlyUpcoming: false, font: 'm' }
+type ShowCfg = { push: boolean; timesPlanned: boolean; timesActual: boolean; duration: boolean; delta: boolean; ansagen: boolean; onlyUpcoming: boolean; font: 's' | 'm' | 'l' }
+const DEFAULT_CFG: ShowCfg = { push: true, timesPlanned: true, timesActual: true, duration: true, delta: true, ansagen: true, onlyUpcoming: false, font: 'm' }
 const CFG_KEY = 'pt_setlist_showcfg'
 function loadCfg(): ShowCfg {
   try { return { ...DEFAULT_CFG, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') } } catch { return DEFAULT_CFG }
@@ -215,7 +215,8 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                     )}
                     {isEditor && <span className="text-gray-600 cursor-grab active:cursor-grabbing shrink-0"><GripVertical className="w-4 h-4" /></span>}
                     {/* Zeit */}
-                    <span className={`tabular-nums text-sm w-12 shrink-0 ${isLive ? 'text-blue-300 font-semibold' : 'text-gray-400'}`}>{t ? fmtClock(t) : '–'}</span>
+                    <span className="tabular-nums text-sm w-12 shrink-0 text-gray-500" title="geplant">{planned[idx] ? fmtClock(planned[idx] as Date) : '–'}</span>
+                    <span className={`tabular-nums text-sm w-12 shrink-0 ${isLive ? 'text-blue-300 font-semibold' : 'text-gray-400'}`} title="aktuell">{t ? fmtClock(t) : '–'}</span>
                     {/* Push */}
                     <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)} title={it.startedAt ? 'Push zurücksetzen' : 'Song-Start pushen'}
                       className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-300 hover:bg-[#3a3a3a]'}`}>
@@ -290,7 +291,7 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                 <button onClick={() => setGearOpen(o => !o)} className="p-2 text-gray-300 hover:text-white"><Settings className="w-5 h-5" /></button>
                 {gearOpen && (
                   <div className="absolute right-0 top-full mt-1 z-10 bg-[#1f1f1f] border border-[#3a3a3a] rounded-lg shadow-xl p-3 w-56 space-y-2 text-sm">
-                    {([['push', 'Push-Button'], ['times', 'Uhrzeiten'], ['duration', 'Dauer'], ['delta', 'Timing/Delta'], ['ansagen', 'Ansagen'], ['onlyUpcoming', 'Nur kommende Songs']] as [keyof ShowCfg, string][]).map(([k, label]) => (
+                    {([['push', 'Push-Button'], ['timesPlanned', 'Geplante Zeit'], ['timesActual', 'Aktuelle Zeit'], ['duration', 'Dauer'], ['delta', 'Timing/Delta'], ['ansagen', 'Ansagen'], ['onlyUpcoming', 'Nur kommende Songs']] as [keyof ShowCfg, string][]).map(([k, label]) => (
                       <label key={k} className="flex items-center gap-2 text-gray-200 cursor-pointer">
                         <input type="checkbox" checked={!!cfg[k]} onChange={e => setCfgPersist({ [k]: e.target.checked } as Partial<ShowCfg>)} className="w-4 h-4 accent-blue-500" /> {label}
                       </label>
@@ -340,12 +341,8 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                 const isNext = lastPush >= 0 && idx > lastPush && !sl.items.slice(lastPush + 1, idx).some(x => !x.skipped)
                 return (
                   <div key={it.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isCur ? 'bg-blue-600/25' : isNext ? 'bg-white/5' : ''} ${it.skipped ? 'opacity-30 line-through' : ''}`}>
-                    {cfg.times && (
-                      <>
-                        <span className="tabular-nums text-gray-500 w-20 shrink-0" title="geplant">{planned[idx] ? fmtClockSec(planned[idx] as Date) : '–'}</span>
-                        <span className="tabular-nums text-gray-200 w-20 shrink-0" title="aktuell">{t ? fmtClockSec(t) : '–'}</span>
-                      </>
-                    )}
+                    {cfg.timesPlanned && <span className="tabular-nums text-gray-500 w-20 shrink-0" title="geplant">{planned[idx] ? fmtClockSec(planned[idx] as Date) : '–'}</span>}
+                    {cfg.timesActual && <span className="tabular-nums text-gray-200 w-20 shrink-0" title="aktuell">{t ? fmtClockSec(t) : '–'}</span>}
                     {cfg.push && (
                       <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)}
                         className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-200 hover:bg-[#3a3a3a]'}`}>
