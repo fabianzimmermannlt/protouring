@@ -100,15 +100,13 @@ export default function ListsCard({ terminId }: { terminId: number }) {
     const d = dragRef.current
     dragRef.current = null; setDragOver(null)
     if (!d || d.listId !== listId || d.idx === targetIdx) return
-    let order: number[] = []
-    setLists(prev => prev.map(l => {
-      if (l.id !== listId) return l
-      const rows = [...l.rows]
-      const [moved] = rows.splice(d.idx, 1)
-      rows.splice(targetIdx, 0, moved)
-      order = rows.map(r => r.id)
-      return { ...l, rows }
-    }))
+    const l = lists.find(x => x.id === listId)
+    if (!l) return
+    const rows = [...l.rows]
+    const [moved] = rows.splice(d.idx, 1)
+    rows.splice(targetIdx, 0, moved)
+    const order = rows.map(r => r.id)
+    patchList(listId, x => ({ ...x, rows }))
     try { await reorderListRows(listId, order) } catch {}
   }
 

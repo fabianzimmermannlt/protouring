@@ -87,11 +87,13 @@ export default function SetlistView({ terminId }: { terminId: number }) {
     const d = dragRef.current
     setDragOver(null)
     if (!d || d.sid !== sid || d.idx === target) { endDrag(); return }
-    let order: number[] = []
-    patch(sid, s => {
-      const items = [...s.items]; const [m] = items.splice(d.idx, 1); items.splice(target, 0, m)
-      order = items.map(i => i.id); return { ...s, items }
-    })
+    const sl = setlists.find(s => s.id === sid)
+    if (!sl) { endDrag(); return }
+    const items = [...sl.items]
+    const [m] = items.splice(d.idx, 1)
+    items.splice(target, 0, m)
+    const order = items.map(i => i.id)
+    patch(sid, s => ({ ...s, items }))
     try { await reorderSetlistItems(sid, order) } catch {}
     endDrag()
   }
