@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, GripVertical, Play, RotateCcw, Loader2, Music, Clock, Maximize2, X, Settings } from 'lucide-react'
 import {
   getSetlists, createSetlist, updateSetlist, deleteSetlist,
-  addSetlistItem, deleteSetlistItem, reorderSetlistItems, pushSetlistItem, skipSetlistItem,
+  addSetlistItem, deleteSetlistItem, reorderSetlistItems, pushSetlistItem, skipSetlistItem, stopSetlist,
   getSongs, isEditorRole, getEffectiveRole,
   type Setlist, type Song,
 } from '@/lib/api-client'
@@ -121,6 +121,11 @@ export default function SetlistView({ terminId }: { terminId: number }) {
   const toggleSkip = async (setlistId: number, itemId: number, skipped: boolean) => {
     patch(setlistId, s => ({ ...s, items: s.items.map(i => i.id === itemId ? { ...i, skipped } : i) }))
     try { await skipSetlistItem(itemId, skipped) } catch {}
+  }
+  const toggleStop = async (sl: Setlist) => {
+    const wasEnded = !!sl.endedAt
+    patch(sl.id, s => ({ ...s, endedAt: wasEnded ? null : new Date().toISOString() }))
+    try { await stopSetlist(sl.id, wasEnded) } catch {}
   }
 
   // ── Drag ──
@@ -275,7 +280,8 @@ export default function SetlistView({ terminId }: { terminId: number }) {
         if (!sl) return null
         const { base, planned, actual, lastPush, deltaSec, totalSec } = computeTimes(sl)
         const cur = lastPush >= 0 ? sl.items[lastPush] : null
-        const runningSec = cur?.startedAt ? Math.floor((now - new Date(cur.startedAt).getTime()) / 1000) : null
+        const liveNow = sl.endedAt ? new Date(sl.endedAt).getTime() : now
+        const runningSec = cur?.startedAt ? Math.floor((liveNow - new Date(cur.startedAt).getTime()) / 1000) : null
         const remainingSec = cur && runningSec !== null ? cur.durationSec - runningSec : null
         const fontItem = cfg.font === 'l' ? 'text-3xl' : cfg.font === 's' ? 'text-lg' : 'text-2xl'
         const visible = sl.items
@@ -287,6 +293,9 @@ export default function SetlistView({ terminId }: { terminId: number }) {
             {/* Topbar */}
             <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-800">
               <span className="text-lg font-bold flex-1 truncate">{sl.title}</span>
+              <button onClick={() => toggleStop(sl)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${sl.endedAt ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}>
+                {sl.endedAt ? 'Fortsetzen' : 'Show stoppen'}
+              </button>
               <div className="relative">
                 <button onClick={() => setGearOpen(o => !o)} className="p-2 text-gray-300 hover:text-white"><Settings className="w-5 h-5" /></button>
                 {gearOpen && (

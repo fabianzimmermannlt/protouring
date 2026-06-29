@@ -1072,6 +1072,7 @@ async function initDatabase() {
     )
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_setlist_items_setlist ON setlist_items(setlist_id)`)
+  try { await db.run('ALTER TABLE setlists ADD COLUMN ended_at DATETIME') } catch {}
 
   // Catering
   await db.run(`
@@ -6312,7 +6313,7 @@ app.get('/api/termine/:terminId/setlists', authenticateToken, requireTenant, asy
         `SELECT si.*, s.title AS live_title, s.duration_sec AS live_duration, s.type AS live_type
          FROM setlist_items si LEFT JOIN songs s ON s.id = si.song_id
          WHERE si.setlist_id=? ORDER BY si.sort_order, si.id`, [s.id])
-      out.push({ id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, sortOrder: s.sort_order, items: items.map(mapSetlistItem) })
+      out.push({ id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, endedAt: s.ended_at, sortOrder: s.sort_order, items: items.map(mapSetlistItem) })
     }
     res.json({ setlists: out })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -6325,7 +6326,7 @@ app.post('/api/termine/:terminId/setlists', authenticateToken, requireTenant, re
     const r = await db.run('INSERT INTO setlists (tenant_id, termin_id, title, start_time, sort_order) VALUES (?,?,?,?,?)',
       [req.tenant.id, req.params.terminId, (req.body?.title || 'Setlist').toString(), req.body?.startTime || null, (max?.m ?? -1) + 1])
     const s = await db.get('SELECT * FROM setlists WHERE id=?', [r.lastID])
-    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, sortOrder: s.sort_order, items: [] } })
+    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, endedAt: s.ended_at ?? null, sortOrder: s.sort_order, items: [] } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -6391,6 +6392,15 @@ app.put('/api/setlist-items/:itemId/skip', authenticateToken, requireTenant, asy
   try {
     await db.run('UPDATE setlist_items SET skipped=? WHERE id=? AND tenant_id=?', [req.body?.skipped ? 1 : 0, req.params.itemId, req.tenant.id])
     res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Live: Show stoppen/fortsetzen – alle Member
+app.post('/api/setlists/:id/stop', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const ts = req.body?.clear ? null : new Date().toISOString()
+    await db.run('UPDATE setlists SET ended_at=? WHERE id=? AND tenant_id=?', [ts, req.params.id, req.tenant.id])
+    res.json({ ok: true, endedAt: ts })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

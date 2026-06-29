@@ -1245,7 +1245,7 @@ export interface SetlistItem {
   sortOrder: number; startedAt: string | null; skipped: boolean;
 }
 export interface Setlist {
-  id: number; terminId: number; title: string; startTime: string | null; sortOrder: number; items: SetlistItem[];
+  id: number; terminId: number; title: string; startTime: string | null; endedAt: string | null; sortOrder: number; items: SetlistItem[];
 }
 
 export async function getSongs(type?: SongType): Promise<Song[]> {
@@ -1292,6 +1292,9 @@ export async function pushSetlistItem(itemId: number, clear = false): Promise<{ 
 }
 export async function skipSetlistItem(itemId: number, skipped: boolean): Promise<void> {
   await request(`/api/setlist-items/${itemId}/skip`, { method: 'PUT', body: { skipped } })
+}
+export async function stopSetlist(id: number, clear = false): Promise<{ endedAt: string | null }> {
+  return request(`/api/setlists/${id}/stop`, { method: 'POST', body: { clear } })
 }
 
 // ============================================
