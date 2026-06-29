@@ -369,15 +369,16 @@ export default function HotelModal({
                               return (
                                 <div
                                   key={m.id}
-                                  className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${isBlocked ? 'pt-leg-person-picker-row--blocked' : ''}`}
-                                  onClick={() => !isBlocked && togglePersonInRoom(idx, m.id)}
+                                  className={`pt-leg-person-picker-row ${selected ? 'pt-leg-person-picker-row--selected' : ''} ${isBlocked && !selected ? 'pt-leg-person-picker-row--blocked' : ''}`}
+                                  style={isBlocked ? { cursor: 'pointer' } : undefined}
+                                  onClick={() => togglePersonInRoom(idx, m.id)}
                                 >
                                   <div className="pt-leg-person-picker-check">
                                     {selected && <Check size={10} color="white" />}
                                   </div>
                                   <div className="pt-leg-person-name">{m.firstName} {m.lastName}</div>
                                   <div className="pt-leg-person-role">
-                                    {isBlocked ? 'bereits eingeplant' : (m.role1 || m.function1 || '')}
+                                    {isBlocked && !selected ? 'bereits eingeplant – trotzdem möglich' : (m.role1 || m.function1 || '')}
                                   </div>
                                 </div>
                               )
