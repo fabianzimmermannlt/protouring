@@ -30,6 +30,7 @@ export default function SetlistView({ terminId }: { terminId: number }) {
   const [loading, setLoading] = useState(true)
   const isEditor = isEditorRole(getEffectiveRole())
   const focusedRef = useRef(false)
+  const draggingRef = useRef(false)
 
   const refetch = useCallback(async () => {
     try { setSetlists(await getSetlists(terminId)) } catch { /* still */ }
@@ -44,7 +45,7 @@ export default function SetlistView({ terminId }: { terminId: number }) {
 
   // Live-Sync: alle 6s nachladen (pausiert während Eingabe)
   useEffect(() => {
-    const t = setInterval(() => { if (!focusedRef.current) refetch() }, 6000)
+    const t = setInterval(() => { if (!focusedRef.current && !draggingRef.current) refetch() }, 6000)
     return () => clearInterval(t)
   }, [refetch])
 
@@ -79,15 +80,20 @@ export default function SetlistView({ terminId }: { terminId: number }) {
   // ── Drag ──
   const dragRef = useRef<{ sid: number; idx: number } | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const startDrag = (sid: number, idx: number) => { dragRef.current = { sid, idx }; draggingRef.current = true; setDragging(`${sid}-${idx}`) }
+  const endDrag = () => { dragRef.current = null; draggingRef.current = false; setDragging(null); setDragOver(null) }
   const onDrop = async (sid: number, target: number) => {
-    const d = dragRef.current; dragRef.current = null; setDragOver(null)
-    if (!d || d.sid !== sid || d.idx === target) return
+    const d = dragRef.current
+    setDragOver(null)
+    if (!d || d.sid !== sid || d.idx === target) { endDrag(); return }
     let order: number[] = []
     patch(sid, s => {
       const items = [...s.items]; const [m] = items.splice(d.idx, 1); items.splice(target, 0, m)
       order = items.map(i => i.id); return { ...s, items }
     })
     try { await reorderSetlistItems(sid, order) } catch {}
+    endDrag()
   }
 
   if (loading) return <div className="flex items-center justify-center h-32 text-gray-400"><Loader2 className="w-5 h-5 animate-spin mr-2" />Lädt…</div>
@@ -165,13 +171,16 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                 return (
                   <div key={it.id}
                     draggable={isEditor}
-                    onDragStart={() => { dragRef.current = { sid: sl.id, idx } }}
-                    onDragEnter={() => setDragOver(`${sl.id}-${idx}`)}
+                    onDragStart={() => startDrag(sl.id, idx)}
+                    onDragEnter={() => { if (draggingRef.current) setDragOver(`${sl.id}-${idx}`) }}
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => onDrop(sl.id, idx)}
-                    onDragEnd={() => { dragRef.current = null; setDragOver(null) }}
-                    className={`flex items-center gap-2 px-3 py-2 border-t border-[#2d2d2d] ${dragOver === `${sl.id}-${idx}` ? 'bg-blue-500/10' : ''} ${it.skipped ? 'opacity-40' : ''}`}
+                    onDragEnd={endDrag}
+                    className={`relative flex items-center gap-2 px-3 py-2 border-t border-[#2d2d2d] transition-all duration-150 ${dragging === `${sl.id}-${idx}` ? 'opacity-40 scale-[.99]' : it.skipped ? 'opacity-40' : ''}`}
                   >
+                    {dragOver === `${sl.id}-${idx}` && dragging !== `${sl.id}-${idx}` && (
+                      <div className="absolute -top-px left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10" />
+                    )}
                     {isEditor && <span className="text-gray-600 cursor-grab active:cursor-grabbing shrink-0"><GripVertical className="w-4 h-4" /></span>}
                     {/* Zeit */}
                     <span className={`tabular-nums text-sm w-12 shrink-0 ${isLive ? 'text-blue-300 font-semibold' : 'text-gray-400'}`}>{t ? fmtClock(t) : '–'}</span>
