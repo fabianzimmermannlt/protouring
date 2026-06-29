@@ -340,7 +340,12 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                 const isNext = lastPush >= 0 && idx > lastPush && !sl.items.slice(lastPush + 1, idx).some(x => !x.skipped)
                 return (
                   <div key={it.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isCur ? 'bg-blue-600/25' : isNext ? 'bg-white/5' : ''} ${it.skipped ? 'opacity-30 line-through' : ''}`}>
-                    {cfg.times && <span className="tabular-nums text-gray-400 w-20 shrink-0">{t ? fmtClockSec(t) : '–'}</span>}
+                    {cfg.times && (
+                      <>
+                        <span className="tabular-nums text-gray-500 w-20 shrink-0" title="geplant">{planned[idx] ? fmtClockSec(planned[idx] as Date) : '–'}</span>
+                        <span className="tabular-nums text-gray-200 w-20 shrink-0" title="aktuell">{t ? fmtClockSec(t) : '–'}</span>
+                      </>
+                    )}
                     {cfg.push && (
                       <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)}
                         className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-200 hover:bg-[#3a3a3a]'}`}>
