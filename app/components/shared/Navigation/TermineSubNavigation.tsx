@@ -2,7 +2,7 @@
 
 import { getEffectiveRole, canDo, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
 
-export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'briefing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist'
+export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'briefing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist' | 'setlist'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
 
@@ -109,6 +109,7 @@ export function TermineSubNavigation({
     { id: 'travel',        label: 'Travel',        short: 'Travel' },
     { id: 'hospitality',   label: 'Hospitality',   short: 'Hospitality' },
     { id: 'guestlist',     label: 'Gästeliste',    short: 'Gäste' },
+    { id: 'setlist',       label: 'Setlist',       short: 'Setlist' },
     ...(isEditor ? [{ id: 'advancing', label: 'Advancing', short: 'Advancing' }] : []),
     { id: 'briefing',      label: 'Briefing',      short: 'Briefing' },
     ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet', short: 'Advance' }] : []),
