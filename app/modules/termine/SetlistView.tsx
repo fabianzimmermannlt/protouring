@@ -255,6 +255,12 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                 </select>
               </div>
             )}
+
+            {/* Gesamtdauer */}
+            <div className="px-3 py-2 border-t border-[#3a3a3a] bg-[#262626] flex items-center justify-between text-sm">
+              <span className="text-gray-400">Gesamtdauer</span>
+              <span className="tabular-nums font-semibold text-gray-200">{secToMMSS(totalSec)}{base ? ` · Ende ~${fmtClock(new Date(base.getTime() + totalSec * 1000))}` : ''}</span>
+            </div>
           </div>
         )
       })}
@@ -263,7 +269,7 @@ export default function SetlistView({ terminId }: { terminId: number }) {
       {showId !== null && (() => {
         const sl = setlists.find(s => s.id === showId)
         if (!sl) return null
-        const { planned, actual, lastPush, deltaSec } = computeTimes(sl)
+        const { base, planned, actual, lastPush, deltaSec, totalSec } = computeTimes(sl)
         const cur = lastPush >= 0 ? sl.items[lastPush] : null
         const runningSec = cur?.startedAt ? Math.floor((now - new Date(cur.startedAt).getTime()) / 1000) : null
         const remainingSec = cur && runningSec !== null ? cur.durationSec - runningSec : null
@@ -346,6 +352,12 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                   </div>
                 )
               })}
+            </div>
+
+            {/* Gesamtdauer */}
+            <div className="px-5 py-3 border-t border-gray-800 flex items-center justify-between">
+              <span className="text-sm text-gray-400">Gesamtdauer</span>
+              <span className="tabular-nums text-lg font-semibold">{secToMMSS(totalSec)}{base ? ` · Ende ~${fmtClock(new Date(base.getTime() + totalSec * 1000))}` : ''}</span>
             </div>
           </div>
         )
