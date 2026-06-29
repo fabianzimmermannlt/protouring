@@ -1074,6 +1074,31 @@ async function initDatabase() {
   await db.run(`CREATE INDEX IF NOT EXISTS idx_setlist_items_setlist ON setlist_items(setlist_id)`)
   try { await db.run('ALTER TABLE setlists ADD COLUMN ended_at DATETIME') } catch {}
 
+  // Setlist-Vorlagen (tenant-weit, eventunabhängig)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS setlist_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT 'Vorlage',
+      start_time TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS setlist_template_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id INTEGER NOT NULL REFERENCES setlist_templates(id) ON DELETE CASCADE,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      song_id INTEGER REFERENCES songs(id) ON DELETE SET NULL,
+      title TEXT NOT NULL DEFAULT '',
+      duration_sec INTEGER NOT NULL DEFAULT 0,
+      type TEXT NOT NULL DEFAULT 'song',
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_setlist_template_items_tpl ON setlist_template_items(template_id)`)
+
   // Catering
   await db.run(`
     CREATE TABLE IF NOT EXISTS termin_catering (
@@ -6410,6 +6435,60 @@ app.post('/api/setlists/:id/reset', authenticateToken, requireTenant, async (req
     await db.run('UPDATE setlist_items SET started_at=NULL WHERE setlist_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     await db.run('UPDATE setlists SET ended_at=NULL WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Setlist-Vorlagen ──
+// GET Vorlagen (mit Anzahl Einträge)
+app.get('/api/setlist-templates', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(`
+      SELECT t.*, (SELECT COUNT(*) FROM setlist_template_items i WHERE i.template_id=t.id) AS item_count
+      FROM setlist_templates t WHERE t.tenant_id=? ORDER BY t.sort_order, t.title`, [req.tenant.id])
+    res.json({ templates: rows.map(r => ({ id: r.id, title: r.title, startTime: r.start_time, itemCount: r.item_count })) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST Vorlage aus bestehender Setlist speichern (Editor)
+app.post('/api/setlist-templates', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const sl = await db.get('SELECT * FROM setlists WHERE id=? AND tenant_id=?', [req.body?.setlistId, req.tenant.id])
+    if (!sl) return res.status(404).json({ error: 'Setlist nicht gefunden' })
+    const title = (req.body?.title || sl.title || 'Vorlage').toString()
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM setlist_templates WHERE tenant_id=?', [req.tenant.id])
+    const r = await db.run('INSERT INTO setlist_templates (tenant_id, title, start_time, sort_order) VALUES (?,?,?,?)',
+      [req.tenant.id, title, sl.start_time || null, (max?.m ?? -1) + 1])
+    const items = await db.all('SELECT * FROM setlist_items WHERE setlist_id=? ORDER BY sort_order, id', [sl.id])
+    for (const it of items) {
+      await db.run('INSERT INTO setlist_template_items (template_id, tenant_id, song_id, title, duration_sec, type, sort_order) VALUES (?,?,?,?,?,?,?)',
+        [r.lastID, req.tenant.id, it.song_id, it.title, it.duration_sec, it.type, it.sort_order])
+    }
+    res.status(201).json({ template: { id: r.lastID, title, startTime: sl.start_time, itemCount: items.length } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE Vorlage (Editor)
+app.delete('/api/setlist-templates/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try { await db.run('DELETE FROM setlist_templates WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id]); res.json({ ok: true }) }
+  catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST Setlist aus Vorlage in einem Termin erstellen (Editor)
+app.post('/api/termine/:terminId/setlists/from-template', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const tpl = await db.get('SELECT * FROM setlist_templates WHERE id=? AND tenant_id=?', [req.body?.templateId, req.tenant.id])
+    if (!tpl) return res.status(404).json({ error: 'Vorlage nicht gefunden' })
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM setlists WHERE termin_id=? AND tenant_id=?', [req.params.terminId, req.tenant.id])
+    const r = await db.run('INSERT INTO setlists (tenant_id, termin_id, title, start_time, sort_order) VALUES (?,?,?,?,?)',
+      [req.tenant.id, req.params.terminId, tpl.title, tpl.start_time || null, (max?.m ?? -1) + 1])
+    const tItems = await db.all('SELECT * FROM setlist_template_items WHERE template_id=? ORDER BY sort_order, id', [tpl.id])
+    for (const it of tItems) {
+      await db.run('INSERT INTO setlist_items (setlist_id, tenant_id, song_id, title, duration_sec, type, sort_order) VALUES (?,?,?,?,?,?,?)',
+        [r.lastID, req.tenant.id, it.song_id, it.title, it.duration_sec, it.type, it.sort_order])
+    }
+    const s = await db.get('SELECT * FROM setlists WHERE id=?', [r.lastID])
+    const items = await db.all(`SELECT si.*, sg.title AS live_title, sg.duration_sec AS live_duration, sg.type AS live_type FROM setlist_items si LEFT JOIN songs sg ON sg.id=si.song_id WHERE si.setlist_id=? ORDER BY si.sort_order, si.id`, [r.lastID])
+    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, endedAt: s.ended_at ?? null, sortOrder: s.sort_order, items: items.map(mapSetlistItem) } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

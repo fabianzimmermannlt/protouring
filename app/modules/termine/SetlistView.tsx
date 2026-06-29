@@ -6,7 +6,8 @@ import {
   getSetlists, createSetlist, updateSetlist, deleteSetlist,
   addSetlistItem, deleteSetlistItem, reorderSetlistItems, pushSetlistItem, skipSetlistItem, stopSetlist, resetSetlist,
   getSongs, isEditorRole, getEffectiveRole,
-  type Setlist, type Song,
+  getSetlistTemplates, saveSetlistAsTemplate, createSetlistFromTemplate,
+  type Setlist, type Song, type SetlistTemplate,
 } from '@/lib/api-client'
 
 function secToMMSS(sec: number): string {
@@ -58,6 +59,7 @@ function loadCfg(): ShowCfg {
 export default function SetlistView({ terminId }: { terminId: number }) {
   const [setlists, setSetlists] = useState<Setlist[]>([])
   const [songs, setSongs] = useState<Song[]>([])
+  const [templates, setTemplates] = useState<SetlistTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const isEditor = isEditorRole(getEffectiveRole())
   const focusedRef = useRef(false)
@@ -83,8 +85,8 @@ export default function SetlistView({ terminId }: { terminId: number }) {
   }, [terminId])
 
   useEffect(() => {
-    Promise.all([getSetlists(terminId), getSongs()])
-      .then(([sl, sg]) => { setSetlists(sl); setSongs(sg) })
+    Promise.all([getSetlists(terminId), getSongs(), getSetlistTemplates()])
+      .then(([sl, sg, tpl]) => { setSetlists(sl); setSongs(sg); setTemplates(tpl) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [terminId])
@@ -100,6 +102,14 @@ export default function SetlistView({ terminId }: { terminId: number }) {
   // ── Setlist ──
   const addSetlist = async () => {
     try { const s = await createSetlist(terminId, 'Setlist', '20:00'); setSetlists(prev => [...prev, s]) } catch {}
+  }
+  const addFromTemplate = async (templateId: number) => {
+    try { const s = await createSetlistFromTemplate(terminId, templateId); setSetlists(prev => [...prev, s]) } catch {}
+  }
+  const saveAsTemplate = async (sl: Setlist) => {
+    const name = prompt('Name der Vorlage:', sl.title)
+    if (name === null) return
+    try { await saveSetlistAsTemplate(sl.id, name.trim() || sl.title); setTemplates(await getSetlistTemplates()) } catch {}
   }
   const renameSetlist = (id: number, title: string) => patch(id, s => ({ ...s, title }))
   const setStart = (id: number, startTime: string) => patch(id, s => ({ ...s, startTime }))
@@ -159,9 +169,18 @@ export default function SetlistView({ terminId }: { terminId: number }) {
   return (
     <div className="max-w-3xl mx-auto pb-10 space-y-6">
       {isEditor && (
-        <button onClick={addSetlist} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium">
-          <Plus className="w-4 h-4" /> Neue Setlist
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={addSetlist} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium">
+            <Plus className="w-4 h-4" /> Neue Setlist
+          </button>
+          {templates.length > 0 && (
+            <select value="" onChange={e => { const id = parseInt(e.target.value); if (id) addFromTemplate(id); e.target.value = '' }}
+              className="bg-[#1f1f1f] border border-[#3a3a3a] rounded-lg px-2 py-2 text-sm text-gray-200 outline-none">
+              <option value="">Aus Vorlage …</option>
+              {templates.map(t => <option key={t.id} value={t.id}>{t.title} ({t.itemCount})</option>)}
+            </select>
+          )}
+        </div>
       )}
 
       {setlists.length === 0 && (
@@ -197,6 +216,7 @@ export default function SetlistView({ terminId }: { terminId: number }) {
               {(sl.items.some(i => i.startedAt) || sl.endedAt) && (
                 <button onClick={() => resetRun(sl)} className="text-gray-400 hover:text-amber-400 p-0.5" title="Push-Zeiten zurücksetzen"><RotateCcw className="w-4 h-4" /></button>
               )}
+              {isEditor && <button onClick={() => saveAsTemplate(sl)} className="text-xs text-gray-400 hover:text-blue-400 px-1.5 py-0.5" title="Als Vorlage speichern">Vorlage</button>}
               <button onClick={() => setShowId(sl.id)} className="text-gray-400 hover:text-blue-400 p-0.5" title="Show-Modus (Vollbild)"><Maximize2 className="w-4 h-4" /></button>
               {isEditor && <button onClick={() => removeSetlist(sl.id)} className="text-gray-400 hover:text-red-500 p-0.5"><Trash2 className="w-4 h-4" /></button>}
             </div>

@@ -1300,6 +1300,23 @@ export async function resetSetlist(id: number): Promise<void> {
   await request(`/api/setlists/${id}/reset`, { method: 'POST' })
 }
 
+export interface SetlistTemplate { id: number; title: string; startTime: string | null; itemCount: number }
+export async function getSetlistTemplates(): Promise<SetlistTemplate[]> {
+  const d = await request('/api/setlist-templates') as { templates: SetlistTemplate[] }
+  return d.templates
+}
+export async function saveSetlistAsTemplate(setlistId: number, title?: string): Promise<SetlistTemplate> {
+  const d = await request('/api/setlist-templates', { method: 'POST', body: { setlistId, title } }) as { template: SetlistTemplate }
+  return d.template
+}
+export async function deleteSetlistTemplate(id: number): Promise<void> {
+  await request(`/api/setlist-templates/${id}`, { method: 'DELETE' })
+}
+export async function createSetlistFromTemplate(terminId: number | string, templateId: number): Promise<Setlist> {
+  const d = await request(`/api/termine/${terminId}/setlists/from-template`, { method: 'POST', body: { templateId } }) as { setlist: Setlist }
+  return d.setlist
+}
+
 // ============================================
 // File Categories API
 // ============================================
