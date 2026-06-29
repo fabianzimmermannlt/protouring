@@ -34,6 +34,7 @@ import VenueInfoSection from './VenueInfoSection'
 import ReisegruppeView from './ReisegruppeView'
 import AdvanceSheetView from './AdvanceSheetView'
 import GaestelisteView from './GaestelisteView'
+import SetlistView from './SetlistView'
 import TravelView from './TravelView'
 import ScheduleView from './ScheduleView'
 import HospitalityView from './HospitalityView'
@@ -1087,6 +1088,7 @@ function TerminDetailHeader({
     { id: 'travel',         label: 'Travel' },
     { id: 'hospitality',    label: 'Hospitality' },
     { id: 'guestlist',      label: 'Gästeliste' },
+    { id: 'setlist',        label: 'Setlist' },
     ...(isEditor ? [{ id: 'advancing', label: 'Advancing' }] : []),
     { id: 'briefing',       label: 'Briefing' },
     ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
@@ -1901,6 +1903,8 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
           <AdvanceSheetView terminId={selectedTermin.id} />
         ) : selectedView === 'guestlist' ? (
           <GaestelisteView key={selectedTermin.id} terminId={selectedTermin.id} />
+        ) : selectedView === 'setlist' ? (
+          <SetlistView key={selectedTermin.id} terminId={selectedTermin.id} />
         ) : selectedView === 'travel' ? (
           <TravelView termin={selectedTermin} termine={sortedTermine} isAdmin={isAdmin} />
         ) : selectedView === 'schedule' ? (

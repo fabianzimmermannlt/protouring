@@ -1232,6 +1232,68 @@ export async function reorderListRows(listId: number, order: number[]): Promise<
   await request(`/api/lists/${listId}/rows/reorder`, { method: 'PUT', body: { order } })
 }
 
+// ── Songs-Bibliothek + Setlists ──────────────────────────────────────────────
+export type SongType = 'song' | 'ansage'
+export interface Song {
+  id: number; type: SongType; title: string; durationSec: number; bpm: number | null;
+  gemaWorkNo: string | null; lyricist: string | null; composer: string | null;
+  publisher: string | null; notes: string | null; active: boolean; sortOrder: number;
+}
+export type SongInput = Partial<Omit<Song, 'id' | 'sortOrder'>>
+export interface SetlistItem {
+  id: number; songId: number | null; title: string; durationSec: number; type: SongType;
+  sortOrder: number; startedAt: string | null; skipped: boolean;
+}
+export interface Setlist {
+  id: number; terminId: number; title: string; startTime: string | null; sortOrder: number; items: SetlistItem[];
+}
+
+export async function getSongs(type?: SongType): Promise<Song[]> {
+  const d = await request(`/api/songs${type ? `?type=${type}` : ''}`) as { songs: Song[] }
+  return d.songs
+}
+export async function createSong(data: SongInput): Promise<Song> {
+  const d = await request('/api/songs', { method: 'POST', body: data }) as { song: Song }
+  return d.song
+}
+export async function updateSong(id: number, data: SongInput): Promise<void> {
+  await request(`/api/songs/${id}`, { method: 'PUT', body: data })
+}
+export async function deleteSong(id: number): Promise<void> {
+  await request(`/api/songs/${id}`, { method: 'DELETE' })
+}
+
+export async function getSetlists(terminId: number | string): Promise<Setlist[]> {
+  const d = await request(`/api/termine/${terminId}/setlists`) as { setlists: Setlist[] }
+  return d.setlists
+}
+export async function createSetlist(terminId: number | string, title: string, startTime?: string): Promise<Setlist> {
+  const d = await request(`/api/termine/${terminId}/setlists`, { method: 'POST', body: { title, startTime } }) as { setlist: Setlist }
+  return d.setlist
+}
+export async function updateSetlist(id: number, patch: { title?: string; startTime?: string | null }): Promise<void> {
+  await request(`/api/setlists/${id}`, { method: 'PUT', body: patch })
+}
+export async function deleteSetlist(id: number): Promise<void> {
+  await request(`/api/setlists/${id}`, { method: 'DELETE' })
+}
+export async function addSetlistItem(setlistId: number, songId: number): Promise<SetlistItem> {
+  const d = await request(`/api/setlists/${setlistId}/items`, { method: 'POST', body: { songId } }) as { item: SetlistItem }
+  return d.item
+}
+export async function deleteSetlistItem(itemId: number): Promise<void> {
+  await request(`/api/setlist-items/${itemId}`, { method: 'DELETE' })
+}
+export async function reorderSetlistItems(setlistId: number, order: number[]): Promise<void> {
+  await request(`/api/setlists/${setlistId}/items/reorder`, { method: 'PUT', body: { order } })
+}
+export async function pushSetlistItem(itemId: number, clear = false): Promise<{ startedAt: string | null }> {
+  return request(`/api/setlist-items/${itemId}/push`, { method: 'POST', body: { clear } })
+}
+export async function skipSetlistItem(itemId: number, skipped: boolean): Promise<void> {
+  await request(`/api/setlist-items/${itemId}/skip`, { method: 'PUT', body: { skipped } })
+}
+
 // ============================================
 // File Categories API
 // ============================================

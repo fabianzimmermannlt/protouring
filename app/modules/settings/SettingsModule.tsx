@@ -21,6 +21,7 @@ import {
 import { Loader2, Save, X, AlertCircle } from 'lucide-react'
 import FunktionenSettings from './FunktionenSettings'
 import NotificationSettings from './NotificationSettings'
+import SongLibrarySettings from './SongLibrarySettings'
 import { SettingsAreaShell } from './SettingsAreaShell'
 import GewerkSettings from './GewerkSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
@@ -87,6 +88,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'notifications':
         return <NotificationSettings />
+
+      case 'songs':
+        return <SongLibrarySettings />
 
       case 'contacts':
         return (

@@ -29,6 +29,7 @@ const WORKSPACE: SubItem[] = [
   { id: 'uploads',     name: 'Upload-Kategorien', editorOnly: true },
   { id: 'travel',      name: 'Travel & Hotel',    adminOnly: true },
   { id: 'guestlist',   name: 'Gästeliste',       editorOnly: true },
+  { id: 'songs',       name: 'Songs & Setlist',  editorOnly: true },
   { id: 'daysheet',    name: 'Daysheet',         editorOnly: true },
   { id: 'vorlagen',    name: 'Vorlagen',         editorOnly: true },
 ]

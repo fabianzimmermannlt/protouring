@@ -1025,6 +1025,54 @@ async function initDatabase() {
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_event_list_rows_list ON event_list_rows(list_id)`)
 
+  // ── Songs/Ansagen-Bibliothek + Setlists ──
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS songs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      type TEXT NOT NULL DEFAULT 'song',
+      title TEXT NOT NULL DEFAULT '',
+      duration_sec INTEGER NOT NULL DEFAULT 0,
+      bpm INTEGER,
+      gema_work_no TEXT,
+      lyricist TEXT,
+      composer TEXT,
+      publisher TEXT,
+      notes TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_songs_tenant ON songs(tenant_id)`)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS setlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT 'Setlist',
+      start_time TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_setlists_termin ON setlists(termin_id)`)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS setlist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      setlist_id INTEGER NOT NULL REFERENCES setlists(id) ON DELETE CASCADE,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      song_id INTEGER REFERENCES songs(id) ON DELETE SET NULL,
+      title TEXT NOT NULL DEFAULT '',
+      duration_sec INTEGER NOT NULL DEFAULT 0,
+      type TEXT NOT NULL DEFAULT 'song',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      started_at DATETIME,
+      skipped INTEGER NOT NULL DEFAULT 0
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_setlist_items_setlist ON setlist_items(setlist_id)`)
+
   // Catering
   await db.run(`
     CREATE TABLE IF NOT EXISTS termin_catering (
@@ -6180,6 +6228,168 @@ app.put('/api/lists/:listId/rows/reorder', authenticateToken, requireTenant, asy
     const order = Array.isArray(req.body?.order) ? req.body.order : []
     let i = 0
     for (const rid of order) await db.run('UPDATE event_list_rows SET sort_order=? WHERE id=? AND list_id=? AND tenant_id=?', [i++, rid, req.params.listId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ============================================
+// SONGS-BIBLIOTHEK + SETLISTS
+// ============================================
+
+const mapSong = (r) => ({
+  id: r.id, type: r.type, title: r.title, durationSec: r.duration_sec, bpm: r.bpm,
+  gemaWorkNo: r.gema_work_no, lyricist: r.lyricist, composer: r.composer, publisher: r.publisher,
+  notes: r.notes, active: !!r.active, sortOrder: r.sort_order,
+})
+const mapSetlistItem = (it) => ({
+  id: it.id, songId: it.song_id,
+  title: it.live_title ?? it.title,
+  durationSec: it.live_duration != null ? it.live_duration : it.duration_sec,
+  type: it.live_type ?? it.type,
+  sortOrder: it.sort_order, startedAt: it.started_at, skipped: !!it.skipped,
+})
+
+// GET songs (optional ?type=song|ansage)
+app.get('/api/songs', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = req.query.type
+      ? await db.all('SELECT * FROM songs WHERE tenant_id=? AND type=? ORDER BY sort_order, title', [req.tenant.id, req.query.type])
+      : await db.all('SELECT * FROM songs WHERE tenant_id=? ORDER BY type, sort_order, title', [req.tenant.id])
+    res.json({ songs: rows.map(mapSong) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST song (Editor)
+app.post('/api/songs', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const b = req.body || {}
+    const type = b.type === 'ansage' ? 'ansage' : 'song'
+    const r = await db.run(
+      `INSERT INTO songs (tenant_id, type, title, duration_sec, bpm, gema_work_no, lyricist, composer, publisher, notes)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [req.tenant.id, type, (b.title || '').toString(), parseInt(b.durationSec) || 0, b.bpm != null && b.bpm !== '' ? parseInt(b.bpm) : null,
+       b.gemaWorkNo || null, b.lyricist || null, b.composer || null, b.publisher || null, b.notes || null]
+    )
+    const row = await db.get('SELECT * FROM songs WHERE id=?', [r.lastID])
+    res.status(201).json({ song: mapSong(row) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT song (Editor)
+app.put('/api/songs/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const b = req.body || {}
+    const sets = [], vals = []
+    const map = { title: 'title', durationSec: 'duration_sec', bpm: 'bpm', gemaWorkNo: 'gema_work_no', lyricist: 'lyricist', composer: 'composer', publisher: 'publisher', notes: 'notes', type: 'type', active: 'active' }
+    for (const [k, col] of Object.entries(map)) {
+      if (b[k] === undefined) continue
+      let v = b[k]
+      if (k === 'durationSec') v = parseInt(v) || 0
+      if (k === 'bpm') v = (v === '' || v == null) ? null : parseInt(v)
+      if (k === 'active') v = v ? 1 : 0
+      if (k === 'type') v = v === 'ansage' ? 'ansage' : 'song'
+      sets.push(`${col}=?`); vals.push(v)
+    }
+    if (sets.length) { vals.push(req.params.id, req.tenant.id); await db.run(`UPDATE songs SET ${sets.join(', ')} WHERE id=? AND tenant_id=?`, vals) }
+    const row = await db.get('SELECT * FROM songs WHERE id=?', [req.params.id])
+    res.json({ song: row ? mapSong(row) : null })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE song (Editor)
+app.delete('/api/songs/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try { await db.run('DELETE FROM songs WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id]); res.json({ ok: true }) }
+  catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET setlists eines Termins (inkl. Items, Live-Daten aus songs)
+app.get('/api/termine/:terminId/setlists', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const sets = await db.all('SELECT * FROM setlists WHERE termin_id=? AND tenant_id=? ORDER BY sort_order, id', [req.params.terminId, req.tenant.id])
+    const out = []
+    for (const s of sets) {
+      const items = await db.all(
+        `SELECT si.*, s.title AS live_title, s.duration_sec AS live_duration, s.type AS live_type
+         FROM setlist_items si LEFT JOIN songs s ON s.id = si.song_id
+         WHERE si.setlist_id=? ORDER BY si.sort_order, si.id`, [s.id])
+      out.push({ id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, sortOrder: s.sort_order, items: items.map(mapSetlistItem) })
+    }
+    res.json({ setlists: out })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST setlist (Editor)
+app.post('/api/termine/:terminId/setlists', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM setlists WHERE termin_id=? AND tenant_id=?', [req.params.terminId, req.tenant.id])
+    const r = await db.run('INSERT INTO setlists (tenant_id, termin_id, title, start_time, sort_order) VALUES (?,?,?,?,?)',
+      [req.tenant.id, req.params.terminId, (req.body?.title || 'Setlist').toString(), req.body?.startTime || null, (max?.m ?? -1) + 1])
+    const s = await db.get('SELECT * FROM setlists WHERE id=?', [r.lastID])
+    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, sortOrder: s.sort_order, items: [] } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT setlist (Editor) – Titel/Startzeit
+app.put('/api/setlists/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const sets = [], vals = []
+    if (req.body?.title !== undefined) { sets.push('title=?'); vals.push(req.body.title.toString()) }
+    if (req.body?.startTime !== undefined) { sets.push('start_time=?'); vals.push(req.body.startTime || null) }
+    if (sets.length) { vals.push(req.params.id, req.tenant.id); await db.run(`UPDATE setlists SET ${sets.join(', ')} WHERE id=? AND tenant_id=?`, vals) }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE setlist (Editor)
+app.delete('/api/setlists/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try { await db.run('DELETE FROM setlists WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id]); res.json({ ok: true }) }
+  catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST item zur Setlist (Editor) – Snapshot aus Song
+app.post('/api/setlists/:id/items', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const sl = await db.get('SELECT id FROM setlists WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!sl) return res.status(404).json({ error: 'Setlist nicht gefunden' })
+    const song = await db.get('SELECT * FROM songs WHERE id=? AND tenant_id=?', [req.body?.songId, req.tenant.id])
+    if (!song) return res.status(404).json({ error: 'Song nicht gefunden' })
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM setlist_items WHERE setlist_id=?', [req.params.id])
+    const r = await db.run('INSERT INTO setlist_items (setlist_id, tenant_id, song_id, title, duration_sec, type, sort_order) VALUES (?,?,?,?,?,?,?)',
+      [req.params.id, req.tenant.id, song.id, song.title, song.duration_sec, song.type, (max?.m ?? -1) + 1])
+    const it = await db.get(`SELECT si.*, s.title AS live_title, s.duration_sec AS live_duration, s.type AS live_type FROM setlist_items si LEFT JOIN songs s ON s.id=si.song_id WHERE si.id=?`, [r.lastID])
+    res.status(201).json({ item: mapSetlistItem(it) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE item (Editor)
+app.delete('/api/setlist-items/:itemId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try { await db.run('DELETE FROM setlist_items WHERE id=? AND tenant_id=?', [req.params.itemId, req.tenant.id]); res.json({ ok: true }) }
+  catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Item-Reihenfolge (Editor)
+app.put('/api/setlists/:id/items/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body?.order) ? req.body.order : []
+    let i = 0
+    for (const iid of order) await db.run('UPDATE setlist_items SET sort_order=? WHERE id=? AND setlist_id=? AND tenant_id=?', [i++, iid, req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Live: Push (Timestamp setzen/löschen) – alle Member
+app.post('/api/setlist-items/:itemId/push', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const ts = req.body?.clear ? null : new Date().toISOString()
+    await db.run('UPDATE setlist_items SET started_at=? WHERE id=? AND tenant_id=?', [ts, req.params.itemId, req.tenant.id])
+    res.json({ ok: true, startedAt: ts })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Live: Song streichen/wiederherstellen – alle Member
+app.put('/api/setlist-items/:itemId/skip', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('UPDATE setlist_items SET skipped=? WHERE id=? AND tenant_id=?', [req.body?.skipped ? 1 : 0, req.params.itemId, req.tenant.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
