@@ -1296,6 +1296,9 @@ export async function skipSetlistItem(itemId: number, skipped: boolean): Promise
 export async function stopSetlist(id: number, clear = false): Promise<{ endedAt: string | null }> {
   return request(`/api/setlists/${id}/stop`, { method: 'POST', body: { clear } })
 }
+export async function resetSetlist(id: number): Promise<void> {
+  await request(`/api/setlists/${id}/reset`, { method: 'POST' })
+}
 
 // ============================================
 // File Categories API

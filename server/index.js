@@ -6404,6 +6404,15 @@ app.post('/api/setlists/:id/stop', authenticateToken, requireTenant, async (req,
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Live: alle Push-Zeiten + Ende zurücksetzen – alle Member
+app.post('/api/setlists/:id/reset', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('UPDATE setlist_items SET started_at=NULL WHERE setlist_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    await db.run('UPDATE setlists SET ended_at=NULL WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // ============================================
 // CATERING
 // ============================================

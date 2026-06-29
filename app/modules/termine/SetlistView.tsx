@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, GripVertical, Play, RotateCcw, Loader2, Music, Clock, Maximize2, X, Settings } from 'lucide-react'
 import {
   getSetlists, createSetlist, updateSetlist, deleteSetlist,
-  addSetlistItem, deleteSetlistItem, reorderSetlistItems, pushSetlistItem, skipSetlistItem, stopSetlist,
+  addSetlistItem, deleteSetlistItem, reorderSetlistItems, pushSetlistItem, skipSetlistItem, stopSetlist, resetSetlist,
   getSongs, isEditorRole, getEffectiveRole,
   type Setlist, type Song,
 } from '@/lib/api-client'
@@ -127,6 +127,11 @@ export default function SetlistView({ terminId }: { terminId: number }) {
     patch(sl.id, s => ({ ...s, endedAt: wasEnded ? null : new Date().toISOString() }))
     try { await stopSetlist(sl.id, wasEnded) } catch {}
   }
+  const resetRun = async (sl: Setlist) => {
+    if (!confirm('Alle gedrückten Zeiten dieser Setlist wirklich zurücksetzen?')) return
+    patch(sl.id, s => ({ ...s, endedAt: null, items: s.items.map(i => ({ ...i, startedAt: null })) }))
+    try { await resetSetlist(sl.id) } catch {}
+  }
 
   // ── Drag ──
   const dragRef = useRef<{ sid: number; idx: number } | null>(null)
@@ -189,6 +194,9 @@ export default function SetlistView({ terminId }: { terminId: number }) {
                 ) : <span className="text-white">{sl.startTime || '–'}</span>}
               </div>
               <span className="text-xs text-gray-400">Σ {secToMMSS(totalSec)}{base ? ` · Ende ~${fmtClock(new Date(base.getTime() + totalSec * 1000))}` : ''}</span>
+              {(sl.items.some(i => i.startedAt) || sl.endedAt) && (
+                <button onClick={() => resetRun(sl)} className="text-gray-400 hover:text-amber-400 p-0.5" title="Push-Zeiten zurücksetzen"><RotateCcw className="w-4 h-4" /></button>
+              )}
               <button onClick={() => setShowId(sl.id)} className="text-gray-400 hover:text-blue-400 p-0.5" title="Show-Modus (Vollbild)"><Maximize2 className="w-4 h-4" /></button>
               {isEditor && <button onClick={() => removeSetlist(sl.id)} className="text-gray-400 hover:text-red-500 p-0.5"><Trash2 className="w-4 h-4" /></button>}
             </div>
@@ -295,6 +303,9 @@ export default function SetlistView({ terminId }: { terminId: number }) {
               <span className="text-lg font-bold flex-1 truncate">{sl.title}</span>
               <button onClick={() => toggleStop(sl)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${sl.endedAt ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}>
                 {sl.endedAt ? 'Fortsetzen' : 'Show stoppen'}
+              </button>
+              <button onClick={() => resetRun(sl)} title="Push-Zeiten zurücksetzen" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#2d2d2d] hover:bg-[#3a3a3a] text-gray-200 flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4" /> Reset
               </button>
               <div className="relative">
                 <button onClick={() => setGearOpen(o => !o)} className="p-2 text-gray-300 hover:text-white"><Settings className="w-5 h-5" /></button>
