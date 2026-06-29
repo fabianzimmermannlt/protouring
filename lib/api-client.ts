@@ -1185,6 +1185,53 @@ export async function saveTravelFactors(factors: TravelFactors): Promise<TravelF
   return data.factors;
 }
 
+// ── Event-Listen (generische Tabellen pro Termin) ────────────────────────────
+export type EventListColumnType = 'text' | 'check' | 'number' | 'person' | 'date'
+export interface EventListColumn { id: number; label: string; type: EventListColumnType; options: unknown; sortOrder: number }
+export interface EventListRow { id: number; cells: Record<string, unknown>; sortOrder: number }
+export interface EventList { id: number; terminId: number; title: string; sortOrder: number; columns: EventListColumn[]; rows: EventListRow[] }
+
+export async function getEventLists(terminId: number | string): Promise<EventList[]> {
+  const d = await request(`/api/termine/${terminId}/lists`) as { lists: EventList[] }
+  return d.lists
+}
+export async function createEventList(terminId: number | string, title: string, columns?: { label: string; type: EventListColumnType }[]): Promise<EventList> {
+  const d = await request(`/api/termine/${terminId}/lists`, { method: 'POST', body: { title, columns } }) as { list: EventList }
+  return d.list
+}
+export async function updateEventList(listId: number, title: string): Promise<void> {
+  await request(`/api/lists/${listId}`, { method: 'PUT', body: { title } })
+}
+export async function deleteEventList(listId: number): Promise<void> {
+  await request(`/api/lists/${listId}`, { method: 'DELETE' })
+}
+export async function addListColumn(listId: number, col: { label: string; type: EventListColumnType; options?: unknown }): Promise<EventListColumn> {
+  const d = await request(`/api/lists/${listId}/columns`, { method: 'POST', body: col }) as { column: EventListColumn }
+  return d.column
+}
+export async function updateListColumn(colId: number, patch: { label?: string; type?: EventListColumnType; options?: unknown }): Promise<void> {
+  await request(`/api/lists/columns/${colId}`, { method: 'PUT', body: patch })
+}
+export async function deleteListColumn(colId: number): Promise<void> {
+  await request(`/api/lists/columns/${colId}`, { method: 'DELETE' })
+}
+export async function reorderListColumns(listId: number, order: number[]): Promise<void> {
+  await request(`/api/lists/${listId}/columns/reorder`, { method: 'PUT', body: { order } })
+}
+export async function addListRow(listId: number, cells?: Record<string, unknown>): Promise<EventListRow> {
+  const d = await request(`/api/lists/${listId}/rows`, { method: 'POST', body: { cells: cells || {} } }) as { row: EventListRow }
+  return d.row
+}
+export async function updateListRow(rowId: number, cells: Record<string, unknown>): Promise<void> {
+  await request(`/api/lists/rows/${rowId}`, { method: 'PUT', body: { cells } })
+}
+export async function deleteListRow(rowId: number): Promise<void> {
+  await request(`/api/lists/rows/${rowId}`, { method: 'DELETE' })
+}
+export async function reorderListRows(listId: number, order: number[]): Promise<void> {
+  await request(`/api/lists/${listId}/rows/reorder`, { method: 'PUT', body: { order } })
+}
+
 // ============================================
 // File Categories API
 // ============================================

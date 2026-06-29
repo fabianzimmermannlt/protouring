@@ -987,6 +987,44 @@ async function initDatabase() {
     )
   `)
 
+  // ── Generische Listen pro Event (Lauflisten/Packlisten/Infos als Tabellen) ──
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS event_lists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      termin_id INTEGER NOT NULL REFERENCES termine(id) ON DELETE CASCADE,
+      title TEXT NOT NULL DEFAULT 'Liste',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_event_lists_termin ON event_lists(termin_id)`)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS event_list_columns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      list_id INTEGER NOT NULL REFERENCES event_lists(id) ON DELETE CASCADE,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      label TEXT NOT NULL DEFAULT '',
+      type TEXT NOT NULL DEFAULT 'text',
+      options TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_event_list_columns_list ON event_list_columns(list_id)`)
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS event_list_rows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      list_id INTEGER NOT NULL REFERENCES event_lists(id) ON DELETE CASCADE,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      cells TEXT NOT NULL DEFAULT '{}',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_event_list_rows_list ON event_list_rows(list_id)`)
+
   // Catering
   await db.run(`
     CREATE TABLE IF NOT EXISTS termin_catering (
@@ -5994,6 +6032,157 @@ app.get('/api/todos', authenticateToken, requireTenant, async (req, res) => {
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// ============================================
+// EVENT-LISTEN (generische Tabellen pro Termin)
+// ============================================
+
+const VALID_COL_TYPES = ['text', 'check', 'number', 'person', 'date']
+const validColType = (t) => (VALID_COL_TYPES.includes(t) ? t : 'text')
+const safeJson = (s, fb) => { try { return JSON.parse(s) } catch { return fb } }
+const mapList = (l, cols, rows) => ({
+  id: l.id, terminId: l.termin_id, title: l.title, sortOrder: l.sort_order,
+  columns: cols.map(c => ({ id: c.id, label: c.label, type: c.type, options: c.options ? safeJson(c.options, null) : null, sortOrder: c.sort_order })),
+  rows: rows.map(r => ({ id: r.id, cells: safeJson(r.cells, {}), sortOrder: r.sort_order })),
+})
+
+// GET alle Listen eines Termins (inkl. Spalten + Zeilen)
+app.get('/api/termine/:terminId/lists', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const lists = await db.all('SELECT * FROM event_lists WHERE termin_id=? AND tenant_id=? ORDER BY sort_order, id', [req.params.terminId, req.tenant.id])
+    const out = []
+    for (const l of lists) {
+      const cols = await db.all('SELECT * FROM event_list_columns WHERE list_id=? ORDER BY sort_order, id', [l.id])
+      const rows = await db.all('SELECT * FROM event_list_rows WHERE list_id=? ORDER BY sort_order, id', [l.id])
+      out.push(mapList(l, cols, rows))
+    }
+    res.json({ lists: out })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Liste anlegen (Editor) – optional initiale Spalten [{label,type}]
+app.post('/api/termine/:terminId/lists', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { title, columns } = req.body
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM event_lists WHERE termin_id=? AND tenant_id=?', [req.params.terminId, req.tenant.id])
+    const r = await db.run('INSERT INTO event_lists (tenant_id, termin_id, title, sort_order, created_by) VALUES (?,?,?,?,?)',
+      [req.tenant.id, req.params.terminId, (title || 'Liste').toString().trim() || 'Liste', (max?.m ?? -1) + 1, req.user.id])
+    if (Array.isArray(columns)) {
+      let i = 0
+      for (const c of columns) {
+        await db.run('INSERT INTO event_list_columns (list_id, tenant_id, label, type, options, sort_order) VALUES (?,?,?,?,?,?)',
+          [r.lastID, req.tenant.id, (c.label || '').toString(), validColType(c.type), c.options ? JSON.stringify(c.options) : null, i++])
+      }
+    }
+    const l = await db.get('SELECT * FROM event_lists WHERE id=?', [r.lastID])
+    const cols = await db.all('SELECT * FROM event_list_columns WHERE list_id=? ORDER BY sort_order, id', [r.lastID])
+    res.status(201).json({ list: mapList(l, cols, []) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Liste umbenennen (Editor)
+app.put('/api/lists/:listId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run('UPDATE event_lists SET title=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [(req.body?.title || 'Liste').toString(), req.params.listId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Liste löschen (Editor)
+app.delete('/api/lists/:listId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run('DELETE FROM event_lists WHERE id=? AND tenant_id=?', [req.params.listId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Spalte hinzufügen (Editor)
+app.post('/api/lists/:listId/columns', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const list = await db.get('SELECT id FROM event_lists WHERE id=? AND tenant_id=?', [req.params.listId, req.tenant.id])
+    if (!list) return res.status(404).json({ error: 'Liste nicht gefunden' })
+    const { label, type, options } = req.body
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM event_list_columns WHERE list_id=?', [req.params.listId])
+    const r = await db.run('INSERT INTO event_list_columns (list_id, tenant_id, label, type, options, sort_order) VALUES (?,?,?,?,?,?)',
+      [req.params.listId, req.tenant.id, (label || '').toString(), validColType(type), options ? JSON.stringify(options) : null, (max?.m ?? -1) + 1])
+    const c = await db.get('SELECT * FROM event_list_columns WHERE id=?', [r.lastID])
+    res.status(201).json({ column: { id: c.id, label: c.label, type: c.type, options: c.options ? safeJson(c.options, null) : null, sortOrder: c.sort_order } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Spalte ändern (Editor)
+app.put('/api/lists/columns/:colId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const { label, type, options } = req.body
+    const sets = [], vals = []
+    if (label !== undefined) { sets.push('label=?'); vals.push(label.toString()) }
+    if (type !== undefined) { sets.push('type=?'); vals.push(validColType(type)) }
+    if (options !== undefined) { sets.push('options=?'); vals.push(options ? JSON.stringify(options) : null) }
+    if (!sets.length) return res.json({ ok: true })
+    vals.push(req.params.colId, req.tenant.id)
+    await db.run(`UPDATE event_list_columns SET ${sets.join(', ')} WHERE id=? AND tenant_id=?`, vals)
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Spalte löschen (Editor)
+app.delete('/api/lists/columns/:colId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    await db.run('DELETE FROM event_list_columns WHERE id=? AND tenant_id=?', [req.params.colId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Spalten-Reihenfolge (Editor)
+app.put('/api/lists/:listId/columns/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body?.order) ? req.body.order : []
+    let i = 0
+    for (const cid of order) await db.run('UPDATE event_list_columns SET sort_order=? WHERE id=? AND list_id=? AND tenant_id=?', [i++, cid, req.params.listId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Zeile hinzufügen (alle Member – fürs Abhaken/Erfassen)
+app.post('/api/lists/:listId/rows', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const list = await db.get('SELECT id FROM event_lists WHERE id=? AND tenant_id=?', [req.params.listId, req.tenant.id])
+    if (!list) return res.status(404).json({ error: 'Liste nicht gefunden' })
+    const max = await db.get('SELECT MAX(sort_order) AS m FROM event_list_rows WHERE list_id=?', [req.params.listId])
+    const r = await db.run('INSERT INTO event_list_rows (list_id, tenant_id, cells, sort_order) VALUES (?,?,?,?)',
+      [req.params.listId, req.tenant.id, JSON.stringify(req.body?.cells || {}), (max?.m ?? -1) + 1])
+    const row = await db.get('SELECT * FROM event_list_rows WHERE id=?', [r.lastID])
+    res.status(201).json({ row: { id: row.id, cells: safeJson(row.cells, {}), sortOrder: row.sort_order } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Zeile aktualisieren (alle Member)
+app.put('/api/lists/rows/:rowId', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('UPDATE event_list_rows SET cells=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [JSON.stringify(req.body?.cells || {}), req.params.rowId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Zeile löschen (alle Member)
+app.delete('/api/lists/rows/:rowId', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    await db.run('DELETE FROM event_list_rows WHERE id=? AND tenant_id=?', [req.params.rowId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Zeilen-Reihenfolge (alle Member)
+app.put('/api/lists/:listId/rows/reorder', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body?.order) ? req.body.order : []
+    let i = 0
+    for (const rid of order) await db.run('UPDATE event_list_rows SET sort_order=? WHERE id=? AND list_id=? AND tenant_id=?', [i++, rid, req.params.listId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
 
 // ============================================
 // CATERING

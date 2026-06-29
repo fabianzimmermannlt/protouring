@@ -28,6 +28,7 @@ import ToDoCard from './ToDoCard'
 import CateringCard from './CateringCard'
 import AdvancingCard from './AdvancingCard'
 import WeatherCard from './WeatherCard'
+import ListsCard from './ListsCard'
 import SonstigesCard from './SonstigesCard'
 import VenueInfoSection from './VenueInfoSection'
 import ReisegruppeView from './ReisegruppeView'
@@ -1307,6 +1308,7 @@ export function TerminDetail({
           />
           {canSeeFiles && <TerminFileCard terminId={String(termin.id)} className="min-h-[200px]" />}
           <ToDoCard terminId={termin.id} />
+          <ListsCard terminId={termin.id} />
           <WeatherCard
             date={termin.date}
             locationQuery={termin.city || termin.venueName || ''}
@@ -1470,6 +1472,7 @@ export function TerminDetail2({
       <div className="grid grid-cols-3 gap-4 items-start">
         <div className="col-span-2 flex flex-col gap-4">
           <ToDoCard terminId={termin.id} />
+          <ListsCard terminId={termin.id} />
           <WeatherCard
             date={termin.date}
             locationQuery={termin.city || termin.venueName || ''}
