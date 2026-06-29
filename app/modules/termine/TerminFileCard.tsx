@@ -390,7 +390,7 @@ export function TerminFileCard({
         // Direkt im Browser öffnen – Server setzt Content-Disposition: inline mit korrektem Namen
         const token = getAuthToken()
         const tenant = getCurrentTenant()
-        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
+        const viewUrl = `${API_BASE}/api/files/view/${file.id}/${encodeURIComponent(file.originalName || 'datei')}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
         window.open(viewUrl, '_blank')
       } else {
         // Alles andere: Blob herunterladen mit korrektem Dateinamen

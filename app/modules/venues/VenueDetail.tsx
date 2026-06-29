@@ -260,7 +260,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
       if (file.mimeType.startsWith('image/') || file.mimeType.includes('pdf')) {
         const token = getAuthToken()
         const tenant = getCurrentTenant()
-        const viewUrl = `${API_BASE}/api/files/view/${file.id}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
+        const viewUrl = `${API_BASE}/api/files/view/${file.id}/${encodeURIComponent(file.originalName || 'datei')}?token=${encodeURIComponent(token ?? '')}&slug=${encodeURIComponent(tenant?.slug ?? '')}`
         window.open(viewUrl, '_blank')
       } else {
         const res = await fetch(`${API_BASE}/api/files/download/${file.id}`, { headers: authHeaders() })

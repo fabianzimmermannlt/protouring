@@ -3653,7 +3653,7 @@ function canWriteFile(file, userId) {
 
 // VIEW: GET /api/files/view/:fileId?token=JWT&slug=TENANT  ← direkte Browser-Navigation (PDF im Tab)
 // Token per Query-Param, damit kein fetch+Blob nötig ist und Content-Disposition: inline greift
-app.get('/api/files/view/:fileId', async (req, res) => {
+app.get('/api/files/view/:fileId/:filename?', async (req, res) => {
   try {
     const token = req.query.token
     const slug = req.query.slug
@@ -3681,6 +3681,7 @@ app.get('/api/files/view/:fileId', async (req, res) => {
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Datei fehlt auf Disk' })
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.original_name)}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`)
     res.setHeader('Content-Type', file.mime_type)
+    res.setHeader('X-Content-Type-Options', 'nosniff')
     res.sendFile(path.resolve(filePath))
   } catch (err) {
     console.error('GET /api/files/view error:', err)

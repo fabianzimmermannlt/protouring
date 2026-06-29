@@ -879,7 +879,7 @@ export default function VenueInfoSection({ venueId, venueName, isAdmin, termin, 
                       if (f.mimeType.startsWith('image/') || f.mimeType.includes('pdf')) {
                         const tok = getAuthToken()
                         const ten = getCurrentTenant()
-                        const viewUrl = `${API_BASE}/api/files/view/${f.id}?token=${encodeURIComponent(tok ?? '')}&slug=${encodeURIComponent(ten?.slug ?? '')}`
+                        const viewUrl = `${API_BASE}/api/files/view/${f.id}/${encodeURIComponent(f.originalName || 'datei')}?token=${encodeURIComponent(tok ?? '')}&slug=${encodeURIComponent(ten?.slug ?? '')}`
                         window.open(viewUrl, '_blank')
                       } else {
                         fetch(`${API_BASE}/api/files/download/${f.id}`, { headers: authHeaders() })
