@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, GripVertical, Play, RotateCcw, Loader2, Music, Clock, Maximize2, X, Settings } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Play, RotateCcw, Loader2, Music, Clock, Maximize2, X, Settings, ExternalLink } from 'lucide-react'
 import {
   getSetlists, createSetlist, updateSetlist, deleteSetlist,
   addSetlistItem, deleteSetlistItem, reorderSetlistItems, pushSetlistItem, skipSetlistItem, stopSetlist, resetSetlist,
@@ -56,7 +56,7 @@ function loadCfg(): ShowCfg {
   try { return { ...DEFAULT_CFG, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') } } catch { return DEFAULT_CFG }
 }
 
-export default function SetlistView({ terminId }: { terminId: number }) {
+export default function SetlistView({ terminId, standalone = false }: { terminId: number; standalone?: boolean }) {
   const [setlists, setSetlists] = useState<Setlist[]>([])
   const [songs, setSongs] = useState<Song[]>([])
   const [templates, setTemplates] = useState<SetlistTemplate[]>([])
@@ -168,6 +168,12 @@ export default function SetlistView({ terminId }: { terminId: number }) {
 
   return (
     <div className="max-w-3xl mx-auto pb-10 space-y-6">
+      {!standalone && (
+        <button onClick={() => window.open(`/setlist/${terminId}`, '_blank')} className="flex items-center gap-1.5 px-3 py-2 border border-gray-700 hover:border-gray-500 text-gray-200 rounded-lg text-sm font-medium">
+          <ExternalLink className="w-4 h-4" /> In neuem Tab öffnen
+        </button>
+      )}
+
       {isEditor && (
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={addSetlist} className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium">
