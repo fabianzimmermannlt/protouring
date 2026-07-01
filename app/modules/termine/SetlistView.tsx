@@ -56,7 +56,7 @@ function loadCfg(): ShowCfg {
   try { return { ...DEFAULT_CFG, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') } } catch { return DEFAULT_CFG }
 }
 
-export default function SetlistView({ terminId, standalone = false }: { terminId: number; standalone?: boolean }) {
+export default function SetlistView({ terminId, standalone = false, autoFullscreen = false }: { terminId: number; standalone?: boolean; autoFullscreen?: boolean }) {
   const [setlists, setSetlists] = useState<Setlist[]>([])
   const [songs, setSongs] = useState<Song[]>([])
   const [templates, setTemplates] = useState<SetlistTemplate[]>([])
@@ -67,6 +67,10 @@ export default function SetlistView({ terminId, standalone = false }: { terminId
 
   // Show-Modus (Vollbild) – pro Gerät
   const [showId, setShowId] = useState<number | null>(null)
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoFullscreen && !autoOpenedRef.current && setlists.length > 0) { autoOpenedRef.current = true; setShowId(setlists[0].id) }
+  }, [autoFullscreen, setlists])
   const [cfg, setCfg] = useState<ShowCfg>(DEFAULT_CFG)
   const [gearOpen, setGearOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())

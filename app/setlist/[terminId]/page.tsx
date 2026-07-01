@@ -28,7 +28,7 @@ export default function StandaloneSetlistPage() {
         <span className="font-semibold text-white">ProTouring · Setlist</span>
       </header>
       <div className="p-4">
-        <SetlistView terminId={terminId} standalone />
+        <SetlistView terminId={terminId} standalone autoFullscreen />
       </div>
     </div>
   )
