@@ -3888,6 +3888,59 @@ app.get('/api/files/termin-aggregated/:terminId', authenticateToken, requireTena
   }
 })
 
+// Verknüpfte Dateien eines Termins (read-only): Venue, Hotels, Partner
+app.get('/api/termine/:terminId/linked-files', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const terminId = req.params.terminId
+    const termin = await db.get('SELECT id, venue_id FROM termine WHERE id=? AND tenant_id=?', [terminId, req.tenant.id])
+    if (!termin) return res.status(404).json({ error: 'Termin nicht gefunden' })
+
+    let userGewerkIds = null
+    if (!isEditor(req.tenant.role)) {
+      const myGewerke = await getUserGewerke(req.tenant.id, req.user.id)
+      userGewerkIds = myGewerke.map(g => g.id)
+    }
+    const filterByGewerk = (r) => {
+      if (userGewerkIds === null) return true
+      const ids = r.gewerk_ids ? JSON.parse(r.gewerk_ids) : []
+      return ids.length === 0 || ids.some(id => userGewerkIds.includes(id))
+    }
+    const fileFromRow = (r) => ({
+      id: String(r.id), category: r.category, originalName: r.original_name,
+      mimeType: r.mime_type, size: r.size, createdAt: r.created_at,
+      gewerkIds: r.gewerk_ids ? JSON.parse(r.gewerk_ids) : [],
+    })
+    const filesFor = async (entityType, entityId) => {
+      const rows = await db.all('SELECT * FROM files WHERE entity_type=? AND entity_id=? AND tenant_id=? ORDER BY created_at DESC', [entityType, String(entityId), req.tenant.id])
+      return rows.filter(filterByGewerk).map(fileFromRow)
+    }
+
+    const groups = []
+    // Venue
+    if (termin.venue_id) {
+      const v = await db.get('SELECT id, name FROM venues WHERE id=? AND tenant_id=?', [termin.venue_id, req.tenant.id])
+      if (v) { const files = await filesFor('venue', v.id); if (files.length) groups.push({ sourceType: 'Venue', sourceName: v.name, files }) }
+    }
+    // Hotels
+    const hotelRows = await db.all('SELECT DISTINCT hotel_id FROM termin_hotel_stays WHERE termin_id=? AND tenant_id=? AND hotel_id IS NOT NULL', [terminId, req.tenant.id])
+    for (const hr of hotelRows) {
+      const h = await db.get('SELECT id, name FROM hotels WHERE id=? AND tenant_id=?', [hr.hotel_id, req.tenant.id])
+      if (h) { const files = await filesFor('hotel', h.id); if (files.length) groups.push({ sourceType: 'Hotel', sourceName: h.name, files }) }
+    }
+    // Partner
+    const partnerRows = await db.all('SELECT DISTINCT partner_id FROM termin_partners WHERE termin_id=? AND tenant_id=?', [terminId, req.tenant.id])
+    for (const pr of partnerRows) {
+      const p = await db.get('SELECT id, company_name FROM partners WHERE id=? AND tenant_id=?', [pr.partner_id, req.tenant.id])
+      if (p) { const files = await filesFor('partner', p.id); if (files.length) groups.push({ sourceType: 'Partner', sourceName: p.company_name || 'Partner', files }) }
+    }
+
+    res.json({ groups })
+  } catch (err) {
+    console.error('GET /api/termine/:id/linked-files error:', err)
+    res.status(500).json({ error: 'Fehler beim Laden' })
+  }
+})
+
 // LIST: GET /api/files/:entityType/:entityId?category=X
 // - category omitted → alle Kategorien zurückgeben
 // - entityId==='shared' oder entityType==='termin' → tenant-weit (keine User-Filterung)

@@ -1232,6 +1232,14 @@ export async function reorderListRows(listId: number, order: number[]): Promise<
   await request(`/api/lists/${listId}/rows/reorder`, { method: 'PUT', body: { order } })
 }
 
+// ── Verknüpfte Dateien eines Termins (read-only) ─────────────────────────────
+export interface LinkedFile { id: string; category: string | null; originalName: string; mimeType: string; size: number; createdAt: string; gewerkIds: number[] }
+export interface LinkedFileGroup { sourceType: string; sourceName: string; files: LinkedFile[] }
+export async function getLinkedFiles(terminId: number | string): Promise<LinkedFileGroup[]> {
+  const d = await request(`/api/termine/${terminId}/linked-files`) as { groups: LinkedFileGroup[] }
+  return d.groups
+}
+
 // ── Songs-Bibliothek + Setlists ──────────────────────────────────────────────
 export type SongType = 'song' | 'ansage'
 export interface Song {
