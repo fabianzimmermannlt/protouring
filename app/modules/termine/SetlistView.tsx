@@ -202,6 +202,15 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
 
       {setlists.map(sl => {
         const { base, planned, actual, lastPush, deltaSec, totalSec } = computeTimes(sl)
+        const plannedEnd = base ? new Date(base.getTime() + totalSec * 1000) : null
+        let actualEnd: Date | null = null
+        if (lastPush >= 0) {
+          const anchor = new Date(sl.items[lastPush].startedAt as string).getTime()
+          let rem = 0
+          for (let i = lastPush; i < sl.items.length; i++) if (!sl.items[i].skipped) rem += sl.items[i].durationSec
+          actualEnd = new Date(anchor + rem * 1000)
+        }
+        const endDelta = plannedEnd && actualEnd ? Math.round((actualEnd.getTime() - plannedEnd.getTime()) / 1000) : null
 
         return (
           <div key={sl.id} className="border border-[#3a3a3a] rounded-xl overflow-hidden">
@@ -303,10 +312,11 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
               </div>
             )}
 
-            {/* Gesamtdauer */}
-            <div className="px-3 py-2 border-t border-[#3a3a3a] bg-[#262626] flex items-center justify-between text-sm">
-              <span className="text-gray-400">Gesamtdauer</span>
-              <span className="tabular-nums font-semibold text-gray-200">{secToMMSS(totalSec)}{base ? ` · Ende ~${fmtClock(new Date(base.getTime() + totalSec * 1000))}` : ''}</span>
+            {/* Zusammenfassung */}
+            <div className="px-3 py-2 border-t border-[#3a3a3a] bg-[#262626] text-sm space-y-0.5">
+              <div className="flex items-center justify-between"><span className="text-gray-400">Gesamtdauer</span><span className="tabular-nums font-semibold text-gray-200">{secToMMSS(totalSec)}</span></div>
+              {plannedEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Soll-Ende</span><span className="tabular-nums text-gray-200">{fmtClock(plannedEnd)}</span></div>}
+              {actualEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Ist-Ende (Prognose)</span><span className={`tabular-nums font-semibold ${endDelta !== null && endDelta > 30 ? 'text-red-400' : endDelta !== null && endDelta < -30 ? 'text-green-400' : 'text-gray-200'}`}>{fmtClock(actualEnd)}{endDelta ? ` (${endDelta > 0 ? '+' : '-'}${secToMMSS(Math.abs(endDelta))})` : ''}</span></div>}
             </div>
           </div>
         )

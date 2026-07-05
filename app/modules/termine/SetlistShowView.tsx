@@ -14,6 +14,9 @@ function secToMMSS(sec: number): string {
 function fmtClockSec(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
+function fmtClock(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 function parseStart(hhmm: string | null): Date | null {
   if (!hhmm) return null
   const [h, m] = hhmm.split(':').map(n => parseInt(n))
@@ -97,6 +100,15 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
   const remainingSec = cur && runningSec !== null ? cur.durationSec - runningSec : null
   const fontItem = cfg.font === 'l' ? 'text-3xl' : cfg.font === 's' ? 'text-lg' : 'text-2xl'
   const visible = sl.items.map((it, idx) => ({ it, idx })).filter(({ it, idx }) => (cfg.ansagen || it.type !== 'ansage') && (!cfg.onlyUpcoming || idx >= lastPush))
+  const plannedEnd = base ? new Date(base.getTime() + totalSec * 1000) : null
+  let actualEnd: Date | null = null
+  if (lastPush >= 0) {
+    const anchor = new Date(sl.items[lastPush].startedAt as string).getTime()
+    let rem = 0
+    for (let i = lastPush; i < sl.items.length; i++) if (!sl.items[i].skipped) rem += sl.items[i].durationSec
+    actualEnd = new Date(anchor + rem * 1000)
+  }
+  const endDelta = plannedEnd && actualEnd ? Math.round((actualEnd.getTime() - plannedEnd.getTime()) / 1000) : null
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
@@ -184,10 +196,13 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
         })}
       </div>
 
-      {/* Gesamtdauer */}
-      <div className="px-5 py-3 border-t border-gray-800 flex items-center justify-between">
-        <span className="text-sm text-gray-400">Gesamtdauer</span>
-        <span className="tabular-nums text-lg font-semibold">{secToMMSS(totalSec)}{base ? ` · Ende ~${String(new Date(base.getTime() + totalSec * 1000).getHours()).padStart(2, '0')}:${String(new Date(base.getTime() + totalSec * 1000).getMinutes()).padStart(2, '0')}` : ''}</span>
+      {/* Zusammenfassung */}
+      <div className="px-5 py-3 border-t border-gray-800 flex items-center justify-between gap-6 text-sm">
+        <span className="text-gray-400">Gesamtdauer <span className="tabular-nums text-gray-200 font-semibold ml-1">{secToMMSS(totalSec)}</span></span>
+        {plannedEnd && <span className="text-gray-400">Soll-Ende <span className="tabular-nums text-gray-200 font-semibold ml-1">{fmtClock(plannedEnd)}</span></span>}
+        {actualEnd && (
+          <span className="text-gray-400">Ist-Ende <span className={`tabular-nums font-bold ml-1 ${endDelta !== null && endDelta > 30 ? 'text-red-400' : endDelta !== null && endDelta < -30 ? 'text-green-400' : 'text-gray-200'}`}>{fmtClock(actualEnd)}{endDelta ? ` (${endDelta > 0 ? '+' : '-'}${secToMMSS(Math.abs(endDelta))})` : ''}</span></span>
+        )}
       </div>
     </div>
   )
