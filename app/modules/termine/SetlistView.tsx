@@ -27,6 +27,23 @@ function parseStart(hhmm: string | null): Date | null {
   if (Number.isNaN(h)) return null
   const d = new Date(); d.setHours(h, m || 0, 0, 0); return d
 }
+// Stage-Endzeit als Date; rollt über Mitternacht, falls Ende <= Start liegt
+function stageEndDate(hhmm: string | null, base: Date | null): Date | null {
+  let e = parseStart(hhmm)
+  if (e && base && e.getTime() <= base.getTime()) e = new Date(e.getTime() + 86400000)
+  return e
+}
+// Puffer bis zur harten Stage-Endzeit: >0 = Luft, <0 = drüber
+function bufferBg(sec: number): string {
+  if (sec < 0) return 'bg-red-500/15 text-red-300'
+  if (sec <= 60) return 'bg-amber-500/15 text-amber-300'
+  return 'bg-green-500/15 text-green-300'
+}
+function bufferFg(sec: number): string {
+  if (sec < 0) return 'text-red-400'
+  if (sec <= 60) return 'text-amber-400'
+  return 'text-green-400'
+}
 
 // Zeiten einer Setlist berechnen (geplant + live ab letztem Push)
 function computeTimes(sl: Setlist) {
@@ -117,7 +134,8 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
   }
   const renameSetlist = (id: number, title: string) => patch(id, s => ({ ...s, title }))
   const setStart = (id: number, startTime: string) => patch(id, s => ({ ...s, startTime }))
-  const saveSetlist = async (id: number, p: { title?: string; startTime?: string | null }) => { try { await updateSetlist(id, p) } catch {} }
+  const setStageEnd = (id: number, stageEndTime: string) => patch(id, s => ({ ...s, stageEndTime }))
+  const saveSetlist = async (id: number, p: { title?: string; startTime?: string | null; stageEndTime?: string | null }) => { try { await updateSetlist(id, p) } catch {} }
   const removeSetlist = async (id: number) => { if (!confirm('Setlist löschen?')) return; try { await deleteSetlist(id); setSetlists(prev => prev.filter(s => s.id !== id)) } catch {} }
 
   // ── Items ──
@@ -211,6 +229,12 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
           actualEnd = new Date(anchor + rem * 1000)
         }
         const endDelta = plannedEnd && actualEnd ? Math.round((actualEnd.getTime() - plannedEnd.getTime()) / 1000) : null
+        // Ende-orientiert: Puffer bis zur harten Stage-Endzeit (live sobald gepusht, sonst geplant)
+        const stageEnd = stageEndDate(sl.stageEndTime, base)
+        const plannedBuffer = stageEnd && plannedEnd ? Math.round((stageEnd.getTime() - plannedEnd.getTime()) / 1000) : null
+        const liveBuffer = stageEnd && actualEnd ? Math.round((stageEnd.getTime() - actualEnd.getTime()) / 1000) : null
+        const buffer = liveBuffer ?? plannedBuffer
+        const bufferLive = liveBuffer !== null
 
         return (
           <div key={sl.id} className="border border-[#3a3a3a] rounded-xl overflow-hidden">
@@ -230,6 +254,15 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
                     onChange={e => setStart(sl.id, e.target.value)}
                     className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-2 py-1 text-white outline-none" />
                 ) : <span className="text-white">{sl.startTime || '–'}</span>}
+              </div>
+              <div className="flex items-center gap-1.5 text-sm text-gray-300" title="Harte Endzeit lt. Veranstalter (Venue-Kurve)">
+                Stage-Ende
+                {isEditor ? (
+                  <input type="time" value={sl.stageEndTime || ''}
+                    onFocus={() => { focusedRef.current = true }} onBlur={e => { focusedRef.current = false; saveSetlist(sl.id, { stageEndTime: e.target.value || null }) }}
+                    onChange={e => setStageEnd(sl.id, e.target.value)}
+                    className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-2 py-1 text-white outline-none" />
+                ) : <span className="text-white">{sl.stageEndTime || '–'}</span>}
               </div>
               <span className="text-xs text-gray-400">Σ {secToMMSS(totalSec)}{base ? ` · Ende ~${fmtClock(new Date(base.getTime() + totalSec * 1000))}` : ''}</span>
               {(sl.items.some(i => i.startedAt) || sl.endedAt) && (
@@ -317,6 +350,8 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
               <div className="flex items-center justify-between"><span className="text-gray-400">Gesamtdauer</span><span className="tabular-nums font-semibold text-gray-200">{secToMMSS(totalSec)}</span></div>
               {plannedEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Soll-Ende</span><span className="tabular-nums text-gray-200">{fmtClock(plannedEnd)}</span></div>}
               {actualEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Ist-Ende (Prognose)</span><span className={`tabular-nums font-semibold ${endDelta !== null && endDelta > 30 ? 'text-red-400' : endDelta !== null && endDelta < -30 ? 'text-green-400' : 'text-gray-200'}`}>{fmtClock(actualEnd)}{endDelta ? ` (${endDelta > 0 ? '+' : '-'}${secToMMSS(Math.abs(endDelta))})` : ''}</span></div>}
+              {stageEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Stage-Ende (Vorgabe)</span><span className="tabular-nums text-gray-200">{fmtClock(stageEnd)}</span></div>}
+              {buffer !== null && <div className="flex items-center justify-between"><span className="text-gray-400">Puffer {bufferLive ? '(live)' : '(geplant)'}</span><span className={`tabular-nums font-semibold ${bufferFg(buffer)}`}>{buffer >= 0 ? `+${secToMMSS(buffer)}` : `${secToMMSS(-buffer)} über`}</span></div>}
             </div>
           </div>
         )
@@ -331,6 +366,18 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
         const liveNow = sl.endedAt ? new Date(sl.endedAt).getTime() : now
         const runningSec = cur?.startedAt ? Math.floor((liveNow - new Date(cur.startedAt).getTime()) / 1000) : null
         const remainingSec = cur && runningSec !== null ? cur.durationSec - runningSec : null
+        // Puffer bis Stage-Ende (für den Band-Screen)
+        const plannedEndS = base ? new Date(base.getTime() + totalSec * 1000) : null
+        let actualEndS: Date | null = null
+        if (lastPush >= 0) {
+          const anchor = new Date(sl.items[lastPush].startedAt as string).getTime()
+          let rem = 0
+          for (let i = lastPush; i < sl.items.length; i++) if (!sl.items[i].skipped) rem += sl.items[i].durationSec
+          actualEndS = new Date(anchor + rem * 1000)
+        }
+        const stageEndS = stageEndDate(sl.stageEndTime, base)
+        const projEnd = actualEndS ?? plannedEndS
+        const bufS = stageEndS && projEnd ? Math.round((stageEndS.getTime() - projEnd.getTime()) / 1000) : null
         const fontItem = cfg.font === 'l' ? 'text-3xl' : cfg.font === 's' ? 'text-lg' : 'text-2xl'
         const visible = sl.items
           .map((it, idx) => ({ it, idx }))
@@ -390,6 +437,14 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
             {cfg.delta && deltaSec !== null && (
               <div className={`px-5 py-2 text-center text-lg font-semibold ${deltaSec > 30 ? 'bg-red-500/15 text-red-300' : deltaSec < -30 ? 'bg-green-500/15 text-green-300' : 'bg-blue-500/15 text-blue-300'}`}>
                 {deltaSec > 0 ? `${secToMMSS(deltaSec)} hinter Plan` : deltaSec < 0 ? `${secToMMSS(-deltaSec)} vor Plan` : 'Im Plan'}
+              </div>
+            )}
+
+            {/* Puffer bis Stage-Ende */}
+            {bufS !== null && stageEndS && (
+              <div className={`px-5 py-2.5 text-center text-xl font-bold ${bufferBg(bufS)}`}>
+                {bufS >= 0 ? `▲ ${secToMMSS(bufS)} bis Stage-Ende` : `▼ ${secToMMSS(-bufS)} über der Stage-Endzeit`}
+                <span className="text-sm font-medium opacity-70 ml-2">Deadline {fmtClock(stageEndS)}</span>
               </div>
             )}
 

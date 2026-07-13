@@ -1073,6 +1073,8 @@ async function initDatabase() {
   `)
   await db.run(`CREATE INDEX IF NOT EXISTS idx_setlist_items_setlist ON setlist_items(setlist_id)`)
   try { await db.run('ALTER TABLE setlists ADD COLUMN ended_at DATETIME') } catch {}
+  try { await db.run('ALTER TABLE setlists ADD COLUMN stage_end_time TEXT') } catch {}
+  try { await db.run('ALTER TABLE songs ADD COLUMN start_timecode TEXT') } catch {}
 
   // Setlist-Vorlagen (tenant-weit, eventunabhängig)
   await db.run(`
@@ -6318,7 +6320,7 @@ app.put('/api/lists/:listId/rows/reorder', authenticateToken, requireTenant, asy
 const mapSong = (r) => ({
   id: r.id, type: r.type, title: r.title, durationSec: r.duration_sec, bpm: r.bpm,
   gemaWorkNo: r.gema_work_no, lyricist: r.lyricist, composer: r.composer, publisher: r.publisher,
-  notes: r.notes, active: !!r.active, sortOrder: r.sort_order,
+  notes: r.notes, startTimecode: r.start_timecode ?? null, active: !!r.active, sortOrder: r.sort_order,
 })
 const mapSetlistItem = (it) => ({
   id: it.id, songId: it.song_id,
@@ -6344,10 +6346,10 @@ app.post('/api/songs', authenticateToken, requireTenant, requireEditor, async (r
     const b = req.body || {}
     const type = b.type === 'ansage' ? 'ansage' : 'song'
     const r = await db.run(
-      `INSERT INTO songs (tenant_id, type, title, duration_sec, bpm, gema_work_no, lyricist, composer, publisher, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO songs (tenant_id, type, title, duration_sec, bpm, gema_work_no, lyricist, composer, publisher, notes, start_timecode)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       [req.tenant.id, type, (b.title || '').toString(), parseInt(b.durationSec) || 0, b.bpm != null && b.bpm !== '' ? parseInt(b.bpm) : null,
-       b.gemaWorkNo || null, b.lyricist || null, b.composer || null, b.publisher || null, b.notes || null]
+       b.gemaWorkNo || null, b.lyricist || null, b.composer || null, b.publisher || null, b.notes || null, b.startTimecode || null]
     )
     const row = await db.get('SELECT * FROM songs WHERE id=?', [r.lastID])
     res.status(201).json({ song: mapSong(row) })
@@ -6359,7 +6361,7 @@ app.put('/api/songs/:id', authenticateToken, requireTenant, requireEditor, async
   try {
     const b = req.body || {}
     const sets = [], vals = []
-    const map = { title: 'title', durationSec: 'duration_sec', bpm: 'bpm', gemaWorkNo: 'gema_work_no', lyricist: 'lyricist', composer: 'composer', publisher: 'publisher', notes: 'notes', type: 'type', active: 'active' }
+    const map = { title: 'title', durationSec: 'duration_sec', bpm: 'bpm', gemaWorkNo: 'gema_work_no', lyricist: 'lyricist', composer: 'composer', publisher: 'publisher', notes: 'notes', startTimecode: 'start_timecode', type: 'type', active: 'active' }
     for (const [k, col] of Object.entries(map)) {
       if (b[k] === undefined) continue
       let v = b[k]
@@ -6391,7 +6393,7 @@ app.get('/api/termine/:terminId/setlists', authenticateToken, requireTenant, asy
         `SELECT si.*, s.title AS live_title, s.duration_sec AS live_duration, s.type AS live_type
          FROM setlist_items si LEFT JOIN songs s ON s.id = si.song_id
          WHERE si.setlist_id=? ORDER BY si.sort_order, si.id`, [s.id])
-      out.push({ id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, endedAt: s.ended_at, sortOrder: s.sort_order, items: items.map(mapSetlistItem) })
+      out.push({ id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, stageEndTime: s.stage_end_time ?? null, endedAt: s.ended_at, sortOrder: s.sort_order, items: items.map(mapSetlistItem) })
     }
     res.json({ setlists: out })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -6401,10 +6403,10 @@ app.get('/api/termine/:terminId/setlists', authenticateToken, requireTenant, asy
 app.post('/api/termine/:terminId/setlists', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const max = await db.get('SELECT MAX(sort_order) AS m FROM setlists WHERE termin_id=? AND tenant_id=?', [req.params.terminId, req.tenant.id])
-    const r = await db.run('INSERT INTO setlists (tenant_id, termin_id, title, start_time, sort_order) VALUES (?,?,?,?,?)',
-      [req.tenant.id, req.params.terminId, (req.body?.title || 'Setlist').toString(), req.body?.startTime || null, (max?.m ?? -1) + 1])
+    const r = await db.run('INSERT INTO setlists (tenant_id, termin_id, title, start_time, stage_end_time, sort_order) VALUES (?,?,?,?,?,?)',
+      [req.tenant.id, req.params.terminId, (req.body?.title || 'Setlist').toString(), req.body?.startTime || null, req.body?.stageEndTime || null, (max?.m ?? -1) + 1])
     const s = await db.get('SELECT * FROM setlists WHERE id=?', [r.lastID])
-    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, endedAt: s.ended_at ?? null, sortOrder: s.sort_order, items: [] } })
+    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, stageEndTime: s.stage_end_time ?? null, endedAt: s.ended_at ?? null, sortOrder: s.sort_order, items: [] } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -6414,6 +6416,7 @@ app.put('/api/setlists/:id', authenticateToken, requireTenant, requireEditor, as
     const sets = [], vals = []
     if (req.body?.title !== undefined) { sets.push('title=?'); vals.push(req.body.title.toString()) }
     if (req.body?.startTime !== undefined) { sets.push('start_time=?'); vals.push(req.body.startTime || null) }
+    if (req.body?.stageEndTime !== undefined) { sets.push('stage_end_time=?'); vals.push(req.body.stageEndTime || null) }
     if (sets.length) { vals.push(req.params.id, req.tenant.id); await db.run(`UPDATE setlists SET ${sets.join(', ')} WHERE id=? AND tenant_id=?`, vals) }
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -6541,7 +6544,7 @@ app.post('/api/termine/:terminId/setlists/from-template', authenticateToken, req
     }
     const s = await db.get('SELECT * FROM setlists WHERE id=?', [r.lastID])
     const items = await db.all(`SELECT si.*, sg.title AS live_title, sg.duration_sec AS live_duration, sg.type AS live_type FROM setlist_items si LEFT JOIN songs sg ON sg.id=si.song_id WHERE si.setlist_id=? ORDER BY si.sort_order, si.id`, [r.lastID])
-    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, endedAt: s.ended_at ?? null, sortOrder: s.sort_order, items: items.map(mapSetlistItem) } })
+    res.status(201).json({ setlist: { id: s.id, terminId: s.termin_id, title: s.title, startTime: s.start_time, stageEndTime: s.stage_end_time ?? null, endedAt: s.ended_at ?? null, sortOrder: s.sort_order, items: items.map(mapSetlistItem) } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

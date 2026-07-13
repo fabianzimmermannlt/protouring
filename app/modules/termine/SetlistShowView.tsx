@@ -23,6 +23,21 @@ function parseStart(hhmm: string | null): Date | null {
   if (Number.isNaN(h)) return null
   const d = new Date(); d.setHours(h, m || 0, 0, 0); return d
 }
+function stageEndDate(hhmm: string | null, base: Date | null): Date | null {
+  let e = parseStart(hhmm)
+  if (e && base && e.getTime() <= base.getTime()) e = new Date(e.getTime() + 86400000)
+  return e
+}
+function bufferBg(sec: number): string {
+  if (sec < 0) return 'bg-red-500/15 text-red-300'
+  if (sec <= 60) return 'bg-amber-500/15 text-amber-300'
+  return 'bg-green-500/15 text-green-300'
+}
+function bufferFg(sec: number): string {
+  if (sec < 0) return 'text-red-400'
+  if (sec <= 60) return 'text-amber-400'
+  return 'text-green-400'
+}
 function computeTimes(sl: Setlist) {
   const base = parseStart(sl.startTime)
   const planned: (Date | null)[] = []
@@ -109,6 +124,11 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
     actualEnd = new Date(anchor + rem * 1000)
   }
   const endDelta = plannedEnd && actualEnd ? Math.round((actualEnd.getTime() - plannedEnd.getTime()) / 1000) : null
+  // Puffer bis zur harten Stage-Endzeit (live sobald gepusht, sonst geplant)
+  const stageEnd = stageEndDate(sl.stageEndTime, base)
+  const projEnd = actualEnd ?? plannedEnd
+  const buffer = stageEnd && projEnd ? Math.round((stageEnd.getTime() - projEnd.getTime()) / 1000) : null
+  const bufferLive = actualEnd !== null
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
@@ -171,6 +191,14 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
         </div>
       )}
 
+      {/* Puffer bis Stage-Ende */}
+      {buffer !== null && stageEnd && (
+        <div className={`px-5 py-2.5 text-center text-xl font-bold ${bufferBg(buffer)}`}>
+          {buffer >= 0 ? `▲ ${secToMMSS(buffer)} bis Stage-Ende` : `▼ ${secToMMSS(-buffer)} über der Stage-Endzeit`}
+          <span className="text-sm font-medium opacity-70 ml-2">Deadline {fmtClock(stageEnd)}</span>
+        </div>
+      )}
+
       {/* Liste */}
       <div className="flex-1 overflow-y-auto px-3 py-2">
         {visible.map(({ it, idx }) => {
@@ -203,6 +231,8 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
         {actualEnd && (
           <span className="text-gray-400">Ist-Ende <span className={`tabular-nums font-bold ml-1 ${endDelta !== null && endDelta > 30 ? 'text-red-400' : endDelta !== null && endDelta < -30 ? 'text-green-400' : 'text-gray-200'}`}>{fmtClock(actualEnd)}{endDelta ? ` (${endDelta > 0 ? '+' : '-'}${secToMMSS(Math.abs(endDelta))})` : ''}</span></span>
         )}
+        {stageEnd && <span className="text-gray-400">Stage-Ende <span className="tabular-nums text-gray-200 font-semibold ml-1">{fmtClock(stageEnd)}</span></span>}
+        {buffer !== null && <span className="text-gray-400">Puffer {bufferLive ? '(live)' : '(geplant)'} <span className={`tabular-nums font-bold ml-1 ${bufferFg(buffer)}`}>{buffer >= 0 ? `+${secToMMSS(buffer)}` : `${secToMMSS(-buffer)} über`}</span></span>}
       </div>
     </div>
   )

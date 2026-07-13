@@ -19,7 +19,7 @@ function parseDuration(str: string): number {
   return (parseInt(t) || 0) * 60 // ohne Doppelpunkt = Minuten
 }
 
-const EMPTY: SongInput = { type: 'song', title: '', durationSec: 0, bpm: null, gemaWorkNo: '', lyricist: '', composer: '', publisher: '', notes: '' }
+const EMPTY: SongInput = { type: 'song', title: '', durationSec: 0, bpm: null, gemaWorkNo: '', lyricist: '', composer: '', publisher: '', notes: '', startTimecode: '' }
 
 export default function SongLibrarySettings() {
   const [tab, setTab] = useState<SongType>('song')
@@ -36,7 +36,7 @@ export default function SongLibrarySettings() {
 
   const startAdd = () => { setForm({ ...EMPTY, type: tab }); setDurStr(''); setEditId('new') }
   const startEdit = (s: Song) => {
-    setForm({ type: s.type, title: s.title, durationSec: s.durationSec, bpm: s.bpm, gemaWorkNo: s.gemaWorkNo, lyricist: s.lyricist, composer: s.composer, publisher: s.publisher, notes: s.notes })
+    setForm({ type: s.type, title: s.title, durationSec: s.durationSec, bpm: s.bpm, gemaWorkNo: s.gemaWorkNo, lyricist: s.lyricist, composer: s.composer, publisher: s.publisher, notes: s.notes, startTimecode: s.startTimecode })
     setDurStr(secToMMSS(s.durationSec)); setEditId(s.id)
   }
   const cancel = () => { setEditId(null); setForm(EMPTY); setDurStr('') }
@@ -108,6 +108,7 @@ export default function SongLibrarySettings() {
                     <div><label className={lbl}>Komponist</label><input className={inp} value={form.composer || ''} onChange={e => setForm(f => ({ ...f, composer: e.target.value }))} /></div>
                     <div><label className={lbl}>Texter</label><input className={inp} value={form.lyricist || ''} onChange={e => setForm(f => ({ ...f, lyricist: e.target.value }))} /></div>
                     <div><label className={lbl}>Verlag</label><input className={inp} value={form.publisher || ''} onChange={e => setForm(f => ({ ...f, publisher: e.target.value }))} /></div>
+                    <div className="sm:col-span-2"><label className={lbl}>Start-Timecode (LTC)</label><input className={inp} value={form.startTimecode || ''} onChange={e => setForm(f => ({ ...f, startTimecode: e.target.value }))} placeholder="HH:MM:SS:FF" /><p className="text-[10px] text-gray-500 mt-1">Für die spätere Show-Control-Anbindung. Kann leer bleiben.</p></div>
                   </>
                 )}
                 <div className="sm:col-span-2"><label className={lbl}>Notiz</label><textarea className={inp} rows={2} value={form.notes || ''} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>

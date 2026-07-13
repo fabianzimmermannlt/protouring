@@ -1245,7 +1245,7 @@ export type SongType = 'song' | 'ansage'
 export interface Song {
   id: number; type: SongType; title: string; durationSec: number; bpm: number | null;
   gemaWorkNo: string | null; lyricist: string | null; composer: string | null;
-  publisher: string | null; notes: string | null; active: boolean; sortOrder: number;
+  publisher: string | null; notes: string | null; startTimecode: string | null; active: boolean; sortOrder: number;
 }
 export type SongInput = Partial<Omit<Song, 'id' | 'sortOrder'>>
 export interface SetlistItem {
@@ -1253,7 +1253,7 @@ export interface SetlistItem {
   sortOrder: number; startedAt: string | null; skipped: boolean;
 }
 export interface Setlist {
-  id: number; terminId: number; title: string; startTime: string | null; endedAt: string | null; sortOrder: number; items: SetlistItem[];
+  id: number; terminId: number; title: string; startTime: string | null; stageEndTime: string | null; endedAt: string | null; sortOrder: number; items: SetlistItem[];
 }
 
 export async function getSongs(type?: SongType): Promise<Song[]> {
@@ -1279,7 +1279,7 @@ export async function createSetlist(terminId: number | string, title: string, st
   const d = await request(`/api/termine/${terminId}/setlists`, { method: 'POST', body: { title, startTime } }) as { setlist: Setlist }
   return d.setlist
 }
-export async function updateSetlist(id: number, patch: { title?: string; startTime?: string | null }): Promise<void> {
+export async function updateSetlist(id: number, patch: { title?: string; startTime?: string | null; stageEndTime?: string | null }): Promise<void> {
   await request(`/api/setlists/${id}`, { method: 'PUT', body: patch })
 }
 export async function deleteSetlist(id: number): Promise<void> {
