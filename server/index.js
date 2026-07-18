@@ -4293,12 +4293,15 @@ app.get('/api/tenant/settings/:key', authenticateToken, requireTenant, async (re
 // PUT /api/tenant/settings/:key  (nur Admin/Owner)
 app.put('/api/tenant/settings/:key', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const userTenant = await db.get(
-      'SELECT role FROM user_tenants WHERE user_id=? AND tenant_id=?',
-      [req.user.id, req.tenant.id]
-    );
-    if (!userTenant || !['admin'].includes(userTenant.role)) {
-      return res.status(403).json({ error: 'Admin required' });
+    // Superadmins dürfen immer; sonst Tenant-Admin-Rolle erforderlich
+    if (!req.user?.isSuperadmin) {
+      const userTenant = await db.get(
+        'SELECT role FROM user_tenants WHERE user_id=? AND tenant_id=?',
+        [req.user.id, req.tenant.id]
+      );
+      if (!userTenant || !['admin'].includes(userTenant.role)) {
+        return res.status(403).json({ error: 'Admin required' });
+      }
     }
     const { value } = req.body;
     await db.run(

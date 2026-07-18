@@ -3165,6 +3165,7 @@ function TravelSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const loadSettings = () => Promise.all([
     getTenantSetting('nightliner_exclude_anreise'),
@@ -3181,7 +3182,7 @@ function TravelSettings() {
   useEffect(() => { loadSettings().finally(() => setLoading(false)) }, [])
 
   const handleSave = async () => {
-    setSaving(true)
+    setSaving(true); setSaveError('')
     try {
       await Promise.all([
         setTenantSetting('nightliner_exclude_anreise', nlAnreise ? '1' : '0'),
@@ -3190,6 +3191,8 @@ function TravelSettings() {
         setTenantSetting('hotel_suggest_radius_km', (parseFloat(hotelRadius) || 25).toString()),
       ])
       setDirty(false)
+    } catch (e) {
+      setSaveError((e as Error)?.message || 'Speichern fehlgeschlagen. Fehlen dir die Rechte?')
     } finally {
       setSaving(false)
     }
@@ -3271,10 +3274,13 @@ function TravelSettings() {
         </div>
       </div>
 
+      {saveError && (
+        <div style={{ color: '#f87171', fontSize: '0.8rem', textAlign: 'right' }}>{saveError}</div>
+      )}
       {dirty && (
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button
-            onClick={() => { loadSettings(); setDirty(false) }}
+            onClick={() => { loadSettings(); setDirty(false); setSaveError('') }}
             style={{ fontSize: '0.8rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem 0.6rem' }}
           >
             Abbrechen
