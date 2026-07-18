@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { AlertCircle, Save, Loader2, Building2, Clock, Coffee, X, ArrowLeft } from 'lucide-react'
+import { AlertCircle, Save, Loader2, Building2, Clock, Coffee, X, ArrowLeft, Star } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
@@ -48,12 +48,12 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
   const [hotel, setHotel] = useState<Hotel | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [form, setForm] = useState<Record<string, string>>({})
+  const [form, setForm] = useState<Record<string, any>>({})
   const [isDirty, setIsDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [showDirtyDialog, setShowDirtyDialog] = useState(false)
-  const originalRef = useRef<Record<string, string>>({})
+  const originalRef = useRef<Record<string, any>>({})
 
   const loadHotel = useCallback(async () => {
     setLoading(true)
@@ -76,6 +76,13 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
 
   const f = (key: string, val: string) => {
     const next = { ...form, [key]: val }
+    setForm(next)
+    const orig = originalRef.current
+    setIsDirty(Object.keys(next).some(k => next[k] !== (orig[k] ?? '')))
+  }
+
+  const toggleRecommended = () => {
+    const next: Record<string, any> = { ...form, recommended: !form.recommended }
     setForm(next)
     const orig = originalRef.current
     setIsDirty(Object.keys(next).some(k => next[k] !== (orig[k] ?? '')))
@@ -138,6 +145,14 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
         <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? '' : (form.name || hotel?.name || '')}
         </h2>
+        {!loading && (isEditor ? (
+          <button onClick={toggleRecommended} title={form.recommended ? 'Empfehlung entfernen' : 'Als Empfehlung merken'}
+            style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', fontSize: '13px', background: 'none', border: `1px solid ${form.recommended ? '#f5c518' : (isL2 ? '#555' : '#d1d5db')}`, borderRadius: 0, color: form.recommended ? '#f5c518' : dirtyColor, cursor: 'pointer' }}>
+            <Star className="w-4 h-4" fill={form.recommended ? '#f5c518' : 'none'} /> Empfehlung
+          </button>
+        ) : form.recommended ? (
+          <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#f5c518' }}><Star className="w-4 h-4" fill="#f5c518" /> Empfehlung</span>
+        ) : null)}
         {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>

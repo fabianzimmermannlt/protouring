@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, ArrowLeft, Download, Upload, Trash2 } from 'lucide-react'
+import { Plus, ArrowLeft, Download, Upload, Trash2, Star } from 'lucide-react'
 import { getHotels, deleteHotel, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import HotelFormModal from './HotelFormModal'
@@ -82,7 +82,7 @@ function HotelTable({ hotels, onEdit, onDelete, isAdmin }: { hotels: Hotel[]; on
           <tr key={hotel.id} className="clickable" onClick={() => onEdit(hotel)}>
             {colOrder.filter(id => isVisible(id)).map(colId => {
               switch (colId) {
-                case 'name':    return <td key="name" className="font-medium">{hotel.name}</td>
+                case 'name':    return <td key="name" className="font-medium">{hotel.recommended && <Star size={12} fill="#f5c518" color="#f5c518" style={{ display: 'inline', marginRight: 4, verticalAlign: '-1px' }} />}{hotel.name}</td>
                 case 'street':  return <td key="street">{hotel.street}</td>
                 case 'zip':     return <td key="zip">{hotel.postalCode}</td>
                 case 'city':    return <td key="city">{hotel.city}</td>

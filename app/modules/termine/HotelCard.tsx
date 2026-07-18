@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Loader2, Building2, BedDouble, BedSingle, ChevronRight, ChevronDown } from 'lucide-react'
+import { Plus, Loader2, Building2, BedDouble, BedSingle, ChevronRight, ChevronDown, Star } from 'lucide-react'
 import {
   getHotelStays,
   getTravelParty,
   getTravelLegs,
   getTenantSetting,
+  setHotelRecommended,
   getAuthToken,
   getCurrentTenant,
   API_BASE,
@@ -97,6 +98,16 @@ export default function HotelCard({
 
   const openNew = () => { setEditStay(null); setModalOpen(true) }
   const openEdit = (stay: HotelStay) => { setEditStay(stay); setModalOpen(true) }
+
+  // Empfehlung-Flag am zugewiesenen Hotel umschalten (wirkt auf alle Stays mit demselben Hotel)
+  const toggleRecommended = async (stay: HotelStay, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!stay.hotelId) return
+    const next = !stay.hotelRecommended
+    setStays(prev => prev.map(s => s.hotelId === stay.hotelId ? { ...s, hotelRecommended: next } : s))
+    try { await setHotelRecommended(String(stay.hotelId), next) }
+    catch { setStays(prev => prev.map(s => s.hotelId === stay.hotelId ? { ...s, hotelRecommended: !next } : s)) }
+  }
 
   const openHotelPdf = () => {
     const token = getAuthToken()
@@ -207,10 +218,21 @@ export default function HotelCard({
             style={{ cursor: isAdmin ? 'pointer' : 'default' }}
           >
             {/* Hotel-Name als Headline */}
-            <div className="pt-leg-card-headline">
-              <Building2 size={11} style={{ display: 'inline', marginRight: '0.3rem' }} />
-              {stay.hotelName || '– kein Hotel gewählt –'}
-              {stay.hotelCity && <span style={{ color: '#9ca3af', marginLeft: '0.3rem' }}>· {stay.hotelCity}</span>}
+            <div className="pt-leg-card-headline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <Building2 size={11} style={{ display: 'inline' }} />
+              <span>{stay.hotelName || '– kein Hotel gewählt –'}</span>
+              {stay.hotelCity && <span style={{ color: '#9ca3af' }}>· {stay.hotelCity}</span>}
+              {stay.hotelId && (isAdmin ? (
+                <button
+                  onClick={e => toggleRecommended(stay, e)}
+                  title={stay.hotelRecommended ? 'Empfehlung entfernen' : 'Als Empfehlung merken (super Hotel)'}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: stay.hotelRecommended ? '#f5c518' : '#6b7280' }}
+                >
+                  <Star size={13} fill={stay.hotelRecommended ? '#f5c518' : 'none'} />
+                </button>
+              ) : stay.hotelRecommended ? (
+                <Star size={13} fill="#f5c518" color="#f5c518" style={{ marginLeft: 'auto' }} />
+              ) : null)}
             </div>
 
             {/* Anschrift, Telefon, E-Mail, Website */}

@@ -733,6 +733,10 @@ async function initDatabase() {
     `ALTER TABLE venues ADD COLUMN longitude TEXT`,
     // Hotels: Parkplatz
     `ALTER TABLE hotels ADD COLUMN parking TEXT`,
+    // Hotels: Empfehlung-Flag + GPS-Koordinaten (für Hotel-Vorschläge)
+    `ALTER TABLE hotels ADD COLUMN recommended INTEGER DEFAULT 0`,
+    `ALTER TABLE hotels ADD COLUMN latitude TEXT`,
+    `ALTER TABLE hotels ADD COLUMN longitude TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_materials.modell: NOT NULL Constraint entfernen (war produkt TEXT NOT NULL)
@@ -3529,8 +3533,21 @@ const hotelFromRow = (r) => ({
   lateCheckOut: r.late_check_out||'', breakfast: r.breakfast||'',
   breakfastWeekend: r.breakfast_weekend||'', parking: r.parking||'',
   additionalInfo: r.additional_info||'',
+  recommended: !!r.recommended, latitude: r.latitude||'', longitude: r.longitude||'',
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
+
+// Adress-String aus Hotel-Feldern (für Geocoding)
+function hotelAddrString(h) {
+  return [h.street, h.postalCode, h.city, h.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
+}
+// Entfernung zweier Koordinaten in km (Haversine)
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371, toRad = (d) => d * Math.PI / 180
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 
 app.get('/api/hotels', authenticateToken, requireTenant, async (req, res) => {
   try {
@@ -3550,15 +3567,20 @@ app.get('/api/hotels/:id', authenticateToken, requireTenant, async (req, res) =>
 app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const h = req.body;
+    // Koordinaten aus Adresse ermitteln (für Hotel-Vorschläge nach Entfernung)
+    let lat = null, lon = null
+    const g = await geocodeAddress(hotelAddrString(h))
+    if (g) { lat = g.lat; lon = g.lon }
     const result = await db.run(`
       INSERT INTO hotels (tenant_id, name, street, postal_code, city, state, country, email,
         phone, website, reception, check_in, check_out, early_check_in, late_check_out,
-        breakfast, breakfast_weekend, parking, additional_info)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        breakfast, breakfast_weekend, parking, additional_info, recommended, latitude, longitude)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `, [req.tenant.id, h.name||'', h.street||'', h.postalCode||'', h.city||'', h.state||'',
         h.country||'', h.email||'', h.phone||'', h.website||'', h.reception||'',
         h.checkIn||'', h.checkOut||'', h.earlyCheckIn||'', h.lateCheckOut||'',
-        h.breakfast||'', h.breakfastWeekend||'', h.parking||'', h.additionalInfo||'']);
+        h.breakfast||'', h.breakfastWeekend||'', h.parking||'', h.additionalInfo||'',
+        h.recommended ? 1 : 0, lat, lon]);
     const row = await db.get('SELECT * FROM hotels WHERE id = ?', [result.lastID]);
     res.status(201).json({ hotel: hotelFromRow(row) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to create hotel' }); }
@@ -3567,17 +3589,28 @@ app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (
 app.put('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const { id } = req.params; const h = req.body;
-    const existing = await db.get('SELECT id FROM hotels WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
+    const existing = await db.get('SELECT id, street, postal_code, city, country, latitude, longitude, recommended FROM hotels WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Hotel not found' });
+    // Koordinaten bei Adressänderung / fehlenden Koordinaten neu geocoden
+    let lat = existing.latitude, lon = existing.longitude
+    const newAddr = hotelAddrString(h)
+    const oldAddr = [existing.street, existing.postal_code, existing.city, existing.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
+    if (newAddr && (!lat || !lon || newAddr !== oldAddr)) {
+      const g = await geocodeAddress(newAddr)
+      if (g) { lat = g.lat; lon = g.lon }
+    }
+    // recommended nur überschreiben, wenn mitgeschickt (schützt Teil-Updates)
+    const rec = h.recommended !== undefined ? (h.recommended ? 1 : 0) : (existing.recommended ? 1 : 0)
     await db.run(`
       UPDATE hotels SET name=?, street=?, postal_code=?, city=?, state=?, country=?, email=?,
         phone=?, website=?, reception=?, check_in=?, check_out=?, early_check_in=?,
-        late_check_out=?, breakfast=?, breakfast_weekend=?, parking=?, additional_info=?, updated_at=datetime('now')
+        late_check_out=?, breakfast=?, breakfast_weekend=?, parking=?, additional_info=?,
+        recommended=?, latitude=?, longitude=?, updated_at=datetime('now')
       WHERE id=? AND tenant_id=?
     `, [h.name||'', h.street||'', h.postalCode||'', h.city||'', h.state||'', h.country||'',
         h.email||'', h.phone||'', h.website||'', h.reception||'', h.checkIn||'', h.checkOut||'',
         h.earlyCheckIn||'', h.lateCheckOut||'', h.breakfast||'', h.breakfastWeekend||'',
-        h.parking||'', h.additionalInfo||'', id, req.tenant.id]);
+        h.parking||'', h.additionalInfo||'', rec, lat, lon, id, req.tenant.id]);
     const row = await db.get('SELECT * FROM hotels WHERE id = ?', [id]);
     res.json({ hotel: hotelFromRow(row) });
   } catch (e) { res.status(500).json({ error: 'Failed to update hotel' }); }
@@ -3590,6 +3623,51 @@ app.delete('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, a
     await db.run('DELETE FROM hotels WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
     res.json({ message: 'Hotel deleted' });
   } catch (e) { res.status(500).json({ error: 'Failed to delete hotel' }); }
+});
+
+// Nur das Empfehlung-Flag setzen (ohne die restlichen Hotelfelder anzufassen)
+app.patch('/api/hotels/:id/recommended', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const existing = await db.get('SELECT id FROM hotels WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!existing) return res.status(404).json({ error: 'Hotel not found' });
+    await db.run("UPDATE hotels SET recommended=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?",
+      [req.body?.recommended ? 1 : 0, req.params.id, req.tenant.id]);
+    const row = await db.get('SELECT * FROM hotels WHERE id = ?', [req.params.id]);
+    res.json({ hotel: hotelFromRow(row) });
+  } catch (e) { res.status(500).json({ error: 'Failed to update hotel' }); }
+});
+
+// Empfohlene Hotels in der Nähe des Event-Venues (nach Entfernung gefiltert)
+app.get('/api/termine/:id/hotel-suggestions', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const setting = async (key) => (await db.get('SELECT value FROM tenant_settings WHERE tenant_id=? AND key=?', [req.tenant.id, key]))?.value ?? null
+    const enabled = (await setting('hotel_suggest_enabled')) === '1'
+    if (!enabled) return res.json({ enabled: false, suggestions: [] })
+    const radiusKm = parseFloat(await setting('hotel_suggest_radius_km')) || 25
+    // Venue-Koordinaten des Events
+    const termin = await db.get('SELECT venue_id FROM termine WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!termin?.venue_id) return res.json({ enabled: true, suggestions: [] })
+    const venue = await db.get('SELECT latitude, longitude FROM venues WHERE id=? AND tenant_id=?', [termin.venue_id, req.tenant.id])
+    const vLat = parseFloat(venue?.latitude), vLon = parseFloat(venue?.longitude)
+    if (!venue || Number.isNaN(vLat) || Number.isNaN(vLon)) return res.json({ enabled: true, suggestions: [] })
+    // Empfohlene Hotels laden; fehlende Koordinaten einmalig nachgeocoden
+    const hotels = await db.all('SELECT * FROM hotels WHERE tenant_id=? AND recommended=1', [req.tenant.id])
+    const out = []
+    for (const h of hotels) {
+      let lat = h.latitude, lon = h.longitude
+      if ((!lat || !lon)) {
+        const addr = hotelAddrString(hotelFromRow(h))
+        const g = addr ? await geocodeAddress(addr) : null
+        if (g) { lat = g.lat; lon = g.lon; await db.run('UPDATE hotels SET latitude=?, longitude=? WHERE id=?', [lat, lon, h.id]) }
+      }
+      const hLat = parseFloat(lat), hLon = parseFloat(lon)
+      if (Number.isNaN(hLat) || Number.isNaN(hLon)) continue
+      const distanceKm = haversineKm(vLat, vLon, hLat, hLon)
+      if (distanceKm <= radiusKm) out.push({ hotel: hotelFromRow({ ...h, latitude: lat, longitude: lon }), distanceKm: Math.round(distanceKm * 10) / 10 })
+    }
+    out.sort((a, b) => a.distanceKm - b.distanceKm)
+    res.json({ enabled: true, radiusKm, suggestions: out })
+  } catch (e) { console.error('hotel-suggestions error:', e); res.status(500).json({ error: 'Failed to get hotel suggestions' }); }
 });
 
 // ============================================
@@ -5283,7 +5361,8 @@ async function getStayWithRooms(db, stayId) {
   const stay = await db.get(`
     SELECT hs.*, h.name AS hotel_name, h.city AS hotel_city, h.street AS hotel_street,
            h.postal_code AS hotel_postal_code, h.phone AS hotel_phone, h.email AS hotel_email,
-           h.website AS hotel_website, h.check_in AS hotel_check_in, h.check_out AS hotel_check_out
+           h.website AS hotel_website, h.check_in AS hotel_check_in, h.check_out AS hotel_check_out,
+           h.recommended AS hotel_recommended
     FROM termin_hotel_stays hs
     LEFT JOIN hotels h ON h.id = hs.hotel_id
     WHERE hs.id = ?
@@ -5314,7 +5393,8 @@ app.get('/api/termine/:terminId/hotel-stays', authenticateToken, requireTenant, 
     const stayRows = await db.all(`
       SELECT hs.*, h.name AS hotel_name, h.city AS hotel_city, h.street AS hotel_street,
              h.postal_code AS hotel_postal_code, h.phone AS hotel_phone, h.email AS hotel_email,
-             h.website AS hotel_website, h.check_in AS hotel_check_in, h.check_out AS hotel_check_out
+             h.website AS hotel_website, h.check_in AS hotel_check_in, h.check_out AS hotel_check_out,
+           h.recommended AS hotel_recommended
       FROM termin_hotel_stays hs
       LEFT JOIN hotels h ON h.id = hs.hotel_id
       WHERE hs.termin_id = ? AND hs.tenant_id = ?

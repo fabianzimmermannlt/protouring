@@ -1029,9 +1029,15 @@ export interface Hotel {
   state: string; country: string; email: string; phone: string; website: string;
   reception: string; checkIn: string; checkOut: string; earlyCheckIn: string;
   lateCheckOut: string; breakfast: string; breakfastWeekend: string; parking: string; additionalInfo: string;
+  recommended?: boolean; latitude?: string; longitude?: string;
   createdAt?: string; updatedAt?: string;
 }
 export type HotelFormData = Omit<Hotel, 'id' | 'createdAt' | 'updatedAt'>;
+
+export interface HotelSuggestion { hotel: Hotel; distanceKm: number }
+export async function getHotelSuggestions(terminId: number | string): Promise<{ enabled: boolean; radiusKm?: number; suggestions: HotelSuggestion[] }> {
+  return request(`/api/termine/${terminId}/hotel-suggestions`);
+}
 
 export async function getHotels(): Promise<Hotel[]> {
   const res = await request<{ hotels: Hotel[] }>('/api/hotels');
@@ -1043,6 +1049,10 @@ export async function getHotel(id: string): Promise<Hotel> {
 }
 export async function createHotel(data: HotelFormData): Promise<Hotel> {
   const res = await request<{ hotel: Hotel }>('/api/hotels', { method: 'POST', body: data });
+  return res.hotel;
+}
+export async function setHotelRecommended(id: string, recommended: boolean): Promise<Hotel> {
+  const res = await request<{ hotel: Hotel }>(`/api/hotels/${id}/recommended`, { method: 'PATCH', body: { recommended } });
   return res.hotel;
 }
 export async function updateHotel(id: string, data: HotelFormData): Promise<Hotel> {
@@ -2386,6 +2396,7 @@ export interface HotelStay {
   id: number
   terminId: number
   hotelId: number | null
+  hotelRecommended?: boolean
   hotelName: string
   hotelCity: string
   hotelStreet: string
@@ -2450,6 +2461,7 @@ function hotelStayFromRow(r: Record<string, unknown>): HotelStay {
     id: r.id as number,
     terminId: r.termin_id as number,
     hotelId: r.hotel_id != null ? Number(r.hotel_id) : null,
+    hotelRecommended: !!r.hotel_recommended,
     hotelName: s(r.hotel_name),
     hotelCity: s(r.hotel_city),
     hotelStreet: s(r.hotel_street),

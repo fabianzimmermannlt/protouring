@@ -3160,19 +3160,25 @@ function MemberForm({ form, setForm, roleInput, setRoleInput, onAddRole, onRemov
 function TravelSettings() {
   const [nlAnreise, setNlAnreise] = useState<boolean>(true)
   const [nlAbreise, setNlAbreise] = useState<boolean>(true)
+  const [hotelSuggest, setHotelSuggest] = useState<boolean>(false)
+  const [hotelRadius, setHotelRadius] = useState<string>('25')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
 
-  useEffect(() => {
-    Promise.all([
-      getTenantSetting('nightliner_exclude_anreise'),
-      getTenantSetting('nightliner_exclude_abreise'),
-    ]).then(([anr, abr]) => {
-      setNlAnreise(anr !== '0')
-      setNlAbreise(abr !== '0')
-    }).finally(() => setLoading(false))
-  }, [])
+  const loadSettings = () => Promise.all([
+    getTenantSetting('nightliner_exclude_anreise'),
+    getTenantSetting('nightliner_exclude_abreise'),
+    getTenantSetting('hotel_suggest_enabled'),
+    getTenantSetting('hotel_suggest_radius_km'),
+  ]).then(([anr, abr, hs, hr]) => {
+    setNlAnreise(anr !== '0')
+    setNlAbreise(abr !== '0')
+    setHotelSuggest(hs === '1')
+    setHotelRadius(hr && hr.trim() ? hr : '25')
+  })
+
+  useEffect(() => { loadSettings().finally(() => setLoading(false)) }, [])
 
   const handleSave = async () => {
     setSaving(true)
@@ -3180,6 +3186,8 @@ function TravelSettings() {
       await Promise.all([
         setTenantSetting('nightliner_exclude_anreise', nlAnreise ? '1' : '0'),
         setTenantSetting('nightliner_exclude_abreise', nlAbreise ? '1' : '0'),
+        setTenantSetting('hotel_suggest_enabled', hotelSuggest ? '1' : '0'),
+        setTenantSetting('hotel_suggest_radius_km', (parseFloat(hotelRadius) || 25).toString()),
       ])
       setDirty(false)
     } finally {
@@ -3222,31 +3230,70 @@ function TravelSettings() {
               </label>
             </div>
           )}
-          {dirty && (
-            <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => { setNlAnreise(true); setNlAbreise(true); setDirty(false) }}
-                style={{ fontSize: '0.8rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem 0.6rem' }}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  fontSize: '0.8rem', background: '#7c7cf8', color: '#fff',
-                  border: 'none', borderRadius: 0, padding: '0.3rem 0.75rem',
-                  cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
-                  display: 'flex', alignItems: 'center', gap: '0.3rem',
-                }}
-              >
-                {saving && <Loader2 size={12} className="animate-spin" />}
-                Speichern
-              </button>
+        </div>
+      </div>
+
+      <div className="pt-fn-group">
+        <div className="pt-fn-group-header">
+          <span className="pt-fn-group-title">Hotel-Vorschläge</span>
+        </div>
+        <div className="pt-fn-group-body" style={{ padding: '1rem 1.25rem' }}>
+          <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '1rem', lineHeight: 1.5 }}>
+            Als Empfehlung markierte Hotels werden beim Zuweisen eines Hotels zum Event vorgeschlagen,
+            wenn sie innerhalb der eingestellten Entfernung zur Veranstaltungsstätte liegen.
+          </p>
+          {loading ? (
+            <Loader2 size={16} className="animate-spin" style={{ color: '#6b7280' }} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}>
+                <input
+                  type="checkbox"
+                  checked={hotelSuggest}
+                  onChange={e => { setHotelSuggest(e.target.checked); setDirty(true) }}
+                  style={{ accentColor: '#7c7cf8', width: '15px', height: '15px' }}
+                />
+                Hotel-Vorschläge aktivieren
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: hotelSuggest ? '#e0e0e0' : '#6b7280' }}>
+                Max. Entfernung zum Venue
+                <input
+                  type="number" min="1" step="1"
+                  value={hotelRadius}
+                  disabled={!hotelSuggest}
+                  onChange={e => { setHotelRadius(e.target.value); setDirty(true) }}
+                  style={{ width: '70px', background: '#1f1f1f', border: '1px solid #3a3a3a', borderRadius: '4px', padding: '0.25rem 0.5rem', color: '#fff', textAlign: 'right' }}
+                />
+                km
+              </label>
             </div>
           )}
         </div>
       </div>
+
+      {dirty && (
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => { loadSettings(); setDirty(false) }}
+            style={{ fontSize: '0.8rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem 0.6rem' }}
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              fontSize: '0.8rem', background: '#7c7cf8', color: '#fff',
+              border: 'none', borderRadius: 0, padding: '0.3rem 0.75rem',
+              cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
+              display: 'flex', alignItems: 'center', gap: '0.3rem',
+            }}
+          >
+            {saving && <Loader2 size={12} className="animate-spin" />}
+            Speichern
+          </button>
+        </div>
+      )}
     </div>
   )
 }

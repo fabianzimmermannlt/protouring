@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Loader2, Plus, Trash2, Check } from 'lucide-react'
+import { X, Loader2, Plus, Trash2, Check, Star } from 'lucide-react'
 import { RichTextEditorField, type RichTextEditorFieldHandle } from '@/app/components/shared/RichTextEditor'
 import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 import {
@@ -9,11 +9,13 @@ import {
   updateHotelStay,
   deleteHotelStay,
   getHotels,
+  getHotelSuggestions,
   type HotelStay,
   type HotelStayFormData,
   type HotelRoomDraft,
   type TravelPartyMember,
   type Hotel,
+  type HotelSuggestion,
   type RoomType,
 } from '@/lib/api-client'
 import TravelHotelQuickCreate from './TravelHotelQuickCreate'
@@ -104,9 +106,12 @@ export default function HotelModal({
   const requestClose = () => { if (isDirty()) setShowDirty(true); else onClose() }
   useEscapeKey(requestClose)
 
+  const [suggestions, setSuggestions] = useState<HotelSuggestion[]>([])
+
   useEffect(() => {
     getHotels().then(setHotels).catch(() => setHotels([]))
-  }, [])
+    getHotelSuggestions(terminId).then(r => setSuggestions(r.suggestions || [])).catch(() => setSuggestions([]))
+  }, [terminId])
 
   const set = <K extends keyof HotelStayFormData>(field: K, value: HotelStayFormData[K]) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -222,7 +227,8 @@ export default function HotelModal({
                 renderValue={h => [h.name, h.city].filter(Boolean).join(' · ')}
                 renderItem={(h, selected) => (
                   <div>
-                    <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : '#e0e0e0', fontWeight: selected ? 500 : 400 }}>
+                    <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : '#e0e0e0', fontWeight: selected ? 500 : 400, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      {h.recommended && <Star size={12} fill="#f5c518" color="#f5c518" style={{ flexShrink: 0 }} />}
                       {h.name}
                     </div>
                     {(h.city || h.phone) && (
@@ -237,6 +243,31 @@ export default function HotelModal({
                 createLabel="Neues Hotel anlegen"
                 onCreateClick={() => setHotelFormModalOpen(true)}
               />
+              {/* Empfohlene Hotels in der Nähe des Venues */}
+              {suggestions.filter(sg => sg.hotel.id !== String(form.hotelId ?? '')).length > 0 && (
+                <div style={{ marginTop: '0.4rem', background: 'rgba(245,197,24,0.08)', border: '1px solid rgba(245,197,24,0.35)', borderRadius: '6px', padding: '0.5rem 0.6rem' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#f5c518', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.35rem' }}>
+                    <Star size={12} fill="#f5c518" color="#f5c518" /> Empfohlenes Hotel in der Nähe
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    {suggestions.filter(sg => sg.hotel.id !== String(form.hotelId ?? '')).slice(0, 3).map(sg => (
+                      <div key={sg.hotel.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#e0e0e0', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sg.hotel.name}
+                          <span style={{ color: '#9ca3af' }}> · {sg.distanceKm} km vom Venue</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { set('hotelId', Number(sg.hotel.id)); setHotels(prev => prev.find(x => x.id === sg.hotel.id) ? prev : [...prev, sg.hotel]) }}
+                          style={{ flexShrink: 0, fontSize: '0.72rem', fontWeight: 500, background: '#f5c518', color: '#1a1a1a', border: 'none', borderRadius: '4px', padding: '0.25rem 0.6rem', cursor: 'pointer' }}
+                        >
+                          Auswählen
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {selectedHotel && (selectedHotel.checkIn || selectedHotel.checkOut) && (
                 <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.2rem' }}>
                   Standard: Check-in {selectedHotel.checkIn || '–'} · Check-out {selectedHotel.checkOut || '–'}
