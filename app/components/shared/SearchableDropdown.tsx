@@ -20,6 +20,10 @@ interface SearchableDropdownProps<T extends { id: string | number }> {
     onCreated: (item: T) => void,
     onCancel: () => void
   ) => React.ReactNode
+  /** Optional: Einträge, für die das true ist, werden oben in einer eigenen Gruppe angepinnt */
+  isPinned?: (item: T) => boolean
+  /** Überschrift der angepinnten Gruppe (Default: "Empfehlungen") */
+  pinnedLabel?: string
 }
 
 export default function SearchableDropdown<T extends { id: string | number }>({
@@ -34,6 +38,8 @@ export default function SearchableDropdown<T extends { id: string | number }>({
   createLabel = 'Neu anlegen',
   onCreateClick,
   renderCreateForm,
+  isPinned,
+  pinnedLabel = 'Empfehlungen',
 }: SearchableDropdownProps<T>) {
   const { layout } = useLayout()
   const dark = true // App fest Dark-Mode
@@ -189,23 +195,42 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                   <div style={{ padding: '0.75rem', fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>
                     Keine Treffer
                   </div>
-                ) : filtered.map(item => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleSelect(item)}
-                    style={{
-                      width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                      background: value?.id === item.id ? (dark ? '#1a3a5c' : '#eff6ff') : 'none',
-                      border: 'none', cursor: 'pointer', borderBottom: `1px solid ${dark ? '#2d2d2d' : '#f9fafb'}`,
-                      display: 'block',
-                    }}
-                    onMouseOver={e => { if (value?.id !== item.id) e.currentTarget.style.background = dark ? '#2d2d2d' : '#f9fafb' }}
-                    onMouseOut={e => { if (value?.id !== item.id) e.currentTarget.style.background = 'none' }}
-                  >
-                    {renderItem(item, value?.id === item.id)}
-                  </button>
-                ))}
+                ) : (() => {
+                  const itemButton = (item: T) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelect(item)}
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
+                        background: value?.id === item.id ? (dark ? '#1a3a5c' : '#eff6ff') : 'none',
+                        border: 'none', cursor: 'pointer', borderBottom: `1px solid ${dark ? '#2d2d2d' : '#f9fafb'}`,
+                        display: 'block',
+                      }}
+                      onMouseOver={e => { if (value?.id !== item.id) e.currentTarget.style.background = dark ? '#2d2d2d' : '#f9fafb' }}
+                      onMouseOut={e => { if (value?.id !== item.id) e.currentTarget.style.background = 'none' }}
+                    >
+                      {renderItem(item, value?.id === item.id)}
+                    </button>
+                  )
+                  const pinned = isPinned ? filtered.filter(isPinned) : []
+                  const rest = isPinned ? filtered.filter(i => !isPinned(i)) : filtered
+                  const groupHeader = (label: string) => (
+                    <div style={{
+                      padding: '0.3rem 0.65rem', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.03em',
+                      textTransform: 'uppercase', color: '#f5c518', background: dark ? '#242015' : '#fffbea',
+                      borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
+                    }}>★ {label}</div>
+                  )
+                  return (
+                    <>
+                      {pinned.length > 0 && groupHeader(pinnedLabel)}
+                      {pinned.map(itemButton)}
+                      {pinned.length > 0 && rest.length > 0 && groupHeader('Alle Hotels')}
+                      {rest.map(itemButton)}
+                    </>
+                  )
+                })()}
               </div>
             </>
           )}

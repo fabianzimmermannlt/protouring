@@ -198,6 +198,15 @@ export default function HotelModal({
 
   const selectedHotel = form.hotelId ? hotels.find(h => Number(h.id) === form.hotelId) : null
 
+  // Empfehlungs-Panel: bevorzugt Hotels in der Nähe (mit km), sonst alle empfohlenen Hotels
+  const selectedHotelKey = String(form.hotelId ?? '')
+  const nearby = suggestions.filter(sg => sg.hotel.id !== selectedHotelKey)
+  const panelNearby = nearby.length > 0
+  const panelEntries: { hotel: Hotel; distanceKm: number | null }[] = (panelNearby
+    ? nearby.map(sg => ({ hotel: sg.hotel, distanceKm: sg.distanceKm }))
+    : hotels.filter(h => h.recommended && h.id !== selectedHotelKey).map(h => ({ hotel: h, distanceKm: null }))
+  ).slice(0, 4)
+
   return (
     <>
     <div className="modal-overlay">
@@ -210,6 +219,33 @@ export default function HotelModal({
         <div className="modal-body space-y-4">
           {error && (
             <div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">{error}</div>
+          )}
+
+          {/* Prominentes Empfehlungs-Panel */}
+          {panelEntries.length > 0 && (
+            <div style={{ border: '1px solid rgba(245,197,24,0.45)', background: 'rgba(245,197,24,0.08)', borderRadius: '8px', padding: '0.6rem 0.7rem' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f5c518', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                <Star size={14} fill="#f5c518" color="#f5c518" /> {panelNearby ? 'Empfehlung in der Nähe' : 'Empfohlene Hotels'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {panelEntries.map(e => (
+                  <div key={e.hotel.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(245,197,24,0.25)', borderRadius: '6px', padding: '0.45rem 0.55rem' }}>
+                    <Star size={13} fill="#f5c518" color="#f5c518" style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.85rem', color: '#e8e8e8', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.hotel.name}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{[e.hotel.city, e.distanceKm != null ? `${e.distanceKm} km vom Venue` : null].filter(Boolean).join(' · ')}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { set('hotelId', Number(e.hotel.id)); setHotels(prev => prev.find(x => x.id === e.hotel.id) ? prev : [...prev, e.hotel]) }}
+                      style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: '#f5c518', color: '#1a1a1a', border: 'none', borderRadius: '5px', padding: '0.3rem 0.7rem', cursor: 'pointer' }}
+                    >
+                      Auswählen
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Hotel + Buchungscode */}
@@ -242,32 +278,9 @@ export default function HotelModal({
                 clearable
                 createLabel="Neues Hotel anlegen"
                 onCreateClick={() => setHotelFormModalOpen(true)}
+                isPinned={h => !!h.recommended}
+                pinnedLabel="Empfehlungen"
               />
-              {/* Empfohlene Hotels in der Nähe des Venues */}
-              {suggestions.filter(sg => sg.hotel.id !== String(form.hotelId ?? '')).length > 0 && (
-                <div style={{ marginTop: '0.4rem', background: 'rgba(245,197,24,0.08)', border: '1px solid rgba(245,197,24,0.35)', borderRadius: '6px', padding: '0.5rem 0.6rem' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#f5c518', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.35rem' }}>
-                    <Star size={12} fill="#f5c518" color="#f5c518" /> Empfohlenes Hotel in der Nähe
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                    {suggestions.filter(sg => sg.hotel.id !== String(form.hotelId ?? '')).slice(0, 3).map(sg => (
-                      <div key={sg.hotel.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.8rem', color: '#e0e0e0', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {sg.hotel.name}
-                          <span style={{ color: '#9ca3af' }}> · {sg.distanceKm} km vom Venue</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => { set('hotelId', Number(sg.hotel.id)); setHotels(prev => prev.find(x => x.id === sg.hotel.id) ? prev : [...prev, sg.hotel]) }}
-                          style={{ flexShrink: 0, fontSize: '0.72rem', fontWeight: 500, background: '#f5c518', color: '#1a1a1a', border: 'none', borderRadius: '4px', padding: '0.25rem 0.6rem', cursor: 'pointer' }}
-                        >
-                          Auswählen
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               {selectedHotel && (selectedHotel.checkIn || selectedHotel.checkOut) && (
                 <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.2rem' }}>
                   Standard: Check-in {selectedHotel.checkIn || '–'} · Check-out {selectedHotel.checkOut || '–'}
