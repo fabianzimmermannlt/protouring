@@ -215,18 +215,20 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                   )
                   const pinned = isPinned ? filtered.filter(isPinned) : []
                   const rest = isPinned ? filtered.filter(i => !isPinned(i)) : filtered
-                  const groupHeader = (label: string) => (
+                  const groupHeader = (label: string, gold: boolean) => (
                     <div style={{
                       padding: '0.3rem 0.65rem', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.03em',
-                      textTransform: 'uppercase', color: '#f5c518', background: dark ? '#242015' : '#fffbea',
+                      textTransform: 'uppercase',
+                      color: gold ? '#f5c518' : '#9ca3af',
+                      background: gold ? (dark ? '#242015' : '#fffbea') : (dark ? '#242424' : '#f9fafb'),
                       borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
-                    }}>★ {label}</div>
+                    }}>{gold ? '★ ' : ''}{label}</div>
                   )
                   return (
                     <>
-                      {pinned.length > 0 && groupHeader(pinnedLabel)}
+                      {pinned.length > 0 && groupHeader(pinnedLabel, true)}
                       {pinned.map(itemButton)}
-                      {pinned.length > 0 && rest.length > 0 && groupHeader('Alle Hotels')}
+                      {pinned.length > 0 && rest.length > 0 && groupHeader('Alle Hotels', false)}
                       {rest.map(itemButton)}
                     </>
                   )
