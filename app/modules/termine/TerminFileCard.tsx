@@ -192,11 +192,11 @@ function CategorySection({
 
       {/* Dateiliste */}
       {open && (
-        <div className="px-4 pb-2 space-y-1">
+        <div className="pb-2">
           {files.map(file => (
-            <div key={file.id} className="rounded hover:bg-[#383838] transition-colors">
+            <div key={file.id} className="px-4 hover:bg-[#383838] transition-colors">
               {/* Hauptzeile */}
-              <div className="flex items-center justify-between py-1 px-1.5 text-sm">
+              <div className="flex items-center justify-between py-1.5 text-sm">
                 {editingId === file.id ? (
                   <div className="flex items-center gap-1 flex-1">
                     <input
