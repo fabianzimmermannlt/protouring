@@ -16,7 +16,7 @@ export default function TerminFilesView({ terminId }: { terminId: number }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-10">
+    <div className="space-y-6 pb-4">
       <TerminFileCard terminId={String(terminId)} />
 
       {groups.length > 0 && (
