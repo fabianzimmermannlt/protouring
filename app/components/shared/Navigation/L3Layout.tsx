@@ -52,6 +52,7 @@ import {
   getTenantArtistSettings,
   NAV_VISIBLE,
   canDo,
+  can,
   getEffectiveRole,
   isEditorRole,
   isTenantModuleEnabled,
@@ -182,7 +183,7 @@ export function L3Layout({
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const role = getEffectiveRole() as TenantRole
   const isEditor = isEditorRole(role)
-  const canSeeKalender = canDo(role, CAN_SEE_KALENDER)
+  const canSeeKalender = can('CAN_SEE_KALENDER', role)
 
   const initials =
     [currentUser?.firstName, currentUser?.lastName]
@@ -1781,7 +1782,7 @@ export function L3Layout({
 
         {/* Main nav items */}
         <nav className="flex-1 flex flex-col items-center w-full px-1 py-1 space-y-0.5 overflow-y-auto scrollbar-light">
-          {RAIL_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item => {
+          {RAIL_NAV.filter(item => can(item.id, role)).map(item => {
             const isActive = activeTab === item.id
             return (
               <button
@@ -1801,7 +1802,7 @@ export function L3Layout({
           })}
 
           {/* Module divider */}
-          {canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
+          {can('modules', role) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
             <>
               <div className="w-8 border-t border-gray-300 my-1" />
               {MODULE_NAV.filter(item => isTenantModuleEnabled(item.id as any)).map(item => {

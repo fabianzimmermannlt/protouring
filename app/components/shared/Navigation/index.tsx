@@ -24,7 +24,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useLayout } from './LayoutContext'
 import { MobileBottomNav } from './MobileBottomNav'
-import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, getEffectiveRole, isTenantModuleEnabled } from '@/lib/api-client'
+import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, can, getEffectiveRole, isTenantModuleEnabled } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
@@ -220,8 +220,8 @@ export function Navigation({
   const isModulesActive = MODULE_CHILDREN.some(c => c.id === currentTab)
 
   // Sichtbarkeit: Stammdaten zeigen wenn mindestens ein Kind sichtbar
-  const canSeeStammdaten = STAMMDATEN_CHILDREN.some(c => canDo(role, NAV_VISIBLE[c.id] ?? []))
-  const canSeeModules = canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_CHILDREN.some(c => isTenantModuleEnabled(c.id as any))
+  const canSeeStammdaten = STAMMDATEN_CHILDREN.some(c => can(c.id, role))
+  const canSeeModules = can('modules', role) && MODULE_CHILDREN.some(c => isTenantModuleEnabled(c.id as any))
 
   // Nav-Button Helper
   const NavButton = ({ item }: { item: NavigationItem }) => (
@@ -242,7 +242,7 @@ export function Navigation({
   const visibleItems = (ids: string[]) =>
     navigationItems.filter(item =>
       ids.includes(item.id) &&
-      (item.superadminOnly ? isSuperadmin : canDo(role, NAV_VISIBLE[item.id] ?? []))
+      (item.superadminOnly ? isSuperadmin : can(item.id, role))
     )
 
   return (

@@ -18,7 +18,7 @@ import {
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
-import { getTermine, isAuthenticated, canDo, getEffectiveRole, NAV_VISIBLE, isTenantModuleEnabled } from '@/lib/api-client'
+import { getTermine, isAuthenticated, canDo, can, getEffectiveRole, NAV_VISIBLE, isTenantModuleEnabled } from '@/lib/api-client'
 
 interface Props {
   activeTab: string
@@ -108,7 +108,7 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
 
   const isMoreActive = MORE_ITEMS.some(i => i.id === activeNavItem)
   const visibleMore = MORE_ITEMS.filter(item =>
-    canDo(role, NAV_VISIBLE[item.id] ?? []) &&
+    can(item.id, role) &&
     (item.id !== 'equipment' || isTenantModuleEnabled('equipment'))
   )
 

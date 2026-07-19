@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import { LayoutProvider, useLayout } from './Navigation/LayoutContext'
 import { LanguageProvider } from '@/app/lib/i18n/LanguageContext'
 import { L2Layout } from './Navigation/L2Layout'
@@ -7,7 +9,7 @@ import { L3Layout } from './Navigation/L3Layout'
 import { Navigation } from './Navigation'
 import { MobileBottomNav } from './Navigation/MobileBottomNav'
 import { FeedbackButton } from './FeedbackButton'
-import { getEffectiveRole, getCurrentUser } from '@/lib/api-client'
+import { getEffectiveRole, getCurrentUser, refreshRolePermissions } from '@/lib/api-client'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -22,6 +24,10 @@ function AppShellInner({ children, activeTab, onTabChange, activeSubTab = '', on
   const role = getEffectiveRole()
   const currentUser = getCurrentUser()
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
+
+  // Rollen-Rechte-Matrix laden und Shell danach neu rendern (damit can() greift)
+  const [, setPermsTick] = useState(0)
+  useEffect(() => { refreshRolePermissions().then(() => setPermsTick(t => t + 1)) }, [])
 
   const useL2 = layout === 'L2'
   const useL3 = layout === 'L3'

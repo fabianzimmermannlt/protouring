@@ -5,7 +5,7 @@ import { Communication } from '@/app/components/shared/Communication'
 import { FileCard } from '@/app/components/shared/FileCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
 import GlobalTodoOverview from '@/app/components/shared/GlobalTodoOverview'
-import { getCurrentUser, getCurrentTenant, getMyRole, updateCurrentTenantRole, isAdminRole, isEditorRole, getEffectiveRole, canDo, CAN_EDIT_ANKUENDIGUNG } from '@/lib/api-client'
+import { getCurrentUser, getCurrentTenant, getMyRole, updateCurrentTenantRole, isAdminRole, isEditorRole, getEffectiveRole, canDo, can, CAN_EDIT_ANKUENDIGUNG } from '@/lib/api-client'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
 import RecentChatMessages from '@/app/components/shared/RecentChatMessages'
 
@@ -42,7 +42,7 @@ export default function SchreibtischModule() {
         <AccordionSection title={announcementTitle} defaultOpen stateKey="desk_ankuendigung">
           <ContentBoard
             entityType="desk" entityId="announcement" title=""
-            isAdmin={canDo(effectiveRole, CAN_EDIT_ANKUENDIGUNG)}
+            isAdmin={can('CAN_EDIT_ANKUENDIGUNG', effectiveRole)}
             singleItem hideHeader hideEmptyButton allowDelete={false}
             modalTitle={{ new: 'Ankündigung erstellen', edit: 'Ankündigung bearbeiten' }}
             titlePlaceholder="Titel der Ankündigung" newItemLabel="Ankündigung erstellen"
@@ -103,7 +103,7 @@ export default function SchreibtischModule() {
         <div className="pt-card h-[400px] flex flex-col">
           <ContentBoard
             entityType="desk" entityId="announcement" title=""
-            isAdmin={canDo(effectiveRole, CAN_EDIT_ANKUENDIGUNG)}
+            isAdmin={can('CAN_EDIT_ANKUENDIGUNG', effectiveRole)}
             singleItem hideEmptyButton allowDelete={false}
             modalTitle={{ new: 'Ankündigung erstellen', edit: 'Ankündigung bearbeiten' }}
             titlePlaceholder="Titel der Ankündigung" newItemLabel="Ankündigung erstellen"

@@ -22,6 +22,7 @@ const KONTO: SubItem[] = [
 const WORKSPACE: SubItem[] = [
   { id: 'artist',      name: 'Artist',           adminOnly: true },
   { id: 'permissions', name: 'Berechtigungen',   editorOnly: true },
+  { id: 'roles',       name: 'Rollen & Rechte',  adminOnly: true },
   { id: 'contacts',    name: 'Kontakte',         editorOnly: true },
   { id: 'partners',    name: 'Partner',          adminOnly: true },
   { id: 'vehicles',    name: 'Fahrzeuge',        adminOnly: true },

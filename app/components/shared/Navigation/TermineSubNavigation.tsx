@@ -1,6 +1,6 @@
 'use client'
 
-import { getEffectiveRole, canDo, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
+import { getEffectiveRole, canDo, can, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
 
 export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'briefing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist' | 'setlist' | 'files'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
@@ -33,7 +33,7 @@ export function TermineListSubNavigation({
   listView = 'list',
   onListViewChange,
 }: TermineListSubNavigationProps) {
-  const canSeeKalender = canDo(getEffectiveRole(), CAN_SEE_KALENDER)
+  const canSeeKalender = can('CAN_SEE_KALENDER')
 
   return (
     <>

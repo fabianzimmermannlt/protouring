@@ -2873,12 +2873,92 @@ export function isAdminRole(role: string): boolean {
 }
 
 export function isEditorRole(role: string): boolean {
-  return CAN_EDIT.includes(role as TenantRole)
+  return can('CAN_EDIT', role)
 }
 
 /** Gibt die aktuell wirksame Rolle zurück — Preview-Rolle hat Vorrang */
 export function getEffectiveRole(): string {
   return getPreviewRole() ?? getCurrentTenant()?.role ?? ''
+}
+
+// ============================================
+// ROLLEN-RECHTE-MATRIX (konfigurierbar pro Tenant)
+// ============================================
+
+export type PermGroup = 'Bereiche' | 'Funktionen' | 'Bearbeiten'
+export interface PermDef { key: string; label: string; group: PermGroup; default: TenantRole[]; configurable?: boolean }
+
+/** Spaltenreihenfolge der Matrix */
+export const ROLE_ORDER: TenantRole[] = ['admin', 'agency', 'tourmanagement', 'artist', 'crew_plus', 'crew', 'guest']
+const _ALL_ROLES: TenantRole[] = [...ROLE_ORDER]
+
+/** Katalog aller Rechte inkl. heutiger Standardwerte (Single Source of Truth) */
+export const PERMISSION_CATALOG: PermDef[] = [
+  // ── Bereiche (Navigation) ──
+  { key: 'events',    label: 'Termine',   group: 'Bereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'contacts',  label: 'Kontakte',  group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'], configurable: true },
+  { key: 'venues',    label: 'Venues',    group: 'Bereiche', default: ['admin', 'agency'], configurable: true },
+  { key: 'partners',  label: 'Partner',   group: 'Bereiche', default: ['admin', 'agency'], configurable: true },
+  { key: 'hotels',    label: 'Hotels',    group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency'], configurable: true },
+  { key: 'vehicles',  label: 'Fahrzeuge', group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency'], configurable: true },
+  { key: 'templates', label: 'Vorlagen',  group: 'Bereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'equipment', label: 'Equipment', group: 'Bereiche', default: ['admin'], configurable: true },
+  // fixe Bereiche (nicht in der Matrix konfigurierbar)
+  { key: 'desk',      label: 'Schreibtisch',   group: 'Bereiche', default: [..._ALL_ROLES] },
+  { key: 'settings',  label: 'Einstellungen',  group: 'Bereiche', default: [..._ALL_ROLES] },
+  { key: 'feedback',  label: 'Feedback',       group: 'Bereiche', default: [..._ALL_ROLES] },
+  { key: 'modules',   label: 'Module',         group: 'Bereiche', default: ['admin'] },
+  // ── Funktionen ──
+  { key: 'CAN_SEE_KALENDER',       label: 'Kalender-Ansicht',        group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus'], configurable: true },
+  { key: 'CAN_SEE_GEBUCHT',        label: 'Gebucht-Spalte',          group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'], configurable: true },
+  { key: 'CAN_SEE_FILES_TERMIN',   label: 'Dateien am Termin',       group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'], configurable: true },
+  { key: 'CAN_SEE_FINANCIALS',     label: 'Finanzen / Honorare',     group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency'] },
+  { key: 'CAN_SEE_KONTAKT_PROFIL', label: 'Kontakt-Profile öffnen',  group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency'] },
+  { key: 'CAN_SEE_TODOS_ALL',      label: 'Alle ToDos sehen',        group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency'] },
+  { key: 'CAN_CREATE_TERMIN',      label: 'Termin anlegen',          group: 'Funktionen', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
+  { key: 'CAN_EDIT_ANKUENDIGUNG',  label: 'Ankündigung bearbeiten',  group: 'Funktionen', default: ['admin', 'agency'], configurable: true },
+  // ── Bearbeiten (Schreiben) ──
+  { key: 'CAN_EDIT',   label: 'Inhalte bearbeiten (Schreibrecht)', group: 'Bearbeiten', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
+  { key: 'CAN_MANAGE', label: 'Stammdaten anlegen/löschen',        group: 'Bearbeiten', default: ['admin', 'agency'] },
+]
+
+export const PERM_DEFAULTS: Record<string, TenantRole[]> = Object.fromEntries(PERMISSION_CATALOG.map(p => [p.key, p.default])) as Record<string, TenantRole[]>
+
+const ROLE_PERMS_KEY = 'pt_role_permissions'
+
+export function getRolePermsOverrides(): Record<string, string[]> {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(localStorage.getItem(ROLE_PERMS_KEY) || '{}') } catch { return {} }
+}
+export function setRolePermsOverrides(obj: Record<string, string[]>) {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(ROLE_PERMS_KEY, JSON.stringify(obj || {})) } catch { /* ignore */ }
+}
+
+/** Effektive Rollen für ein Recht: gespeicherte Matrix ?? Standard; Admin ist IMMER berechtigt (kein Aussperren) */
+export function permRoles(permKey: string): string[] {
+  const ov = getRolePermsOverrides()
+  const base = Array.isArray(ov[permKey]) ? ov[permKey] : (PERM_DEFAULTS[permKey] ?? [])
+  return base.includes('admin') ? base : ['admin', ...base]
+}
+
+/** Darf die (effektive) Rolle das Recht? Ohne role wird die aktuelle Rolle genutzt. */
+export function can(permKey: string, role?: string | null): boolean {
+  const r = (role ?? getEffectiveRole()) || ''
+  if (!r) return false
+  return permRoles(permKey).includes(r)
+}
+
+export async function getRolePermissions(): Promise<Record<string, string[]>> {
+  const d = await request('/api/tenant/role-permissions') as { permissions: Record<string, string[]> }
+  return d.permissions || {}
+}
+export async function saveRolePermissions(permissions: Record<string, string[]>): Promise<void> {
+  await request('/api/tenant/role-permissions', { method: 'PUT', body: { permissions } })
+}
+/** Lädt die Matrix in den lokalen Cache (Login / App-Start / nach Speichern) */
+export async function refreshRolePermissions(): Promise<void> {
+  try { setRolePermsOverrides(await getRolePermissions()) } catch { /* Standard bleibt */ }
 }
 
 export interface TenantUser {

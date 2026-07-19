@@ -2211,12 +2211,40 @@ const requireTenant = async (req, res, next) => {
   }
 };
 
-// Schreibrechte: admin, agency, tourmanagement
-const requireEditor = (req, res, next) => {
-  if (!['admin', 'agency', 'tourmanagement'].includes(req.tenant.role)) {
+// ── Rollen-Rechte-Matrix: konfigurierbares Schreibrecht pro Tenant ──
+const CAN_EDIT_DEFAULT = ['admin', 'agency', 'tourmanagement']
+const _permCache = new Map() // tenantId -> string[] (Editor-Rollen)
+function invalidatePermCache(tenantId) { _permCache.delete(tenantId) }
+async function getEditRoles(tenantId) {
+  const cached = _permCache.get(tenantId)
+  if (cached) return cached
+  let editRoles = CAN_EDIT_DEFAULT
+  try {
+    const row = await db.get('SELECT value FROM tenant_settings WHERE tenant_id=? AND key=?', [tenantId, 'role_permissions'])
+    if (row?.value) {
+      const parsed = JSON.parse(row.value)
+      if (Array.isArray(parsed?.CAN_EDIT)) editRoles = parsed.CAN_EDIT
+    }
+  } catch { /* Default */ }
+  if (!editRoles.includes('admin')) editRoles = ['admin', ...editRoles] // nie aussperren
+  _permCache.set(tenantId, editRoles)
+  return editRoles
+}
+
+// Schreibrechte: aus der Rollen-Rechte-Matrix (Default: admin, agency, tourmanagement)
+const requireEditor = async (req, res, next) => {
+  try {
+    if (req.user?.isSuperadmin) return next()
+    const editRoles = await getEditRoles(req.tenant.id)
+    if (!editRoles.includes(req.tenant.role)) {
+      return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+    }
+    next()
+  } catch (e) {
+    // Im Fehlerfall auf sicheren Default zurückfallen
+    if (req.user?.isSuperadmin || CAN_EDIT_DEFAULT.includes(req.tenant.role)) return next()
     return res.status(403).json({ error: 'Keine Schreibberechtigung' })
   }
-  next()
 }
 
 // Wie requireEditor, aber crew_plus darf auch (z.B. eigene ToDos abhaken)
@@ -4352,6 +4380,46 @@ app.put('/api/tenant/settings/:key', authenticateToken, requireTenant, async (re
   } catch (err) {
     console.error('PUT /api/tenant/settings error:', err);
     res.status(500).json({ error: 'Failed to update setting' });
+  }
+});
+
+// GET Rollen-Rechte-Matrix (alle Tenant-User dürfen lesen; steuert UI-Sichtbarkeit)
+app.get('/api/tenant/role-permissions', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const row = await db.get('SELECT value FROM tenant_settings WHERE tenant_id=? AND key=?', [req.tenant.id, 'role_permissions']);
+    let permissions = {};
+    if (row?.value) { try { permissions = JSON.parse(row.value) || {}; } catch { permissions = {}; } }
+    res.json({ permissions });
+  } catch (err) {
+    console.error('GET /api/tenant/role-permissions error:', err);
+    res.status(500).json({ error: 'Failed to get role permissions' });
+  }
+});
+
+// PUT Rollen-Rechte-Matrix (nur Admin/Superadmin)
+app.put('/api/tenant/role-permissions', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    if (!req.user?.isSuperadmin) {
+      const ut = await db.get('SELECT role FROM user_tenants WHERE user_id=? AND tenant_id=?', [req.user.id, req.tenant.id]);
+      if (!ut || ut.role !== 'admin') return res.status(403).json({ error: 'Admin required' });
+    }
+    const permissions = req.body?.permissions;
+    if (!permissions || typeof permissions !== 'object') return res.status(400).json({ error: 'permissions object required' });
+    // Admin nie aussperren: in jedem Recht muss admin enthalten sein
+    for (const k of Object.keys(permissions)) {
+      if (Array.isArray(permissions[k]) && !permissions[k].includes('admin')) permissions[k] = ['admin', ...permissions[k]];
+    }
+    await db.run(
+      `INSERT INTO tenant_settings (tenant_id, key, value, updated_by, updated_at)
+       VALUES (?, 'role_permissions', ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(tenant_id, key) DO UPDATE SET value=excluded.value, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP`,
+      [req.tenant.id, JSON.stringify(permissions), req.user.id]
+    );
+    invalidatePermCache(req.tenant.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PUT /api/tenant/role-permissions error:', err);
+    res.status(500).json({ error: 'Failed to save role permissions' });
   }
 });
 

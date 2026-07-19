@@ -24,6 +24,7 @@ import NotificationSettings from './NotificationSettings'
 import SongLibrarySettings from './SongLibrarySettings'
 import { SettingsAreaShell } from './SettingsAreaShell'
 import GewerkSettings from './GewerkSettings'
+import RolePermissionsSettings from './RolePermissionsSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
 import { useLanguage, useT } from '@/app/lib/i18n/LanguageContext'
 import {
@@ -70,6 +71,9 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 
       case 'permissions':
         return <UserManagement />
+
+      case 'roles':
+        return <RolePermissionsSettings />
 
       case 'appearance':
         return (

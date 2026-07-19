@@ -30,6 +30,7 @@ import {
   getTenantArtistSettings,
   NAV_VISIBLE,
   canDo,
+  can,
   getEffectiveRole,
   isEditorRole,
   isTenantModuleEnabled,
@@ -57,6 +58,7 @@ const SETTINGS_KONTO: SubItem[] = [
 const SETTINGS_WORKSPACE: SubItem[] = [
   { id: 'artist',      name: 'Artist',          adminOnly: true },
   { id: 'permissions', name: 'Berechtigungen',  editorOnly: true },
+  { id: 'roles',       name: 'Rollen & Rechte', adminOnly: true },
   { id: 'contacts',    name: 'Kontakte',         editorOnly: true },
   { id: 'partners',    name: 'Partner',          adminOnly: true },
   { id: 'vehicles',    name: 'Fahrzeuge',        adminOnly: true },
@@ -160,7 +162,7 @@ export function L2Layout({
   const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
   const role = getEffectiveRole() as TenantRole
   const isEditor = isEditorRole(role)
-  const canSeeKalender = canDo(role, CAN_SEE_KALENDER)
+  const canSeeKalender = can('CAN_SEE_KALENDER', role)
 
   // ── Termine state (event-driven, mirrors Navigation/index.tsx) ───────────
   const [termineInDetail, setTermineInDetail] = useState(false)
@@ -581,12 +583,12 @@ export function L2Layout({
         {/* Main Nav */}
         <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
           <nav className="px-0 py-3 space-y-0.5">
-            {MAIN_NAV.filter(item => canDo(role, NAV_VISIBLE[item.id] ?? [])).map(item =>
+            {MAIN_NAV.filter(item => can(item.id, role)).map(item =>
               renderNavItem(item)
             )}
 
             {/* Module section */}
-            {canDo(role, NAV_VISIBLE['modules'] ?? []) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
+            {can('modules', role) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
               <>
                 <div className="pt-2 pb-1">
                   <div className="border-t border-[#333]" />

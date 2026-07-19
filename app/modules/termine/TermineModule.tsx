@@ -63,6 +63,7 @@ import {
   isAdminRole,
   isEditorRole,
   canDo,
+  can,
   CAN_CREATE_TERMIN,
   CAN_SEE_GEBUCHT,
   CAN_SEE_FILES_TERMIN,
@@ -1660,9 +1661,9 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
   const effectiveRole = getEffectiveRole()
   const isAdmin  = isAdminRole(effectiveRole)                        // admin + tourmanagement
   const isEditor = isEditorRole(effectiveRole)                       // admin + agency + tourmanagement (CAN_EDIT)
-  const canCreate    = canDo(effectiveRole, CAN_CREATE_TERMIN)       // admin + agency + tourmanagement
-  const canSeeGebucht = canDo(effectiveRole, CAN_SEE_GEBUCHT)        // alle außer Gast
-  const canSeeFiles   = canDo(effectiveRole, CAN_SEE_FILES_TERMIN)   // admin + tourmanagement + agency + artist + crew_plus
+  const canCreate    = can('CAN_CREATE_TERMIN', effectiveRole)
+  const canSeeGebucht = can('CAN_SEE_GEBUCHT', effectiveRole)
+  const canSeeFiles   = can('CAN_SEE_FILES_TERMIN', effectiveRole)
 
   const { isVisible: isColVisible, toggle: toggleCol, columns: termineColumns } = useColumnVisibility('termine-list', TERMINE_COLUMNS)
 
@@ -2017,7 +2018,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                 </button>
               )
             })}
-            {!isMobile && canDo(effectiveRole, CAN_SEE_KALENDER) && (
+            {!isMobile && can('CAN_SEE_KALENDER', effectiveRole) && (
               <button onClick={() => {
                 setListView('calendar')
                 window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
