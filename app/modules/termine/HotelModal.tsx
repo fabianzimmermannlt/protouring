@@ -107,10 +107,13 @@ export default function HotelModal({
   useEscapeKey(requestClose)
 
   const [suggestions, setSuggestions] = useState<HotelSuggestion[]>([])
+  const [suggestEnabled, setSuggestEnabled] = useState(false)
 
   useEffect(() => {
     getHotels().then(setHotels).catch(() => setHotels([]))
-    getHotelSuggestions(terminId).then(r => setSuggestions(r.suggestions || [])).catch(() => setSuggestions([]))
+    getHotelSuggestions(terminId)
+      .then(r => { setSuggestions(r.suggestions || []); setSuggestEnabled(!!r.enabled) })
+      .catch(() => { setSuggestions([]); setSuggestEnabled(false) })
   }, [terminId])
 
   const set = <K extends keyof HotelStayFormData>(field: K, value: HotelStayFormData[K]) =>
@@ -198,13 +201,17 @@ export default function HotelModal({
 
   const selectedHotel = form.hotelId ? hotels.find(h => Number(h.id) === form.hotelId) : null
 
-  // Empfehlungs-Panel: bevorzugt Hotels in der Nähe (mit km), sonst alle empfohlenen Hotels
+  // Empfehlungs-Panel:
+  //  - Funktion AN  → strikt nur Hotels im eingestellten Radius (kommen bereits gefiltert vom Server)
+  //  - Funktion AUS → als Komfort alle empfohlenen Hotels (kein Radius-Konzept)
   const selectedHotelKey = String(form.hotelId ?? '')
   const nearby = suggestions.filter(sg => sg.hotel.id !== selectedHotelKey)
   const panelNearby = nearby.length > 0
   const panelEntries: { hotel: Hotel; distanceKm: number | null }[] = (panelNearby
     ? nearby.map(sg => ({ hotel: sg.hotel, distanceKm: sg.distanceKm }))
-    : hotels.filter(h => h.recommended && h.id !== selectedHotelKey).map(h => ({ hotel: h, distanceKm: null }))
+    : suggestEnabled
+      ? []
+      : hotels.filter(h => h.recommended && h.id !== selectedHotelKey).map(h => ({ hotel: h, distanceKm: null }))
   ).slice(0, 4)
 
   return (
