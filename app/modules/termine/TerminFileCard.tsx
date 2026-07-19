@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Upload, File as FileIcon, Trash2, Edit, AlertCircle, X, ChevronDown, ChevronRight, FolderInput } from 'lucide-react'
-import { getAuthToken, getCurrentTenant, getFileCategories } from '@/lib/api-client'
+import { Upload, File as FileIcon, Trash2, Edit, AlertCircle, X, ChevronDown, ChevronRight, FolderInput, Users } from 'lucide-react'
+import { getAuthToken, getCurrentTenant, getFileCategories, getGewerke, isEditorRole, getEffectiveRole, type Gewerk } from '@/lib/api-client'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 // ============================================================
@@ -54,6 +54,15 @@ interface FileItem {
   size: number
   createdAt: string
   url: string
+  gewerkIds: number[]
+}
+
+// Sichtbarkeits-Label aus gewerk_ids: [] = alle, [-1] = nur intern, sonst Gewerk-Namen
+function visibilityText(gewerkIds: number[], gewerke: Gewerk[]): string {
+  if (!gewerkIds || gewerkIds.length === 0) return 'Alle'
+  if (gewerkIds.includes(-1)) return 'Nur intern'
+  const names = gewerkIds.map(id => gewerke.find(g => g.id === id)?.name).filter(Boolean)
+  return names.length ? names.join(', ') : 'Eingeschränkt'
 }
 
 // ============================================================
@@ -81,11 +90,12 @@ async function apiListAll(terminId: string): Promise<FileItem[]> {
   return (await res.json()).files ?? []
 }
 
-async function apiUpload(terminId: string, category: string, files: File[]): Promise<void> {
+async function apiUpload(terminId: string, category: string, files: File[], gewerkIds: number[]): Promise<void> {
   const form = new FormData()
   files.forEach(f => form.append('files', f))
+  const gewerkParam = gewerkIds.length ? `&gewerkIds=${encodeURIComponent(gewerkIds.join(','))}` : ''
   const res = await fetch(
-    `${API_BASE}/api/files/termin/${terminId}?category=${encodeURIComponent(category)}`,
+    `${API_BASE}/api/files/termin/${terminId}?category=${encodeURIComponent(category)}${gewerkParam}`,
     { method: 'POST', headers: authHeaders(), body: form }
   )
   if (!res.ok) throw new Error('Upload failed')
@@ -96,7 +106,7 @@ async function apiDelete(fileId: string): Promise<void> {
   if (!res.ok) throw new Error('Delete failed')
 }
 
-async function apiPatchFile(fileId: string, patch: { originalName?: string; category?: string }): Promise<FileItem> {
+async function apiPatchFile(fileId: string, patch: { originalName?: string; category?: string; gewerkIds?: number[] }): Promise<FileItem> {
   const res = await fetch(`${API_BASE}/api/files/${fileId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -137,17 +147,23 @@ function CategorySection({
   category,
   files,
   categories,
+  gewerke,
+  canEditGewerke,
   onDelete,
   onRename,
   onMoveCategory,
+  onSetGewerke,
   onOpen,
 }: {
   category: string
   files: FileItem[]
   categories: string[]
+  gewerke: Gewerk[]
+  canEditGewerke: boolean
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => Promise<void>
   onMoveCategory: (id: string, newCategory: string) => Promise<void>
+  onSetGewerke: (id: string, gewerkIds: number[]) => Promise<void>
   onOpen: (file: FileItem) => void
 }) {
   const [open, setOpen] = useState(true)
@@ -155,6 +171,7 @@ function CategorySection({
   const [editingName, setEditingName] = useState('')
   const [movingId, setMovingId] = useState<string | null>(null)
   const [moveTarget, setMoveTarget] = useState<string>('')
+  const [gewerkEditId, setGewerkEditId] = useState<string | null>(null)
 
   return (
     <div className="border-b border-gray-100 last:border-0">
@@ -207,6 +224,13 @@ function CategorySection({
                       <span className="truncate text-xs">{file.originalName}</span>
                     </button>
                     <div className="flex items-center gap-1 ml-2 shrink-0">
+                      <button
+                        onClick={() => { if (canEditGewerke) { setGewerkEditId(gewerkEditId === file.id ? null : file.id); setMovingId(null); setEditingId(null) } }}
+                        className={`flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded ${canEditGewerke ? 'hover:bg-gray-200 cursor-pointer' : 'cursor-default'} ${(file.gewerkIds?.length ?? 0) > 0 ? 'text-amber-600' : 'text-gray-400'}`}
+                        title={canEditGewerke ? 'Sichtbarkeit ändern' : 'Sichtbarkeit'}
+                      >
+                        <Users size={10} /> {visibilityText(file.gewerkIds ?? [], gewerke)}
+                      </button>
                       <span className="text-xs text-gray-400">{formatSize(file.size)}</span>
                       <button
                         onClick={() => { setEditingId(file.id); setEditingName(file.originalName); setMovingId(null) }}
@@ -271,6 +295,38 @@ function CategorySection({
                   </div>
                 </div>
               )}
+
+              {/* Sichtbarkeit / Gewerke (ausgeklappt unter der Zeile) */}
+              {gewerkEditId === file.id && (
+                <div className="px-1.5 pb-2">
+                  <div className="text-[11px] text-gray-500 mb-1">Sichtbar für Gewerke <span className="text-gray-400">(keine Auswahl = für alle sichtbar)</span>:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {gewerke.length === 0 && <span className="text-[11px] text-gray-400">Keine Gewerke konfiguriert (Einstellungen → Gewerke).</span>}
+                    {gewerke.map(g => {
+                      const active = (file.gewerkIds ?? []).includes(g.id)
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={async () => {
+                            const cur = (file.gewerkIds ?? []).filter(id => id !== -1)
+                            const next = active ? cur.filter(id => id !== g.id) : [...cur, g.id]
+                            await onSetGewerke(file.id, next)
+                          }}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${active ? 'text-white' : 'text-gray-600 border-gray-300 hover:border-gray-400'}`}
+                          style={active ? { background: g.color, borderColor: g.color } : {}}
+                        >
+                          {g.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {(file.gewerkIds?.length ?? 0) > 0 && (
+                    <button onClick={async () => { await onSetGewerke(file.id, []) }} className="text-[11px] text-blue-600 hover:underline mt-1.5">
+                      Für alle freigeben
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -297,10 +353,13 @@ export function TerminFileCard({
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [activeCategories, setActiveCategories] = useState<string[]>([...TERMIN_FILE_CATEGORIES].sort((a, b) => a.localeCompare(b, 'de')))
+  const [gewerke, setGewerke] = useState<Gewerk[]>([])
+  const canEditGewerke = isEditorRole(getEffectiveRole())
 
   // Upload-Modal
   const [showModal, setShowModal] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>(TERMIN_FILE_CATEGORIES[0])
+  const [selectedGewerkIds, setSelectedGewerkIds] = useState<number[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -321,6 +380,8 @@ export function TerminFileCard({
       })
       .catch(() => {/* fallback bleibt */})
   }, [])
+
+  useEffect(() => { getGewerke().then(setGewerke).catch(() => {/* keine Gewerke */}) }, [])
 
   useEffect(() => { load() }, [terminId])
 
@@ -353,7 +414,7 @@ export function TerminFileCard({
     setUploadError('')
     setUploading(true)
     try {
-      await apiUpload(terminId, selectedCategory, Array.from(fileList))
+      await apiUpload(terminId, selectedCategory, Array.from(fileList), selectedGewerkIds)
       await load()
       setShowModal(false)
     } catch (e) {
@@ -382,6 +443,15 @@ export function TerminFileCard({
       await apiPatchFile(fileId, { category: newCategory })
       await load()
     } catch { alert('Kategorie ändern fehlgeschlagen') }
+  }
+
+  async function handleSetGewerke(fileId: string, gewerkIds: number[]) {
+    // Optimistisch, dann aus DB nachladen
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, gewerkIds } : f))
+    try {
+      await apiPatchFile(fileId, { gewerkIds })
+      await load()
+    } catch { alert('Sichtbarkeit ändern fehlgeschlagen'); await load() }
   }
 
   async function openFile(file: FileItem) {
@@ -419,7 +489,7 @@ export function TerminFileCard({
         <div className="pt-card-header">
           <span className="pt-card-title">Dateien</span>
           <button
-            onClick={() => { setUploadError(''); setShowModal(true) }}
+            onClick={() => { setUploadError(''); setSelectedGewerkIds([]); setShowModal(true) }}
             className="text-gray-400 hover:text-blue-600 transition-colors"
             title="Datei hochladen"
           >
@@ -449,9 +519,12 @@ export function TerminFileCard({
                 category={cat}
                 files={byCategory[cat]}
                 categories={activeCategories}
+                gewerke={gewerke}
+                canEditGewerke={canEditGewerke}
                 onDelete={handleDelete}
                 onRename={handleRename}
                 onMoveCategory={handleMoveCategory}
+                onSetGewerke={handleSetGewerke}
                 onOpen={openFile}
               />
             ))
@@ -491,6 +564,34 @@ export function TerminFileCard({
                   ))}
                 </select>
               </div>
+
+              {/* Sichtbarkeit (Gewerke) */}
+              {canEditGewerke && gewerke.length > 0 && (
+                <div>
+                  <label className="form-label">Sichtbar für (Gewerke)</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {gewerke.map(g => {
+                      const active = selectedGewerkIds.includes(g.id)
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setSelectedGewerkIds(prev => active ? prev.filter(id => id !== g.id) : [...prev, g.id])}
+                          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${active ? 'text-white' : 'text-gray-400 border-gray-500 hover:border-gray-300'}`}
+                          style={active ? { background: g.color, borderColor: g.color } : {}}
+                        >
+                          {g.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs mt-1.5" style={{ color: dark ? '#6b7280' : '#9ca3af' }}>
+                    {selectedGewerkIds.length === 0
+                      ? 'Keine Auswahl = für alle sichtbar.'
+                      : 'Nur ausgewählte Gewerke (+ Editoren) sehen die Datei. Später änderbar.'}
+                  </p>
+                </div>
+              )}
 
               {/* Drop Zone */}
               <div

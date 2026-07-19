@@ -759,11 +759,6 @@ export default function BriefingView({ terminId, isAdmin }: BriefingViewProps) {
           ))}
         </>
       )}
-
-      {/* Alle Dokumente — darunter, 50% Breite */}
-      <div className="max-w-xl">
-        <AllDocsPanel terminId={terminId} gewerke={items.map(i => ({ id: i.gewerk.id, name: i.gewerk.name, color: i.gewerk.color }))} isAdmin={isAdmin} />
-      </div>
     </div>
   )
 }

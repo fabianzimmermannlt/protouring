@@ -3843,6 +3843,23 @@ function canWriteFile(file, userId) {
   return String(file.uploaded_by) === String(userId);
 }
 
+// Gewerk-basierte Sichtbarkeit (echter Zugriffsschutz) für Termin-/Venue-Dateien.
+//  gewerk_ids leer/null → für alle sichtbar; [-1] (KEINER) → nur Editoren; [ids] → nur diese Gewerke (+ Editoren)
+async function fileVisibleToUser(file, tenantId, userId, role, isSuperadminFlag) {
+  // Persönliche Dateien (nicht termin/venue/shared): nur Uploader
+  if (file.entity_id !== 'shared' && file.entity_type !== 'termin' && file.entity_type !== 'venue') {
+    return String(file.uploaded_by) === String(userId);
+  }
+  // Editoren/Superadmin sehen alles
+  if (isSuperadminFlag || isEditor(role)) return true;
+  let ids = [];
+  try { ids = file.gewerk_ids ? JSON.parse(file.gewerk_ids) : []; } catch { ids = []; }
+  if (!Array.isArray(ids) || ids.length === 0) return true; // keine Einschränkung → alle
+  const my = await getUserGewerke(tenantId, userId);
+  const myIds = my.map(g => g.id);
+  return ids.some(id => myIds.includes(id));
+}
+
 // VIEW: GET /api/files/view/:fileId?token=JWT&slug=TENANT  ← direkte Browser-Navigation (PDF im Tab)
 // Token per Query-Param, damit kein fetch+Blob nötig ist und Content-Disposition: inline greift
 app.get('/api/files/view/:fileId/:filename?', async (req, res) => {
@@ -3869,6 +3886,7 @@ app.get('/api/files/view/:fileId/:filename?', async (req, res) => {
     const file = await db.get('SELECT * FROM files WHERE id = ? AND tenant_id = ?', [req.params.fileId, tenant.id])
     if (!file) return res.status(404).json({ error: 'Datei nicht gefunden' })
     if (!canReadFile(file, decoded.id)) return res.status(403).json({ error: 'Kein Lesezugriff' })
+    if (!(await fileVisibleToUser(file, tenant.id, decoded.id, tenant.role, decoded.isSuperadmin))) return res.status(403).json({ error: 'Kein Lesezugriff' })
     const filePath = path.join(__dirname, 'uploads', String(tenant.id), file.entity_type, file.entity_id, file.stored_name)
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Datei fehlt auf Disk' })
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.original_name)}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`)
@@ -3887,6 +3905,7 @@ app.get('/api/files/download/:fileId', authenticateToken, requireTenant, async (
     const file = await db.get('SELECT * FROM files WHERE id=? AND tenant_id=?', [req.params.fileId, req.tenant.id]);
     if (!file) return res.status(404).json({ error: 'File not found' });
     if (!canReadFile(file, req.user.id)) return res.status(403).json({ error: 'Access denied' });
+    if (!(await fileVisibleToUser(file, req.tenant.id, req.user.id, req.tenant.role, req.user.isSuperadmin))) return res.status(403).json({ error: 'Access denied' });
     const filePath = path.join(__dirname, 'uploads', String(req.tenant.id), file.entity_type, file.entity_id, file.stored_name);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File missing on disk' });
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.original_name)}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
@@ -4057,6 +4076,17 @@ app.get('/api/files/:entityType/:entityId', authenticateToken, requireTenant, as
         );
       }
     }
+    // Gewerk-Sichtbarkeit: Nicht-Editoren sehen nur Dateien ohne Einschränkung oder passend zu ihren Gewerken
+    if (isShared && !req.user.isSuperadmin && !isEditor(req.tenant.role)) {
+      const my = await getUserGewerke(req.tenant.id, req.user.id);
+      const myIds = my.map(g => g.id);
+      files = files.filter(f => {
+        let ids = [];
+        try { ids = f.gewerk_ids ? JSON.parse(f.gewerk_ids) : []; } catch { ids = []; }
+        if (!Array.isArray(ids) || ids.length === 0) return true;
+        return ids.some(id => myIds.includes(id));
+      });
+    }
     res.json({ files: files.map(fileFromRow) });
   } catch (err) {
     console.error('GET /api/files error:', err);
@@ -4071,12 +4101,20 @@ app.post('/api/files/:entityType/:entityId', authenticateToken, requireTenant, r
     const category = req.query.category || 'general';
     if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
 
+    // Optionale Gewerk-Sichtbarkeit (kommagetrennt); leer = für alle sichtbar
+    let gewerkIdsJson = null;
+    const gewerkIdsRaw = req.query.gewerkIds;
+    if (gewerkIdsRaw != null && String(gewerkIdsRaw).trim() !== '') {
+      const arr = String(gewerkIdsRaw).split(',').map(s => parseInt(s, 10)).filter(n => !Number.isNaN(n));
+      if (arr.length > 0) gewerkIdsJson = JSON.stringify(arr);
+    }
+
     const inserted = [];
     for (const file of req.files) {
       const result = await db.run(
-        `INSERT INTO files (tenant_id, entity_type, entity_id, category, original_name, stored_name, mime_type, size, uploaded_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.tenant.id, entityType, entityId, category, file.originalname, file.filename, file.mimetype || 'application/octet-stream', file.size, req.user.id]
+        `INSERT INTO files (tenant_id, entity_type, entity_id, category, original_name, stored_name, mime_type, size, uploaded_by, gewerk_ids)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.tenant.id, entityType, entityId, category, file.originalname, file.filename, file.mimetype || 'application/octet-stream', file.size, req.user.id, gewerkIdsJson]
       );
       const row = await db.get('SELECT * FROM files WHERE id = ?', [result.lastID]);
       inserted.push(fileFromRow(row));
