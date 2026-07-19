@@ -7,7 +7,7 @@ import {
   refreshRolePermissions, type TenantRole, type PermGroup,
 } from '@/lib/api-client'
 
-const GROUPS: PermGroup[] = ['Bereiche', 'Funktionen', 'Bearbeiten']
+const GROUPS: PermGroup[] = ['Bereiche', 'Event-Unterbereiche', 'Funktionen', 'Bearbeiten']
 
 export default function RolePermissionsSettings() {
   const configurable = PERMISSION_CATALOG.filter(p => p.configurable)

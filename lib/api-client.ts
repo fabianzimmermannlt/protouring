@@ -2885,7 +2885,7 @@ export function getEffectiveRole(): string {
 // ROLLEN-RECHTE-MATRIX (konfigurierbar pro Tenant)
 // ============================================
 
-export type PermGroup = 'Bereiche' | 'Funktionen' | 'Bearbeiten'
+export type PermGroup = 'Bereiche' | 'Event-Unterbereiche' | 'Funktionen' | 'Bearbeiten'
 export interface PermDef { key: string; label: string; group: PermGroup; default: TenantRole[]; configurable?: boolean }
 
 /** Spaltenreihenfolge der Matrix */
@@ -2908,10 +2908,24 @@ export const PERMISSION_CATALOG: PermDef[] = [
   { key: 'settings',  label: 'Einstellungen',  group: 'Bereiche', default: [..._ALL_ROLES] },
   { key: 'feedback',  label: 'Feedback',       group: 'Bereiche', default: [..._ALL_ROLES] },
   { key: 'modules',   label: 'Module',         group: 'Bereiche', default: ['admin'] },
+  // ── Event-Unterbereiche (Tabs innerhalb eines Events) ──
+  { key: 'event.details2',      label: 'Details',       group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.venue',         label: 'Venue',         group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.partner',       label: 'Partner',       group: 'Event-Unterbereiche', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
+  { key: 'event.schedule',      label: 'Schedule',      group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.travelparty',   label: 'Reisegruppe',   group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.travel',        label: 'Travel',        group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.hospitality',   label: 'Hospitality',   group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.guestlist',     label: 'Gästeliste',    group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.setlist',       label: 'Setlist',       group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.files',         label: 'Dateien',       group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.advancing',     label: 'Advancing',     group: 'Event-Unterbereiche', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
+  { key: 'event.briefing',      label: 'Briefing',      group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
+  { key: 'event.advance-sheet', label: 'Advance Sheet', group: 'Event-Unterbereiche', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
   // ── Funktionen ──
   { key: 'CAN_SEE_KALENDER',       label: 'Kalender-Ansicht',        group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus'], configurable: true },
   { key: 'CAN_SEE_GEBUCHT',        label: 'Gebucht-Spalte',          group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'], configurable: true },
-  { key: 'CAN_SEE_FILES_TERMIN',   label: 'Dateien am Termin',       group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'], configurable: true },
+  { key: 'CAN_SEE_FILES_TERMIN',   label: 'Dateien am Termin',       group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'] },
   { key: 'CAN_SEE_FINANCIALS',     label: 'Finanzen / Honorare',     group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency'] },
   { key: 'CAN_SEE_KONTAKT_PROFIL', label: 'Kontakt-Profile öffnen',  group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency'] },
   { key: 'CAN_SEE_TODOS_ALL',      label: 'Alle ToDos sehen',        group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency'] },

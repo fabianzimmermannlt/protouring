@@ -1081,10 +1081,10 @@ function TerminDetailHeader({
       : [termin.city, termin.title].filter(Boolean).join(' · ') || termin.title || ''
 
   // Alle verfügbaren Views
-  const tabs = [
+  const tabs = ([
     { id: 'details2',       label: 'Details' },
     { id: 'venue',          label: 'Venue' },
-    ...(isEditor ? [{ id: 'partner',   label: 'Partner' }]  : []),
+    { id: 'partner',        label: 'Partner' },
     { id: 'schedule',       label: 'Schedule' },
     { id: 'travelparty',    label: 'Reisegruppe' },
     { id: 'travel',         label: 'Travel' },
@@ -1092,10 +1092,10 @@ function TerminDetailHeader({
     { id: 'guestlist',      label: 'Gästeliste' },
     { id: 'setlist',        label: 'Setlist' },
     { id: 'files',          label: 'Dateien' },
-    ...(isEditor ? [{ id: 'advancing', label: 'Advancing' }] : []),
+    { id: 'advancing',      label: 'Advancing' },
     { id: 'briefing',       label: 'Briefing' },
-    ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet' }] : []),
-  ]
+    { id: 'advance-sheet',  label: 'Advance Sheet' },
+  ]).filter(t => can('event.' + t.id))
 
   const changeView = (view: string) => {
     window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view } }))
@@ -1663,7 +1663,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
   const isEditor = isEditorRole(effectiveRole)                       // admin + agency + tourmanagement (CAN_EDIT)
   const canCreate    = can('CAN_CREATE_TERMIN', effectiveRole)
   const canSeeGebucht = can('CAN_SEE_GEBUCHT', effectiveRole)
-  const canSeeFiles   = can('CAN_SEE_FILES_TERMIN', effectiveRole)
+  const canSeeFiles   = can('event.files', effectiveRole)
 
   const { isVisible: isColVisible, toggle: toggleCol, columns: termineColumns } = useColumnVisibility('termine-list', TERMINE_COLUMNS)
 
