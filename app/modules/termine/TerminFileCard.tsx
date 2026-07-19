@@ -174,11 +174,11 @@ function CategorySection({
   const [gewerkEditId, setGewerkEditId] = useState<string | null>(null)
 
   return (
-    <div className="border-b border-gray-100 last:border-0">
+    <div className="border-b border-[#3c3c3c] last:border-b-0">
       {/* Kategorie-Header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-2 hover:bg-[#383838] transition-colors"
+        className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-[#383838] transition-colors"
       >
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           {category}
@@ -192,11 +192,11 @@ function CategorySection({
 
       {/* Dateiliste */}
       {open && (
-        <div className="pb-2">
+        <div>
           {files.map(file => (
-            <div key={file.id} className="px-4 hover:bg-[#383838] transition-colors">
+            <div key={file.id} className="px-6 border-b border-[#383838] hover:bg-[#383838] transition-colors">
               {/* Hauptzeile */}
-              <div className="flex items-center justify-between py-1.5 text-sm">
+              <div className="flex items-center justify-between py-2 text-sm">
                 {editingId === file.id ? (
                   <div className="flex items-center gap-1 flex-1">
                     <input
