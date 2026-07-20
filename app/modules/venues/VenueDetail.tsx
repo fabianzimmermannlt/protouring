@@ -467,7 +467,7 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
               <div className="space-y-2">
                 <IField label={t('address.arrivalNote')} value={form.arrival ?? ''} onChange={v => f('arrival', v)} readOnly={ro} />
                 <IField label={t('address.arrivalStreet')} value={form.arrivalStreet ?? ''} onChange={v => f('arrivalStreet', v)} readOnly={ro} />
-                <div className="grid grid-cols-[80px_1fr] gap-2">
+                <div className="grid grid-cols-[110px_1fr] gap-2">
                   <IField label={t('address.arrivalPostalCode')} value={form.arrivalPostalCode ?? ''} onChange={v => f('arrivalPostalCode', v)} readOnly={ro} />
                   <IField label={t('address.arrivalCity')} value={form.arrivalCity ?? ''} onChange={v => f('arrivalCity', v)} readOnly={ro} />
                 </div>
