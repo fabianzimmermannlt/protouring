@@ -110,7 +110,9 @@ export default function AnreiseCard({
     legType === 'abreise' ? 'Abreise' : 'Weiterreise'
 
   const allAssigned = new Set(legs.flatMap(l => l.persons.map(p => p.travelPartyMemberId)))
-  const unplannedCount = travelParty.filter(m => !allAssigned.has(m.id)).length
+  const unplannedMembers = travelParty.filter(m => !allAssigned.has(m.id))
+  const unplannedCount = unplannedMembers.length
+  const unplannedNames = unplannedMembers.map(m => `${m.firstName} ${m.lastName}`.trim()).filter(Boolean).join('\n')
 
   return (
     <div className="pt-card">
@@ -136,7 +138,7 @@ export default function AnreiseCard({
           )}
         </div>
         {!loading && unplannedCount > 0 && (
-          <span className="pt-leg-unplanned-hint">{unplannedCount} nicht eingeplant</span>
+          <span className="pt-leg-unplanned-hint" style={{ cursor: 'help' }} title={unplannedNames ? `Nicht eingeplant:\n${unplannedNames}` : undefined}>{unplannedCount} nicht eingeplant</span>
         )}
       </div>
 

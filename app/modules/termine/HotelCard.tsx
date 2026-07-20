@@ -155,7 +155,9 @@ export default function HotelCard({
     stays.flatMap(s => s.rooms.flatMap(r => r.persons.map(p => p.travelPartyMemberId)))
   )
   // "Fährt heim (kein Hotel)"-Personen brauchen kein Hotelbett → nicht als offen zählen
-  const unplannedCount = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id) && !m.noHotel).length
+  const unplannedMembers = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id) && !m.noHotel)
+  const unplannedCount = unplannedMembers.length
+  const unplannedNames = unplannedMembers.map(m => `${m.firstName} ${m.lastName}`.trim()).filter(Boolean).join('\n')
 
   return (
     <div className="pt-card">
@@ -196,7 +198,7 @@ export default function HotelCard({
           </div>
         </div>
         {!loading && unplannedCount > 0 && (
-          <span className="pt-leg-unplanned-hint" style={{ marginTop: 0, marginBottom: '-0.4rem' }}>{unplannedCount} nicht eingeplant</span>
+          <span className="pt-leg-unplanned-hint" style={{ marginTop: 0, marginBottom: '-0.4rem', cursor: 'help' }} title={unplannedNames ? `Nicht eingeplant:\n${unplannedNames}` : undefined}>{unplannedCount} nicht eingeplant</span>
         )}
       </div>
 
