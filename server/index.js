@@ -3125,8 +3125,13 @@ async function geocodeAddress(query) {
     clearTimeout(to)
     if (!r.ok) return null
     const data = await r.json()
-    const c = data?.features?.[0]?.geometry?.coordinates
-    if (Array.isArray(c) && c.length >= 2) return { lat: String(c[1]), lon: String(c[0]) }
+    const feat = data?.features?.[0]
+    const c = feat?.geometry?.coordinates
+    if (Array.isArray(c) && c.length >= 2) {
+      const p = feat.properties || {}
+      // Bundesland + Land aus der Geocoding-Antwort (lang=de → Land als "Deutschland" etc.)
+      return { lat: String(c[1]), lon: String(c[0]), state: p.state || '', country: p.country || '' }
+    }
   } catch (e) {
     console.error('geocodeAddress Fehler:', e.message)
   }
@@ -3139,11 +3144,17 @@ app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (
   if (!v.name || !v.name.trim()) return res.status(400).json({ error: 'Venue name is required' });
 
   try {
-    // Koordinaten automatisch ermitteln, falls Adresse vorhanden aber keine Koordinaten mitgegeben
+    // Koordinaten automatisch ermitteln, falls Adresse vorhanden aber keine Koordinaten mitgegeben.
+    // Dabei Bundesland + Land aus der Geocoding-Antwort ergänzen, falls vom Nutzer nicht gesetzt.
     let lat = v.latitude, lon = v.longitude
+    let state = v.state, country = v.country
     if ((!lat || !lon)) {
       const g = await geocodeAddress(venueAddrString(v))
-      if (g) { lat = g.lat; lon = g.lon }
+      if (g) {
+        lat = g.lat; lon = g.lon
+        if (!state && g.state) state = g.state
+        if (!country && g.country) country = g.country
+      }
     }
     const result = await db.run(`
       INSERT INTO venues (
@@ -3154,7 +3165,7 @@ app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (
         parking, nightliner_parking, loading_path, notes, latitude, longitude, created_by
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      req.tenant.id, v.name, v.street, v.postalCode, v.city, v.state, v.country, v.website,
+      req.tenant.id, v.name, v.street, v.postalCode, v.city, state, country, v.website,
       v.arrival, v.arrivalStreet, v.arrivalPostalCode, v.arrivalCity,
       v.capacity, v.capacitySeated, v.stageDimensions, v.clearanceHeight,
       v.merchandiseFee, v.merchandiseStand, v.wardrobe, v.showers, v.wifi,
@@ -3185,12 +3196,17 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
     // Koordinaten bestimmen: gepickte (geänderte) Koordinaten haben Vorrang,
     // sonst bei fehlenden/veralteten Koordinaten + vorhandener Adresse neu geocoden.
     let lat = v.latitude, lon = v.longitude
+    let state = v.state, country = v.country
     const newAddr = venueAddrString(v)
     const oldAddr = [existing.street, existing.postal_code, existing.city, existing.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
     const coordsPicked = lat && lon && (lat !== (existing.latitude || '') || lon !== (existing.longitude || ''))
     if (!coordsPicked && newAddr && (!lat || !lon || newAddr !== oldAddr)) {
       const g = await geocodeAddress(newAddr)
-      if (g) { lat = g.lat; lon = g.lon }
+      if (g) {
+        lat = g.lat; lon = g.lon
+        if (!state && g.state) state = g.state
+        if (!country && g.country) country = g.country
+      }
     }
 
     await db.run(`
@@ -3204,7 +3220,7 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
         updated_at = datetime('now')
       WHERE id = ? AND tenant_id = ?
     `, [
-      v.name, v.street, v.postalCode, v.city, v.state, v.country, v.website,
+      v.name, v.street, v.postalCode, v.city, state, country, v.website,
       v.arrival, v.arrivalStreet, v.arrivalPostalCode, v.arrivalCity,
       v.capacity, v.capacitySeated, v.stageDimensions, v.clearanceHeight,
       v.merchandiseFee, v.merchandiseStand, v.wardrobe, v.showers, v.wifi,
@@ -3597,17 +3613,23 @@ app.get('/api/hotels/:id', authenticateToken, requireTenant, async (req, res) =>
 app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
     const h = req.body;
-    // Koordinaten aus Adresse ermitteln (für Hotel-Vorschläge nach Entfernung)
+    // Koordinaten aus Adresse ermitteln (für Hotel-Vorschläge nach Entfernung);
+    // Bundesland + Land ergänzen, falls vom Nutzer nicht gesetzt.
     let lat = null, lon = null
+    let state = h.state || '', country = h.country || ''
     const g = await geocodeAddress(hotelAddrString(h))
-    if (g) { lat = g.lat; lon = g.lon }
+    if (g) {
+      lat = g.lat; lon = g.lon
+      if (!state && g.state) state = g.state
+      if (!country && g.country) country = g.country
+    }
     const result = await db.run(`
       INSERT INTO hotels (tenant_id, name, street, postal_code, city, state, country, email,
         phone, website, reception, check_in, check_out, early_check_in, late_check_out,
         breakfast, breakfast_weekend, parking, additional_info, recommended, latitude, longitude)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `, [req.tenant.id, h.name||'', h.street||'', h.postalCode||'', h.city||'', h.state||'',
-        h.country||'', h.email||'', h.phone||'', h.website||'', h.reception||'',
+    `, [req.tenant.id, h.name||'', h.street||'', h.postalCode||'', h.city||'', state,
+        country, h.email||'', h.phone||'', h.website||'', h.reception||'',
         h.checkIn||'', h.checkOut||'', h.earlyCheckIn||'', h.lateCheckOut||'',
         h.breakfast||'', h.breakfastWeekend||'', h.parking||'', h.additionalInfo||'',
         h.recommended ? 1 : 0, lat, lon]);
@@ -3621,13 +3643,19 @@ app.put('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, asyn
     const { id } = req.params; const h = req.body;
     const existing = await db.get('SELECT id, street, postal_code, city, country, latitude, longitude, recommended FROM hotels WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Hotel not found' });
-    // Koordinaten bei Adressänderung / fehlenden Koordinaten neu geocoden
+    // Koordinaten bei Adressänderung / fehlenden Koordinaten neu geocoden;
+    // Bundesland + Land ergänzen, falls vom Nutzer nicht gesetzt.
     let lat = existing.latitude, lon = existing.longitude
+    let state = h.state || '', country = h.country || ''
     const newAddr = hotelAddrString(h)
     const oldAddr = [existing.street, existing.postal_code, existing.city, existing.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
     if (newAddr && (!lat || !lon || newAddr !== oldAddr)) {
       const g = await geocodeAddress(newAddr)
-      if (g) { lat = g.lat; lon = g.lon }
+      if (g) {
+        lat = g.lat; lon = g.lon
+        if (!state && g.state) state = g.state
+        if (!country && g.country) country = g.country
+      }
     }
     // recommended nur überschreiben, wenn mitgeschickt (schützt Teil-Updates)
     const rec = h.recommended !== undefined ? (h.recommended ? 1 : 0) : (existing.recommended ? 1 : 0)
@@ -3637,7 +3665,7 @@ app.put('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, asyn
         late_check_out=?, breakfast=?, breakfast_weekend=?, parking=?, additional_info=?,
         recommended=?, latitude=?, longitude=?, updated_at=datetime('now')
       WHERE id=? AND tenant_id=?
-    `, [h.name||'', h.street||'', h.postalCode||'', h.city||'', h.state||'', h.country||'',
+    `, [h.name||'', h.street||'', h.postalCode||'', h.city||'', state, country,
         h.email||'', h.phone||'', h.website||'', h.reception||'', h.checkIn||'', h.checkOut||'',
         h.earlyCheckIn||'', h.lateCheckOut||'', h.breakfast||'', h.breakfastWeekend||'',
         h.parking||'', h.additionalInfo||'', rec, lat, lon, id, req.tenant.id]);
