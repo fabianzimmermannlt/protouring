@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { X, Plus, Check, Loader2 } from 'lucide-react'
+import { useState, useEffect, useMemo, type CSSProperties } from 'react'
+import { X, Plus, Check, Loader2, UserPlus, Mail } from 'lucide-react'
 import {
   getTravelPartyPicker,
   addTravelPartyMember,
+  createGuestTravelPartyMember,
+  createInvite,
+  ROLE_LABELS,
+  isAdminRole,
+  getEffectiveRole,
   type TravelPartyPickerContact,
   type TravelPartyMember,
+  type TenantRole,
 } from '@/lib/api-client'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
@@ -36,6 +42,15 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState<number | null>(null)
+
+  // Neu anlegen / Einladen
+  const [mode, setMode] = useState<'none' | 'guest' | 'invite'>('none')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [gFirst, setGFirst] = useState(''); const [gLast, setGLast] = useState(''); const [gFunc, setGFunc] = useState('')
+  const [iFirst, setIFirst] = useState(''); const [iLast, setILast] = useState(''); const [iEmail, setIEmail] = useState('')
+  const [iRole, setIRole] = useState<TenantRole>('crew')
+  const canInvite = isAdminRole(getEffectiveRole())
 
   // ESC to close
   useEffect(() => {
@@ -78,6 +93,29 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
     }
   }
 
+  const submitGuest = async () => {
+    if (!gFirst.trim() && !gLast.trim()) { setCreateError('Bitte einen Namen eingeben.'); return }
+    setCreating(true); setCreateError('')
+    try {
+      const member = await createGuestTravelPartyMember(terminId, { firstName: gFirst.trim(), lastName: gLast.trim(), function1: gFunc.trim() })
+      onAdded(member)
+      setGFirst(''); setGLast(''); setGFunc(''); setMode('none')
+    } catch { setCreateError('Anlegen fehlgeschlagen.') } finally { setCreating(false) }
+  }
+
+  const submitInvite = async () => {
+    if (!iEmail.trim()) { setCreateError('Bitte eine E-Mail-Adresse eingeben.'); return }
+    setCreating(true); setCreateError('')
+    try {
+      const inv = await createInvite(iEmail.trim(), iRole, undefined, iFirst.trim(), iLast.trim())
+      if (inv.contact_id) {
+        const member = await addTravelPartyMember(terminId, { contactId: inv.contact_id, role1: '', role2: '', role3: '' })
+        onAdded(member)
+      }
+      setIFirst(''); setILast(''); setIEmail(''); setMode('none')
+    } catch { setCreateError('Einladung fehlgeschlagen (fehlen dir die Rechte?).') } finally { setCreating(false) }
+  }
+
   // Colors
   const bg         = dark ? '#2d2d2d' : '#ffffff'
   const border      = dark ? '#4a4a4a' : '#e5e7eb'
@@ -91,6 +129,10 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
   const dividerColor = dark ? '#3c3c3c' : '#f3f4f6'
   const namColor    = dark ? '#e0e0e0' : '#111827'
   const metaColor   = dark ? '#9ca3af' : '#6b7280'
+
+  const inpStyle: CSSProperties = { flex: 1, minWidth: 0, padding: '7px 10px', fontSize: 13, background: inputBg, border: `1px solid ${inputBorder}`, borderRadius: 0, color: inputColor, outline: 'none', boxSizing: 'border-box' }
+  const tabStyle = (active: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 0, background: active ? '#3b82f6' : 'transparent', color: active ? '#fff' : titleColor, border: `1px solid ${active ? '#3b82f6' : inputBorder}` })
+  const submitStyle = (busy: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', fontSize: 12, fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 0, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 })
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
@@ -177,6 +219,55 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
               )
             })
           )}
+        </div>
+
+        {/* Neu anlegen / Einladen */}
+        <div style={{ borderTop: `1px solid ${border}`, padding: '10px 20px', flexShrink: 0, background: dark ? '#262626' : '#fafafa' }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setMode(mode === 'guest' ? 'none' : 'guest'); setCreateError('') }} style={tabStyle(mode === 'guest')}>
+              <UserPlus size={13} /> Neue Person (Gast)
+            </button>
+            {canInvite && (
+              <button onClick={() => { setMode(mode === 'invite' ? 'none' : 'invite'); setCreateError('') }} style={tabStyle(mode === 'invite')}>
+                <Mail size={13} /> Einladen (Login)
+              </button>
+            )}
+          </div>
+
+          {mode === 'guest' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input placeholder="Vorname" value={gFirst} onChange={e => setGFirst(e.target.value)} style={inpStyle} />
+                <input placeholder="Nachname" value={gLast} onChange={e => setGLast(e.target.value)} style={inpStyle} />
+              </div>
+              <input placeholder="Funktion (optional)" value={gFunc} onChange={e => setGFunc(e.target.value)} style={inpStyle} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={submitGuest} disabled={creating} style={submitStyle(creating)}>
+                  {creating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Anlegen &amp; hinzufügen
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mode === 'invite' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input placeholder="Vorname" value={iFirst} onChange={e => setIFirst(e.target.value)} style={inpStyle} />
+                <input placeholder="Nachname" value={iLast} onChange={e => setILast(e.target.value)} style={inpStyle} />
+              </div>
+              <input placeholder="E-Mail" type="email" value={iEmail} onChange={e => setIEmail(e.target.value)} style={inpStyle} />
+              <select value={iRole} onChange={e => setIRole(e.target.value as TenantRole)} style={inpStyle}>
+                {(Object.keys(ROLE_LABELS) as TenantRole[]).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={submitInvite} disabled={creating} style={submitStyle(creating)}>
+                  {creating ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />} Einladen &amp; hinzufügen
+                </button>
+              </div>
+            </div>
+          )}
+
+          {createError && <div style={{ color: '#f87171', fontSize: 12, marginTop: 8 }}>{createError}</div>}
         </div>
 
         {/* Footer */}

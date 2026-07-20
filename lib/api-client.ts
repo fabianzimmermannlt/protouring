@@ -3054,7 +3054,7 @@ export async function createInvite(
   contactId?: number,
   firstName?: string,
   lastName?: string,
-): Promise<{ invite_url: string; token: string; email_sent?: boolean; email_error?: string | null }> {
+): Promise<{ invite_url: string; token: string; email_sent?: boolean; email_error?: string | null; contact_id?: number }> {
   return request('/api/settings/invite', {
     method: 'POST',
     body: {
