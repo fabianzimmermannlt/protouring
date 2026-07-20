@@ -154,7 +154,8 @@ export default function HotelCard({
   const allAssigned = new Set(
     stays.flatMap(s => s.rooms.flatMap(r => r.persons.map(p => p.travelPartyMemberId)))
   )
-  const unplannedCount = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id)).length
+  // "Fährt heim (kein Hotel)"-Personen brauchen kein Hotelbett → nicht als offen zählen
+  const unplannedCount = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id) && !m.noHotel).length
 
   return (
     <div className="pt-card">

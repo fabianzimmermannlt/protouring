@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Trash2, Loader2, Paperclip, Mail, Phone } from 'lucide-react'
+import { Plus, Trash2, Loader2, Paperclip, Mail, Phone, Home } from 'lucide-react'
 import {
   getTravelPartyWithExcluded,
   updateTravelPartyMember,
   deleteTravelPartyMember,
   excludeArtistMemberFromTermin,
   restoreArtistMemberToTermin,
+  setTravelPartyNoHotel,
   type TravelPartyMember,
 } from '@/lib/api-client'
 import ReisegruppePicker from './ReisegruppePicker'
@@ -25,6 +26,7 @@ const REISEGRUPPE_COLUMNS = [
   { id: 'phone',      label: 'Telefon',         defaultVisible: true },
   { id: 'postalCode', label: 'PLZ',             defaultVisible: false },
   { id: 'residence',  label: 'Ort',             defaultVisible: true },
+  { id: 'noHotel',    label: 'Fährt heim',      defaultVisible: true },
   { id: 'files',      label: 'Dateien',         defaultVisible: false },
 ]
 
@@ -253,6 +255,14 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
   const handleAdded = (m: TravelPartyMember) => setMembers(prev => [...prev, m])
   const handleUpdated = (m: TravelPartyMember) => setMembers(prev => prev.map(x => x.id === m.id ? m : x))
 
+  // "Fährt heim (kein Hotel)" umschalten — optimistisch, revert bei Fehler
+  const toggleNoHotel = async (m: TravelPartyMember) => {
+    const next = !m.noHotel
+    setMembers(prev => prev.map(x => x.id === m.id ? { ...x, noHotel: next } : x))
+    try { await setTravelPartyNoHotel(terminId, m.id, next) }
+    catch { setMembers(prev => prev.map(x => x.id === m.id ? { ...x, noHotel: !next } : x)) }
+  }
+
   const handleRemove = async (m: TravelPartyMember) => {
     if (!confirm(`${m.firstName} ${m.lastName} aus der Reisegruppe entfernen?`)) return
     await deleteTravelPartyMember(m.terminId, m.id)
@@ -349,6 +359,9 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                     {m.contactType === 'guest' && (
                       <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: '#9ca3af', borderColor: '#3c3c3c' } : undefined}>Gast</span>
                     )}
+                    {m.noHotel && (
+                      <span className="pt-guest-badge" style={{ background: '#3a2f10', color: '#f5c518', borderColor: '#5a4a1a' }}>🏠 Fährt heim</span>
+                    )}
                   </div>
                   {functions ? (
                     <div style={{ fontSize: '0.75rem', color: dark ? '#9ca3af' : '#6b7280', marginTop: '0.125rem' }}>{functions}</div>
@@ -372,12 +385,21 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 </div>
                 {/* Actions */}
                 {isAdmin && (
-                  <button
-                    onClick={e => { e.stopPropagation(); handleRemove(m) }}
-                    className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  <div className="flex-shrink-0 flex items-center gap-0.5">
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleNoHotel(m) }}
+                      className={`p-1.5 transition-colors ${m.noHotel ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}`}
+                      title="Fährt heim – kein Hotel nötig"
+                    >
+                      <Home size={15} />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleRemove(m) }}
+                      className="p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 )}
               </div>
             )
@@ -448,6 +470,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 {isVisible('phone')      && <th className="sortable" onClick={() => toggleSort('phone')}>Telefon <SortIndicator active={sortKey === 'phone'} dir={sortDir} /></th>}
                 {isVisible('postalCode') && <th className="sortable" onClick={() => toggleSort('postalCode')}>PLZ <SortIndicator active={sortKey === 'postalCode'} dir={sortDir} /></th>}
                 {isVisible('residence')  && <th className="sortable" onClick={() => toggleSort('residence')}>Ort <SortIndicator active={sortKey === 'residence'} dir={sortDir} /></th>}
+                {isVisible('noHotel')    && <th style={{ width: '6rem', textAlign: 'center' }} title="Fährt nach der Show heim – braucht kein Hotel">Fährt heim</th>}
                 {isVisible('files')      && <th style={{ width: '4rem' }}>Dateien</th>}
                 <th style={{ width: '3rem', textAlign: 'right' }}>
                   <ColumnToggle columns={columns} isVisible={isVisible} toggle={toggle} />
@@ -475,6 +498,11 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                     {isVisible('phone')      && <td>{(m.phone || m.mobile) ? <a href={`tel:${m.phone || m.mobile}`}>{m.phone || m.mobile}</a> : EMPTY}</td>}
                     {isVisible('postalCode') && <td>{m.postalCode || EMPTY}</td>}
                     {isVisible('residence')  && <td>{m.residence || EMPTY}</td>}
+                    {isVisible('noHotel')    && <td style={{ textAlign: 'center' }}>
+                      {isAdmin
+                        ? <input type="checkbox" checked={!!m.noHotel} onChange={() => toggleNoHotel(m)} title="Fährt heim – kein Hotel nötig" style={{ accentColor: '#f5c518', cursor: 'pointer', width: 15, height: 15 }} />
+                        : (m.noHotel ? <Home size={14} className="text-amber-500 inline" /> : EMPTY)}
+                    </td>}
                     {isVisible('files')      && <td><button className="pt-travel-action-btn" title="Dateien (kommt in Phase 1b)" disabled><Paperclip size={13} /></button></td>}
                     <td>
                       <div className="pt-travel-actions">

@@ -1648,6 +1648,8 @@ export interface TravelPartyMember {
   isArtistMember?: boolean;
   artistMemberId?: number;
   excluded?: boolean;
+  // "Fährt heim (kein Hotel)" — aus dem Hotel-"nicht eingeplant"-Zähler ausgenommen
+  noHotel?: boolean;
 }
 
 export interface TravelPartyPickerContact {
@@ -1695,6 +1697,7 @@ function memberFromRow(r: Record<string, unknown>): TravelPartyMember {
     isArtistMember: Boolean(r.is_artist_member),
     artistMemberId: (r.artist_member_id as number) ?? undefined,
     excluded: Boolean(r.excluded),
+    noHotel: Boolean(r.no_hotel),
   };
 }
 
@@ -1826,6 +1829,11 @@ export async function updateTravelPartyMember(
 
 export async function deleteTravelPartyMember(terminId: number, id: number): Promise<void> {
   await request(`/api/termine/${terminId}/travel-party/${id}`, { method: 'DELETE' });
+}
+
+/** "Fährt heim (kein Hotel)" pro Person setzen */
+export async function setTravelPartyNoHotel(terminId: number, id: number, noHotel: boolean): Promise<void> {
+  await request(`/api/termine/${terminId}/travel-party/${id}/no-hotel`, { method: 'PUT', body: { noHotel } });
 }
 
 export async function excludeArtistMemberFromTermin(terminId: number, tamId: number): Promise<void> {

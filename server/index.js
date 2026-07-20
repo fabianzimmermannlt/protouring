@@ -737,6 +737,8 @@ async function initDatabase() {
     `ALTER TABLE hotels ADD COLUMN recommended INTEGER DEFAULT 0`,
     `ALTER TABLE hotels ADD COLUMN latitude TEXT`,
     `ALTER TABLE hotels ADD COLUMN longitude TEXT`,
+    // Reisegruppe: "Fährt heim (kein Hotel)"-Flag pro Person/Event
+    `ALTER TABLE termin_travel_party ADD COLUMN no_hotel INTEGER DEFAULT 0`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_materials.modell: NOT NULL Constraint entfernen (war produkt TEXT NOT NULL)
@@ -4893,7 +4895,7 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
     const crewRows = await db.all(`
       SELECT
         tp.id, tp.termin_id, tp.tenant_id, tp.contact_id,
-        tp.role1, tp.role2, tp.role3, tp.specification, tp.sort_order,
+        tp.role1, tp.role2, tp.role3, tp.specification, tp.sort_order, tp.no_hotel,
         c.first_name, c.last_name, c.email, c.phone, c.mobile,
         c.postal_code, c.residence,
         c.function1, c.function2, c.function3,
@@ -4917,7 +4919,7 @@ app.get('/api/termine/:terminId/travel-party', authenticateToken, requireTenant,
         tp.id, tp.termin_id, tp.tenant_id,
         tam.contact_id,
         tam.role1, tam.role2, tam.role3,
-        '' AS specification, tam.sort_order,
+        '' AS specification, tam.sort_order, tp.no_hotel,
         c.first_name, c.last_name, c.email, c.phone,
         '' AS mobile, '' AS postal_code, '' AS residence,
         c.member_roles AS _roles_json,
@@ -5002,6 +5004,18 @@ app.post('/api/termine/:terminId/travel-party', authenticateToken, requireTenant
     console.error('travel-party POST failed', err);
     res.status(500).json({ error: 'Failed to add member' });
   }
+});
+
+// Person fährt heim → kein Hotel nötig (aus dem Hotel-"nicht eingeplant"-Zähler ausgenommen)
+app.put('/api/termine/:terminId/travel-party/:id/no-hotel', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const val = req.body?.noHotel ? 1 : 0;
+    await db.run(
+      'UPDATE termin_travel_party SET no_hotel=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND tenant_id=?',
+      [val, req.params.id, req.tenant.id]
+    );
+    res.json({ ok: true, noHotel: !!val });
+  } catch (e) { res.status(500).json({ error: 'Failed to update no_hotel' }); }
 });
 
 app.put('/api/termine/:terminId/travel-party/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
