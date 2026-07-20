@@ -3144,14 +3144,15 @@ app.post('/api/venues', authenticateToken, requireTenant, requireEditor, async (
   if (!v.name || !v.name.trim()) return res.status(400).json({ error: 'Venue name is required' });
 
   try {
-    // Koordinaten automatisch ermitteln, falls Adresse vorhanden aber keine Koordinaten mitgegeben.
-    // Dabei Bundesland + Land aus der Geocoding-Antwort ergänzen, falls vom Nutzer nicht gesetzt.
+    // Geocoden, wenn Koordinaten ODER Bundesland/Land fehlen und eine Adresse vorhanden ist.
+    // (Adress-Suche liefert oft Koordinaten mit, aber kein Bundesland/Land.)
     let lat = v.latitude, lon = v.longitude
     let state = v.state, country = v.country
-    if ((!lat || !lon)) {
-      const g = await geocodeAddress(venueAddrString(v))
+    const geoAddr = venueAddrString(v)
+    if (geoAddr && ((!lat || !lon) || (!state || !country))) {
+      const g = await geocodeAddress(geoAddr)
       if (g) {
-        lat = g.lat; lon = g.lon
+        if (!lat || !lon) { lat = g.lat; lon = g.lon }
         if (!state && g.state) state = g.state
         if (!country && g.country) country = g.country
       }
@@ -3200,10 +3201,12 @@ app.put('/api/venues/:id', authenticateToken, requireTenant, requireEditor, asyn
     const newAddr = venueAddrString(v)
     const oldAddr = [existing.street, existing.postal_code, existing.city, existing.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
     const coordsPicked = lat && lon && (lat !== (existing.latitude || '') || lon !== (existing.longitude || ''))
-    if (!coordsPicked && newAddr && (!lat || !lon || newAddr !== oldAddr)) {
+    const needCoords = !coordsPicked && (!lat || !lon || newAddr !== oldAddr)
+    const needStateCountry = !state || !country
+    if (newAddr && (needCoords || needStateCountry)) {
       const g = await geocodeAddress(newAddr)
       if (g) {
-        lat = g.lat; lon = g.lon
+        if (needCoords) { lat = g.lat; lon = g.lon }
         if (!state && g.state) state = g.state
         if (!country && g.country) country = g.country
       }
@@ -3615,13 +3618,16 @@ app.post('/api/hotels', authenticateToken, requireTenant, requireEditor, async (
     const h = req.body;
     // Koordinaten aus Adresse ermitteln (für Hotel-Vorschläge nach Entfernung);
     // Bundesland + Land ergänzen, falls vom Nutzer nicht gesetzt.
-    let lat = null, lon = null
+    let lat = h.latitude || null, lon = h.longitude || null
     let state = h.state || '', country = h.country || ''
-    const g = await geocodeAddress(hotelAddrString(h))
-    if (g) {
-      lat = g.lat; lon = g.lon
-      if (!state && g.state) state = g.state
-      if (!country && g.country) country = g.country
+    const geoAddr = hotelAddrString(h)
+    if (geoAddr && ((!lat || !lon) || (!state || !country))) {
+      const g = await geocodeAddress(geoAddr)
+      if (g) {
+        if (!lat || !lon) { lat = g.lat; lon = g.lon }
+        if (!state && g.state) state = g.state
+        if (!country && g.country) country = g.country
+      }
     }
     const result = await db.run(`
       INSERT INTO hotels (tenant_id, name, street, postal_code, city, state, country, email,
@@ -3644,15 +3650,17 @@ app.put('/api/hotels/:id', authenticateToken, requireTenant, requireEditor, asyn
     const existing = await db.get('SELECT id, street, postal_code, city, country, latitude, longitude, recommended FROM hotels WHERE id = ? AND tenant_id = ?', [id, req.tenant.id]);
     if (!existing) return res.status(404).json({ error: 'Hotel not found' });
     // Koordinaten bei Adressänderung / fehlenden Koordinaten neu geocoden;
-    // Bundesland + Land ergänzen, falls vom Nutzer nicht gesetzt.
+    // Bundesland + Land ergänzen, falls vom Nutzer nicht gesetzt (auch wenn Koordinaten schon da sind).
     let lat = existing.latitude, lon = existing.longitude
     let state = h.state || '', country = h.country || ''
     const newAddr = hotelAddrString(h)
     const oldAddr = [existing.street, existing.postal_code, existing.city, existing.country].map(s => (s || '').toString().trim()).filter(Boolean).join(', ')
-    if (newAddr && (!lat || !lon || newAddr !== oldAddr)) {
+    const needCoords = !lat || !lon || newAddr !== oldAddr
+    const needStateCountry = !state || !country
+    if (newAddr && (needCoords || needStateCountry)) {
       const g = await geocodeAddress(newAddr)
       if (g) {
-        lat = g.lat; lon = g.lon
+        if (needCoords) { lat = g.lat; lon = g.lon }
         if (!state && g.state) state = g.state
         if (!country && g.country) country = g.country
       }
