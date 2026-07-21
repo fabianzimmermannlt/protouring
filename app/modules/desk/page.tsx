@@ -6,7 +6,7 @@ import { FileCard } from '@/app/components/shared/FileCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
 import GlobalTodoOverview from '@/app/components/shared/GlobalTodoOverview'
 import { getCurrentUser, getCurrentTenant, getMyRole, updateCurrentTenantRole, isEditorRole, getEffectiveRole, can } from '@/lib/api-client'
-import { AccordionSection } from '@/app/components/shared/AccordionSection'
+import { CollapsibleCard } from '@/app/components/shared/CollapsibleCard'
 import RecentChatMessages from '@/app/components/shared/RecentChatMessages'
 
 type Zone = 'team' | 'personal'
@@ -45,8 +45,8 @@ export default function SchreibtischModule() {
 
       {/* ── Team ── */}
       {zone === 'team' && (
-        <div className="flex flex-col gap-2">
-          <AccordionSection title={announcementTitle} defaultOpen stateKey="desk_ankuendigung">
+        <div className="flex flex-col gap-3">
+          <CollapsibleCard title={announcementTitle} defaultOpen>
             <ContentBoard
               entityType="desk" entityId="announcement" title=""
               isAdmin={can('CAN_EDIT_ANKUENDIGUNG', effectiveRole)}
@@ -56,54 +56,46 @@ export default function SchreibtischModule() {
               defaultContent={{ title: 'Herzlich willkommen 👋', content: 'Hier kannst du aktuelle Infos, Ankündigungen oder Hinweise für dein Team hinterlegen.' }}
               onItemLoaded={t => setAnnouncementTitle(t ?? 'Herzlich willkommen')}
             />
-          </AccordionSection>
+          </CollapsibleCard>
 
-          <AccordionSection title="Offene Aufgaben" defaultOpen stateKey="desk_aufgaben">
-            <div className="p-1"><GlobalTodoOverview hideHeader /></div>
-          </AccordionSection>
+          <CollapsibleCard title="Offene Aufgaben" defaultOpen>
+            <GlobalTodoOverview hideHeader />
+          </CollapsibleCard>
 
-          <AccordionSection title="Letzte Nachrichten" defaultOpen stateKey="desk_recent_chat">
-            <div className="p-1"><RecentChatMessages currentUserId={currentUser?.id} hideHeader /></div>
-          </AccordionSection>
+          <CollapsibleCard title="Letzte Nachrichten" defaultOpen>
+            <RecentChatMessages currentUserId={currentUser?.id} hideHeader />
+          </CollapsibleCard>
 
-          <AccordionSection title="Allgemeiner Chat" defaultOpen stateKey="desk_chat">
-            <Communication entityType="desk" entityId="general" showHeader={false} className="h-64" />
-          </AccordionSection>
+          <CollapsibleCard title="Allgemeiner Chat" defaultOpen>
+            <Communication entityType="desk" entityId="general" showHeader={false} className="h-80" />
+          </CollapsibleCard>
 
           {!isGuest && (
-            <AccordionSection title="Allgemeine Dateien" stateKey="desk_dateien_allgemein">
-              <FileCard title="" entityType="desk" entityId="shared" category="general" maxFiles={10} maxFileSizeMB={50} canManage={isEditor} />
-            </AccordionSection>
+            <FileCard title="Allgemeine Dateien" entityType="desk" entityId="shared" category="general" maxFiles={10} maxFileSizeMB={50} canManage={isEditor} />
           )}
         </div>
       )}
 
       {/* ── Persönlich ── */}
       {zone === 'personal' && (
-        <div className="flex flex-col gap-2">
-          <AccordionSection title="Persönliche Notizen" defaultOpen stateKey="desk_notizen">
-            <div className="p-3">
-              <ContentBoard entityType="desk_personal" entityId={currentUserId} title="" isAdmin={true}
-                singleItem hideHeader hideEmptyButton allowDelete={false}
-                fixedTitle="Persönliche Notizen" showTitleField={false}
-                modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
-                newItemLabel="Notiz erstellen" defaultContent={{ title: 'Persönliche Notizen', content: '' }} />
-            </div>
-          </AccordionSection>
+        <div className="flex flex-col gap-3">
+          <CollapsibleCard title="Persönliche Notizen" defaultOpen>
+            <ContentBoard entityType="desk_personal" entityId={currentUserId} title="" isAdmin={true}
+              singleItem hideHeader hideEmptyButton allowDelete={false}
+              fixedTitle="Persönliche Notizen" showTitleField={false}
+              modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
+              newItemLabel="Notiz erstellen" defaultContent={{ title: 'Persönliche Notizen', content: '' }} />
+          </CollapsibleCard>
 
           {!isGuest && (
-            <AccordionSection title="Persönliche Dateien" stateKey="desk_dateien_persoenlich">
-              <FileCard title="" entityType="desk" entityId={currentUserId} category="personal" maxFiles={10} maxFileSizeMB={20} canManage={true} />
-            </AccordionSection>
+            <FileCard title="Persönliche Dateien" entityType="desk" entityId={currentUserId} category="personal" maxFiles={10} maxFileSizeMB={20} canManage={true} />
           )}
 
-          <AccordionSection title="Pinnwand" defaultOpen stateKey="desk_pinnwand">
-            <div className="p-3">
-              <ContentBoard entityType="desk_personal" entityId={`${currentUserId}_board`} title="" isAdmin={true}
-                modalTitle={{ new: 'Neue Notiz', edit: 'Notiz bearbeiten' }}
-                titlePlaceholder="Titel" newItemLabel="Neue Notiz" />
-            </div>
-          </AccordionSection>
+          <CollapsibleCard title="Pinnwand" defaultOpen>
+            <ContentBoard entityType="desk_personal" entityId={`${currentUserId}_board`} title="" isAdmin={true}
+              modalTitle={{ new: 'Neue Notiz', edit: 'Notiz bearbeiten' }}
+              titlePlaceholder="Titel" newItemLabel="Neue Notiz" />
+          </CollapsibleCard>
         </div>
       )}
     </div>
