@@ -131,37 +131,28 @@ export default function SchreibtischModule() {
     return null
   }
 
-  const tabBtn = (active: boolean) =>
-    `px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-300 hover:bg-[#3a3a3a]'}`
-  const subBtn = (active: boolean) =>
-    `px-3 py-1.5 rounded-md text-sm transition-colors ${active ? 'bg-[#3a3a3a] text-white font-medium' : 'text-gray-400 hover:text-white hover:bg-[#2d2d2d]'}`
-
   return (
     <div className="pb-10">
-      {/* Datum */}
-      <div className="mb-4 text-center">
-        <div className="text-lg font-medium" style={{ color: '#9ca3af' }}>
-          {new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </div>
+      {/* Datum – linksbündig, dezent */}
+      <div className="mb-3 text-sm" style={{ color: '#9ca3af' }}>
+        {new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       </div>
 
-      {/* Zonen-Reiter: Team / Persönlich */}
-      <div className="flex gap-2 justify-center mb-3">
-        <button onClick={() => pickZone('team')} className={tabBtn(zone === 'team')}>Team</button>
-        <button onClick={() => pickZone('personal')} className={tabBtn(zone === 'personal')}>Persönlich</button>
+      {/* Reiter: Team / Persönlich – gleicher Stil wie Event-Tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '0.5rem' }}>
+        <button onClick={() => pickZone('team')} className={`pt-detail-tab${zone === 'team' ? ' active' : ''}`}>Team</button>
+        <button onClick={() => pickZone('personal')} className={`pt-detail-tab${zone === 'personal' ? ' active' : ''}`}>Persönlich</button>
       </div>
 
-      {/* Submenü */}
-      <div className="flex gap-1.5 flex-wrap justify-center mb-4">
+      {/* Submenü – wie im Event */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '1rem' }}>
         {sections.map(s => (
-          <button key={s.id} onClick={() => pickSection(s.id)} className={subBtn(activeSec === s.id)}>{s.label}</button>
+          <button key={s.id} onClick={() => pickSection(s.id)} className={`pt-detail-tab${activeSec === s.id ? ' active' : ''}`}>{s.label}</button>
         ))}
       </div>
 
-      {/* Inhalt */}
-      <div className="max-w-3xl mx-auto">
-        {renderContent()}
-      </div>
+      {/* Inhalt – volle Breite */}
+      {renderContent()}
     </div>
   )
 }
