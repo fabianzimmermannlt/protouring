@@ -45,7 +45,7 @@ export default function SchreibtischModule() {
 
       {/* ── Team ── */}
       {zone === 'team' && (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <CollapsibleCard title={announcementTitle} defaultOpen>
             <ContentBoard
               entityType="desk" entityId="announcement" title=""
@@ -78,7 +78,7 @@ export default function SchreibtischModule() {
 
       {/* ── Persönlich ── */}
       {zone === 'personal' && (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <CollapsibleCard title="Persönliche Notizen" defaultOpen>
             <ContentBoard entityType="desk_personal" entityId={currentUserId} title="" isAdmin={true}
               singleItem hideHeader hideEmptyButton allowDelete={false}
