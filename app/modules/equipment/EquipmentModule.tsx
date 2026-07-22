@@ -104,7 +104,7 @@ const ITEMS_COLUMNS = [
   { id: 'gesamt_kg',    label: 'Gesamt kg',       defaultVisible: true  },
 ]
 
-type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order'
+type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'standort_status' | 'masse' | 'label_color' | 'gesamt_kg'
 
 const CARNET_COLUMNS = [
   { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
@@ -1972,6 +1972,26 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       if (itemSortKey === 'weight_empty_kg') { av = a.weight_empty_kg ?? 0; bv = b.weight_empty_kg ?? 0 }
       else if (itemSortKey === 'material_count') { av = a.material_count ?? 0; bv = b.material_count ?? 0 }
       else if (itemSortKey === 'load_order') { av = a.load_order ?? 9999; bv = b.load_order ?? 9999 }
+      else if (itemSortKey === 'gesamt_kg') {
+        av = (a.weight_empty_kg ?? 0) + (a.material_gewicht ?? 0)
+        bv = (b.weight_empty_kg ?? 0) + (b.material_gewicht ?? 0)
+      }
+      else if (itemSortKey === 'masse') {
+        const vol = (x: EquipmentItem) => (x.height_cm ?? 0) * (x.width_cm ?? 0) * (x.depth_cm ?? 0)
+        av = vol(a); bv = vol(b)
+      }
+      else if (itemSortKey === 'standort_status') {
+        av = (a.standort_status ? (STANDORT_STATUS_LABELS[a.standort_status] ?? a.standort_status) : '').toLowerCase()
+        bv = (b.standort_status ? (STANDORT_STATUS_LABELS[b.standort_status] ?? b.standort_status) : '').toLowerCase()
+      }
+      else if (itemSortKey === 'label_color') {
+        av = (a.label_color ?? '').toLowerCase(); bv = (b.label_color ?? '').toLowerCase()
+      }
+      else if (itemSortKey === 'gruppe_name') {
+        // primär Gruppenname, sekundär Ladereihenfolge (wie in der Anzeige)
+        const key = (x: EquipmentItem) => `${(x.gruppe_name ?? '~').toLowerCase()} ${String(x.load_order ?? 9999).padStart(6, '0')}`
+        av = key(a); bv = key(b)
+      }
       else { av = ((a as any)[itemSortKey] ?? '').toString().toLowerCase(); bv = ((b as any)[itemSortKey] ?? '').toString().toLowerCase() }
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
       return itemSortDir === 'asc' ? cmp : -cmp
@@ -2122,15 +2142,15 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               <tr>
                 {isVisible('case_id')   && <th className="sortable" onClick={() => toggleItemSort('case_id')}>Case ID <SortIndicator active={itemSortKey === 'case_id'} dir={itemSortDir} /></th>}
                 {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('bezeichnung')}>Bezeichnung <SortIndicator active={itemSortKey === 'bezeichnung'} dir={itemSortDir} /></th>}
-                {isVisible('gruppe')    && <th>Gruppe</th>}
+                {isVisible('gruppe')    && <th className="sortable" onClick={() => toggleItemSort('gruppe_name')}>Gruppe <SortIndicator active={itemSortKey === 'gruppe_name'} dir={itemSortDir} /></th>}
                 {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
-                {isVisible('status')    && <th>Status</th>}
-                {isVisible('masse')     && <th className="text-right">Maße H×B×T cm</th>}
+                {isVisible('status')    && <th className="sortable" onClick={() => toggleItemSort('standort_status')}>Status <SortIndicator active={itemSortKey === 'standort_status'} dir={itemSortDir} /></th>}
+                {isVisible('masse')     && <th className="sortable text-right" onClick={() => toggleItemSort('masse')}>Maße H×B×T cm <SortIndicator active={itemSortKey === 'masse'} dir={itemSortDir} /></th>}
                 {isVisible('leer_kg')   && <th className="sortable text-right" onClick={() => toggleItemSort('weight_empty_kg')}>Leer kg <SortIndicator active={itemSortKey === 'weight_empty_kg'} dir={itemSortDir} /></th>}
-                {isVisible('farbe')     && <th>Farbe</th>}
+                {isVisible('farbe')     && <th className="sortable" onClick={() => toggleItemSort('label_color')}>Farbe <SortIndicator active={itemSortKey === 'label_color'} dir={itemSortDir} /></th>}
                 {isVisible('material')  && <th className="sortable text-right" onClick={() => toggleItemSort('material_count')}>Material <SortIndicator active={itemSortKey === 'material_count'} dir={itemSortDir} /></th>}
-                {isVisible('gesamt_kg') && <th className="text-right">Gesamt kg</th>}
+                {isVisible('gesamt_kg') && <th className="sortable text-right" onClick={() => toggleItemSort('gesamt_kg')}>Gesamt kg <SortIndicator active={itemSortKey === 'gesamt_kg'} dir={itemSortDir} /></th>}
                 <th style={{ width: 72 }}>
                   <ColumnToggle columns={itemColumns} isVisible={isVisible} toggle={toggle} />
                 </th>
