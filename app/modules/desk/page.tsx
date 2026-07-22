@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Pencil } from 'lucide-react'
 import { Communication } from '@/app/components/shared/Communication'
 import { FileCard } from '@/app/components/shared/FileCard'
 import ContentBoard from '@/app/components/shared/ContentBoard'
@@ -20,6 +21,16 @@ export default function SchreibtischModule() {
   const currentUserId = currentUser ? String(currentUser.id) : 'unknown'
   const [announcementTitle, setAnnouncementTitle] = useState('Herzlich willkommen')
   const [zone, setZone] = useState<Zone>('team')
+  const [editAnnouncement, setEditAnnouncement] = useState<(() => void) | null>(null)
+  const [editNotes, setEditNotes] = useState<(() => void) | null>(null)
+  const provideAnnouncementEdit = useCallback((fn: (() => void) | null) => setEditAnnouncement(() => fn), [])
+  const provideNotesEdit = useCallback((fn: (() => void) | null) => setEditNotes(() => fn), [])
+
+  const editPencil = (onClick: () => void) => (
+    <button onClick={onClick} className="text-gray-400 hover:text-gray-600 transition-colors" title="Bearbeiten">
+      <Pencil size={13} />
+    </button>
+  )
 
   useEffect(() => {
     getMyRole().then(freshRole => {
@@ -46,7 +57,7 @@ export default function SchreibtischModule() {
       {/* ── Team ── */}
       {zone === 'team' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-          <CollapsibleCard title={announcementTitle} defaultOpen>
+          <CollapsibleCard title={announcementTitle} defaultOpen actions={editAnnouncement ? editPencil(editAnnouncement) : undefined}>
             <ContentBoard
               entityType="desk" entityId="announcement" title=""
               isAdmin={can('CAN_EDIT_ANKUENDIGUNG', effectiveRole)}
@@ -55,6 +66,7 @@ export default function SchreibtischModule() {
               titlePlaceholder="Titel der Ankündigung" newItemLabel="Ankündigung erstellen"
               defaultContent={{ title: 'Herzlich willkommen 👋', content: 'Hier kannst du aktuelle Infos, Ankündigungen oder Hinweise für dein Team hinterlegen.' }}
               onItemLoaded={t => setAnnouncementTitle(t ?? 'Herzlich willkommen')}
+              provideEditAction={provideAnnouncementEdit}
             />
           </CollapsibleCard>
 
@@ -79,12 +91,13 @@ export default function SchreibtischModule() {
       {/* ── Persönlich ── */}
       {zone === 'personal' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-          <CollapsibleCard title="Persönliche Notizen" defaultOpen>
+          <CollapsibleCard title="Persönliche Notizen" defaultOpen actions={editNotes ? editPencil(editNotes) : undefined}>
             <ContentBoard entityType="desk_personal" entityId={currentUserId} title="" isAdmin={true}
               singleItem hideHeader hideEmptyButton allowDelete={false}
               fixedTitle="Persönliche Notizen" showTitleField={false}
               modalTitle={{ new: 'Notiz bearbeiten', edit: 'Notiz bearbeiten' }}
-              newItemLabel="Notiz erstellen" defaultContent={{ title: 'Persönliche Notizen', content: '' }} />
+              newItemLabel="Notiz erstellen" defaultContent={{ title: 'Persönliche Notizen', content: '' }}
+              provideEditAction={provideNotesEdit} />
           </CollapsibleCard>
 
           {!isGuest && (

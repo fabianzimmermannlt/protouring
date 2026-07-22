@@ -106,6 +106,12 @@ interface ContentBoardProps {
   hideHeader?: boolean
   /** Callback wenn Item geladen wurde – liefert Titel oder null (für dynamische AccordionSection-Titel) */
   onItemLoaded?: (title: string | null) => void
+  /**
+   * Nur singleItem+hideHeader: unterdrückt den internen Stift und liefert dem
+   * Parent einen Klick-Handler (oder null), um den Editor zu öffnen – z.B. für
+   * die Titelzeile einer CollapsibleCard (actions-Slot).
+   */
+  provideEditAction?: (handler: (() => void) | null) => void
 }
 
 export default function ContentBoard({
@@ -127,6 +133,7 @@ export default function ContentBoard({
   className = '',
   hideHeader = false,
   onItemLoaded,
+  provideEditAction,
 }: ContentBoardProps) {
   const [items, setItems] = useState<BoardItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -163,6 +170,15 @@ export default function ContentBoard({
   const openNew = () => { setEditing(null); setModalOpen(true) }
   const openEdit = (item: BoardItem) => { setEditing(item); setModalOpen(true) }
   const closeModal = () => { setModalOpen(false); setEditing(null) }
+
+  // singleItem+hideHeader: Stift in den Parent-Header (z.B. CollapsibleCard actions) auslagern
+  useEffect(() => {
+    if (!provideEditAction) return
+    const sv = singleItem && items.length > 0 ? items[0] : null
+    const editable = isAdmin && (sv || hideEmptyButton)
+    provideEditAction(editable ? () => (sv ? openEdit(sv) : openNew()) : null)
+    return () => provideEditAction(null)
+  }, [provideEditAction, singleItem, items, isAdmin, hideEmptyButton])
 
   const handleSave = async (data: BoardItemFormData) => {
     console.log('[ContentBoard] saving:', { entityType, entityId, data })
@@ -221,7 +237,7 @@ export default function ContentBoard({
               )}
             </div>
           ) : (
-            isAdmin && (singleItemValue || hideEmptyButton) && (
+            !provideEditAction && isAdmin && (singleItemValue || hideEmptyButton) && (
               <div className="flex justify-end px-3 pt-2">
                 <button
                   onClick={() => singleItemValue ? openEdit(singleItemValue) : openNew()}
