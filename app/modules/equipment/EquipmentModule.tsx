@@ -884,7 +884,7 @@ function ItemAccordion({ item, colSpan, canEdit, onReload }: {
 
   return (
     <tr>
-      <td colSpan={colSpan} className="p-0 bg-blue-50/40 border-b border-blue-100">
+      <td colSpan={colSpan} className="p-0 bg-gray-50 border-b border-gray-200">
         <div className="px-4 py-4 space-y-4">
           {loading ? (
             <p className="text-sm text-gray-400 py-4 text-center">Lädt…</p>
