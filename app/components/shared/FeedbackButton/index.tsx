@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, X, ChevronDown, Check, Clock, Circle } from 'lucide-react'
+import { Loader2, X, ChevronDown, Check, Clock, Circle, MessageSquare } from 'lucide-react'
 import {
   createFeedback, getFeedback, updateFeedbackStatus, deleteFeedback,
   getCurrentUser, type FeedbackItem,
@@ -135,22 +135,8 @@ export function FeedbackButton() {
 
   return (
     <>
-      {/* Floating Button — auf Mobile ausgeblendet, Zugang über Mehr-Menü */}
-      <button
-        onClick={handleOpen}
-        className="fixed bottom-6 right-6 z-40 hidden md:flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 active:scale-95"
-        title="Feedback senden"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
-        <span className="text-sm font-medium">Feedback</span>
-        {isSuperadmin && unreadCount > 0 && (
-          <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
+      {/* Kein Floating-Button mehr — Zugang über FeedbackTrigger (Top-Bar) bzw. Mehr-Menü (Mobile).
+          Diese Komponente rendert nur noch das Panel und lauscht auf 'open-feedback-panel'. */}
 
       {/* Panel */}
       {isOpen && (
@@ -295,6 +281,41 @@ export function FeedbackButton() {
         </div>
       )}
     </>
+  )
+}
+
+// ─── Trigger für die Top-Bar (neben der Glocke) ──────────────────────────────
+// Öffnet das Panel über dasselbe Event, das auch das mobile Mehr-Menü nutzt.
+// Optik bewusst identisch zu NotificationBell (w-7 h-7, #9ca3af, Hover #d1d5db).
+
+export function FeedbackTrigger() {
+  const currentUser = getCurrentUser()
+  const isSuperadmin = Boolean((currentUser as any)?.isSuperadmin)
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!isSuperadmin) return
+    getFeedback()
+      .then(data => setUnreadCount(data.filter(i => i.status === 'open').length))
+      .catch(() => {})
+  }, [isSuperadmin])
+
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new CustomEvent('open-feedback-panel'))}
+      title="Feedback senden"
+      className="relative flex items-center justify-center w-7 h-7 rounded transition-colors"
+      style={{ color: '#9ca3af' }}
+      onMouseEnter={e => { e.currentTarget.style.color = '#d1d5db' }}
+      onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af' }}
+    >
+      <MessageSquare size={16} />
+      {isSuperadmin && unreadCount > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </button>
   )
 }
 
