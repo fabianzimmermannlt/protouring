@@ -1,53 +1,121 @@
 'use client'
 
-// Tour-/Festival-Kalkulation – Übersicht (Phase 2, lesend).
-// Rendert die Matrix aus dem versionierten Seed über den geprüften Rechenkern
-// (lib/calculation/engine). Noch KEINE DB-Anbindung – die Zahlen sind die
-// Abnahmetest-Sollwerte. Siehe DECISIONS ADR-105 / ADDONS.
+// Tour-/Festival-Kalkulation – Übersicht (Phase 2, lesend, DB-gestützt).
+// Lädt Projekte des Tenants aus der DB und rendert die Matrix über den geprüften
+// Rechenkern (lib/calculation/engine). Bearbeiten = Phase 3. Siehe ADR-105.
 
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Decimal from 'decimal.js'
-import seedRaw from '@/lib/calculation/spec/data/seed.json'
+import { getCalcProjects, getCalcProject, seedCalcDemo, type CalcProjectSummary } from '@/lib/api-client'
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
 import type { CalcDataset } from '@/lib/calculation/types'
 import { formatMoney, formatPercent, formatDate } from '@/lib/calculation/format'
 
-const seed = seedRaw as unknown as CalcDataset & { band: unknown }
-const dataset: CalcDataset = {
-  project: seed.project, variants: seed.variants, shows: seed.shows,
-  categories: seed.categories, positions: seed.positions, entries: seed.entries,
+export default function CalculationModule() {
+  const [projects, setProjects] = useState<CalcProjectSummary[] | null>(null)
+  const [selectedId, setSelectedId] = useState<string>('')
+  const [dataset, setDataset] = useState<CalcDataset | null>(null)
+  const [loadingDataset, setLoadingDataset] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [error, setError] = useState('')
+
+  const loadProjects = async (selectFirst = true) => {
+    try {
+      const list = await getCalcProjects()
+      setProjects(list)
+      if (selectFirst && list.length && !selectedId) setSelectedId(list[0].id)
+      return list
+    } catch (e: any) {
+      setError(e?.message ?? 'Fehler beim Laden'); setProjects([]); return []
+    }
+  }
+
+  useEffect(() => { loadProjects() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedId) { setDataset(null); return }
+    let cancelled = false
+    setLoadingDataset(true)
+    getCalcProject(selectedId)
+      .then(d => { if (!cancelled) setDataset(d) })
+      .catch(e => { if (!cancelled) setError(e?.message ?? 'Fehler beim Laden des Projekts') })
+      .finally(() => { if (!cancelled) setLoadingDataset(false) })
+    return () => { cancelled = true }
+  }, [selectedId])
+
+  const handleImportDemo = async () => {
+    setImporting(true); setError('')
+    try {
+      const created = await seedCalcDemo()
+      await loadProjects(false)
+      setSelectedId(created.id)
+    } catch (e: any) {
+      setError(e?.message ?? 'Import fehlgeschlagen')
+    } finally { setImporting(false) }
+  }
+
+  if (projects === null) {
+    return <div className="py-10 text-center text-sm" style={{ color: '#9ca3af' }}>Lädt…</div>
+  }
+
+  return (
+    <div className="pb-10">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <h2 className="text-lg font-semibold" style={{ color: '#e0e0e0' }}>Kalkulation</h2>
+        {projects.length > 0 && (
+          <select className="form-select" value={selectedId} onChange={e => setSelectedId(e.target.value)} style={{ minWidth: 200 }}>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.year ? ` (${p.year})` : ''}</option>)}
+          </select>
+        )}
+        <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost ml-auto" style={{ fontSize: '0.8rem' }}>
+          {importing ? 'Importiere…' : '+ Demo-Projekt (Festivals 2026)'}
+        </button>
+      </div>
+
+      {error && <div className="p-3 mb-3 rounded text-sm" style={{ background: '#3b1f22', color: '#fca5a5' }}>{error}</div>}
+
+      {projects.length === 0 ? (
+        <div className="text-center py-16" style={{ color: '#9ca3af' }}>
+          <p className="mb-4">Noch kein Kalkulations-Projekt vorhanden.</p>
+          <button onClick={handleImportDemo} disabled={importing} className="btn btn-primary">
+            {importing ? 'Importiere…' : 'Demo-Projekt importieren'}
+          </button>
+          <p className="text-xs mt-3" style={{ color: '#6b7280' }}>
+            Legt „Festivals 2026" (9 Shows, 2 Varianten) als bearbeitbares Beispiel an.
+          </p>
+        </div>
+      ) : loadingDataset || !dataset ? (
+        <div className="py-10 text-center text-sm" style={{ color: '#9ca3af' }}>Projekt lädt…</div>
+      ) : (
+        <OverviewMatrix key={selectedId} dataset={dataset} />
+      )}
+    </div>
+  )
 }
+
+// ── Übersichts-Matrix ────────────────────────────────────────────────────────
 
 type RowType = 'section' | 'line' | 'catsum' | 'grand' | 'member'
-interface Row {
-  type: RowType
-  label: string
-  perShow?: Decimal[]
-  total?: Decimal
-  percent?: Decimal | null
-}
-
+interface Row { type: RowType; label: string; perShow?: Decimal[]; total?: Decimal; percent?: Decimal | null }
 const ZERO = new Decimal(0)
 
-export default function CalculationModule() {
-  const variantsSorted = useMemo(
-    () => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [])
+function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
+  const variantsSorted = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
   const defaultVariant = dataset.project.default_variant_id ?? variantsSorted[0]?.id ?? ''
   const activeShowIds = useMemo(
-    () => dataset.shows.filter(s => s.is_active).sort((a, b) => a.sort_order - b.sort_order).map(s => s.id), [])
+    () => dataset.shows.filter(s => s.is_active).sort((a, b) => a.sort_order - b.sort_order).map(s => s.id), [dataset])
   const mkVariants = (vid: string): Record<string, string> => {
     const r: Record<string, string> = {}
     activeShowIds.forEach(id => { r[id] = vid })
     return r
   }
-  // Variante pro Show (Default: Projekt-Standardvariante für alle)
   const [variantByShow, setVariantByShow] = useState<Record<string, string>>(() => mkVariants(defaultVariant))
   const [scenario, setScenario] = useState<number>(Number(dataset.project.scenario_factor) || 1)
   const [hideZero, setHideZero] = useState(false)
 
   const overview = useMemo(
     () => buildOverview(dataset, { variantByShow, variantId: defaultVariant, scenarioFactor: scenario, memberCount: dataset.project.member_count }),
-    [variantByShow, scenario])
+    [dataset, variantByShow, scenario, defaultVariant])
 
   const shows = overview.shows
   const rows = useMemo<Row[]>(() => {
@@ -70,32 +138,27 @@ export default function CalculationModule() {
       out.push({ type: 'catsum', label: `Gesamt ${name}`, perShow, total: catTotal(catId), percent: percentOf(catTotal(catId), basis) })
     }
 
-    // EINNAHMEN
     out.push({ type: 'section', label: 'EINNAHMEN' })
     out.push({ type: 'line', label: 'Gage (abzgl. Provision)', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: null })
     out.push({ type: 'catsum', label: 'Gesamt GAGEN', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: percentOf(overview.gageTotal, sumE) })
     overview.categories.filter(c => c.kind === 'income').forEach(c => pushCategory(c.categoryId, 'income', c.name))
     out.push({ type: 'grand', label: 'SUMME EINNAHMEN', perShow: shows.map(s => s.einnahmen), total: sumE, percent: percentOf(sumE, sumE) })
 
-    // AUSGABEN
     out.push({ type: 'section', label: 'AUSGABEN' })
     overview.categories.filter(c => c.kind === 'expense').forEach(c => pushCategory(c.categoryId, 'expense', c.name))
     out.push({ type: 'grand', label: 'SUMME AUSGABEN', perShow: shows.map(s => s.ausgaben), total: sumA, percent: percentOf(sumA, sumA) })
 
-    // ERGEBNIS
     out.push({ type: 'grand', label: 'ERGEBNIS', perShow: shows.map(s => s.ergebnis), total: overview.ergebnis })
     const mc = dataset.project.member_count || 1
     out.push({ type: 'member', label: `Ergebnis je Bandmitglied (${mc})`, perShow: shows.map(s => s.ergebnis.div(mc)), total: overview.jeBandmitglied })
     return out
-  }, [overview, shows, hideZero])
+  }, [overview, shows, hideZero, dataset])
 
-  const money = (v: Decimal, dashZero = false) =>
-    dashZero && v.isZero() ? '–' : formatMoney(v)
-  const neg = (v: Decimal) => (v.isNegative() ? { color: '#f87171' } : undefined)
+  const money = (v: Decimal, dashZero = false) => (dashZero && v.isZero() ? '–' : formatMoney(v))
+  const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: '#f87171' } : undefined)
 
   return (
-    <div className="pb-10">
-      {/* Kopf: Variante · Szenario-Faktor · Info */}
+    <div>
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
@@ -122,7 +185,7 @@ export default function CalculationModule() {
       </div>
 
       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
-        {dataset.project.name} · Demodaten (Seed) · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
+        {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
       <div className="data-table-wrapper" style={{ overflowX: 'auto' }}>
@@ -165,10 +228,7 @@ export default function CalculationModule() {
               }
               const bold = r.type === 'catsum' || r.type === 'grand'
               const strong = r.type === 'grand'
-              const rowStyle: CSSProperties = {
-                fontWeight: bold ? 600 : 400,
-                background: strong ? '#2f2f2f' : undefined,
-              }
+              const rowStyle: CSSProperties = { fontWeight: bold ? 600 : 400, background: strong ? '#2f2f2f' : undefined }
               return (
                 <tr key={i} style={rowStyle}>
                   <td style={{ position: 'sticky', left: 0, background: strong ? '#2f2f2f' : 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>

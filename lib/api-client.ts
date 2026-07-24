@@ -751,6 +751,29 @@ export interface EquipmentItem {
   updated_at: string;
 }
 
+// ── Tour-/Festival-Kalkulation (Add-on) ──────────────────────────────────────
+
+import type { CalcDataset } from './calculation/types'
+
+export interface CalcProjectSummary {
+  id: string
+  name: string
+  year: number | null
+  currency: string
+}
+
+export async function getCalcProjects(): Promise<CalcProjectSummary[]> {
+  return request<CalcProjectSummary[]>('/api/calc/projects')
+}
+
+export async function getCalcProject(id: string): Promise<CalcDataset> {
+  return request<CalcDataset>(`/api/calc/projects/${id}`)
+}
+
+export async function seedCalcDemo(): Promise<{ id: string; name: string }> {
+  return request<{ id: string; name: string }>('/api/calc/seed-demo', { method: 'POST' })
+}
+
 export async function getEquipmentItems(): Promise<EquipmentItem[]> {
   const res = await request<{ items: EquipmentItem[] }>('/api/equipment/items');
   return res.items;

@@ -75,6 +75,8 @@ export interface CalcEntry {
   rental_price?: Money
   included_km?: Money
   price_extra_km?: Money
+  /** Ist-Wert (echte Rechnung). Soll = quantity/Fahrzeugformel. Orthogonal zur Variante. */
+  ist_amount?: Money
   note?: string | null
 }
 

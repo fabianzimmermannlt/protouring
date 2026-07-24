@@ -18,6 +18,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+const calcDb = require('./calc_import');
+const CALC_SEED = require('../lib/calculation/spec/data/seed.json');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -1913,6 +1915,9 @@ async function initDatabase() {
         WHERE tp.termin_id = t.id AND tp.partner_id = t.partner_id
       )
   `)
+
+  // Tour-/Festival-Kalkulation (Add-on) – Tabellen (idempotent)
+  await db.exec(calcDb.SCHEMA);
 
   console.log('✅ Database initialized');
 }
@@ -7975,6 +7980,40 @@ async function getNextCaseId(tenantId) {
 }
 
 // GET /api/equipment/items
+// ── Tour-/Festival-Kalkulation (Add-on) ──────────────────────────────────────
+
+app.get('/api/calc/projects', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    res.json(await calcDb.listProjects(db, req.tenant.id));
+  } catch (e) {
+    console.error('[calc] list projects:', e);
+    res.status(500).json({ error: 'Fehler beim Laden der Projekte' });
+  }
+});
+
+app.get('/api/calc/projects/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT tenant_id FROM calc_projects WHERE id = ?', [req.params.id]);
+    if (!proj || proj.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    res.json(await calcDb.loadDataset(db, req.params.id));
+  } catch (e) {
+    console.error('[calc] get project:', e);
+    res.status(500).json({ error: 'Fehler beim Laden des Projekts' });
+  }
+});
+
+// Demo-Projekt (Festivals 2026) aus dem Seed importieren – frische UUIDs pro Tenant.
+app.post('/api/calc/seed-demo', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const rows = calcDb.buildImportRows(CALC_SEED, req.tenant.id);
+    await calcDb.insertRows(db, rows);
+    res.json({ id: rows.project.id, name: rows.project.name });
+  } catch (e) {
+    console.error('[calc] seed demo:', e);
+    res.status(500).json({ error: 'Fehler beim Import des Demo-Projekts' });
+  }
+});
+
 app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(
