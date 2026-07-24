@@ -3420,6 +3420,7 @@ export function getIcalUrl(token: string): string {
 // Addon-Module — zentrale Definition, Frontend + Backend orientieren sich daran
 export const ADDON_MODULES = [
   { id: 'equipment', label: 'Equipment' },
+  { id: 'calculation', label: 'Kalkulation' },
 ] as const
 export type AddonModuleId = typeof ADDON_MODULES[number]['id']
 
@@ -3453,6 +3454,10 @@ export async function superadminSetModules(tenantId: number, modules: AddonModul
 
 /** Prüft ob ein Addon-Modul für den aktuellen Tenant aktiviert ist */
 export function isTenantModuleEnabled(moduleId: AddonModuleId): boolean {
+  // TODO(calculation): Vorerst ohne Add-on-Gating sichtbar (Phase 2, „sofort
+  // sichtbar"). Später wie Equipment über tenant.modules_enabled gaten und diese
+  // Zeile entfernen. Siehe DECISIONS ADR-105.
+  if (moduleId === 'calculation') return true
   if (typeof window === 'undefined') return false
   const raw = localStorage.getItem(CURRENT_TENANT_KEY)
   if (!raw) return false

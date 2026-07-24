@@ -17,6 +17,7 @@ import {
   PlusIcon,
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
+  CalculatorIcon,
   ViewColumnsIcon,
 } from '@heroicons/react/24/outline'
 import {
@@ -103,6 +104,7 @@ const MAIN_NAV = [
 
 const MODULE_NAV = [
   { id: 'equipment', name: 'Equipment', icon: WrenchScrewdriverIcon },
+  { id: 'calculation', name: 'Kalkulation', icon: CalculatorIcon },
 ]
 
 // ─── Breadcrumb labels ────────────────────────────────────────────────────────
@@ -110,7 +112,7 @@ const MODULE_NAV = [
 const TAB_LABELS: Record<string, string> = {
   desk: 'Schreibtisch', appointments: 'Termine', contacts: 'Kontakte',
   venues: 'Venues', partners: 'Partner', hotels: 'Hotels',
-  vehicles: 'Fahrzeuge', equipment: 'Equipment',
+  vehicles: 'Fahrzeuge', equipment: 'Equipment', calculation: 'Kalkulation',
 }
 
 const SUB_LABELS: Record<string, string> = {}

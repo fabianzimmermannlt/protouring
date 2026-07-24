@@ -17,6 +17,7 @@ import {
   Cog6ToothIcon,
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
+  CalculatorIcon,
 } from '@heroicons/react/24/outline'
 import { getTermine, isAuthenticated, canDo, can, getEffectiveRole, NAV_VISIBLE, isTenantModuleEnabled } from '@/lib/api-client'
 
@@ -35,6 +36,7 @@ const MORE_ITEMS = [
   { id: 'vehicles',   name: 'Fahrzeuge',     icon: TruckIcon },
   { id: 'templates',  name: 'Vorlagen',      icon: DocumentTextIcon },
   { id: 'equipment',  name: 'Equipment',     icon: WrenchScrewdriverIcon },
+  { id: 'calculation', name: 'Kalkulation',  icon: CalculatorIcon },
   { id: 'settings',   name: 'Einstellungen', icon: Cog6ToothIcon },
   { id: 'feedback',   name: 'Feedback',      icon: ChatBubbleLeftRightIcon },
 ]

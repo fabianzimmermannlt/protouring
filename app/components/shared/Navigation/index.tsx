@@ -20,6 +20,7 @@ import {
   CircleStackIcon,
   PuzzlePieceIcon,
   WrenchScrewdriverIcon,
+  CalculatorIcon,
   ViewColumnsIcon,
 } from '@heroicons/react/24/outline'
 import { useLayout } from './LayoutContext'
@@ -73,6 +74,7 @@ const STAMMDATEN_CHILDREN = [
 // Module-Gruppe (Addon-Dropdown)
 const MODULE_CHILDREN = [
   { id: 'equipment', name: 'Equipment', icon: WrenchScrewdriverIcon },
+  { id: 'calculation', name: 'Kalkulation', icon: CalculatorIcon },
 ]
 
 export function Navigation({
@@ -550,7 +552,7 @@ export function Navigation({
           maxWidth={maxWidth}
         />
       )}
-      {currentTab !== 'desk' && currentTab !== 'settings' && currentTab !== 'contacts' && currentTab !== 'events' && currentTab !== 'equipment' && (
+      {currentTab !== 'desk' && currentTab !== 'settings' && currentTab !== 'contacts' && currentTab !== 'events' && currentTab !== 'equipment' && currentTab !== 'calculation' && (
         <div className="bg-gray-50 border-b h-12" />
       )}
     </>
