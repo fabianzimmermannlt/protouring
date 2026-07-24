@@ -801,6 +801,32 @@ export async function deleteCalcShow(showId: string): Promise<void> {
   await request(`/api/calc/shows/${showId}`, { method: 'DELETE' })
 }
 
+type Num = string | number | null
+export interface CalcEntryInput {
+  position_id?: string
+  variant_id?: string | null
+  quantity?: Num
+  unit_price?: Num
+  distance_km?: Num
+  rental_price?: Num
+  included_km?: Num
+  price_extra_km?: Num
+  ist_amount?: Num
+  note?: string | null
+}
+
+export async function createCalcEntry(showId: string, data: CalcEntryInput): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/shows/${showId}/entries`, { method: 'POST', body: data })
+}
+
+export async function updateCalcEntry(entryId: string, data: CalcEntryInput): Promise<void> {
+  await request(`/api/calc/entries/${entryId}`, { method: 'PUT', body: data })
+}
+
+export async function deleteCalcEntry(entryId: string): Promise<void> {
+  await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
+}
+
 export async function getEquipmentItems(): Promise<EquipmentItem[]> {
   const res = await request<{ items: EquipmentItem[] }>('/api/equipment/items');
   return res.items;

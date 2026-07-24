@@ -10,6 +10,7 @@ import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { createCalcShow, updateCalcShow, deleteCalcShow, type CalcShowInput } from '@/lib/api-client'
 import type { CalcDataset, CalcShow, DealType } from '@/lib/calculation/types'
 import { formatDate } from '@/lib/calculation/format'
+import ShowDetailView from './ShowDetailView'
 
 const DEAL_TYPES: { value: DealType; label: string }[] = [
   { value: 'guarantee', label: 'Garantie (Festgage)' },
@@ -26,8 +27,14 @@ export default function ShowsView({ dataset, projectId, onChanged }: {
 }) {
   const [modal, setModal] = useState<{ open: boolean; show: CalcShow | null }>({ open: false, show: null })
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const shows = [...dataset.shows].sort((a, b) => a.sort_order - b.sort_order)
+
+  const detailShow = detailId ? dataset.shows.find(s => s.id === detailId) : null
+  if (detailId && detailShow) {
+    return <ShowDetailView show={detailShow} dataset={dataset} onChanged={onChanged} onBack={() => setDetailId(null)} />
+  }
 
   const handleDelete = async (show: CalcShow) => {
     if (!confirm(`Show „${show.city ?? ''}${show.show_date ? ' · ' + formatDate(show.show_date) : ''}" wirklich löschen? Alle Buchungen dieser Show werden mitgelöscht.`)) return
@@ -73,7 +80,11 @@ export default function ShowsView({ dataset, projectId, onChanged }: {
             ) : shows.map(show => (
               <tr key={show.id} style={{ opacity: show.is_active ? 1 : 0.5 }}>
                 <td className="text-xs">{formatDate(show.show_date)}</td>
-                <td className="font-medium text-sm">{show.city || '—'}</td>
+                <td className="font-medium text-sm">
+                  <button onClick={() => setDetailId(show.id)} className="hover:underline" style={{ color: '#60a5fa' }} title="Buchungen öffnen">
+                    {show.city || '(öffnen)'}
+                  </button>
+                </td>
                 <td className="text-xs" style={{ color: '#9ca3af' }}>{show.venue || '—'}</td>
                 <td className="text-right text-xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {show.guarantee != null ? Number(show.guarantee).toLocaleString('de-DE') + ' €' : '—'}
@@ -140,7 +151,7 @@ const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'
 const pctToRatio = (v: string): string | null => { const t = norm(v); return t == null ? null : new Decimal(t).div(100).toString() }
 const ratioToPct = (v: unknown): string => (v == null || v === '') ? '' : new Decimal(String(v)).times(100).toDecimalPlaces(4).toString()
 
-function ShowFormModal({ projectId, show, onClose, onSaved }: {
+export function ShowFormModal({ projectId, show, onClose, onSaved }: {
   projectId: string; show: CalcShow | null; onClose: () => void; onSaved: () => void
 }) {
   const [f, setF] = useState<FormState>(() => ({

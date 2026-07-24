@@ -8082,6 +8082,63 @@ app.delete('/api/calc/shows/:showId', authenticateToken, requireTenant, requireE
   }
 });
 
+// Tenant-Besitz einer Buchung (via Projekt)
+async function calcEntryTenant(entryId) {
+  return db.get('SELECT p.tenant_id AS tenant_id FROM calc_entries e JOIN calc_projects p ON p.id = e.project_id WHERE e.id = ?', [entryId]);
+}
+
+// Buchung an einer Show anlegen
+app.post('/api/calc/shows/:showId/entries', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    const b = req.body || {};
+    if (!b.position_id) return res.status(400).json({ error: 'Position fehlt' });
+    const id = crypto.randomUUID();
+    await db.run(
+      `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,ist_amount,note)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, owner.project_id, req.params.showId, b.position_id, b.variant_id ?? null,
+       calcText(b.quantity), calcText(b.unit_price), calcText(b.distance_km), calcText(b.rental_price),
+       calcText(b.included_km), calcText(b.price_extra_km), calcText(b.ist_amount), b.note ?? null]);
+    res.json({ id });
+  } catch (e) {
+    console.error('[calc] create entry:', e);
+    res.status(500).json({ error: 'Fehler beim Anlegen der Buchung' });
+  }
+});
+
+// Buchung ändern
+app.put('/api/calc/entries/:entryId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcEntryTenant(req.params.entryId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Buchung nicht gefunden' });
+    const b = req.body || {};
+    await db.run(
+      `UPDATE calc_entries SET variant_id=?,quantity=?,unit_price=?,distance_km=?,rental_price=?,included_km=?,price_extra_km=?,ist_amount=?,note=?,updated_at=CURRENT_TIMESTAMP
+       WHERE id=?`,
+      [b.variant_id ?? null, calcText(b.quantity), calcText(b.unit_price), calcText(b.distance_km), calcText(b.rental_price),
+       calcText(b.included_km), calcText(b.price_extra_km), calcText(b.ist_amount), b.note ?? null, req.params.entryId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] update entry:', e);
+    res.status(500).json({ error: 'Fehler beim Speichern der Buchung' });
+  }
+});
+
+// Buchung löschen
+app.delete('/api/calc/entries/:entryId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcEntryTenant(req.params.entryId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Buchung nicht gefunden' });
+    await db.run('DELETE FROM calc_entries WHERE id = ?', [req.params.entryId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] delete entry:', e);
+    res.status(500).json({ error: 'Fehler beim Löschen der Buchung' });
+  }
+});
+
 app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(
