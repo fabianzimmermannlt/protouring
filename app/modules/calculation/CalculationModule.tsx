@@ -32,14 +32,22 @@ const ZERO = new Decimal(0)
 export default function CalculationModule() {
   const variantsSorted = useMemo(
     () => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [])
-  const [variantId, setVariantId] = useState<string>(
-    dataset.project.default_variant_id ?? variantsSorted[0]?.id ?? '')
+  const defaultVariant = dataset.project.default_variant_id ?? variantsSorted[0]?.id ?? ''
+  const activeShowIds = useMemo(
+    () => dataset.shows.filter(s => s.is_active).sort((a, b) => a.sort_order - b.sort_order).map(s => s.id), [])
+  const mkVariants = (vid: string): Record<string, string> => {
+    const r: Record<string, string> = {}
+    activeShowIds.forEach(id => { r[id] = vid })
+    return r
+  }
+  // Variante pro Show (Default: Projekt-Standardvariante für alle)
+  const [variantByShow, setVariantByShow] = useState<Record<string, string>>(() => mkVariants(defaultVariant))
   const [scenario, setScenario] = useState<number>(Number(dataset.project.scenario_factor) || 1)
   const [hideZero, setHideZero] = useState(false)
 
   const overview = useMemo(
-    () => buildOverview(dataset, { variantId, scenarioFactor: scenario, memberCount: dataset.project.member_count }),
-    [variantId, scenario])
+    () => buildOverview(dataset, { variantByShow, variantId: defaultVariant, scenarioFactor: scenario, memberCount: dataset.project.member_count }),
+    [variantByShow, scenario])
 
   const shows = overview.shows
   const rows = useMemo<Row[]>(() => {
@@ -90,8 +98,10 @@ export default function CalculationModule() {
       {/* Kopf: Variante · Szenario-Faktor · Info */}
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
-          <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Variante</label>
-          <select className="form-select" value={variantId} onChange={e => setVariantId(e.target.value)} style={{ minWidth: 160 }}>
+          <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
+          <select className="form-select" value="" style={{ minWidth: 160 }}
+            onChange={e => { if (e.target.value) setVariantByShow(mkVariants(e.target.value)) }}>
+            <option value="">– wählen –</option>
             {variantsSorted.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
         </div>
@@ -123,10 +133,18 @@ export default function CalculationModule() {
               {shows.map(s => {
                 const meta = dataset.shows.find(sh => sh.id === s.showId)
                 return (
-                  <th key={s.showId} className="text-right" style={{ minWidth: 96 }}>
+                  <th key={s.showId} className="text-right" style={{ minWidth: 110 }}>
                     <div style={{ fontWeight: 600 }}>{meta?.city ?? s.legacyKey}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.7 }}>{formatDate(meta?.show_date)}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.55 }}>{meta?.venue}</div>
+                    <select
+                      value={variantByShow[s.showId] ?? defaultVariant}
+                      onChange={e => setVariantByShow(prev => ({ ...prev, [s.showId]: e.target.value }))}
+                      className="form-select" title="Variante dieser Show"
+                      style={{ marginTop: 4, fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'left', fontWeight: 400 }}
+                    >
+                      {variantsSorted.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
                   </th>
                 )
               })}

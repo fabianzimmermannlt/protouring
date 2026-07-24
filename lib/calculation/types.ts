@@ -89,8 +89,17 @@ export interface CalcDataset {
 }
 
 export interface OverviewOptions {
-  /** Anzuzeigende Variante. Default: project.default_variant_id. */
+  /**
+   * Global gewählte Variante (gilt für alle Shows, sofern nicht per variantByShow
+   * überschrieben, und immer für Fixkosten). Default: project.default_variant_id.
+   */
   variantId?: string | null
+  /**
+   * Variante pro Show (showId → variantId). Überschreibt variantId für die
+   * genannten Shows. So kann jede Show z.B. „mit NL" oder „ohne NL" sein.
+   * Nicht genannte Shows nutzen variantId.
+   */
+  variantByShow?: Record<string, string | null>
   /** Überschreibt project.scenario_factor. */
   scenarioFactor?: Money
   /** Überschreibt project.member_count. */

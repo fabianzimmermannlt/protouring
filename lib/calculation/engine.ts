@@ -119,14 +119,19 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
   const categoryKind = new Map<string, 'income' | 'expense'>()
   for (const c of data.categories) categoryKind.set(c.id, c.kind)
 
-  // Buchungen der gewählten Variante
-  const relevant = data.entries.filter(e => variantMatches(e, variantId))
+  // Variante je Show: variantByShow[showId] überschreibt die globale variantId.
+  const variantByShow = opts.variantByShow
+  const variantForShow = (showId: string): string | null =>
+    variantByShow && Object.prototype.hasOwnProperty.call(variantByShow, showId)
+      ? variantByShow[showId] : variantId
 
-  // Regel 4 – Fixkosten (show_id NULL): Betrag je Position / Anzahl aktiver Shows
+  // Regel 4 – Fixkosten (show_id NULL): Betrag je Position / Anzahl aktiver Shows.
+  // Fixkosten sind projektweit → globale variantId (nicht per Show).
   const fixedShareByPosition = new Map<string, Decimal>()
   if (nActive > 0) {
-    for (const e of relevant) {
+    for (const e of data.entries) {
       if (e.show_id != null) continue
+      if (!variantMatches(e, variantId)) continue
       const amt = entryAmount(e, project)
       const prev = fixedShareByPosition.get(e.position_id) ?? new Decimal(0)
       fixedShareByPosition.set(e.position_id, prev.plus(amt))
@@ -136,10 +141,11 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
     })
   }
 
-  // Variable Buchungen je (show, position)
+  // Variable Buchungen je (show, position) – Variantenfilter pro Show (Regel 3).
   const variableByShowPosition = new Map<string, Map<string, Decimal>>()
-  for (const e of relevant) {
+  for (const e of data.entries) {
     if (e.show_id == null) continue
+    if (!variantMatches(e, variantForShow(e.show_id))) continue
     let byPos = variableByShowPosition.get(e.show_id)
     if (!byPos) { byPos = new Map(); variableByShowPosition.set(e.show_id, byPos) }
     const prev = byPos.get(e.position_id) ?? new Decimal(0)
