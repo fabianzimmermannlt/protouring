@@ -774,6 +774,33 @@ export async function seedCalcDemo(): Promise<{ id: string; name: string }> {
   return request<{ id: string; name: string }>('/api/calc/seed-demo', { method: 'POST' })
 }
 
+export interface CalcShowInput {
+  show_date?: string | null
+  city?: string | null
+  venue?: string | null
+  capacity?: number | null
+  ticket_price?: string | number | null
+  guarantee?: string | number | null
+  deal_share?: string | number | null
+  break_even?: string | number | null
+  commission?: string | number | null
+  deal_type?: 'guarantee' | 'vs' | 'plus' | 'door'
+  is_active?: boolean
+  note?: string | null
+}
+
+export async function createCalcShow(projectId: string, data: CalcShowInput): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/projects/${projectId}/shows`, { method: 'POST', body: data })
+}
+
+export async function updateCalcShow(showId: string, data: CalcShowInput): Promise<void> {
+  await request(`/api/calc/shows/${showId}`, { method: 'PUT', body: data })
+}
+
+export async function deleteCalcShow(showId: string): Promise<void> {
+  await request(`/api/calc/shows/${showId}`, { method: 'DELETE' })
+}
+
 export async function getEquipmentItems(): Promise<EquipmentItem[]> {
   const res = await request<{ items: EquipmentItem[] }>('/api/equipment/items');
   return res.items;

@@ -8014,6 +8014,74 @@ app.post('/api/calc/seed-demo', authenticateToken, requireTenant, requireEditor,
   }
 });
 
+// Geld/Verhältnis → TEXT-Dezimalstring (kein float). Leer = null.
+const calcText = (v) => (v == null || v === '') ? null : String(v);
+
+// Tenant-Besitz einer Show prüfen (via Projekt)
+async function calcShowTenant(showId) {
+  const row = await db.get(
+    'SELECT p.tenant_id AS tenant_id, s.project_id AS project_id FROM calc_shows s JOIN calc_projects p ON p.id = s.project_id WHERE s.id = ?',
+    [showId]);
+  return row || null;
+}
+
+// Show anlegen
+app.post('/api/calc/projects/:id/shows', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT tenant_id FROM calc_projects WHERE id = ?', [req.params.id]);
+    if (!proj || proj.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    const b = req.body || {};
+    const id = crypto.randomUUID();
+    const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_shows WHERE project_id = ?', [req.params.id]);
+    const sort = (maxRow?.m ?? 0) + 1;
+    await db.run(
+      `INSERT INTO calc_shows (id,project_id,sort_order,show_date,city,venue,capacity,ticket_price,guarantee,deal_share,break_even,commission,deal_type,is_active,note)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, req.params.id, sort, b.show_date ?? null, b.city ?? null, b.venue ?? null, b.capacity ?? null,
+       calcText(b.ticket_price), calcText(b.guarantee) ?? '0', calcText(b.deal_share) ?? '0',
+       calcText(b.break_even) ?? '0', calcText(b.commission) ?? '0', b.deal_type || 'vs',
+       b.is_active === false ? 0 : 1, b.note ?? null]);
+    res.json({ id });
+  } catch (e) {
+    console.error('[calc] create show:', e);
+    res.status(500).json({ error: 'Fehler beim Anlegen der Show' });
+  }
+});
+
+// Show ändern
+app.put('/api/calc/shows/:showId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    const b = req.body || {};
+    await db.run(
+      `UPDATE calc_shows SET show_date=?,city=?,venue=?,capacity=?,ticket_price=?,guarantee=?,deal_share=?,break_even=?,commission=?,deal_type=?,is_active=?,note=?,sort_order=COALESCE(?,sort_order)
+       WHERE id=?`,
+      [b.show_date ?? null, b.city ?? null, b.venue ?? null, b.capacity ?? null,
+       calcText(b.ticket_price), calcText(b.guarantee) ?? '0', calcText(b.deal_share) ?? '0',
+       calcText(b.break_even) ?? '0', calcText(b.commission) ?? '0', b.deal_type || 'vs',
+       b.is_active === false ? 0 : 1, b.note ?? null, (b.sort_order ?? null), req.params.showId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] update show:', e);
+    res.status(500).json({ error: 'Fehler beim Speichern der Show' });
+  }
+});
+
+// Show löschen (Buchungen der Show mit; kein Verlass auf FK-Pragma)
+app.delete('/api/calc/shows/:showId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    await db.run('DELETE FROM calc_entries WHERE show_id = ?', [req.params.showId]);
+    await db.run('DELETE FROM calc_shows WHERE id = ?', [req.params.showId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] delete show:', e);
+    res.status(500).json({ error: 'Fehler beim Löschen der Show' });
+  }
+});
+
 app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(

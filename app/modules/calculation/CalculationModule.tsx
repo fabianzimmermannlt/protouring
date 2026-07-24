@@ -10,6 +10,9 @@ import { getCalcProjects, getCalcProject, seedCalcDemo, type CalcProjectSummary 
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
 import type { CalcDataset } from '@/lib/calculation/types'
 import { formatMoney, formatPercent, formatDate } from '@/lib/calculation/format'
+import ShowsView from './ShowsView'
+
+type View = 'overview' | 'shows'
 
 export default function CalculationModule() {
   const [projects, setProjects] = useState<CalcProjectSummary[] | null>(null)
@@ -18,6 +21,7 @@ export default function CalculationModule() {
   const [loadingDataset, setLoadingDataset] = useState(false)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState('')
+  const [view, setView] = useState<View>('overview')
 
   const loadProjects = async (selectFirst = true) => {
     try {
@@ -42,6 +46,12 @@ export default function CalculationModule() {
       .finally(() => { if (!cancelled) setLoadingDataset(false) })
     return () => { cancelled = true }
   }, [selectedId])
+
+  const reloadDataset = async () => {
+    if (!selectedId) return
+    try { setDataset(await getCalcProject(selectedId)) }
+    catch (e: any) { setError(e?.message ?? 'Fehler beim Laden des Projekts') }
+  }
 
   const handleImportDemo = async () => {
     setImporting(true); setError('')
@@ -87,7 +97,14 @@ export default function CalculationModule() {
       ) : loadingDataset || !dataset ? (
         <div className="py-10 text-center text-sm" style={{ color: '#9ca3af' }}>Projekt lädt…</div>
       ) : (
-        <OverviewMatrix key={selectedId} dataset={dataset} />
+        <>
+          <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '1rem' }}>
+            <button onClick={() => setView('overview')} className={`pt-detail-tab${view === 'overview' ? ' active' : ''}`}>Übersicht</button>
+            <button onClick={() => setView('shows')} className={`pt-detail-tab${view === 'shows' ? ' active' : ''}`}>Shows</button>
+          </div>
+          {view === 'overview' && <OverviewMatrix key={selectedId} dataset={dataset} />}
+          {view === 'shows' && <ShowsView dataset={dataset} projectId={selectedId} onChanged={reloadDataset} />}
+        </>
       )}
     </div>
   )
