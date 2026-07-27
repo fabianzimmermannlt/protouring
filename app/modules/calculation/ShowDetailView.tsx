@@ -99,6 +99,9 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
       <datalist id="hotel-who-list">
         {['Band', 'Crew', '1', '2', '3'].map(w => <option key={w} value={w} />)}
       </datalist>
+      <datalist id="unterkunft-pos-list">
+        <option value="Hotel" />
+      </datalist>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
@@ -160,6 +163,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const availablePositions: typeof catPositions = []   // alle Positionen sind bereits sichtbar
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
   const isUnterkunft = /unterkunft|verpflegung/i.test(category.name)   // nur hier: Hotel-Option
+  const hasHotel = catPositions.some(p => p.pos_type === 'hotel')      // Spezifikation-Häkchen auch bei Hotel
   // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile),
   // projektweit gemerkt (alle Shows, auch nach Verlassen der Kalkulation)
   const [showSpec, setShowSpec] = useState(() => readPref('pt_calc_show_spec', true))
@@ -190,12 +194,11 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   }
 
   const [adding, setAdding] = useState(false)
-  const [mode, setMode] = useState<'existing' | 'new' | 'function' | 'hotel'>(isPersonal ? 'function' : 'new')
+  const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'new')
   const [pickId, setPickId] = useState('')
   const [newName, setNewName] = useState('')
   const [funcName, setFuncName] = useState('')
   const [funcSpec, setFuncSpec] = useState('')
-  const [hotelWho, setHotelWho] = useState('Band')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -203,9 +206,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     setBusy(true); setErr('')
     try {
       let pid = pickId
-      if (mode === 'hotel') {
-        pid = (await createCalcPosition(category.id, 'Hotel', hotelWho || null, false, 'hotel')).id
-      } else if (mode === 'function' || mode === 'new') {
+      if (mode === 'function' || mode === 'new') {
         const name = (mode === 'function' ? funcName : newName).trim()
         if (!name) { setErr(mode === 'function' ? 'Funktion wählen' : 'Name fehlt'); setBusy(false); return }
         if (isPersonal) {
@@ -213,6 +214,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           if (mode === 'new' && !activeNames.includes(name)) { await saveFunctionCatalog([...activeNames, name]); reloadFunctions() }
           // Personal: IMMER neue Position (mehrere gleiche Funktionen erlaubt), mit Spezifikation
           pid = (await createCalcPosition(category.id, name, funcSpec.trim() || null)).id
+        } else if (isUnterkunft && name.toLowerCase() === 'hotel') {
+          // „Hotel" aus der Vorschlagsliste → Hotel-Position (Zimmer×Nächte×€/Nacht)
+          pid = (await createCalcPosition(category.id, 'Hotel', null, false, 'hotel')).id
         } else {
           const existing = catPositions.find(p => p.name === name)
           pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
@@ -244,15 +248,15 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
         </span>
         <div className="flex items-center gap-3">
+          {(isPersonal || hasHotel) && (
+            <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+              <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
+            </label>
+          )}
           {isPersonal && (
-            <>
-              <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
-                <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
-              </label>
-              <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
-                <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
-              </label>
-            </>
+            <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+              <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
+            </label>
           )}
           <button onClick={() => setAdding(a => !a)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
             <PlusIcon className="w-3.5 h-3.5" /> Position
@@ -277,7 +281,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             {rowPositions.map(p => (
               p.pos_type === 'hotel' ? (
                 <HotelRow key={p.id} show={show} dataset={dataset}
-                  positionId={p.id} positionName={p.name} who={p.spec ?? null}
+                  positionId={p.id} positionName={p.name} who={p.spec ?? null} showSpec={showSpec}
                   variants={variants} onChanged={onChanged} defaultVar={defaultVar}
                   dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
                   onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
@@ -309,25 +313,14 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <tr>
                 <td colSpan={colCount}>
                   <div className="flex flex-wrap items-center gap-2 py-1">
-                    {isPersonal ? (
+                    {isPersonal && (
                       <div className="flex gap-1 text-[11px]">
                         <button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button>
                         <span style={{ color: '#555' }}>·</span>
                         <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
                       </div>
-                    ) : isUnterkunft ? (
-                      <div className="flex gap-1 text-[11px]">
-                        <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
-                        <span style={{ color: '#555' }}>·</span>
-                        <button onClick={() => setMode('hotel')} style={{ color: mode === 'hotel' ? '#e0b877' : '#8b8b8b', fontWeight: mode === 'hotel' ? 600 : 400 }}>🏨 Hotel</button>
-                      </div>
-                    ) : null}
-                    {mode === 'hotel' ? (
-                      <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
-                        Hotel für:
-                        <input className="form-input" list="hotel-who-list" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 160 }} value={hotelWho} onChange={e => setHotelWho(e.target.value)} placeholder="z.B. Band, Crew, 1…" autoFocus />
-                      </label>
-                    ) : mode === 'function' ? (
+                    )}
+                    {mode === 'function' ? (
                       <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
                         <option value="">– Funktion –</option>
                         {functions.map(g => (
@@ -336,13 +329,10 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                           </optgroup>
                         ))}
                       </select>
-                    ) : mode === 'existing' ? (
-                      <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={pickId} onChange={e => setPickId(e.target.value)}>
-                        <option value="">– vorhandene Position –</option>
-                        {availablePositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
                     ) : (
-                      <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder={isPersonal ? 'Neue Funktion…' : 'Neue Position…'} autoFocus />
+                      <input className="form-input" list={isUnterkunft ? 'unterkunft-pos-list' : undefined}
+                        style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)}
+                        placeholder={isPersonal ? 'Neue Funktion…' : (isUnterkunft ? 'Neue Position oder „Hotel"…' : 'Neue Position…')} autoFocus />
                     )}
                     {isPersonal && (
                       <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', width: 170 }} value={funcSpec} onChange={e => setFuncSpec(e.target.value)} placeholder="Name/Spez. (optional)" />
@@ -727,8 +717,8 @@ function buildHotelModel(dataset: CalcDataset, showId: string, positionId: strin
   return { shared: varE.length === 0, s, perVar, ist }
 }
 
-function HotelRow({ show, dataset, positionId, positionName, who, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
-  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; who: string | null
+function HotelRow({ show, dataset, positionId, positionName, who, showSpec, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; who: string | null; showSpec: boolean
   variants: Variant[]; onChanged: () => void; defaultVar: string
   dragging: boolean; dropTarget: boolean
   onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
@@ -820,11 +810,10 @@ function HotelRow({ show, dataset, positionId, positionName, who, variants, onCh
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
             </div>
-            <div className="flex items-center gap-1.5" style={{ marginTop: 3 }}>
-              <span className="text-xs" style={{ color: '#6b7280' }}>Für:</span>
+            {showSpec ? (
               <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho} list="hotel-who-list"
-                className="form-input" placeholder="z.B. Band, Crew, 1…" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 150 }} />
-            </div>
+                className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190, marginTop: 3 }} />
+            ) : (whoVal ? <div className="text-xs" style={{ color: '#9ca3af', marginTop: 2 }}>· {whoVal}</div> : null)}
           </div>
         </div>
       </td>
