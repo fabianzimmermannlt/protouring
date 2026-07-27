@@ -1919,6 +1919,7 @@ async function initDatabase() {
   // Tour-/Festival-Kalkulation (Add-on) – Tabellen (idempotent)
   await db.exec(calcDb.SCHEMA);
   try { await db.exec('ALTER TABLE calc_entries ADD COLUMN amount TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec("ALTER TABLE calc_entries ADD COLUMN kind TEXT DEFAULT 'base'"); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8169,11 +8170,11 @@ app.put('/api/calc/shows/:showId/positions/:positionId/entries', authenticateTok
     await db.run('DELETE FROM calc_entries WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
     for (const e of list) {
       await db.run(
-        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,ist_amount,note)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,kind,ist_amount,note)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [crypto.randomUUID(), owner.project_id, req.params.showId, req.params.positionId, e.variant_id ?? null,
          calcText(e.quantity), calcText(e.unit_price), calcText(e.distance_km), calcText(e.rental_price),
-         calcText(e.included_km), calcText(e.price_extra_km), calcText(e.amount), null, e.note ?? null]);
+         calcText(e.included_km), calcText(e.price_extra_km), calcText(e.amount), e.kind || 'base', null, e.note ?? null]);
     }
     res.json({ ok: true });
   } catch (e) {

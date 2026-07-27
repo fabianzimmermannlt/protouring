@@ -77,6 +77,8 @@ export interface CalcEntry {
   price_extra_km?: Money
   /** Direktbetrag – überschreibt Menge×Preis/Fahrzeug (Tabellen-Eingabe). */
   amount?: Money
+  /** 'base' = normaler Positionsbetrag, 'travel' = Reisekosten (km×Preis), addiert sich. */
+  kind?: string
   /** @deprecated Ist liegt jetzt pro Position/Show in CalcActual (nicht pro Variante). */
   ist_amount?: Money
   note?: string | null

@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS calc_entries (
   included_km TEXT,
   price_extra_km TEXT,
   amount TEXT,
+  kind TEXT DEFAULT 'base',
   ist_amount TEXT,
   note TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -137,7 +138,7 @@ function buildImportRows(seed, tenantId) {
     quantity: s(e.quantity), unit_price: s(e.unit_price),
     distance_km: s(e.distance_km), rental_price: s(e.rental_price),
     included_km: s(e.included_km), price_extra_km: s(e.price_extra_km),
-    amount: s(e.amount), ist_amount: s(e.ist_amount), note: e.note ?? null,
+    amount: s(e.amount), kind: 'base', ist_amount: s(e.ist_amount), note: e.note ?? null,
   }))
   return { project, variants, shows, categories, positions, entries }
 }
@@ -162,9 +163,9 @@ async function insertRows(db, r) {
     await db.run(`INSERT INTO calc_positions (id,category_id,name,sort_order) VALUES (?,?,?,?)`, [p2.id, p2.category_id, p2.name, p2.sort_order])
   for (const e of r.entries)
     await db.run(
-      `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,ist_amount,note)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [e.id, e.project_id, e.show_id, e.position_id, e.variant_id, e.quantity, e.unit_price, e.distance_km, e.rental_price, e.included_km, e.price_extra_km, e.amount, e.ist_amount, e.note])
+      `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,kind,ist_amount,note)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [e.id, e.project_id, e.show_id, e.position_id, e.variant_id, e.quantity, e.unit_price, e.distance_km, e.rental_price, e.included_km, e.price_extra_km, e.amount, e.kind || 'base', e.ist_amount, e.note])
 }
 
 /** Roh-Zeilen → CalcDataset-Form (is_active als Boolean). Pur, ohne DB (für Tests). */

@@ -182,21 +182,28 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
 
 // ── Positions-Zeile ──────────────────────────────────────────────────────────
 
-interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; ist: string }
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: string; travelRate: string; ist: string }
 
-const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar })
+const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate })
 
 function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: string, positionId: string, variants: Variant[]): RowModel {
   const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId)
-  const nullE = es.filter(e => e.variant_id == null)
-  const varE = es.filter(e => e.variant_id != null)
+  const baseE = es.filter(e => (e.kind ?? 'base') !== 'travel')
+  const travelE = es.find(e => e.kind === 'travel')
+  const nullE = baseE.filter(e => e.variant_id == null)
+  const varE = baseE.filter(e => e.variant_id != null)
   const shared = varE.length === 0            // nur eine „gilt für alle"-Buchung (oder gar keine) → verknüpft
   const sharedVal = nullE.length ? numStr(entryAmount(nullE[0], project)) : ''
   const perVar: Record<string, string> = {}
   if (nullE.length) variants.forEach(v => { perVar[v.id] = sharedVal })     // Startwerte auch für den Aufgelöst-Fall
   varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = numStr(entryAmount(e, project)) })
   const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
-  return { shared, sharedVal, perVar, ist: act?.amount != null ? String(act.amount) : '' }
+  return {
+    shared, sharedVal, perVar,
+    travelKm: travelE?.quantity != null ? String(travelE.quantity) : '',
+    travelRate: travelE?.unit_price != null ? String(travelE.unit_price) : '',
+    ist: act?.amount != null ? String(act.amount) : '',
+  }
 }
 
 function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove }: {
@@ -208,6 +215,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   const [savedSnap, setSavedSnap] = useState(() => sollSnap(initial))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [travelOpen, setTravelOpen] = useState(() => !!(initial.travelKm || initial.travelRate))
 
   const sollDirty = sollSnap(m) !== savedSnap
 
@@ -223,15 +231,19 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
     return { ...p, shared: true, sharedVal: p.sharedVal || first }
   })
 
+  const travelAmount = (): Decimal => {
+    const km = norm(m.travelKm), rate = norm(m.travelRate)
+    if (km == null || rate == null) return new Decimal(0)
+    try { return new Decimal(km).times(rate) } catch { return new Decimal(0) }
+  }
+
   const entriesPayload = (): CalcEntryInput[] => {
-    if (m.shared) {
-      const a = norm(m.sharedVal)
-      return a == null ? [] : [{ variant_id: null, amount: a }]
-    }
-    return variants
-      .map(v => ({ v, a: norm(m.perVar[v.id] ?? '') }))
-      .filter(x => x.a != null)
-      .map(x => ({ variant_id: x.v.id, amount: x.a }))
+    const base: CalcEntryInput[] = m.shared
+      ? (norm(m.sharedVal) == null ? [] : [{ kind: 'base', variant_id: null, amount: norm(m.sharedVal) }])
+      : variants.map(v => ({ v, a: norm(m.perVar[v.id] ?? '') })).filter(x => x.a != null).map(x => ({ kind: 'base', variant_id: x.v.id, amount: x.a }))
+    const km = norm(m.travelKm), rate = norm(m.travelRate)
+    const travel: CalcEntryInput[] = (km != null && rate != null) ? [{ kind: 'travel', variant_id: null, quantity: km, unit_price: rate }] : []
+    return [...base, ...travel]
   }
 
   const saveSoll = async () => {
@@ -257,55 +269,80 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   }
 
   const cell = { className: 'form-input text-right', style: { fontSize: '0.78rem', padding: '3px 6px', maxWidth: 110 } as const }
+  const tvCell = { className: 'form-input text-right', inputMode: 'decimal' as const, style: { fontSize: '0.75rem', padding: '2px 5px', maxWidth: 70 } }
+  const travelActive = travelOpen || m.travelKm !== '' || m.travelRate !== ''
 
   return (
-    <tr>
-      <td>
-        <div className="flex items-center gap-1.5">
-          <button onClick={toggleLink}
-            title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
-            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
-            <LinkIcon className="w-3.5 h-3.5" />
-          </button>
-          <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
-        </div>
-      </td>
-
-      {m.shared ? (
-        <td colSpan={variants.length} className="text-right">
-          <div className="flex items-center justify-end gap-2">
-            <span className="text-[10px]" style={{ color: '#8b8b8b' }}>alle Varianten:</span>
-            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal}
-              onChange={e => setM(p => ({ ...p, sharedVal: e.target.value }))} placeholder="0" />
+    <>
+      <tr>
+        <td>
+          <div className="flex items-center gap-1.5">
+            <button onClick={toggleLink}
+              title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
+              className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
+              <LinkIcon className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
+            <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
+              className="shrink-0 text-xs leading-none" style={{ opacity: travelActive ? 1 : 0.4 }}>🚗</button>
           </div>
         </td>
-      ) : (
-        variants.map(v => (
-          <td key={v.id} className="text-right">
-            <input inputMode="decimal" {...cell} value={m.perVar[v.id] ?? ''}
-              onChange={e => setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: e.target.value } }))} placeholder="0" />
+
+        {m.shared ? (
+          <td colSpan={variants.length} className="text-right">
+            <div className="flex items-center justify-end gap-2">
+              <span className="text-[10px]" style={{ color: '#8b8b8b' }}>alle Varianten:</span>
+              <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal}
+                onChange={e => setM(p => ({ ...p, sharedVal: e.target.value }))} placeholder="0" />
+            </div>
           </td>
-        ))
-      )}
+        ) : (
+          variants.map(v => (
+            <td key={v.id} className="text-right">
+              <input inputMode="decimal" {...cell} value={m.perVar[v.id] ?? ''}
+                onChange={e => setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: e.target.value } }))} placeholder="0" />
+            </td>
+          ))
+        )}
 
-      <td className="text-right">
-        <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '3px 6px', maxWidth: 110 }}
-          value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
-      </td>
+        <td className="text-right">
+          <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '3px 6px', maxWidth: 110 }}
+            value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
+        </td>
 
-      <td>
-        <div className="flex items-center gap-1 justify-end">
-          {sollDirty && (
-            <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>
-              {busy ? '…' : 'Speichern'}
+        <td>
+          <div className="flex items-center gap-1 justify-end">
+            {sollDirty && (
+              <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>
+                {busy ? '…' : 'Speichern'}
+              </button>
+            )}
+            <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Entfernen">
+              <TrashIcon className="w-3.5 h-3.5" />
             </button>
-          )}
-          <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Entfernen">
-            <TrashIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
-      </td>
-    </tr>
+          </div>
+          {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
+        </td>
+      </tr>
+
+      {travelOpen && (
+        <tr>
+          <td />
+          <td colSpan={variants.length + 2}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: '#9ca3af', paddingLeft: 20 }}>
+              <span>🚗 Reisekosten:</span>
+              <input {...tvCell} value={m.travelKm} onChange={e => setM(p => ({ ...p, travelKm: e.target.value }))} placeholder="km" />
+              <span>km ×</span>
+              <input {...tvCell} value={m.travelRate} onChange={e => setM(p => ({ ...p, travelRate: e.target.value }))} placeholder="€/km" />
+              <span>= <b style={{ color: '#e0e0e0' }}>{formatEUR(travelAmount())}</b></span>
+              {(m.travelKm !== '' || m.travelRate !== '') && (
+                <button onClick={() => setM(p => ({ ...p, travelKm: '', travelRate: '' }))} className="text-gray-500 hover:text-red-500" title="Reisekosten löschen">✕</button>
+              )}
+              <span className="text-[10px]" style={{ color: '#6b7280' }}>(gilt für alle Varianten, addiert sich zum Betrag)</span>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }

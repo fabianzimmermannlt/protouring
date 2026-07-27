@@ -828,6 +828,7 @@ export interface CalcEntryInput {
   included_km?: Num
   price_extra_km?: Num
   amount?: Num
+  kind?: string
   ist_amount?: Num
   note?: string | null
 }
