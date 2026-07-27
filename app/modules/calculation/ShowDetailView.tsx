@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
-import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
   createCalcPosition, replaceCalcEntries, setCalcActual, type CalcEntryInput,
 } from '@/lib/api-client'
@@ -121,6 +121,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
   }
 
   const colCount = 2 + variants.length + 1
+  const showTravel = /personal/i.test(category.name)   // Reisekosten nur beim Personal
 
   return (
     <div className="pt-card">
@@ -147,7 +148,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
             {rowPositions.map(p => (
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
                 positionId={p.id} positionName={p.name} variants={variants} onChanged={onChanged}
-                onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
+                showTravel={showTravel} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
             ))}
             {adding && (
               <tr>
@@ -206,9 +207,10 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove }: {
+function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove, showTravel }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   positionId: string; positionName: string; variants: Variant[]; onChanged: () => void; onRemove: () => void
+  showTravel: boolean
 }) {
   const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId, variants), [dataset, project, show.id, positionId, variants])
   const [m, setM] = useState<RowModel>(initial)
@@ -242,7 +244,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
       ? (norm(m.sharedVal) == null ? [] : [{ kind: 'base', variant_id: null, amount: norm(m.sharedVal) }])
       : variants.map(v => ({ v, a: norm(m.perVar[v.id] ?? '') })).filter(x => x.a != null).map(x => ({ kind: 'base', variant_id: x.v.id, amount: x.a }))
     const km = norm(m.travelKm), rate = norm(m.travelRate)
-    const travel: CalcEntryInput[] = (km != null && rate != null) ? [{ kind: 'travel', variant_id: null, quantity: km, unit_price: rate }] : []
+    const travel: CalcEntryInput[] = (showTravel && km != null && rate != null) ? [{ kind: 'travel', variant_id: null, quantity: km, unit_price: rate }] : []
     return [...base, ...travel]
   }
 
@@ -283,8 +285,13 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
               <LinkIcon className="w-3.5 h-3.5" />
             </button>
             <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
-            <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
-              className="shrink-0 text-xs leading-none" style={{ opacity: travelActive ? 1 : 0.4 }}>🚗</button>
+            {showTravel && (
+              <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
+                className="shrink-0 inline-flex items-center gap-1 rounded"
+                style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? '#facc15' : 'transparent', border: `1px solid ${travelActive ? '#facc15' : '#4a4a4a'}` }}>
+                <TruckIcon className="w-3.5 h-3.5" /> Reise
+              </button>
+            )}
           </div>
         </td>
 
@@ -325,7 +332,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
         </td>
       </tr>
 
-      {travelOpen && (
+      {showTravel && travelOpen && (
         <tr>
           <td />
           <td colSpan={variants.length + 2}>
