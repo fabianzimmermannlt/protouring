@@ -125,8 +125,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
 
   return (
     <div className="pt-card">
-      <div className="pt-card-header flex items-center justify-between">
-        <span className="pt-card-title">{category.name} <span style={{ opacity: 0.5, fontWeight: 400 }}>· {category.kind === 'income' ? 'Einnahme' : 'Ausgabe'}</span></span>
+      <div className="pt-card-header flex items-center justify-between"
+        style={{ background: category.kind === 'income' ? '#173a28' : '#26313f', borderLeft: `4px solid ${category.kind === 'income' ? '#4ade80' : '#60a5fa'}` }}>
+        <span className="pt-card-title" style={{ color: '#e5e7eb', letterSpacing: '0.02em' }}>{category.name} <span style={{ opacity: 0.55, fontWeight: 400 }}>· {category.kind === 'income' ? 'Einnahme' : 'Ausgabe'}</span></span>
         <button onClick={() => setAdding(a => !a)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
           <PlusIcon className="w-3.5 h-3.5" /> Position
         </button>
@@ -270,7 +271,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
 
-  const cell = { className: 'form-input text-right', style: { fontSize: '0.78rem', padding: '3px 6px', maxWidth: 110 } as const }
+  const cell = { className: 'form-input text-right', style: { fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' } as const }
   const tvCell = { className: 'form-input text-right', inputMode: 'decimal' as const, style: { fontSize: '0.75rem', padding: '2px 5px', maxWidth: 70 } }
   const travelActive = travelOpen || m.travelKm !== '' || m.travelRate !== ''
 
@@ -295,25 +296,27 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
           </div>
         </td>
 
-        {m.shared ? (
-          <td colSpan={variants.length} className="text-right">
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-[10px]" style={{ color: '#8b8b8b' }}>alle Varianten:</span>
-              <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal}
-                onChange={e => setM(p => ({ ...p, sharedVal: e.target.value }))} placeholder="0" />
-            </div>
+        {variants.map(v => (
+          <td key={v.id} className="text-right" style={{ padding: '4px 8px' }}>
+            <input inputMode="decimal" {...cell}
+              value={m.shared ? m.sharedVal : (m.perVar[v.id] ?? '')}
+              onChange={e => {
+                const val = e.target.value
+                setM(p => {
+                  if (!p.shared) return { ...p, perVar: { ...p.perVar, [v.id]: val } }
+                  const perVar: Record<string, string> = {}
+                  variants.forEach(vv => { perVar[vv.id] = val })
+                  return { ...p, sharedVal: val, perVar }
+                })
+              }}
+              placeholder="0"
+              title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten' : undefined}
+              style={{ ...cell.style, color: m.shared ? '#93c5fd' : undefined }} />
           </td>
-        ) : (
-          variants.map(v => (
-            <td key={v.id} className="text-right">
-              <input inputMode="decimal" {...cell} value={m.perVar[v.id] ?? ''}
-                onChange={e => setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: e.target.value } }))} placeholder="0" />
-            </td>
-          ))
-        )}
+        ))}
 
-        <td className="text-right">
-          <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '3px 6px', maxWidth: 110 }}
+        <td className="text-right" style={{ padding: '4px 8px' }}>
+          <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
             value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         </td>
 
