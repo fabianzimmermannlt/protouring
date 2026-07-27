@@ -4,10 +4,10 @@
 // Liste aller Shows + Maske pro Show (Deal-Parameter). Anlegen/Ändern/Löschen/
 // Deaktivieren. Buchungen der Show folgen in Schritt 2. Siehe ADR-105.
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Decimal from 'decimal.js'
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
-import { createCalcShow, updateCalcShow, deleteCalcShow, copyCalcPositions, type CalcShowInput } from '@/lib/api-client'
+import { createCalcShow, updateCalcShow, deleteCalcShow, copyCalcPositions, getTermine, type CalcShowInput, type Termin } from '@/lib/api-client'
 import type { CalcDataset, CalcShow, DealType } from '@/lib/calculation/types'
 import { formatDate } from '@/lib/calculation/format'
 import ShowDetailView from './ShowDetailView'
@@ -171,6 +171,21 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
   const [err, setErr] = useState('')
   const [copyFrom, setCopyFrom] = useState('')
   const [copyWithValues, setCopyWithValues] = useState(false)
+  const [events, setEvents] = useState<Termin[]>([])
+  const [eventPick, setEventPick] = useState('')
+  useEffect(() => { if (!show) getTermine().then(setEvents).catch(() => {/* Events optional */}) }, [show])
+  const applyEvent = (id: string) => {
+    setEventPick(id)
+    const ev = events.find(e => String(e.id) === id)
+    if (!ev) return
+    setF(p => ({
+      ...p,
+      show_date: ev.date ? String(ev.date).slice(0, 10) : p.show_date,
+      city: ev.city || ev.venueCity || p.city,
+      venue: ev.venueName || p.venue,
+      capacity: ev.capacity != null ? String(ev.capacity) : p.capacity,
+    }))
+  }
   const otherShows = (shows ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   const set = (k: keyof FormState, v: string | boolean) => setF(p => ({ ...p, [k]: v }))
   const showDeal = f.deal_type !== 'guarantee'
@@ -207,6 +222,20 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
           <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
         </div>
         <div className="modal-body space-y-4">
+          {!show && events.length > 0 && (
+            <div style={{ background: '#1e2a24', border: '1px solid #2f5c46', borderRadius: 6, padding: '8px 10px' }}>
+              <label className="form-label" style={{ marginBottom: 4 }}>Aus Event übernehmen (Datum, Ort, Venue)</label>
+              <select className="form-input" value={eventPick} onChange={e => applyEvent(e.target.value)}>
+                <option value="">– manuell eingeben –</option>
+                {events.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).map(ev => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.date ? formatDate(String(ev.date).slice(0, 10)) + ' · ' : ''}{ev.city || ev.venueCity || '?'}{ev.venueName ? ' · ' + ev.venueName : ''}{ev.title ? ' — ' + ev.title : ''}
+                  </option>
+                ))}
+              </select>
+              <p style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>Felder werden vorbefüllt und bleiben editierbar.</p>
+            </div>
+          )}
           {!show && otherShows.length > 0 && (
             <div style={{ background: '#242424', border: '1px solid #3c3c3c', borderRadius: 6, padding: '8px 10px' }}>
               <label className="form-label" style={{ marginBottom: 4 }}>Positionen übernehmen von (optional)</label>
