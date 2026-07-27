@@ -17,6 +17,7 @@ import type { CalcDataset, CalcShow, CalcProject, CalcEntry } from '@/lib/calcul
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
 import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
+import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
@@ -99,9 +100,6 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
       <datalist id="hotel-who-list">
         {['Band', 'Crew', '1', '2', '3'].map(w => <option key={w} value={w} />)}
       </datalist>
-      <datalist id="unterkunft-pos-list">
-        <option value="Hotel" />
-      </datalist>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
@@ -160,7 +158,6 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   // Jede angelegte Position erscheint in ALLEN Shows (leer/0), damit nichts vergessen
   // wird. Übergeordnete Posten werden separat (read-only) gerendert → hier ausblenden.
   const rowPositions = catPositions.filter(p => !p.is_overhead)
-  const availablePositions: typeof catPositions = []   // alle Positionen sind bereits sichtbar
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
   const isUnterkunft = /unterkunft|verpflegung/i.test(category.name)   // nur hier: Hotel-Option
   const hasHotel = catPositions.some(p => p.pos_type === 'hotel')      // Spezifikation-Häkchen auch bei Hotel
@@ -194,39 +191,6 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   }
 
   const [adding, setAdding] = useState(false)
-  const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'new')
-  const [pickId, setPickId] = useState('')
-  const [newName, setNewName] = useState('')
-  const [funcName, setFuncName] = useState('')
-  const [funcSpec, setFuncSpec] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
-
-  const doAdd = async () => {
-    setBusy(true); setErr('')
-    try {
-      let pid = pickId
-      if (mode === 'function' || mode === 'new') {
-        const name = (mode === 'function' ? funcName : newName).trim()
-        if (!name) { setErr(mode === 'function' ? 'Funktion wählen' : 'Name fehlt'); setBusy(false); return }
-        if (isPersonal) {
-          // neu angelegte Funktion → in den Katalog (Settings/Kontakte) schreiben
-          if (mode === 'new' && !activeNames.includes(name)) { await saveFunctionCatalog([...activeNames, name]); reloadFunctions() }
-          // Personal: IMMER neue Position (mehrere gleiche Funktionen erlaubt), mit Spezifikation
-          pid = (await createCalcPosition(category.id, name, funcSpec.trim() || null)).id
-        } else if (isUnterkunft && name.toLowerCase() === 'hotel') {
-          // „Hotel" aus der Vorschlagsliste → Hotel-Position (Zimmer×Nächte×€/Nacht)
-          pid = (await createCalcPosition(category.id, 'Hotel', null, false, 'hotel')).id
-        } else {
-          const existing = catPositions.find(p => p.name === name)
-          pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
-        }
-      } else if (!pid) { setErr('Position wählen'); setBusy(false); return }
-      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setFuncSpec(''); setMode(isPersonal ? 'function' : 'new')
-      onChanged() // neu laden – Position erscheint in allen Shows
-    } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false); return }
-    setBusy(false)
-  }
 
   const colCount = 2 + variants.length + 2
   // Übergeordnete Kosten dieses Bereichs → read-only Umlage-Zeile in der Show
@@ -312,34 +276,13 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             {adding && (
               <tr>
                 <td colSpan={colCount}>
-                  <div className="flex flex-wrap items-center gap-2 py-1">
-                    {isPersonal && (
-                      <div className="flex gap-1 text-[11px]">
-                        <button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button>
-                        <span style={{ color: '#555' }}>·</span>
-                        <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
-                      </div>
-                    )}
-                    {mode === 'function' ? (
-                      <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
-                        <option value="">– Funktion –</option>
-                        {functions.map(g => (
-                          <optgroup key={g.group} label={g.group}>
-                            {g.names.map(n => <option key={n} value={n}>{n}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                    ) : (
-                      <input className="form-input" list={isUnterkunft ? 'unterkunft-pos-list' : undefined}
-                        style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)}
-                        placeholder={isPersonal ? 'Neue Funktion…' : (isUnterkunft ? 'Neue Position oder „Hotel"…' : 'Neue Position…')} autoFocus />
-                    )}
-                    {isPersonal && (
-                      <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', width: 170 }} value={funcSpec} onChange={e => setFuncSpec(e.target.value)} placeholder="Name/Spez. (optional)" />
-                    )}
-                    <button onClick={doAdd} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>{busy ? '…' : 'Hinzufügen'}</button>
-                    <button onClick={() => { setAdding(false); setErr('') }} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
-                    {err && <span className="text-[11px]" style={{ color: '#fca5a5' }}>{err}</span>}
+                  <div className="flex items-center gap-2 py-1" style={{ maxWidth: 420 }}>
+                    <div style={{ flex: 1 }}>
+                      <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft}
+                        catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
+                        onDone={() => { setAdding(false); onChanged() }} />
+                    </div>
+                    <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
                   </div>
                 </td>
               </tr>
@@ -857,5 +800,91 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
         {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
       </td>
     </tr>
+  )
+}
+
+// ── Position anlegen: Dropdown mit Vorschlägen (bisherige Einträge) + „Neu anlegen" ──
+interface PItem { id: string; name: string; group?: string; kind: 'function' | 'name' | 'hotel' }
+
+function AddPositionControl({ category, isPersonal, isUnterkunft, catPositions, functions, activeNames, reloadFunctions, onDone }: {
+  category: { id: string; name: string }
+  isPersonal: boolean; isUnterkunft: boolean
+  catPositions: CalcDataset['positions']
+  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void
+  onDone: () => void
+}) {
+  const items = useMemo<PItem[]>(() => {
+    if (isPersonal) return functions.flatMap(g => g.names.map(n => ({ id: `${g.group}::${n}`, name: n, group: g.group, kind: 'function' as const })))
+    const seen = new Set<string>()
+    const names: PItem[] = []
+    catPositions.filter(p => !p.is_overhead).forEach(p => {
+      const key = p.name.toLowerCase()
+      if (!seen.has(key)) { seen.add(key); names.push({ id: p.name, name: p.name, kind: p.pos_type === 'hotel' ? 'hotel' : 'name' }) }
+    })
+    if (isUnterkunft && !seen.has('hotel')) names.unshift({ id: '__hotel__', name: 'Hotel', kind: 'hotel' })
+    return names
+  }, [isPersonal, isUnterkunft, functions, catPositions])
+
+  const commit = async (data: { name: string; spec?: string | null; kind: 'function' | 'name' | 'hotel' | 'new' }) => {
+    const name = data.name.trim()
+    if (!name) return
+    if (data.kind === 'hotel' || (isUnterkunft && name.toLowerCase() === 'hotel')) {
+      await createCalcPosition(category.id, 'Hotel', null, false, 'hotel')
+    } else if (isPersonal) {
+      if (data.kind === 'new' && !activeNames.includes(name)) { await saveFunctionCatalog([...activeNames, name]); reloadFunctions() }
+      await createCalcPosition(category.id, name, data.spec?.trim() || null)
+    } else {
+      await createCalcPosition(category.id, name)
+    }
+    onDone()
+  }
+
+  return (
+    <SearchableDropdown<PItem>
+      value={null}
+      placeholder={isPersonal ? 'Funktion wählen oder neu…' : (isUnterkunft ? 'Position wählen (z.B. Hotel) oder neu…' : 'Position wählen oder neu…')}
+      items={items}
+      filterFn={(it, q) => it.name.toLowerCase().includes(q.toLowerCase())}
+      renderValue={it => it.name}
+      renderItem={it => (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: '0.82rem', color: '#e0e0e0' }}>{it.kind === 'hotel' ? '🏨 ' : ''}{it.name}</span>
+          {it.group && <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>{it.group}</span>}
+        </div>
+      )}
+      onSelect={it => { if (it) commit({ name: it.name, kind: it.kind }) }}
+      createLabel={isPersonal ? 'Neue Funktion anlegen' : 'Neue Position anlegen'}
+      renderCreateForm={(_onCreated, onCancel) => (
+        <InlineNewForm isPersonal={isPersonal} onCreate={(name, spec) => commit({ name, spec, kind: 'new' })} onCancel={onCancel} />
+      )}
+    />
+  )
+}
+
+function InlineNewForm({ isPersonal, onCreate, onCancel }: { isPersonal: boolean; onCreate: (name: string, spec: string | null) => Promise<void>; onCancel: () => void }) {
+  const [name, setName] = useState('')
+  const [spec, setSpec] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const submit = async () => {
+    if (!name.trim()) { setErr('Name fehlt'); return }
+    setBusy(true); setErr('')
+    try { await onCreate(name.trim(), spec.trim() || null) } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+  }
+  return (
+    <div className="space-y-2">
+      <input className="form-input" style={{ fontSize: '0.8rem', padding: '4px 8px', width: '100%' }} value={name}
+        onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
+        placeholder={isPersonal ? 'Neue Funktion…' : 'Neue Position…'} autoFocus />
+      {isPersonal && (
+        <input className="form-input" style={{ fontSize: '0.8rem', padding: '4px 8px', width: '100%' }} value={spec}
+          onChange={e => setSpec(e.target.value)} placeholder="Spezifikation (optional)" />
+      )}
+      <div className="flex items-center gap-2">
+        <button onClick={submit} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>{busy ? '…' : 'Anlegen'}</button>
+        <button onClick={onCancel} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
+        {err && <span className="text-[11px]" style={{ color: '#fca5a5' }}>{err}</span>}
+      </div>
+    </div>
   )
 }
