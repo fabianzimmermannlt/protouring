@@ -859,6 +859,10 @@ export async function setCalcActual(showId: string, positionId: string, data: Ca
   await request(`/api/calc/shows/${showId}/actuals/${positionId}`, { method: 'PUT', body: data })
 }
 
+export async function copyCalcPositions(showId: string, fromShowId: string, withValues: boolean): Promise<void> {
+  await request(`/api/calc/shows/${showId}/copy-positions`, { method: 'POST', body: { from_show_id: fromShowId, with_values: withValues } })
+}
+
 export async function getEquipmentItems(): Promise<EquipmentItem[]> {
   const res = await request<{ items: EquipmentItem[] }>('/api/equipment/items');
   return res.items;

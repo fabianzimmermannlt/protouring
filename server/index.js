@@ -8211,6 +8211,38 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
   }
 });
 
+// Positionen (Struktur, optional mit Werten) von einer anderen Show derselben Kalkulation übernehmen
+app.post('/api/calc/shows/:showId/copy-positions', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const target = await calcShowTenant(req.params.showId);
+    if (!target || target.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    const fromId = req.body?.from_show_id;
+    const withValues = req.body?.with_values === true;
+    const source = await calcShowTenant(fromId);
+    if (!source || source.tenant_id !== req.tenant.id || source.project_id !== target.project_id) return res.status(400).json({ error: 'Quell-Show ungültig' });
+    const srcEntries = await db.all('SELECT * FROM calc_entries WHERE show_id = ?', [fromId]);
+    if (withValues) {
+      for (const e of srcEntries) {
+        await db.run(
+          `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,kind,ist_amount,note)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [crypto.randomUUID(), target.project_id, req.params.showId, e.position_id, e.variant_id, e.quantity, e.unit_price, e.distance_km, e.rental_price, e.included_km, e.price_extra_km, e.amount, e.kind || 'base', null, e.note]);
+      }
+    } else {
+      const posIds = Array.from(new Set(srcEntries.map(e => e.position_id)));
+      for (const posId of posIds) {
+        await db.run(
+          `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind) VALUES (?,?,?,?,?,?,?)`,
+          [crypto.randomUUID(), target.project_id, req.params.showId, posId, null, null, 'base']);
+      }
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] copy positions:', e);
+    res.status(500).json({ error: 'Fehler beim Übernehmen der Positionen' });
+  }
+});
+
 // Neues (leeres) Projekt: Standard-Bereiche + Variante 1/2
 app.post('/api/calc/projects', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {

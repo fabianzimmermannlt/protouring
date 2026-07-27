@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import Decimal from 'decimal.js'
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
-import { createCalcShow, updateCalcShow, deleteCalcShow, type CalcShowInput } from '@/lib/api-client'
+import { createCalcShow, updateCalcShow, deleteCalcShow, copyCalcPositions, type CalcShowInput } from '@/lib/api-client'
 import type { CalcDataset, CalcShow, DealType } from '@/lib/calculation/types'
 import { formatDate } from '@/lib/calculation/format'
 import ShowDetailView from './ShowDetailView'
@@ -118,6 +118,7 @@ export default function ShowsView({ dataset, projectId, onChanged }: {
         <ShowFormModal
           projectId={projectId}
           show={modal.show}
+          shows={dataset.shows}
           onClose={() => setModal({ open: false, show: null })}
           onSaved={() => { setModal({ open: false, show: null }); onChanged() }}
         />
@@ -151,8 +152,8 @@ const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'
 const pctToRatio = (v: string): string | null => { const t = norm(v); return t == null ? null : new Decimal(t).div(100).toString() }
 const ratioToPct = (v: unknown): string => (v == null || v === '') ? '' : new Decimal(String(v)).times(100).toDecimalPlaces(4).toString()
 
-export function ShowFormModal({ projectId, show, onClose, onSaved }: {
-  projectId: string; show: CalcShow | null; onClose: () => void; onSaved: () => void
+export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
+  projectId: string; show: CalcShow | null; onClose: () => void; onSaved: () => void; shows?: CalcShow[]
 }) {
   const [f, setF] = useState<FormState>(() => ({
     show_date: show?.show_date ?? '', city: show?.city ?? '', venue: show?.venue ?? '',
@@ -167,6 +168,9 @@ export function ShowFormModal({ projectId, show, onClose, onSaved }: {
   }))
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [copyFrom, setCopyFrom] = useState('')
+  const [copyWithValues, setCopyWithValues] = useState(false)
+  const otherShows = (shows ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   const set = (k: keyof FormState, v: string | boolean) => setF(p => ({ ...p, [k]: v }))
   const showDeal = f.deal_type !== 'guarantee'
 
@@ -184,7 +188,10 @@ export function ShowFormModal({ projectId, show, onClose, onSaved }: {
         is_active: f.is_active, note: f.note || null,
       }
       if (show) await updateCalcShow(show.id, data)
-      else await createCalcShow(projectId, data)
+      else {
+        const created = await createCalcShow(projectId, data)
+        if (copyFrom) await copyCalcPositions(created.id, copyFrom, copyWithValues)
+      }
       onSaved()
     } catch (e: any) { setErr(e?.message ?? 'Speichern fehlgeschlagen'); setSaving(false) }
   }
@@ -197,6 +204,21 @@ export function ShowFormModal({ projectId, show, onClose, onSaved }: {
           <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
         </div>
         <div className="modal-body space-y-4">
+          {!show && otherShows.length > 0 && (
+            <div style={{ background: '#242424', border: '1px solid #3c3c3c', borderRadius: 6, padding: '8px 10px' }}>
+              <label className="form-label" style={{ marginBottom: 4 }}>Positionen übernehmen von (optional)</label>
+              <select className="form-input" value={copyFrom} onChange={e => setCopyFrom(e.target.value)}>
+                <option value="">– keine (leere Show) –</option>
+                {otherShows.map(s => <option key={s.id} value={s.id}>{s.city || '(ohne Stadt)'}{s.show_date ? ' · ' + formatDate(s.show_date) : ''}</option>)}
+              </select>
+              {copyFrom && (
+                <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer select-none" style={{ color: '#e0e0e0' }}>
+                  <input type="checkbox" checked={copyWithValues} onChange={e => setCopyWithValues(e.target.checked)} />
+                  auch die Werte übernehmen <span style={{ color: '#6b7280', fontSize: 11 }}>(sonst nur leere Positionen)</span>
+                </label>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="form-label">Datum</label>

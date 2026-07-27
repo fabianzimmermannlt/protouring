@@ -13,13 +13,15 @@ import {
 } from '@/lib/api-client'
 
 interface FuncGroup { group: string; names: string[] }
-import type { CalcDataset, CalcShow, CalcProject } from '@/lib/calculation/types'
+import type { CalcDataset, CalcShow, CalcProject, CalcEntry } from '@/lib/calculation/types'
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
 import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
 
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
+const hv = (v: unknown) => v != null && v !== ''
+const entryHasValue = (e: CalcEntry): boolean => hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price)
 
 /** Schützt vor hängenden Requests: bricht nach ms mit Fehler ab. */
 function withTimeout<T>(p: Promise<T>, ms = 15000): Promise<T> {
@@ -252,10 +254,12 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   const nullE = baseE.filter(e => e.variant_id == null)
   const varE = baseE.filter(e => e.variant_id != null)
   const shared = varE.length === 0            // nur eine „gilt für alle"-Buchung (oder gar keine) → verknüpft
-  const sharedVal = nullE.length ? numStr(entryAmount(nullE[0], project)) : ''
+  // Platzhalter-Buchungen (übernommene Positionen ohne Werte) leer anzeigen, nicht „0"
+  const disp = (e: CalcEntry) => entryHasValue(e) ? numStr(entryAmount(e, project)) : ''
+  const sharedVal = nullE.length ? disp(nullE[0]) : ''
   const perVar: Record<string, string> = {}
   if (nullE.length) variants.forEach(v => { perVar[v.id] = sharedVal })     // Startwerte auch für den Aufgelöst-Fall
-  varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = numStr(entryAmount(e, project)) })
+  varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = disp(e) })
 
   // Reise pro Variante (variant_id) + geerbt aus „gilt für alle" (variant_id NULL)
   const travelKm: Record<string, string> = {}
