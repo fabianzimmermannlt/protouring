@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, replaceCalcEntries, setCalcActual, getFunctionCatalog, type CalcEntryInput,
+  createCalcPosition, replaceCalcEntries, setCalcActual, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
 } from '@/lib/api-client'
 
 interface FuncGroup { group: string; names: string[] }
@@ -39,13 +39,21 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
   const variants: Variant[] = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
   const categories = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
 
-  // Funktionskatalog (Settings/Kontakte) – locker gekoppelt: nur als Vorschlag beim Anlegen
+  // Funktionskatalog (Settings/Kontakte) – aktive Funktionen inkl. custom. Neu angelegte
+  // Funktionen werden zurück in den Katalog geschrieben → konsistent mit Settings/Kontakte.
   const [functions, setFunctions] = useState<FuncGroup[]>([])
-  useEffect(() => {
-    getFunctionCatalog()
-      .then(cat => setFunctions(cat.map(g => ({ group: g.group, names: g.functions.filter(f => f.active).map(f => f.name) })).filter(g => g.names.length)))
-      .catch(() => {})
-  }, [])
+  const [activeNames, setActiveNames] = useState<string[]>([])
+  const loadFunctions = () => {
+    getActiveFunctions().then(active => {
+      const byGroup: Record<string, string[]> = {}
+      active.forEach(f => { if (!byGroup[f.group]) byGroup[f.group] = []; byGroup[f.group].push(f.name) })
+      setFunctions(Object.keys(byGroup).map(group => ({ group, names: byGroup[group] })))
+      setActiveNames(active.map(f => f.name))
+    }).catch(() => {})
+  }
+  useEffect(() => { loadFunctions() }, [])
+
+  const [resultVar, setResultVar] = useState<string>(project.default_variant_id ?? variants[0]?.id ?? '')
 
   const summary = useMemo(() => {
     const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
@@ -64,6 +72,12 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         <button onClick={() => setEditParams(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
           <PencilIcon className="w-3.5 h-3.5" /> Parameter
         </button>
+        <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
+          Ergebnis-Spalte:
+          <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
+            {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </label>
         {summary && (
           <div className="ml-auto text-xs flex gap-4" style={{ color: '#9ca3af' }}>
             <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
@@ -79,7 +93,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
       <div className="space-y-4">
         {categories.map(cat => (
           <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
-            category={cat} variants={variants} onChanged={onChanged} functions={functions} />
+            category={cat} variants={variants} onChanged={onChanged}
+            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} />
         ))}
       </div>
 
@@ -93,9 +108,10 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
 // ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-function CategoryTable({ show, dataset, project, category, variants, onChanged, functions }: {
+function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
-  category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void; functions: FuncGroup[]
+  category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
+  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string
 }) {
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -114,9 +130,10 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const rowPositions = catPositions.filter(p => usedIds.has(p.id) || addedIds.includes(p.id))
   const rowIds = new Set(rowPositions.map(p => p.id))
   const availablePositions = catPositions.filter(p => !rowIds.has(p.id))
+  const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
 
   const [adding, setAdding] = useState(false)
-  const [mode, setMode] = useState<'existing' | 'new' | 'function'>('existing')
+  const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'existing')
   const [pickId, setPickId] = useState('')
   const [newName, setNewName] = useState('')
   const [funcName, setFuncName] = useState('')
@@ -127,23 +144,26 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     setBusy(true); setErr('')
     try {
       let pid = pickId
-      if (mode === 'new' || mode === 'function') {
+      if (mode === 'function' || mode === 'new') {
         const name = (mode === 'function' ? funcName : newName).trim()
         if (!name) { setErr(mode === 'function' ? 'Funktion wählen' : 'Name fehlt'); setBusy(false); return }
+        // Personal + neu angelegte Funktion → in den Funktionskatalog (Settings/Kontakte) schreiben
+        if (isPersonal && mode === 'new' && !activeNames.includes(name)) {
+          await saveFunctionCatalog([...activeNames, name]); reloadFunctions()
+        }
         const existing = catPositions.find(p => p.name === name)
         pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
       } else if (!pid) { setErr('Position wählen'); setBusy(false); return }
       setAddedIds(prev => prev.includes(pid) ? prev : [...prev, pid])
-      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setMode('existing')
+      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setMode(isPersonal ? 'function' : 'existing')
       onChanged() // Katalog neu laden, damit die neue Position auftaucht
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false); return }
     setBusy(false)
   }
 
   const colCount = 2 + variants.length + 2
-  const showTravel = /personal/i.test(category.name)   // Reisekosten nur beim Personal
-  const showFunc = showTravel && functions.length > 0  // Funktionskatalog nur beim Personal
-  const defaultVar = project.default_variant_id ?? variants[0]?.id ?? ''
+  const showTravel = isPersonal                        // Reisekosten nur beim Personal
+  const defaultVar = resultVar || project.default_variant_id || variants[0]?.id || ''
   const defaultVarName = variants.find(v => v.id === defaultVar)?.name ?? ''
 
   return (
@@ -162,8 +182,8 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <th style={{ minWidth: 200 }}>Position</th>
               {variants.map(v => <th key={v.id} className="text-right" style={{ minWidth: 130 }}>{v.name}</th>)}
               <th className="text-right" style={{ minWidth: 130, color: '#facc15' }}>Ist</th>
-              <th className="text-right" style={{ minWidth: 100 }}>Ergebnis{defaultVarName && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}> ({defaultVarName})</span>}</th>
-              <th style={{ width: 40 }} />
+              <th className="text-right" style={{ minWidth: 110 }}>Ergebnis{defaultVarName && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}> ({defaultVarName})</span>}</th>
+              <th style={{ minWidth: 96 }} />
             </tr>
           </thead>
           <tbody>
@@ -180,17 +200,15 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                 <td colSpan={colCount}>
                   <div className="flex flex-wrap items-center gap-2 py-1">
                     <div className="flex gap-1 text-[11px]">
-                      <button onClick={() => setMode('existing')} style={{ color: mode === 'existing' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'existing' ? 600 : 400 }}>Vorhanden</button>
-                      {showFunc && <><span style={{ color: '#555' }}>·</span><button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button></>}
+                      {isPersonal ? (
+                        <button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button>
+                      ) : (
+                        <button onClick={() => setMode('existing')} style={{ color: mode === 'existing' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'existing' ? 600 : 400 }}>Vorhanden</button>
+                      )}
                       <span style={{ color: '#555' }}>·</span>
                       <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
                     </div>
-                    {mode === 'existing' ? (
-                      <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={pickId} onChange={e => setPickId(e.target.value)}>
-                        <option value="">– vorhandene Position –</option>
-                        {availablePositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                    ) : mode === 'function' ? (
+                    {mode === 'function' ? (
                       <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
                         <option value="">– Funktion –</option>
                         {functions.map(g => (
@@ -199,8 +217,13 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                           </optgroup>
                         ))}
                       </select>
+                    ) : mode === 'existing' ? (
+                      <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={pickId} onChange={e => setPickId(e.target.value)}>
+                        <option value="">– vorhandene Position –</option>
+                        {availablePositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
                     ) : (
-                      <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Neue Position…" autoFocus />
+                      <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder={isPersonal ? 'Neue Funktion…' : 'Neue Position…'} autoFocus />
                     )}
                     <button onClick={doAdd} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>{busy ? '…' : 'Hinzufügen'}</button>
                     <button onClick={() => { setAdding(false); setErr('') }} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
