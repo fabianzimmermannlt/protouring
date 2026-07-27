@@ -96,6 +96,9 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
   return (
     <div>
+      <datalist id="hotel-who-list">
+        {['Band', 'Crew', '1', '2', '3'].map(w => <option key={w} value={w} />)}
+      </datalist>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
@@ -321,9 +324,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                     {mode === 'hotel' ? (
                       <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
                         Hotel für:
-                        <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 120 }} value={hotelWho} onChange={e => setHotelWho(e.target.value)} autoFocus>
-                          {['Band', 'Crew', '1', '2', '3'].map(w => <option key={w} value={w}>{w}</option>)}
-                        </select>
+                        <input className="form-input" list="hotel-who-list" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 160 }} value={hotelWho} onChange={e => setHotelWho(e.target.value)} placeholder="z.B. Band, Crew, 1…" autoFocus />
                       </label>
                     ) : mode === 'function' ? (
                       <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
@@ -735,9 +736,11 @@ function HotelRow({ show, dataset, positionId, positionName, who, variants, onCh
   const [m, setM] = useState<HModel>(initial)
   const [savedSnap, setSavedSnap] = useState(() => hSnap(initial))
   const [nameVal, setNameVal] = useState(positionName)
+  const [whoVal, setWhoVal] = useState(who ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = hSnap(m) !== savedSnap
+  const saveWho = async () => { try { await updateCalcPosition(positionId, { spec: whoVal.trim() || null }); onChanged() } catch { /* still */ } }
 
   useEffect(() => {
     const key = `${show.id}:${positionId}`
@@ -816,7 +819,11 @@ function HotelRow({ show, dataset, positionId, positionName, who, variants, onCh
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
             </div>
-            {who && <div className="text-xs" style={{ color: '#9ca3af', marginTop: 2, marginLeft: 2 }}>Für: {who}</div>}
+            <div className="flex items-center gap-1.5" style={{ marginTop: 3 }}>
+              <span className="text-xs" style={{ color: '#6b7280' }}>Für:</span>
+              <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho} list="hotel-who-list"
+                className="form-input" placeholder="z.B. Band, Crew, 1…" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 150 }} />
+            </div>
           </div>
         </div>
       </td>
