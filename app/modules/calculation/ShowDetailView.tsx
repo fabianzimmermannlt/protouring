@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
 } from '@/lib/api-client'
 
 interface FuncGroup { group: string; names: string[] }
@@ -199,6 +199,12 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   }
 
   const colCount = 2 + variants.length + 2
+  // Übergeordnete Kosten dieses Bereichs → read-only Umlage-Zeile in der Show
+  const activeShowsList = useMemo(() => dataset.shows.filter(s => s.is_active), [dataset])
+  const overheadItems = useMemo(
+    () => dataset.positions.filter(p => p.is_overhead && p.category_id === category.id).slice().sort((a, b) => a.sort_order - b.sort_order),
+    [dataset, category.id])
+  const overheadExcluded = (posId: string, showId: string) => (dataset.overheadExclude ?? []).some(x => x.position_id === posId && x.show_id === showId)
   const showTravel = isPersonal                        // Reisekosten nur beim Personal
   const defaultVar = resultVar || project.default_variant_id || variants[0]?.id || ''
   const defaultVarName = defaultVar === 'ist' ? 'Ist' : (variants.find(v => v.id === defaultVar)?.name ?? '')
@@ -236,6 +242,17 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                 onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
                 onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
             ))}
+            {overheadItems.map(item => {
+              const soll = new Decimal(String(dataset.entries.find(e => e.position_id === item.id && e.show_id == null)?.amount ?? 0) || 0)
+              const includedCount = activeShowsList.filter(s => !overheadExcluded(item.id, s.id)).length
+              const included = !overheadExcluded(item.id, show.id)
+              const share = included && includedCount > 0 ? soll.div(includedCount) : new Decimal(0)
+              return (
+                <OverheadShowRow key={'oh-' + item.id} positionId={item.id} showId={show.id} name={item.name}
+                  variantCols={variants.length} included={included} includedCount={includedCount}
+                  soll={soll} share={share} onChanged={onChanged} />
+              )
+            })}
             {adding && (
               <tr>
                 <td colSpan={colCount}>
@@ -569,5 +586,40 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
         </tr>
       )}
     </>
+  )
+}
+
+// ── Übergeordnete Kosten: read-only Umlage-Zeile in der Show ──────────────────
+// Betrag wird zentral im Tab „Übergeordnet" gepflegt; hier nur Anzeige + Häkchen
+// (diese Show ab-/anwählen). Umlage = Soll ÷ Anzahl angehakter Shows (Regel 4).
+function OverheadShowRow({ positionId, showId, name, variantCols, included, includedCount, soll, share, onChanged }: {
+  positionId: string; showId: string; name: string; variantCols: number
+  included: boolean; includedCount: number; soll: Decimal; share: Decimal; onChanged: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const toggle = async () => {
+    setBusy(true)
+    try { await setCalcOverheadShow(positionId, showId, !included); onChanged() } finally { setBusy(false) }
+  }
+  return (
+    <tr style={{ background: '#20262e' }} title="Übergeordneter Posten – Betrag im Tab Übergeordnet pflegen">
+      <td>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" checked={included} disabled={busy} onChange={toggle}
+            title={included ? 'Gilt für diese Show (klicken zum Abwählen)' : 'Für diese Show abgewählt (klicken zum Anhaken)'} />
+          <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ background: '#33312a', color: '#d6c98a' }}>übergeordnet</span>
+          <span className="text-sm" style={{ color: included ? '#cbd5e1' : '#6b7280', whiteSpace: 'nowrap' }}>{name}</span>
+        </div>
+      </td>
+      <td colSpan={variantCols + 1} className="text-xs" style={{ color: '#6b7280' }}>
+        {included
+          ? `Umlage über ${includedCount} Show${includedCount !== 1 ? 's' : ''} · ${formatMoney(soll)} gesamt`
+          : 'für diese Show abgewählt'}
+      </td>
+      <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: included ? '#93c5fd' : '#6b7280', fontWeight: 500 }}>
+        {included ? formatMoney(share) : '—'}
+      </td>
+      <td />
+    </tr>
   )
 }
