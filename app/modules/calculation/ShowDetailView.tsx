@@ -140,20 +140,10 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
     [dataset, category.id])
-  const catPosIds = useMemo(() => new Set(catPositions.map(p => p.id)), [catPositions])
-
-  const usedIds = useMemo(() => {
-    const s = new Set<string>()
-    dataset.entries.forEach(e => { if (e.show_id === show.id && catPosIds.has(e.position_id)) s.add(e.position_id) })
-    ;(dataset.actuals ?? []).forEach(a => { if (a.show_id === show.id && catPosIds.has(a.position_id)) s.add(a.position_id) })
-    return s
-  }, [dataset, show.id, catPosIds])
-
-  // Positionen, die diese Session zusätzlich in die Tabelle geholt wurden (auch ohne Daten)
-  const [addedIds, setAddedIds] = useState<string[]>([])
-  const rowPositions = catPositions.filter(p => usedIds.has(p.id) || addedIds.includes(p.id))
-  const rowIds = new Set(rowPositions.map(p => p.id))
-  const availablePositions = catPositions.filter(p => !rowIds.has(p.id))
+  // Jede angelegte Position erscheint in ALLEN Shows (leer/0), damit nichts vergessen
+  // wird. Übergeordnete Posten werden separat (read-only) gerendert → hier ausblenden.
+  const rowPositions = catPositions.filter(p => !p.is_overhead)
+  const availablePositions: typeof catPositions = []   // alle Positionen sind bereits sichtbar
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
   // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile)
   const [showSpec, setShowSpec] = useState(true)
@@ -182,7 +172,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   }
 
   const [adding, setAdding] = useState(false)
-  const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'existing')
+  const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'new')
   const [pickId, setPickId] = useState('')
   const [newName, setNewName] = useState('')
   const [funcName, setFuncName] = useState('')
@@ -207,9 +197,8 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
         }
       } else if (!pid) { setErr('Position wählen'); setBusy(false); return }
-      setAddedIds(prev => prev.includes(pid) ? prev : [...prev, pid])
-      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setFuncSpec(''); setMode(isPersonal ? 'function' : 'existing')
-      onChanged() // Katalog neu laden, damit die neue Position auftaucht
+      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setFuncSpec(''); setMode(isPersonal ? 'function' : 'new')
+      onChanged() // neu laden – Position erscheint in allen Shows
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false); return }
     setBusy(false)
   }
@@ -268,7 +257,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
                 positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={isPersonal && showSpec} showName={isPersonal && showName}
                 variants={variants} onChanged={onChanged}
-                showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))}
+                showTravel={showTravel} defaultVar={defaultVar}
                 dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
                 onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
                 onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
@@ -288,15 +277,13 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <tr>
                 <td colSpan={colCount}>
                   <div className="flex flex-wrap items-center gap-2 py-1">
-                    <div className="flex gap-1 text-[11px]">
-                      {isPersonal ? (
+                    {isPersonal && (
+                      <div className="flex gap-1 text-[11px]">
                         <button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button>
-                      ) : (
-                        <button onClick={() => setMode('existing')} style={{ color: mode === 'existing' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'existing' ? 600 : 400 }}>Vorhanden</button>
-                      )}
-                      <span style={{ color: '#555' }}>·</span>
-                      <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
-                    </div>
+                        <span style={{ color: '#555' }}>·</span>
+                        <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
+                      </div>
+                    )}
                     {mode === 'function' ? (
                       <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
                         <option value="">– Funktion –</option>
@@ -374,10 +361,10 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, onRemove, showTravel, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, showTravel, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   positionId: string; positionName: string; positionSpec: string | null; positionPerson: string | null; showSpec: boolean; showName: boolean
-  variants: Variant[]; onChanged: () => void; onRemove: () => void
+  variants: Variant[]; onChanged: () => void
   showTravel: boolean; defaultVar: string
   dragging: boolean; dropTarget: boolean
   onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
@@ -469,20 +456,18 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const removeRow = async () => {
-    const hasDataHere = entriesPayload().length > 0 || norm(m.ist) != null
-    // Wird die Position in ANDEREN Shows (oder als Fixkosten) verwendet? Dann nur hier entfernen.
+    // Positionen erscheinen in allen Shows → Löschen entfernt die Position aus der
+    // gesamten Kalkulation (inkl. aller Buchungen/Ist). Warnen, wenn woanders Werte hängen.
     const filled = (v: string | number | null | undefined) => v != null && String(v).trim() !== ''
     const usedElsewhere = dataset.entries.some(e => e.position_id === positionId && e.show_id !== show.id)
       || (dataset.actuals ?? []).some(a => a.position_id === positionId && a.show_id !== show.id && (filled(a.amount) || filled(a.travel_km)))
     const msg = usedElsewhere
-      ? `„${positionName}" aus dieser Show entfernen? Buchungen + Ist nur dieser Show – in anderen Shows bleibt die Position erhalten.`
-      : `„${positionName}" komplett aus der Kalkulation löschen?`
-    if ((hasDataHere || !usedElsewhere) && !confirm(msg)) return
+      ? `„${positionName}" komplett löschen? Achtung: in anderen Shows sind bereits Werte erfasst – diese gehen mit verloren.`
+      : `„${positionName}" aus der Kalkulation löschen?`
+    if (!confirm(msg)) return
     setBusy(true)
     try {
-      if (hasDataHere) { await replaceCalcEntries(show.id, positionId, []); await setCalcActual(show.id, positionId, { amount: null, travel_km: null, travel_rate: null }) }
-      if (!usedElsewhere) await deleteCalcPosition(positionId)
-      onRemove()
+      await deleteCalcPosition(positionId)   // löscht Position + alle Buchungen/Ist in allen Shows
       onChanged()
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
