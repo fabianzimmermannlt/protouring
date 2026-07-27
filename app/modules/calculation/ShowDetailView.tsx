@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
-import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon } from '@heroicons/react/24/outline'
 import {
   createCalcPosition, replaceCalcEntries, setCalcActual, type CalcEntryInput,
 } from '@/lib/api-client'
@@ -55,7 +55,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         )}
       </div>
       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
-        Pro Position ein Soll-Wert je Variante. „Ist" = tatsächliche Rechnung (für die Abrechnung). Gleicher Wert in allen Varianten? Einfach in jede Spalte denselben Betrag.
+        🔗 = ein gemeinsamer Soll-Wert für alle Varianten (Standard). Zum Auflösen aufs 🔗 klicken → je Variante ein eigenes Feld (der Wert bleibt erhalten, u.a. bei Var 1). „Ist" = tatsächliche Rechnung (für die Abrechnung).
       </p>
 
       <div className="space-y-4">
@@ -182,22 +182,21 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
 
 // ── Positions-Zeile ──────────────────────────────────────────────────────────
 
-interface RowModel { perVar: Record<string, string>; ist: string }
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; ist: string }
+
+const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar })
 
 function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: string, positionId: string, variants: Variant[]): RowModel {
   const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId)
   const nullE = es.filter(e => e.variant_id == null)
   const varE = es.filter(e => e.variant_id != null)
+  const shared = varE.length === 0            // nur eine „gilt für alle"-Buchung (oder gar keine) → verknüpft
+  const sharedVal = nullE.length ? numStr(entryAmount(nullE[0], project)) : ''
   const perVar: Record<string, string> = {}
-  // „gilt für alle" (variant_id NULL): Wert in jede Varianten-Spalte übernehmen …
-  if (nullE.length) {
-    const val = numStr(entryAmount(nullE[0], project))
-    variants.forEach(v => { perVar[v.id] = val })
-  }
-  // … variantenspezifische Buchungen überschreiben die jeweilige Spalte
+  if (nullE.length) variants.forEach(v => { perVar[v.id] = sharedVal })     // Startwerte auch für den Aufgelöst-Fall
   varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = numStr(entryAmount(e, project)) })
   const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
-  return { perVar, ist: act?.amount != null ? String(act.amount) : '' }
+  return { shared, sharedVal, perVar, ist: act?.amount != null ? String(act.amount) : '' }
 }
 
 function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove }: {
@@ -206,24 +205,40 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
 }) {
   const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId, variants), [dataset, project, show.id, positionId, variants])
   const [m, setM] = useState<RowModel>(initial)
-  const [savedSnap, setSavedSnap] = useState(() => JSON.stringify(initial.perVar))
+  const [savedSnap, setSavedSnap] = useState(() => sollSnap(initial))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  const sollDirty = JSON.stringify(m.perVar) !== savedSnap
+  const sollDirty = sollSnap(m) !== savedSnap
 
-  // Ein Soll-Eintrag je Variante mit Wert (keine „gilt für alle"-Zeilen mehr → kein Doppelzählen).
-  const entriesPayload = (): CalcEntryInput[] =>
-    variants
+  // Verknüpfung umschalten. WICHTIG: beim Auflösen bleibt der Wert erhalten
+  // (wird in leere Varianten-Spalten übernommen, u.a. Var 1) statt gelöscht zu werden.
+  const toggleLink = () => setM(p => {
+    if (p.shared) {
+      const perVar = { ...p.perVar }
+      variants.forEach(v => { if ((perVar[v.id] ?? '') === '') perVar[v.id] = p.sharedVal })
+      return { ...p, shared: false, perVar }
+    }
+    const first = variants.map(v => p.perVar[v.id]).find(x => (x ?? '') !== '') ?? ''
+    return { ...p, shared: true, sharedVal: p.sharedVal || first }
+  })
+
+  const entriesPayload = (): CalcEntryInput[] => {
+    if (m.shared) {
+      const a = norm(m.sharedVal)
+      return a == null ? [] : [{ variant_id: null, amount: a }]
+    }
+    return variants
       .map(v => ({ v, a: norm(m.perVar[v.id] ?? '') }))
       .filter(x => x.a != null)
       .map(x => ({ variant_id: x.v.id, amount: x.a }))
+  }
 
   const saveSoll = async () => {
     setBusy(true); setErr('')
     try {
       await replaceCalcEntries(show.id, positionId, entriesPayload())
-      setSavedSnap(JSON.stringify(m.perVar))
+      setSavedSnap(sollSnap(m))
       onChanged()
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
@@ -245,14 +260,33 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
 
   return (
     <tr>
-      <td><span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span></td>
+      <td>
+        <div className="flex items-center gap-1.5">
+          <button onClick={toggleLink}
+            title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
+            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
+            <LinkIcon className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
+        </div>
+      </td>
 
-      {variants.map(v => (
-        <td key={v.id} className="text-right">
-          <input inputMode="decimal" {...cell} value={m.perVar[v.id] ?? ''}
-            onChange={e => setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: e.target.value } }))} placeholder="0" />
+      {m.shared ? (
+        <td colSpan={variants.length} className="text-right">
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[10px]" style={{ color: '#8b8b8b' }}>alle Varianten:</span>
+            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal}
+              onChange={e => setM(p => ({ ...p, sharedVal: e.target.value }))} placeholder="0" />
+          </div>
         </td>
-      ))}
+      ) : (
+        variants.map(v => (
+          <td key={v.id} className="text-right">
+            <input inputMode="decimal" {...cell} value={m.perVar[v.id] ?? ''}
+              onChange={e => setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: e.target.value } }))} placeholder="0" />
+          </td>
+        ))
+      )}
 
       <td className="text-right">
         <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '3px 6px', maxWidth: 110 }}
