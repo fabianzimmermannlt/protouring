@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS calc_positions (
   id TEXT PRIMARY KEY,
   category_id TEXT NOT NULL REFERENCES calc_categories(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  spec TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS calc_entries (
@@ -131,7 +132,7 @@ function buildImportRows(seed, tenantId) {
     deal_type: x.deal_type || 'vs', is_active: x.is_active === false ? 0 : 1, note: x.note ?? null,
   }))
   const categories = seed.categories.map(c => ({ id: cmap[c.id], project_id: pid, name: c.name, kind: c.kind, sort_order: c.sort_order ?? 0 }))
-  const positions = seed.positions.map(p => ({ id: pmap[p.id], category_id: cmap[p.category_id], name: p.name, sort_order: p.sort_order ?? 0 }))
+  const positions = seed.positions.map(p => ({ id: pmap[p.id], category_id: cmap[p.category_id], name: p.name, spec: null, sort_order: p.sort_order ?? 0 }))
   const entries = seed.entries.map(e => ({
     id: randomUUID(), project_id: pid,
     show_id: e.show_id ? smap[e.show_id] : null,
@@ -162,7 +163,7 @@ async function insertRows(db, r) {
   for (const c of r.categories)
     await db.run(`INSERT INTO calc_categories (id,project_id,name,kind,sort_order) VALUES (?,?,?,?,?)`, [c.id, c.project_id, c.name, c.kind, c.sort_order])
   for (const p2 of r.positions)
-    await db.run(`INSERT INTO calc_positions (id,category_id,name,sort_order) VALUES (?,?,?,?)`, [p2.id, p2.category_id, p2.name, p2.sort_order])
+    await db.run(`INSERT INTO calc_positions (id,category_id,name,spec,sort_order) VALUES (?,?,?,?,?)`, [p2.id, p2.category_id, p2.name, p2.spec ?? null, p2.sort_order])
   for (const e of r.entries)
     await db.run(
       `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,kind,ist_amount,note)

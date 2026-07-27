@@ -845,8 +845,12 @@ export async function deleteCalcEntry(entryId: string): Promise<void> {
   await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
 }
 
-export async function createCalcPosition(categoryId: string, name: string): Promise<{ id: string }> {
-  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name } })
+export async function createCalcPosition(categoryId: string, name: string, spec?: string | null): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec } })
+}
+
+export async function updateCalcPosition(positionId: string, data: { name?: string; spec?: string | null; sort_order?: number }): Promise<void> {
+  await request(`/api/calc/positions/${positionId}`, { method: 'PUT', body: data })
 }
 
 /** Ersetzt alle Buchungen einer (Show, Position) durch die übergebene Liste. */

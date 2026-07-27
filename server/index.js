@@ -1924,6 +1924,7 @@ async function initDatabase() {
   try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN travel_rate TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   // Excel-Altlast: Positionsnamen mit führendem " + " bereinigen (App-erstellte Namen sind getrimmt → nie führendes Leerzeichen)
   try { await db.run("UPDATE calc_positions SET name = TRIM(SUBSTR(TRIM(name), 2)) WHERE name LIKE ' +%'"); } catch (e) { /* egal */ }
+  try { await db.exec('ALTER TABLE calc_positions ADD COLUMN spec TEXT'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8154,14 +8155,33 @@ app.post('/api/calc/categories/:catId/positions', authenticateToken, requireTena
     if (!cat || cat.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Bereich nicht gefunden' });
     const name = (req.body?.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Name fehlt' });
+    const spec = req.body?.spec ? String(req.body.spec).trim() || null : null;
     const id = crypto.randomUUID();
     const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_positions WHERE category_id = ?', [req.params.catId]);
-    await db.run('INSERT INTO calc_positions (id,category_id,name,sort_order) VALUES (?,?,?,?)',
-      [id, req.params.catId, name, (maxRow?.m ?? 0) + 1]);
+    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,sort_order) VALUES (?,?,?,?,?)',
+      [id, req.params.catId, name, spec, (maxRow?.m ?? 0) + 1]);
     res.json({ id });
   } catch (e) {
     console.error('[calc] create position:', e);
     res.status(500).json({ error: 'Fehler beim Anlegen der Position' });
+  }
+});
+
+// Position ändern (Name / Spezifikation / Reihenfolge)
+app.put('/api/calc/positions/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await db.get(
+      'SELECT p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
+      [req.params.id]);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    const b = req.body || {};
+    if (b.name !== undefined) await db.run('UPDATE calc_positions SET name=? WHERE id=?', [String(b.name).trim() || 'Position', req.params.id]);
+    if (b.spec !== undefined) await db.run('UPDATE calc_positions SET spec=? WHERE id=?', [b.spec ? String(b.spec).trim() || null : null, req.params.id]);
+    if (b.sort_order !== undefined) await db.run('UPDATE calc_positions SET sort_order=? WHERE id=?', [b.sort_order, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] update position:', e);
+    res.status(500).json({ error: 'Fehler beim Ändern der Position' });
   }
 });
 

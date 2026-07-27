@@ -59,6 +59,8 @@ export interface CalcPosition {
   id: string
   category_id: string
   name: string
+  /** Freie Spezifikation/Name (z.B. Person), um mehrere gleiche Funktionen zu unterscheiden. */
+  spec?: string | null
   sort_order: number
 }
 

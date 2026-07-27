@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, replaceCalcEntries, setCalcActual, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
+  createCalcPosition, updateCalcPosition, replaceCalcEntries, setCalcActual, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
 } from '@/lib/api-client'
 
 interface FuncGroup { group: string; names: string[] }
@@ -56,6 +56,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
   useEffect(() => { loadFunctions() }, [])
 
   const [resultVar, setResultVar] = useState<string>(project.default_variant_id ?? variants[0]?.id ?? '')
+  const [showSpec, setShowSpec] = useState(true)
 
   const summary = useMemo(() => {
     const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
@@ -78,7 +79,11 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
           Ergebnis-Spalte:
           <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
             {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            <option value="ist">Ist</option>
           </select>
+        </label>
+        <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+          <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
         </label>
         {summary && (
           <div className="ml-auto text-xs flex gap-4" style={{ color: '#9ca3af' }}>
@@ -96,7 +101,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         {categories.map(cat => (
           <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
             category={cat} variants={variants} onChanged={onChanged}
-            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} />
+            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} showSpec={showSpec} />
         ))}
       </div>
 
@@ -110,10 +115,10 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
 // ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar }: {
+function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar, showSpec }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
-  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string
+  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string; showSpec: boolean
 }) {
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -139,6 +144,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const [pickId, setPickId] = useState('')
   const [newName, setNewName] = useState('')
   const [funcName, setFuncName] = useState('')
+  const [funcSpec, setFuncSpec] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -149,15 +155,18 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
       if (mode === 'function' || mode === 'new') {
         const name = (mode === 'function' ? funcName : newName).trim()
         if (!name) { setErr(mode === 'function' ? 'Funktion wählen' : 'Name fehlt'); setBusy(false); return }
-        // Personal + neu angelegte Funktion → in den Funktionskatalog (Settings/Kontakte) schreiben
-        if (isPersonal && mode === 'new' && !activeNames.includes(name)) {
-          await saveFunctionCatalog([...activeNames, name]); reloadFunctions()
+        if (isPersonal) {
+          // neu angelegte Funktion → in den Katalog (Settings/Kontakte) schreiben
+          if (mode === 'new' && !activeNames.includes(name)) { await saveFunctionCatalog([...activeNames, name]); reloadFunctions() }
+          // Personal: IMMER neue Position (mehrere gleiche Funktionen erlaubt), mit Spezifikation
+          pid = (await createCalcPosition(category.id, name, funcSpec.trim() || null)).id
+        } else {
+          const existing = catPositions.find(p => p.name === name)
+          pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
         }
-        const existing = catPositions.find(p => p.name === name)
-        pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
       } else if (!pid) { setErr('Position wählen'); setBusy(false); return }
       setAddedIds(prev => prev.includes(pid) ? prev : [...prev, pid])
-      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setMode(isPersonal ? 'function' : 'existing')
+      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setFuncSpec(''); setMode(isPersonal ? 'function' : 'existing')
       onChanged() // Katalog neu laden, damit die neue Position auftaucht
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false); return }
     setBusy(false)
@@ -166,7 +175,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const colCount = 2 + variants.length + 2
   const showTravel = isPersonal                        // Reisekosten nur beim Personal
   const defaultVar = resultVar || project.default_variant_id || variants[0]?.id || ''
-  const defaultVarName = variants.find(v => v.id === defaultVar)?.name ?? ''
+  const defaultVarName = defaultVar === 'ist' ? 'Ist' : (variants.find(v => v.id === defaultVar)?.name ?? '')
 
   return (
     <div className="pt-card">
@@ -194,7 +203,8 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             )}
             {rowPositions.map(p => (
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
-                positionId={p.id} positionName={p.name} variants={variants} onChanged={onChanged}
+                positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} showSpec={showSpec}
+                variants={variants} onChanged={onChanged}
                 showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
             ))}
             {adding && (
@@ -226,6 +236,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                       </select>
                     ) : (
                       <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder={isPersonal ? 'Neue Funktion…' : 'Neue Position…'} autoFocus />
+                    )}
+                    {isPersonal && (
+                      <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', width: 170 }} value={funcSpec} onChange={e => setFuncSpec(e.target.value)} placeholder="Name/Spez. (optional)" />
                     )}
                     <button onClick={doAdd} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>{busy ? '…' : 'Hinzufügen'}</button>
                     <button onClick={() => { setAdding(false); setErr('') }} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
@@ -284,9 +297,10 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove, showTravel, defaultVar }: {
+function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, showSpec, variants, onChanged, onRemove, showTravel, defaultVar }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
-  positionId: string; positionName: string; variants: Variant[]; onChanged: () => void; onRemove: () => void
+  positionId: string; positionName: string; positionSpec: string | null; showSpec: boolean
+  variants: Variant[]; onChanged: () => void; onRemove: () => void
   showTravel: boolean; defaultVar: string
 }) {
   const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId, variants), [dataset, project, show.id, positionId, variants])
@@ -295,6 +309,8 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== ''))
+  const [spec, setSpec] = useState(positionSpec ?? '')
+  const saveSpec = async () => { try { await updateCalcPosition(positionId, { spec: spec.trim() || null }) } catch { /* still */ } }
 
   const sollDirty = sollSnap(m) !== savedSnap
 
@@ -323,6 +339,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   // Zeilenergebnis (Soll) für die Standardvariante: Grundbetrag + Reise
   const rowResultSoll = (): Decimal => {
     let sum = new Decimal(0)
+    if (defaultVar === 'ist') {
+      const b = norm(m.ist); if (b != null) { try { sum = sum.plus(b) } catch { /* ignore */ } }
+      const t = istTravelRes(); if (t) sum = sum.plus(t)
+      return sum
+    }
     const baseStr = m.shared ? m.sharedVal : (m.perVar[defaultVar] ?? '')
     const b = norm(baseStr); if (b != null) { try { sum = sum.plus(b) } catch { /* ignore */ } }
     const t = travelRes(defaultVar); if (t) sum = sum.plus(t)
@@ -380,6 +401,10 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
               <LinkIcon className="w-3.5 h-3.5" />
             </button>
             <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
+            {showSpec ? (
+              <input className="form-input" style={{ fontSize: '0.72rem', padding: '1px 5px', width: 110 }} value={spec}
+                onChange={e => setSpec(e.target.value)} onBlur={saveSpec} placeholder="Name/Spez." />
+            ) : (spec ? <span className="text-xs" style={{ color: '#9ca3af' }}>· {spec}</span> : null)}
             {showTravel && (
               <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
                 className="shrink-0 inline-flex items-center gap-1 rounded"
