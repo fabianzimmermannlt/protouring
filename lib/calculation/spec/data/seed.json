@@ -135,7 +135,7 @@
     {
       "id": "958c54ce-91ec-553e-9061-86f1804c2d5f",
       "category_id": "7c5a62e7-4bc5-5d93-ba7b-591822ec207d",
-      "name": " + Production Manager",
+      "name": "Production Manager",
       "sort_order": 4
     },
     {
@@ -165,7 +165,7 @@
     {
       "id": "29e56d36-e409-5ffc-b587-e2e8649ff7d2",
       "category_id": "7c5a62e7-4bc5-5d93-ba7b-591822ec207d",
-      "name": " + Setbau",
+      "name": "Setbau",
       "sort_order": 9
     },
     {
@@ -183,7 +183,7 @@
     {
       "id": "81ece92e-660d-57ba-ba1c-4e3bc47fc2c9",
       "category_id": "7c5a62e7-4bc5-5d93-ba7b-591822ec207d",
-      "name": " + Ableton Operator",
+      "name": "Ableton Operator",
       "sort_order": 12
     },
     {

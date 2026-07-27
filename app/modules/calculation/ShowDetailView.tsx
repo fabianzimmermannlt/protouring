@@ -5,12 +5,14 @@
 // (+ „gleich in allen Varianten"), dazu ein Ist-Wert pro Position/Show.
 // Ist in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, replaceCalcEntries, setCalcActual, type CalcEntryInput,
+  createCalcPosition, replaceCalcEntries, setCalcActual, getFunctionCatalog, type CalcEntryInput,
 } from '@/lib/api-client'
+
+interface FuncGroup { group: string; names: string[] }
 import type { CalcDataset, CalcShow, CalcProject } from '@/lib/calculation/types'
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
 import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
@@ -18,6 +20,14 @@ import { ShowFormModal } from './ShowsView'
 
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
+
+/** Schützt vor hängenden Requests: bricht nach ms mit Fehler ab. */
+function withTimeout<T>(p: Promise<T>, ms = 15000): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Zeitüberschreitung – bitte erneut versuchen (Verbindung?).')), ms)),
+  ])
+}
 
 interface Variant { id: string; name: string }
 
@@ -28,6 +38,14 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
   const project = dataset.project
   const variants: Variant[] = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
   const categories = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
+
+  // Funktionskatalog (Settings/Kontakte) – locker gekoppelt: nur als Vorschlag beim Anlegen
+  const [functions, setFunctions] = useState<FuncGroup[]>([])
+  useEffect(() => {
+    getFunctionCatalog()
+      .then(cat => setFunctions(cat.map(g => ({ group: g.group, names: g.functions.filter(f => f.active).map(f => f.name) })).filter(g => g.names.length)))
+      .catch(() => {})
+  }, [])
 
   const summary = useMemo(() => {
     const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
@@ -61,7 +79,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
       <div className="space-y-4">
         {categories.map(cat => (
           <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
-            category={cat} variants={variants} onChanged={onChanged} />
+            category={cat} variants={variants} onChanged={onChanged} functions={functions} />
         ))}
       </div>
 
@@ -75,9 +93,9 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
 // ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-function CategoryTable({ show, dataset, project, category, variants, onChanged }: {
+function CategoryTable({ show, dataset, project, category, variants, onChanged, functions }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
-  category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
+  category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void; functions: FuncGroup[]
 }) {
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -98,9 +116,10 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
   const availablePositions = catPositions.filter(p => !rowIds.has(p.id))
 
   const [adding, setAdding] = useState(false)
-  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  const [mode, setMode] = useState<'existing' | 'new' | 'function'>('existing')
   const [pickId, setPickId] = useState('')
   const [newName, setNewName] = useState('')
+  const [funcName, setFuncName] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -108,13 +127,14 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
     setBusy(true); setErr('')
     try {
       let pid = pickId
-      if (mode === 'new') {
-        const name = newName.trim()
-        if (!name) { setErr('Name fehlt'); setBusy(false); return }
-        pid = (await createCalcPosition(category.id, name)).id
+      if (mode === 'new' || mode === 'function') {
+        const name = (mode === 'function' ? funcName : newName).trim()
+        if (!name) { setErr(mode === 'function' ? 'Funktion wählen' : 'Name fehlt'); setBusy(false); return }
+        const existing = catPositions.find(p => p.name === name)
+        pid = existing ? existing.id : (await createCalcPosition(category.id, name)).id
       } else if (!pid) { setErr('Position wählen'); setBusy(false); return }
       setAddedIds(prev => prev.includes(pid) ? prev : [...prev, pid])
-      setAdding(false); setPickId(''); setNewName(''); setMode('existing')
+      setAdding(false); setPickId(''); setNewName(''); setFuncName(''); setMode('existing')
       onChanged() // Katalog neu laden, damit die neue Position auftaucht
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false); return }
     setBusy(false)
@@ -122,6 +142,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
 
   const colCount = 2 + variants.length + 2
   const showTravel = /personal/i.test(category.name)   // Reisekosten nur beim Personal
+  const showFunc = showTravel && functions.length > 0  // Funktionskatalog nur beim Personal
   const defaultVar = project.default_variant_id ?? variants[0]?.id ?? ''
   const defaultVarName = variants.find(v => v.id === defaultVar)?.name ?? ''
 
@@ -160,6 +181,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
                   <div className="flex flex-wrap items-center gap-2 py-1">
                     <div className="flex gap-1 text-[11px]">
                       <button onClick={() => setMode('existing')} style={{ color: mode === 'existing' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'existing' ? 600 : 400 }}>Vorhanden</button>
+                      {showFunc && <><span style={{ color: '#555' }}>·</span><button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button></>}
                       <span style={{ color: '#555' }}>·</span>
                       <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
                     </div>
@@ -167,6 +189,15 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
                       <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={pickId} onChange={e => setPickId(e.target.value)}>
                         <option value="">– vorhandene Position –</option>
                         {availablePositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    ) : mode === 'function' ? (
+                      <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
+                        <option value="">– Funktion –</option>
+                        {functions.map(g => (
+                          <optgroup key={g.group} label={g.group}>
+                            {g.names.map(n => <option key={n} value={n}>{n}</option>)}
+                          </optgroup>
+                        ))}
                       </select>
                     ) : (
                       <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Neue Position…" autoFocus />
@@ -286,13 +317,15 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   const saveSoll = async () => {
     setBusy(true); setErr('')
     try {
-      await replaceCalcEntries(show.id, positionId, entriesPayload())
+      await withTimeout(replaceCalcEntries(show.id, positionId, entriesPayload()))
       setSavedSnap(sollSnap(m))
       onChanged()
-    } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+    } catch (e: any) { setErr(e?.message ?? 'Fehler beim Speichern') }
+    finally { setBusy(false) }
   }
   const saveIst = async () => {
-    try { await setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate) }) } catch { /* still */ }
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate) })) }
+    catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const removeRow = async () => {
     const hasData = entriesPayload().length > 0 || norm(m.ist) != null

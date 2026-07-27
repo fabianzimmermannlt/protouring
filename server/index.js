@@ -1922,6 +1922,8 @@ async function initDatabase() {
   try { await db.exec("ALTER TABLE calc_entries ADD COLUMN kind TEXT DEFAULT 'base'"); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN travel_km TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN travel_rate TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  // Excel-Altlast: Positionsnamen mit führendem " + " bereinigen (App-erstellte Namen sind getrimmt → nie führendes Leerzeichen)
+  try { await db.run("UPDATE calc_positions SET name = TRIM(SUBSTR(TRIM(name), 2)) WHERE name LIKE ' +%'"); } catch (e) { /* egal */ }
 
   console.log('✅ Database initialized');
 }
