@@ -21,7 +21,7 @@ npm run dev          # Next.js Frontend (Port 3000)
 node server/index.js # Express Backend (Port 3001)
 ```
 
-Deployment: `git push` → protouring.de (Fabian pusht manuell, Claude committet nur)
+Deployment: `git push` → protouring.de. Claude committet **und pusht** selbst (nach grünem tsc/Tests/Build), sofern nicht anders gesagt.
 
 ---
 
