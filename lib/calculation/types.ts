@@ -75,8 +75,19 @@ export interface CalcEntry {
   rental_price?: Money
   included_km?: Money
   price_extra_km?: Money
-  /** Ist-Wert (echte Rechnung). Soll = quantity/Fahrzeugformel. Orthogonal zur Variante. */
+  /** Direktbetrag – überschreibt Menge×Preis/Fahrzeug (Tabellen-Eingabe). */
+  amount?: Money
+  /** @deprecated Ist liegt jetzt pro Position/Show in CalcActual (nicht pro Variante). */
   ist_amount?: Money
+  note?: string | null
+}
+
+/** Ist-Wert (echte Rechnung) pro Position je Show – Basis für Soll/Ist + Abrechnung. */
+export interface CalcActual {
+  id?: string
+  show_id: string
+  position_id: string
+  amount?: Money
   note?: string | null
 }
 
@@ -88,6 +99,8 @@ export interface CalcDataset {
   categories: CalcCategory[]
   positions: CalcPosition[]
   entries: CalcEntry[]
+  /** Ist-Werte pro Position/Show (optional; leer bei Alt-Daten). */
+  actuals?: CalcActual[]
 }
 
 export interface OverviewOptions {

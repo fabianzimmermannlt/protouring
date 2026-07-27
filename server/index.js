@@ -1918,6 +1918,7 @@ async function initDatabase() {
 
   // Tour-/Festival-Kalkulation (Add-on) – Tabellen (idempotent)
   await db.exec(calcDb.SCHEMA);
+  try { await db.exec('ALTER TABLE calc_entries ADD COLUMN amount TEXT'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8136,6 +8137,70 @@ app.delete('/api/calc/entries/:entryId', authenticateToken, requireTenant, requi
   } catch (e) {
     console.error('[calc] delete entry:', e);
     res.status(500).json({ error: 'Fehler beim Löschen der Buchung' });
+  }
+});
+
+// Neue Position im Katalog anlegen (an einem Bereich)
+app.post('/api/calc/categories/:catId/positions', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const cat = await db.get(
+      'SELECT p.tenant_id AS tenant_id FROM calc_categories c JOIN calc_projects p ON p.id = c.project_id WHERE c.id = ?',
+      [req.params.catId]);
+    if (!cat || cat.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Bereich nicht gefunden' });
+    const name = (req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Name fehlt' });
+    const id = crypto.randomUUID();
+    const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_positions WHERE category_id = ?', [req.params.catId]);
+    await db.run('INSERT INTO calc_positions (id,category_id,name,sort_order) VALUES (?,?,?,?)',
+      [id, req.params.catId, name, (maxRow?.m ?? 0) + 1]);
+    res.json({ id });
+  } catch (e) {
+    console.error('[calc] create position:', e);
+    res.status(500).json({ error: 'Fehler beim Anlegen der Position' });
+  }
+});
+
+// Alle Buchungen einer (Show, Position) ersetzen – für die Bereichs-Tabelle
+app.put('/api/calc/shows/:showId/positions/:positionId/entries', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    const list = Array.isArray(req.body?.entries) ? req.body.entries : [];
+    await db.run('DELETE FROM calc_entries WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
+    for (const e of list) {
+      await db.run(
+        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,ist_amount,note)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [crypto.randomUUID(), owner.project_id, req.params.showId, req.params.positionId, e.variant_id ?? null,
+         calcText(e.quantity), calcText(e.unit_price), calcText(e.distance_km), calcText(e.rental_price),
+         calcText(e.included_km), calcText(e.price_extra_km), calcText(e.amount), null, e.note ?? null]);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] replace entries:', e);
+    res.status(500).json({ error: 'Fehler beim Speichern der Buchungen' });
+  }
+});
+
+// Ist-Wert einer Position je Show setzen (upsert; leer = löschen)
+app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    const amount = calcText(req.body?.amount);
+    const note = req.body?.note ?? null;
+    const existing = await db.get('SELECT id FROM calc_actuals WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
+    if (amount == null && (note == null || note === '')) {
+      if (existing) await db.run('DELETE FROM calc_actuals WHERE id = ?', [existing.id]);
+      return res.json({ ok: true });
+    }
+    if (existing) await db.run('UPDATE calc_actuals SET amount=?, note=? WHERE id=?', [amount, note, existing.id]);
+    else await db.run('INSERT INTO calc_actuals (id,show_id,position_id,amount,note) VALUES (?,?,?,?,?)',
+      [crypto.randomUUID(), req.params.showId, req.params.positionId, amount, note]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] set actual:', e);
+    res.status(500).json({ error: 'Fehler beim Speichern des Ist-Werts' });
   }
 });
 

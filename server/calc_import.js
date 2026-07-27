@@ -70,14 +70,24 @@ CREATE TABLE IF NOT EXISTS calc_entries (
   rental_price TEXT,
   included_km TEXT,
   price_extra_km TEXT,
+  amount TEXT,
   ist_amount TEXT,
   note TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS calc_actuals (
+  id TEXT PRIMARY KEY,
+  show_id TEXT NOT NULL REFERENCES calc_shows(id) ON DELETE CASCADE,
+  position_id TEXT NOT NULL REFERENCES calc_positions(id) ON DELETE CASCADE,
+  amount TEXT,
+  note TEXT,
+  UNIQUE (show_id, position_id)
+);
 CREATE INDEX IF NOT EXISTS calc_entries_project_idx ON calc_entries (project_id);
 CREATE INDEX IF NOT EXISTS calc_entries_show_idx ON calc_entries (show_id);
 CREATE INDEX IF NOT EXISTS calc_projects_tenant_idx ON calc_projects (tenant_id);
+CREATE INDEX IF NOT EXISTS calc_actuals_show_idx ON calc_actuals (show_id);
 `
 
 /** number|null → TEXT-Dezimalstring|null (kein float-Zwischenschritt für Anzeige). */
@@ -124,7 +134,7 @@ function buildImportRows(seed, tenantId) {
     quantity: s(e.quantity), unit_price: s(e.unit_price),
     distance_km: s(e.distance_km), rental_price: s(e.rental_price),
     included_km: s(e.included_km), price_extra_km: s(e.price_extra_km),
-    ist_amount: s(e.ist_amount), note: e.note ?? null,
+    amount: s(e.amount), ist_amount: s(e.ist_amount), note: e.note ?? null,
   }))
   return { project, variants, shows, categories, positions, entries }
 }
@@ -149,9 +159,9 @@ async function insertRows(db, r) {
     await db.run(`INSERT INTO calc_positions (id,category_id,name,sort_order) VALUES (?,?,?,?)`, [p2.id, p2.category_id, p2.name, p2.sort_order])
   for (const e of r.entries)
     await db.run(
-      `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,ist_amount,note)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [e.id, e.project_id, e.show_id, e.position_id, e.variant_id, e.quantity, e.unit_price, e.distance_km, e.rental_price, e.included_km, e.price_extra_km, e.ist_amount, e.note])
+      `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,ist_amount,note)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [e.id, e.project_id, e.show_id, e.position_id, e.variant_id, e.quantity, e.unit_price, e.distance_km, e.rental_price, e.included_km, e.price_extra_km, e.amount, e.ist_amount, e.note])
 }
 
 /** Roh-Zeilen → CalcDataset-Form (is_active als Boolean). Pur, ohne DB (für Tests). */
@@ -163,6 +173,7 @@ function rowsToDataset(rows) {
     categories: rows.categories,
     positions: rows.positions,
     entries: rows.entries,
+    actuals: rows.actuals || [],
   }
 }
 
@@ -176,7 +187,9 @@ async function loadDataset(db, projectId) {
   const positions = await db.all(
     `SELECT p.* FROM calc_positions p JOIN calc_categories c ON c.id=p.category_id WHERE c.project_id=? ORDER BY p.sort_order`, [projectId])
   const entries = await db.all(`SELECT * FROM calc_entries WHERE project_id=?`, [projectId])
-  return rowsToDataset({ project, variants, shows, categories, positions, entries })
+  const actuals = await db.all(
+    `SELECT a.* FROM calc_actuals a JOIN calc_shows s ON s.id = a.show_id WHERE s.project_id=?`, [projectId])
+  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals })
 }
 
 /** Projektliste eines Tenants (Kurzform). */

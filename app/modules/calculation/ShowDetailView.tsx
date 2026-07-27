@@ -1,61 +1,39 @@
 'use client'
 
-// Kalkulation – Show-Detail mit Buchungs-Editor (Phase 3, Schritt 2).
-// Zeigt Deal-Parameter (bearbeitbar via Maske) + alle Buchungen dieser Show,
-// gruppiert nach Bereich. Menge×Preis ODER Fahrzeugrechnung, Variante, Ist.
+// Kalkulation – Show-Detail als Bereichs-Tabelle (Phase 3, Schritt 2 v2).
+// Je Bereich: Zeilen = Positionen (auch neue anlegbar), Spalten = Soll je Variante
+// (+ „gleich in allen Varianten"), dazu ein Ist-Wert pro Position/Show.
+// Ist liegt in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
+// Direktbetrag pro Zelle; strukturierte Bereichs-Rechner (Personal/Fahrzeug) später.
 
 import { useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
-import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { createCalcEntry, updateCalcEntry, deleteCalcEntry, type CalcEntryInput } from '@/lib/api-client'
-import type { CalcDataset, CalcShow, CalcEntry, CalcProject } from '@/lib/calculation/types'
+import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon } from '@heroicons/react/24/outline'
+import {
+  createCalcPosition, replaceCalcEntries, setCalcActual, type CalcEntryInput,
+} from '@/lib/api-client'
+import type { CalcDataset, CalcShow, CalcProject } from '@/lib/calculation/types'
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
 import { formatEUR, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
 
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
+const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
 
-type Mode = 'simple' | 'vehicle'
-const modeOf = (e: Partial<CalcEntry>): Mode =>
-  (e.distance_km != null && e.distance_km !== '') || (e.rental_price != null && e.rental_price !== '') ? 'vehicle' : 'simple'
+interface Variant { id: string; name: string }
 
 export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
   show: CalcShow; dataset: CalcDataset; onChanged: () => void; onBack: () => void
 }) {
   const [editParams, setEditParams] = useState(false)
   const project = dataset.project
-  const variantsSorted = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
-  const categoriesSorted = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
-  const posById = useMemo(() => new Map(dataset.positions.map(p => [p.id, p])), [dataset])
-  const catOfPos = (posId: string) => posById.get(posId)?.category_id
+  const variants: Variant[] = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
+  const categories = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
 
-  // Buchungen dieser Show, gruppiert nach Bereich
-  const entriesByCat = useMemo(() => {
-    const m = new Map<string, CalcEntry[]>()
-    dataset.entries.filter(e => e.show_id === show.id).forEach(e => {
-      const cat = catOfPos(e.position_id)
-      if (!cat) return
-      if (!m.has(cat)) m.set(cat, [])
-      m.get(cat)!.push(e)
-    })
-    return m
-  }, [dataset, show.id])
-
-  // Kompakte Kennzahl-Zeile (Standardvariante)
   const summary = useMemo(() => {
-    const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variantsSorted[0]?.id ?? null })
+    const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
     return ov.shows.find(s => s.showId === show.id)
-  }, [dataset, show.id, project.default_variant_id, variantsSorted])
-
-  // Draft-Buchungen (neu) je Bereich
-  const [drafts, setDrafts] = useState<Record<string, number>>({}) // catId → nächste Draft-Nummer
-  const [draftList, setDraftList] = useState<{ key: string; catId: string }[]>([])
-  const addDraft = (catId: string) => {
-    const n = (drafts[catId] ?? 0) + 1
-    setDrafts(p => ({ ...p, [catId]: n }))
-    setDraftList(l => [...l, { key: `${catId}-${n}`, catId }])
-  }
-  const removeDraft = (key: string) => setDraftList(l => l.filter(d => d.key !== key))
+  }, [dataset, show.id, project.default_variant_id, variants])
 
   return (
     <div>
@@ -77,209 +55,253 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
           </div>
         )}
       </div>
-
       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
-        Buchungen dieser Show, nach Bereich. „Alle Varianten" = gilt in jeder Variante; sonst nur in der gewählten.
+        Soll je Variante · Ist = tatsächliche Rechnung (für Abrechnung). 🔗 = gleicher Soll in allen Varianten; aufklappen für Alternativen.
       </p>
 
       <div className="space-y-4">
-        {categoriesSorted.map(cat => {
-          const entries = entriesByCat.get(cat.id) ?? []
-          const catDrafts = draftList.filter(d => d.catId === cat.id)
-          return (
-            <div key={cat.id} className="pt-card">
-              <div className="pt-card-header flex items-center justify-between">
-                <span className="pt-card-title">{cat.name} <span style={{ opacity: 0.5, fontWeight: 400 }}>· {cat.kind === 'income' ? 'Einnahme' : 'Ausgabe'}</span></span>
-                <button onClick={() => addDraft(cat.id)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
-                  <PlusIcon className="w-3.5 h-3.5" /> Buchung
-                </button>
-              </div>
-              <div className="pt-card-body space-y-2">
-                {entries.length === 0 && catDrafts.length === 0 && (
-                  <p className="text-xs" style={{ color: '#6b7280' }}>Keine Buchung in diesem Bereich.</p>
-                )}
-                {entries.map(e => (
-                  <EntryEditor key={e.id} entry={e} categoryId={cat.id}
-                    project={project} variants={variantsSorted} positions={dataset.positions}
-                    showId={show.id} onChanged={onChanged} />
-                ))}
-                {catDrafts.map(d => (
-                  <EntryEditor key={d.key} entry={null} categoryId={cat.id}
-                    project={project} variants={variantsSorted} positions={dataset.positions}
-                    showId={show.id} onChanged={onChanged} onRemoveDraft={() => removeDraft(d.key)} />
-                ))}
-              </div>
-            </div>
-          )
-        })}
+        {categories.map(cat => (
+          <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
+            category={cat} variants={variants} onChanged={onChanged} />
+        ))}
       </div>
 
       {editParams && (
         <ShowFormModal projectId={project.id} show={show}
-          onClose={() => setEditParams(false)}
-          onSaved={() => { setEditParams(false); onChanged() }} />
+          onClose={() => setEditParams(false)} onSaved={() => { setEditParams(false); onChanged() }} />
       )}
     </div>
   )
 }
 
-// ── Eine Buchung bearbeiten/anlegen ──────────────────────────────────────────
+// ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-interface Fields {
-  position_id: string
-  variant_id: string        // '' = alle
-  mode: Mode
-  quantity: string; unit_price: string
-  rental_price: string; distance_km: string; included_km: string; price_extra_km: string
-  ist_amount: string; note: string
-}
-
-function fieldsFrom(e: CalcEntry | null): Fields {
-  const g = (v: unknown) => (v == null ? '' : String(v))
-  return {
-    position_id: e?.position_id ?? '',
-    variant_id: e?.variant_id ?? '',
-    mode: e ? modeOf(e) : 'simple',
-    quantity: g(e?.quantity), unit_price: g(e?.unit_price),
-    rental_price: g(e?.rental_price), distance_km: g(e?.distance_km),
-    included_km: g(e?.included_km), price_extra_km: g(e?.price_extra_km),
-    ist_amount: g(e?.ist_amount), note: g(e?.note),
-  }
-}
-
-function EntryEditor({ entry, categoryId, project, variants, positions, showId, onChanged, onRemoveDraft }: {
-  entry: CalcEntry | null
-  categoryId: string
-  project: CalcProject
-  variants: { id: string; name: string }[]
-  positions: { id: string; name: string; category_id: string }[]
-  showId: string
-  onChanged: () => void
-  onRemoveDraft?: () => void
+function CategoryTable({ show, dataset, project, category, variants, onChanged }: {
+  show: CalcShow; dataset: CalcDataset; project: CalcProject
+  category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
 }) {
-  const isDraft = !entry
-  const [f, setF] = useState<Fields>(() => fieldsFrom(entry))
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
-  const set = (k: keyof Fields, v: string) => setF(p => ({ ...p, [k]: v }))
-  const original = useMemo(() => JSON.stringify(fieldsFrom(entry)), [entry])
-  const dirty = JSON.stringify(f) !== original
+  const catPositions = useMemo(
+    () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
+    [dataset, category.id])
+  const catPosIds = new Set(catPositions.map(p => p.id))
 
-  const catPositions = positions.filter(p => p.category_id === categoryId)
-  const posName = positions.find(p => p.id === f.position_id)?.name
+  // Positionen mit Daten für diese Show (Buchung ODER Ist)
+  const usedIds = useMemo(() => {
+    const s = new Set<string>()
+    dataset.entries.forEach(e => { if (e.show_id === show.id && catPosIds.has(e.position_id)) s.add(e.position_id) })
+    ;(dataset.actuals ?? []).forEach(a => { if (a.show_id === show.id && catPosIds.has(a.position_id)) s.add(a.position_id) })
+    return s
+  }, [dataset, show.id, category.id])
 
-  // Live-Betrag
-  const betrag = useMemo(() => {
-    const e: Partial<CalcEntry> = f.mode === 'vehicle'
-      ? { distance_km: norm(f.distance_km), rental_price: norm(f.rental_price), included_km: norm(f.included_km), price_extra_km: norm(f.price_extra_km) }
-      : { quantity: norm(f.quantity), unit_price: norm(f.unit_price) }
-    try { return entryAmount(e as CalcEntry, project) } catch { return new Decimal(0) }
-  }, [f, project])
+  const usedPositions = catPositions.filter(p => usedIds.has(p.id))
+  const unusedPositions = catPositions.filter(p => !usedIds.has(p.id))
+  const [drafts, setDrafts] = useState<number[]>([])
+  const [n, setN] = useState(0)
+  const addDraft = () => { setDrafts(d => [...d, n]); setN(n + 1) }
 
-  const toInput = (): CalcEntryInput => ({
-    position_id: f.position_id,
-    variant_id: f.variant_id || null,
-    quantity: f.mode === 'simple' ? norm(f.quantity) : null,
-    unit_price: f.mode === 'simple' ? norm(f.unit_price) : null,
-    distance_km: f.mode === 'vehicle' ? norm(f.distance_km) : null,
-    rental_price: f.mode === 'vehicle' ? norm(f.rental_price) : null,
-    included_km: f.mode === 'vehicle' ? norm(f.included_km) : null,
-    price_extra_km: f.mode === 'vehicle' ? norm(f.price_extra_km) : null,
-    ist_amount: norm(f.ist_amount),
-    note: f.note || null,
-  })
-
-  const save = async () => {
-    if (isDraft && !f.position_id) { setErr('Position wählen'); return }
-    setBusy(true); setErr('')
-    try {
-      if (isDraft) { await createCalcEntry(showId, toInput()); onRemoveDraft?.() }
-      else await updateCalcEntry(entry!.id, toInput())
-      onChanged()
-    } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
-  }
-  const del = async () => {
-    if (!entry) { onRemoveDraft?.(); return }
-    if (!confirm('Buchung löschen?')) return
-    setBusy(true)
-    try { await deleteCalcEntry(entry.id); onChanged() }
-    catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
-  }
-
-  const inp = { className: 'form-input', style: { fontSize: '0.78rem', padding: '3px 6px' } as const }
+  const colCount = 2 + variants.length + 2 // Position + Soll-cols + Ist + Aktion
 
   return (
-    <div style={{ border: '1px solid #3c3c3c', borderRadius: 6, padding: '8px 10px', background: '#242424' }}>
-      <div className="flex flex-wrap items-end gap-2">
-        {/* Position */}
-        <div style={{ minWidth: 180, flex: '1 1 180px' }}>
-          <label className="block text-[10px] mb-0.5" style={{ color: '#8b8b8b' }}>Position</label>
-          {isDraft ? (
-            <select {...inp} value={f.position_id} onChange={e => set('position_id', e.target.value)}>
-              <option value="">– wählen –</option>
-              {catPositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          ) : <div className="text-sm" style={{ color: '#e0e0e0', paddingTop: 2 }}>{posName}</div>}
-        </div>
-        {/* Variante */}
-        <div style={{ width: 130 }}>
-          <label className="block text-[10px] mb-0.5" style={{ color: '#8b8b8b' }}>Variante</label>
-          <select {...inp} value={f.variant_id} onChange={e => set('variant_id', e.target.value)}>
-            <option value="">Alle Varianten</option>
-            {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
-        </div>
-        {/* Modus */}
-        <div style={{ width: 120 }}>
-          <label className="block text-[10px] mb-0.5" style={{ color: '#8b8b8b' }}>Erfassung</label>
-          <select {...inp} value={f.mode} onChange={e => set('mode', e.target.value)}>
-            <option value="simple">Menge × Preis</option>
-            <option value="vehicle">Fahrzeug</option>
-          </select>
-        </div>
+    <div className="pt-card">
+      <div className="pt-card-header flex items-center justify-between">
+        <span className="pt-card-title">{category.name} <span style={{ opacity: 0.5, fontWeight: 400 }}>· {category.kind === 'income' ? 'Einnahme' : 'Ausgabe'}</span></span>
+        <button onClick={addDraft} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
+          <PlusIcon className="w-3.5 h-3.5" /> Position
+        </button>
       </div>
-
-      <div className="flex flex-wrap items-end gap-2 mt-2">
-        {f.mode === 'simple' ? (
-          <>
-            <Field label="Menge" v={f.quantity} on={v => set('quantity', v)} w={70} />
-            <Field label="Einzelpreis €" v={f.unit_price} on={v => set('unit_price', v)} w={100} />
-          </>
-        ) : (
-          <>
-            <Field label="Miete €" v={f.rental_price} on={v => set('rental_price', v)} w={90} />
-            <Field label="Strecke km" v={f.distance_km} on={v => set('distance_km', v)} w={80} />
-            <Field label="Inkl. km" v={f.included_km} on={v => set('included_km', v)} w={70} />
-            <Field label="€/Mehr-km" v={f.price_extra_km} on={v => set('price_extra_km', v)} w={80} />
-          </>
-        )}
-        <div style={{ width: 110 }}>
-          <label className="block text-[10px] mb-0.5" style={{ color: '#8b8b8b' }}>Soll (Betrag)</label>
-          <div className="text-sm font-medium" style={{ color: '#e0e0e0', fontVariantNumeric: 'tabular-nums', paddingTop: 2 }}>{formatEUR(betrag)}</div>
-        </div>
-        <Field label="Ist €" v={f.ist_amount} on={v => set('ist_amount', v)} w={100} />
-        <div className="ml-auto flex items-center gap-1">
-          {(dirty || isDraft) && (
-            <button onClick={save} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>
-              {busy ? '…' : isDraft ? 'Anlegen' : 'Speichern'}
-            </button>
-          )}
-          <button onClick={del} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title={isDraft ? 'Verwerfen' : 'Löschen'}>
-            <TrashIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
+      <div className="pt-card-body" style={{ overflowX: 'auto' }}>
+        <table className="data-table" style={{ minWidth: 620 }}>
+          <thead>
+            <tr>
+              <th style={{ minWidth: 200 }}>Position</th>
+              {variants.map(v => <th key={v.id} className="text-right" style={{ minWidth: 110 }}>{v.name}</th>)}
+              <th className="text-right" style={{ minWidth: 110, color: '#facc15' }}>Ist</th>
+              <th style={{ width: 40 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {usedPositions.length === 0 && drafts.length === 0 && (
+              <tr><td colSpan={colCount} className="text-center py-4" style={{ color: '#6b7280' }}>Keine Position – „+ Position".</td></tr>
+            )}
+            {usedPositions.map(p => (
+              <PositionRow key={p.id} show={show} dataset={dataset} project={project}
+                positionId={p.id} positionName={p.name} variants={variants} onChanged={onChanged} />
+            ))}
+            {drafts.map(d => (
+              <PositionRow key={`draft-${d}`} show={show} dataset={dataset} project={project}
+                positionId={null} positionName="" variants={variants} onChanged={onChanged}
+                categoryId={category.id} availablePositions={unusedPositions}
+                onRemoveDraft={() => setDrafts(list => list.filter(x => x !== d))} />
+            ))}
+          </tbody>
+        </table>
       </div>
-      {err && <p className="text-[11px] mt-1" style={{ color: '#fca5a5' }}>{err}</p>}
     </div>
   )
 }
 
-function Field({ label, v, on, w }: { label: string; v: string; on: (v: string) => void; w: number }) {
+// ── Positions-Zeile ──────────────────────────────────────────────────────────
+
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; ist: string }
+
+function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: string, positionId: string): RowModel {
+  const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId)
+  const nullE = es.filter(e => e.variant_id == null)
+  const varE = es.filter(e => e.variant_id != null)
+  const perVar: Record<string, string> = {}
+  varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = numStr(entryAmount(e, project)) })
+  const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
+  return {
+    shared: varE.length === 0,
+    sharedVal: nullE.length ? numStr(entryAmount(nullE[0], project)) : '',
+    perVar,
+    ist: act?.amount != null ? String(act.amount) : '',
+  }
+}
+
+function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, categoryId, availablePositions, onRemoveDraft }: {
+  show: CalcShow; dataset: CalcDataset; project: CalcProject
+  positionId: string | null; positionName: string; variants: Variant[]; onChanged: () => void
+  categoryId?: string; availablePositions?: { id: string; name: string }[]; onRemoveDraft?: () => void
+}) {
+  const isDraft = positionId == null
+  const initial = useMemo<RowModel>(
+    () => positionId ? buildRowModel(dataset, project, show.id, positionId) : { shared: true, sharedVal: '', perVar: {}, ist: '' },
+    [dataset, project, show.id, positionId])
+
+  const [m, setM] = useState<RowModel>(initial)
+  const [savedSnap, setSavedSnap] = useState(() => JSON.stringify(initial))
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  // Draft-Positionswahl
+  const [pickMode, setPickMode] = useState<'existing' | 'new'>('existing')
+  const [pickId, setPickId] = useState('')
+  const [newName, setNewName] = useState('')
+
+  const setShared = (v: boolean) => setM(p => ({ ...p, shared: v }))
+  const setSharedVal = (v: string) => setM(p => ({ ...p, sharedVal: v }))
+  const setPerVar = (vid: string, v: string) => setM(p => ({ ...p, perVar: { ...p.perVar, [vid]: v } }))
+
+  const sollDirty = JSON.stringify({ ...m, ist: '' }) !== JSON.stringify({ ...JSON.parse(savedSnap), ist: '' })
+
+  const entriesPayload = (): CalcEntryInput[] => {
+    if (m.shared) {
+      const a = norm(m.sharedVal)
+      return a == null ? [] : [{ variant_id: null, amount: a }]
+    }
+    return variants
+      .map(v => ({ v, a: norm(m.perVar[v.id] ?? '') }))
+      .filter(x => x.a != null)
+      .map(x => ({ variant_id: x.v.id, amount: x.a }))
+  }
+
+  const saveSoll = async () => {
+    setBusy(true); setErr('')
+    try {
+      let pid = positionId
+      if (isDraft) {
+        if (pickMode === 'new') {
+          const name = newName.trim()
+          if (!name) { setErr('Name fehlt'); setBusy(false); return }
+          pid = (await createCalcPosition(categoryId!, name)).id
+        } else {
+          if (!pickId) { setErr('Position wählen'); setBusy(false); return }
+          pid = pickId
+        }
+      }
+      await replaceCalcEntries(show.id, pid!, entriesPayload())
+      if (norm(m.ist) != null) await setCalcActual(show.id, pid!, norm(m.ist))
+      setSavedSnap(JSON.stringify(m))
+      if (isDraft) onRemoveDraft?.()
+      onChanged()
+    } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+  }
+
+  const saveIst = async () => {
+    if (isDraft || !positionId) return
+    try { await setCalcActual(show.id, positionId, norm(m.ist)) } catch { /* still */ }
+  }
+
+  const removeRow = async () => {
+    if (isDraft) { onRemoveDraft?.(); return }
+    if (!confirm(`„${positionName}" aus dieser Show entfernen? (Buchungen + Ist dieser Show)`)) return
+    setBusy(true)
+    try {
+      await replaceCalcEntries(show.id, positionId!, [])
+      await setCalcActual(show.id, positionId!, null)
+      onChanged()
+    } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+  }
+
+  const cell = { className: 'form-input text-right', style: { fontSize: '0.78rem', padding: '3px 6px' } as const }
+
   return (
-    <div style={{ width: w }}>
-      <label className="block text-[10px] mb-0.5" style={{ color: '#8b8b8b' }}>{label}</label>
-      <input inputMode="decimal" className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px' }}
-        value={v} onChange={e => on(e.target.value)} />
-    </div>
+    <tr>
+      {/* Position */}
+      <td>
+        {isDraft ? (
+          <div className="space-y-1">
+            <div className="flex gap-1 text-[11px]">
+              <button onClick={() => setPickMode('existing')} className={pickMode === 'existing' ? 'font-semibold' : ''} style={{ color: pickMode === 'existing' ? '#60a5fa' : '#8b8b8b' }}>Vorhanden</button>
+              <span style={{ color: '#555' }}>·</span>
+              <button onClick={() => setPickMode('new')} className={pickMode === 'new' ? 'font-semibold' : ''} style={{ color: pickMode === 'new' ? '#60a5fa' : '#8b8b8b' }}>Neu</button>
+            </div>
+            {pickMode === 'existing' ? (
+              <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px' }} value={pickId} onChange={e => setPickId(e.target.value)}>
+                <option value="">– wählen –</option>
+                {(availablePositions ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            ) : (
+              <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px' }} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Neue Position…" />
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setShared(!m.shared)} title={m.shared ? 'Gleich in allen Varianten (klicken für Alternativen)' : 'Pro Variante (klicken für einen Wert)'}
+              className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
+              <LinkIcon className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
+          </div>
+        )}
+      </td>
+
+      {/* Soll je Variante */}
+      {m.shared ? (
+        <td colSpan={variants.length} className="text-right">
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[10px]" style={{ color: '#8b8b8b' }}>alle Varianten:</span>
+            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal} onChange={e => setSharedVal(e.target.value)} placeholder="0" />
+          </div>
+        </td>
+      ) : (
+        variants.map(v => (
+          <td key={v.id} className="text-right">
+            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 100 }} value={m.perVar[v.id] ?? ''} onChange={e => setPerVar(v.id, e.target.value)} placeholder="0" />
+          </td>
+        ))
+      )}
+
+      {/* Ist */}
+      <td className="text-right">
+        <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '3px 6px', maxWidth: 100 }}
+          value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
+      </td>
+
+      {/* Aktion */}
+      <td>
+        <div className="flex items-center gap-1 justify-end">
+          {(sollDirty || isDraft) && (
+            <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>
+              {busy ? '…' : isDraft ? 'Anlegen' : 'Speichern'}
+            </button>
+          )}
+          <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title={isDraft ? 'Verwerfen' : 'Entfernen'}>
+            <TrashIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
+      </td>
+    </tr>
   )
 }

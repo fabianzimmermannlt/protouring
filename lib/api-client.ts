@@ -811,6 +811,7 @@ export interface CalcEntryInput {
   rental_price?: Num
   included_km?: Num
   price_extra_km?: Num
+  amount?: Num
   ist_amount?: Num
   note?: string | null
 }
@@ -825,6 +826,19 @@ export async function updateCalcEntry(entryId: string, data: CalcEntryInput): Pr
 
 export async function deleteCalcEntry(entryId: string): Promise<void> {
   await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
+}
+
+export async function createCalcPosition(categoryId: string, name: string): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name } })
+}
+
+/** Ersetzt alle Buchungen einer (Show, Position) durch die übergebene Liste. */
+export async function replaceCalcEntries(showId: string, positionId: string, entries: CalcEntryInput[]): Promise<void> {
+  await request(`/api/calc/shows/${showId}/positions/${positionId}/entries`, { method: 'PUT', body: { entries } })
+}
+
+export async function setCalcActual(showId: string, positionId: string, amount: Num, note?: string | null): Promise<void> {
+  await request(`/api/calc/shows/${showId}/actuals/${positionId}`, { method: 'PUT', body: { amount, note } })
 }
 
 export async function getEquipmentItems(): Promise<EquipmentItem[]> {
