@@ -6,9 +6,13 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Decimal from 'decimal.js'
-import { getCalcProjects, getCalcProject, seedCalcDemo, type CalcProjectSummary } from '@/lib/api-client'
+import { TrashIcon } from '@heroicons/react/24/outline'
+import {
+  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject,
+  createCalcVariant, updateCalcVariant, deleteCalcVariant, type CalcProjectSummary,
+} from '@/lib/api-client'
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
-import type { CalcDataset } from '@/lib/calculation/types'
+import type { CalcDataset, CalcVariant } from '@/lib/calculation/types'
 import { formatMoney, formatPercent, formatDate } from '@/lib/calculation/format'
 import ShowsView from './ShowsView'
 
@@ -22,6 +26,8 @@ export default function CalculationModule() {
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState('')
   const [view, setView] = useState<View>('overview')
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [showVariants, setShowVariants] = useState(false)
 
   const loadProjects = async (selectFirst = true) => {
     try {
@@ -53,6 +59,14 @@ export default function CalculationModule() {
     catch (e: any) { setError(e?.message ?? 'Fehler beim Laden des Projekts') }
   }
 
+  const handleCreateProject = async (name: string) => {
+    const created = await createCalcProject(name)
+    await loadProjects(false)
+    setSelectedId(created.id)
+    setView('shows')
+    setShowNewProject(false)
+  }
+
   const handleImportDemo = async () => {
     setImporting(true); setError('')
     try {
@@ -77,9 +91,15 @@ export default function CalculationModule() {
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.year ? ` (${p.year})` : ''}</option>)}
           </select>
         )}
-        <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost ml-auto" style={{ fontSize: '0.8rem' }}>
-          {importing ? 'Importiere…' : '+ Demo-Projekt (Festivals 2026)'}
-        </button>
+        <div className="ml-auto flex flex-wrap gap-2">
+          {dataset && (
+            <button onClick={() => setShowVariants(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>Varianten</button>
+          )}
+          <button onClick={() => setShowNewProject(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>+ Neues Projekt</button>
+          <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+            {importing ? 'Importiere…' : '+ Demo'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="p-3 mb-3 rounded text-sm" style={{ background: '#3b1f22', color: '#fca5a5' }}>{error}</div>}
@@ -106,6 +126,83 @@ export default function CalculationModule() {
           {view === 'shows' && <ShowsView dataset={dataset} projectId={selectedId} onChanged={reloadDataset} />}
         </>
       )}
+
+      {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} onCreate={handleCreateProject} />}
+      {showVariants && dataset && (
+        <VariantsModal projectId={selectedId} variants={dataset.variants} onClose={() => setShowVariants(false)} onChanged={reloadDataset} />
+      )}
+    </div>
+  )
+}
+
+// ── Modals ───────────────────────────────────────────────────────────────────
+
+function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => Promise<void> }) {
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const create = async () => {
+    setBusy(true); setErr('')
+    try { await onCreate(name.trim() || 'Neue Kalkulation') }
+    catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+  }
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container" style={{ maxWidth: 420 }}>
+        <div className="modal-header"><h3 className="modal-title">Neue Kalkulation</h3><button onClick={onClose} className="text-gray-400 hover:text-white">✕</button></div>
+        <div className="modal-body space-y-3">
+          <div>
+            <label className="form-label">Name</label>
+            <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Tour 2026" autoFocus onKeyDown={e => { if (e.key === 'Enter') create() }} />
+          </div>
+          <p className="text-xs" style={{ color: '#6b7280' }}>Legt ein leeres Projekt mit Standard-Bereichen und Variante 1/2 an.</p>
+          {err && <p className="text-xs" style={{ color: '#fca5a5' }}>{err}</p>}
+        </div>
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+          <button onClick={create} disabled={busy} className="btn btn-primary">{busy ? 'Anlegen…' : 'Anlegen'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function VariantsModal({ projectId, variants, onClose, onChanged }: {
+  projectId: string; variants: CalcVariant[]; onClose: () => void; onChanged: () => void
+}) {
+  const sorted = [...variants].sort((a, b) => a.sort_order - b.sort_order)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const rename = async (id: string, name: string, original: string) => {
+    const n = name.trim()
+    if (!n || n === original) return
+    try { await updateCalcVariant(id, n); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler') }
+  }
+  const add = async () => {
+    setBusy(true); setErr('')
+    try { await createCalcVariant(projectId, ''); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) }
+  }
+  const del = async (id: string) => {
+    setErr('')
+    try { await deleteCalcVariant(id); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler') }
+  }
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container" style={{ maxWidth: 440 }}>
+        <div className="modal-header"><h3 className="modal-title">Varianten</h3><button onClick={onClose} className="text-gray-400 hover:text-white">✕</button></div>
+        <div className="modal-body space-y-2">
+          <p className="text-xs" style={{ color: '#6b7280' }}>Benenne die Varianten (z.B. „Variante 1"). Löschen nur, wenn keine Buchung sie nutzt.</p>
+          {sorted.map(v => (
+            <div key={v.id} className="flex items-center gap-2">
+              <input className="form-input" defaultValue={v.name} onBlur={e => rename(v.id, e.target.value, v.name)} style={{ fontSize: '0.85rem' }} />
+              <button onClick={() => del(v.id)} className="p-1 text-gray-400 hover:text-red-500" title="Löschen"><TrashIcon className="w-4 h-4" /></button>
+            </div>
+          ))}
+          <button onClick={add} disabled={busy} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>+ Variante</button>
+          {err && <p className="text-xs" style={{ color: '#fca5a5' }}>{err}</p>}
+        </div>
+        <div className="modal-footer"><button onClick={onClose} className="btn btn-primary">Fertig</button></div>
+      </div>
     </div>
   )
 }

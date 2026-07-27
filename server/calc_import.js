@@ -197,4 +197,16 @@ async function listProjects(db, tenantId) {
   return db.all(`SELECT id, name, year, currency FROM calc_projects WHERE tenant_id=? ORDER BY created_at DESC, name`, [tenantId])
 }
 
-module.exports = { SCHEMA, buildImportRows, insertRows, rowsToDataset, loadDataset, listProjects }
+// Standard-Bereiche für ein neues (leeres) Projekt.
+const DEFAULT_CATEGORIES = [
+  { name: 'BUYOUTS & SPONSORING', kind: 'income' },
+  { name: 'TOURSUPPORT', kind: 'expense' },
+  { name: 'PERSONAL', kind: 'expense' },
+  { name: 'TRANSPORT & LOGISTIK', kind: 'expense' },
+  { name: 'UNTERKUNFT & VERPFLEGUNG', kind: 'expense' },
+  { name: 'TECHNIK & PRODUKTION', kind: 'expense' },
+  { name: 'SONSTIGE KOSTEN', kind: 'expense' },
+  { name: 'ANSCHAFFUNGEN', kind: 'expense' },
+]
+
+module.exports = { SCHEMA, buildImportRows, insertRows, rowsToDataset, loadDataset, listProjects, DEFAULT_CATEGORIES }

@@ -8204,6 +8204,79 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
   }
 });
 
+// Neues (leeres) Projekt: Standard-Bereiche + Variante 1/2
+app.post('/api/calc/projects', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const name = (req.body?.name || '').trim() || 'Neue Kalkulation';
+    const pid = crypto.randomUUID();
+    const v1 = crypto.randomUUID(), v2 = crypto.randomUUID();
+    await db.run(
+      'INSERT INTO calc_projects (id,tenant_id,name,currency,fuel_consumption,fuel_price,scenario_factor,member_count,default_variant_id) VALUES (?,?,?,?,?,?,?,?,?)',
+      [pid, req.tenant.id, name, 'EUR', '15', '2.600', '1', 1, v1]);
+    await db.run('INSERT INTO calc_variants (id,project_id,name,sort_order) VALUES (?,?,?,?)', [v1, pid, 'Variante 1', 1]);
+    await db.run('INSERT INTO calc_variants (id,project_id,name,sort_order) VALUES (?,?,?,?)', [v2, pid, 'Variante 2', 2]);
+    let so = 1;
+    for (const c of calcDb.DEFAULT_CATEGORIES) {
+      await db.run('INSERT INTO calc_categories (id,project_id,name,kind,sort_order) VALUES (?,?,?,?,?)', [crypto.randomUUID(), pid, c.name, c.kind, so++]);
+    }
+    res.json({ id: pid, name });
+  } catch (e) {
+    console.error('[calc] create project:', e);
+    res.status(500).json({ error: 'Fehler beim Anlegen des Projekts' });
+  }
+});
+
+async function calcVariantTenant(vid) {
+  return db.get('SELECT p.tenant_id AS tenant_id, v.project_id AS project_id FROM calc_variants v JOIN calc_projects p ON p.id = v.project_id WHERE v.id = ?', [vid]);
+}
+
+app.post('/api/calc/projects/:id/variants', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT tenant_id FROM calc_projects WHERE id = ?', [req.params.id]);
+    if (!proj || proj.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    const max = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_variants WHERE project_id = ?', [req.params.id]);
+    const so = (max?.m ?? 0) + 1;
+    const name = (req.body?.name || '').trim() || ('Variante ' + so);
+    const vid = crypto.randomUUID();
+    await db.run('INSERT INTO calc_variants (id,project_id,name,sort_order) VALUES (?,?,?,?)', [vid, req.params.id, name, so]);
+    res.json({ id: vid });
+  } catch (e) {
+    console.error('[calc] create variant:', e);
+    res.status(500).json({ error: 'Fehler beim Anlegen der Variante' });
+  }
+});
+
+app.put('/api/calc/variants/:vid', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcVariantTenant(req.params.vid);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Variante nicht gefunden' });
+    const name = (req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Name fehlt' });
+    await db.run('UPDATE calc_variants SET name=? WHERE id=?', [name, req.params.vid]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] rename variant:', e);
+    res.status(500).json({ error: 'Fehler beim Umbenennen' });
+  }
+});
+
+app.delete('/api/calc/variants/:vid', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcVariantTenant(req.params.vid);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Variante nicht gefunden' });
+    const used = await db.get('SELECT COUNT(*) AS c FROM calc_entries WHERE variant_id = ?', [req.params.vid]);
+    if ((used?.c ?? 0) > 0) return res.status(409).json({ error: 'Variante wird von Buchungen genutzt – dort erst ändern.' });
+    const cnt = await db.get('SELECT COUNT(*) AS c FROM calc_variants WHERE project_id = ?', [owner.project_id]);
+    if ((cnt?.c ?? 0) <= 1) return res.status(409).json({ error: 'Mindestens eine Variante muss bleiben.' });
+    await db.run('UPDATE calc_projects SET default_variant_id=NULL WHERE default_variant_id=?', [req.params.vid]);
+    await db.run('DELETE FROM calc_variants WHERE id=?', [req.params.vid]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] delete variant:', e);
+    res.status(500).json({ error: 'Fehler beim Löschen der Variante' });
+  }
+});
+
 app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, res) => {
   try {
     const rows = await db.all(

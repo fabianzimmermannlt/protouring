@@ -774,6 +774,22 @@ export async function seedCalcDemo(): Promise<{ id: string; name: string }> {
   return request<{ id: string; name: string }>('/api/calc/seed-demo', { method: 'POST' })
 }
 
+export async function createCalcProject(name: string): Promise<{ id: string; name: string }> {
+  return request<{ id: string; name: string }>('/api/calc/projects', { method: 'POST', body: { name } })
+}
+
+export async function createCalcVariant(projectId: string, name: string): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/projects/${projectId}/variants`, { method: 'POST', body: { name } })
+}
+
+export async function updateCalcVariant(variantId: string, name: string): Promise<void> {
+  await request(`/api/calc/variants/${variantId}`, { method: 'PUT', body: { name } })
+}
+
+export async function deleteCalcVariant(variantId: string): Promise<void> {
+  await request(`/api/calc/variants/${variantId}`, { method: 'DELETE' })
+}
+
 export interface CalcShowInput {
   show_date?: string | null
   city?: string | null

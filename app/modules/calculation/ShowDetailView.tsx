@@ -1,10 +1,9 @@
 'use client'
 
-// Kalkulation – Show-Detail als Bereichs-Tabelle (Phase 3, Schritt 2 v2).
+// Kalkulation – Show-Detail als Bereichs-Tabelle (Phase 3).
 // Je Bereich: Zeilen = Positionen (auch neue anlegbar), Spalten = Soll je Variante
 // (+ „gleich in allen Varianten"), dazu ein Ist-Wert pro Position/Show.
-// Ist liegt in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
-// Direktbetrag pro Zelle; strukturierte Bereichs-Rechner (Personal/Fahrzeug) später.
+// Ist in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
 
 import { useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
@@ -83,29 +82,51 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
     [dataset, category.id])
-  const catPosIds = new Set(catPositions.map(p => p.id))
+  const catPosIds = useMemo(() => new Set(catPositions.map(p => p.id)), [catPositions])
 
-  // Positionen mit Daten für diese Show (Buchung ODER Ist)
   const usedIds = useMemo(() => {
     const s = new Set<string>()
     dataset.entries.forEach(e => { if (e.show_id === show.id && catPosIds.has(e.position_id)) s.add(e.position_id) })
     ;(dataset.actuals ?? []).forEach(a => { if (a.show_id === show.id && catPosIds.has(a.position_id)) s.add(a.position_id) })
     return s
-  }, [dataset, show.id, category.id])
+  }, [dataset, show.id, catPosIds])
 
-  const usedPositions = catPositions.filter(p => usedIds.has(p.id))
-  const unusedPositions = catPositions.filter(p => !usedIds.has(p.id))
-  const [drafts, setDrafts] = useState<number[]>([])
-  const [n, setN] = useState(0)
-  const addDraft = () => { setDrafts(d => [...d, n]); setN(n + 1) }
+  // Positionen, die diese Session zusätzlich in die Tabelle geholt wurden (auch ohne Daten)
+  const [addedIds, setAddedIds] = useState<string[]>([])
+  const rowPositions = catPositions.filter(p => usedIds.has(p.id) || addedIds.includes(p.id))
+  const rowIds = new Set(rowPositions.map(p => p.id))
+  const availablePositions = catPositions.filter(p => !rowIds.has(p.id))
 
-  const colCount = 2 + variants.length + 2 // Position + Soll-cols + Ist + Aktion
+  const [adding, setAdding] = useState(false)
+  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  const [pickId, setPickId] = useState('')
+  const [newName, setNewName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const doAdd = async () => {
+    setBusy(true); setErr('')
+    try {
+      let pid = pickId
+      if (mode === 'new') {
+        const name = newName.trim()
+        if (!name) { setErr('Name fehlt'); setBusy(false); return }
+        pid = (await createCalcPosition(category.id, name)).id
+      } else if (!pid) { setErr('Position wählen'); setBusy(false); return }
+      setAddedIds(prev => prev.includes(pid) ? prev : [...prev, pid])
+      setAdding(false); setPickId(''); setNewName(''); setMode('existing')
+      onChanged() // Katalog neu laden, damit die neue Position auftaucht
+    } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false); return }
+    setBusy(false)
+  }
+
+  const colCount = 2 + variants.length + 1
 
   return (
     <div className="pt-card">
       <div className="pt-card-header flex items-center justify-between">
         <span className="pt-card-title">{category.name} <span style={{ opacity: 0.5, fontWeight: 400 }}>· {category.kind === 'income' ? 'Einnahme' : 'Ausgabe'}</span></span>
-        <button onClick={addDraft} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
+        <button onClick={() => setAdding(a => !a)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
           <PlusIcon className="w-3.5 h-3.5" /> Position
         </button>
       </div>
@@ -120,19 +141,38 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
             </tr>
           </thead>
           <tbody>
-            {usedPositions.length === 0 && drafts.length === 0 && (
-              <tr><td colSpan={colCount} className="text-center py-4" style={{ color: '#6b7280' }}>Keine Position – „+ Position".</td></tr>
+            {rowPositions.length === 0 && !adding && (
+              <tr><td colSpan={colCount + 1} className="text-center py-4" style={{ color: '#6b7280' }}>Keine Position – „+ Position".</td></tr>
             )}
-            {usedPositions.map(p => (
+            {rowPositions.map(p => (
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
-                positionId={p.id} positionName={p.name} variants={variants} onChanged={onChanged} />
+                positionId={p.id} positionName={p.name} variants={variants} onChanged={onChanged}
+                onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
             ))}
-            {drafts.map(d => (
-              <PositionRow key={`draft-${d}`} show={show} dataset={dataset} project={project}
-                positionId={null} positionName="" variants={variants} onChanged={onChanged}
-                categoryId={category.id} availablePositions={unusedPositions}
-                onRemoveDraft={() => setDrafts(list => list.filter(x => x !== d))} />
-            ))}
+            {adding && (
+              <tr>
+                <td colSpan={colCount + 1}>
+                  <div className="flex flex-wrap items-center gap-2 py-1">
+                    <div className="flex gap-1 text-[11px]">
+                      <button onClick={() => setMode('existing')} style={{ color: mode === 'existing' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'existing' ? 600 : 400 }}>Vorhanden</button>
+                      <span style={{ color: '#555' }}>·</span>
+                      <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
+                    </div>
+                    {mode === 'existing' ? (
+                      <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={pickId} onChange={e => setPickId(e.target.value)}>
+                        <option value="">– vorhandene Position –</option>
+                        {availablePositions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    ) : (
+                      <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Neue Position…" autoFocus />
+                    )}
+                    <button onClick={doAdd} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>{busy ? '…' : 'Hinzufügen'}</button>
+                    <button onClick={() => { setAdding(false); setErr('') }} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
+                    {err && <span className="text-[11px]" style={{ color: '#fca5a5' }}>{err}</span>}
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -159,29 +199,17 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, categoryId, availablePositions, onRemoveDraft }: {
+function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
-  positionId: string | null; positionName: string; variants: Variant[]; onChanged: () => void
-  categoryId?: string; availablePositions?: { id: string; name: string }[]; onRemoveDraft?: () => void
+  positionId: string; positionName: string; variants: Variant[]; onChanged: () => void; onRemove: () => void
 }) {
-  const isDraft = positionId == null
-  const initial = useMemo<RowModel>(
-    () => positionId ? buildRowModel(dataset, project, show.id, positionId) : { shared: true, sharedVal: '', perVar: {}, ist: '' },
-    [dataset, project, show.id, positionId])
-
+  const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId), [dataset, project, show.id, positionId])
   const [m, setM] = useState<RowModel>(initial)
   const [savedSnap, setSavedSnap] = useState(() => JSON.stringify(initial))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  // Draft-Positionswahl
-  const [pickMode, setPickMode] = useState<'existing' | 'new'>('existing')
-  const [pickId, setPickId] = useState('')
-  const [newName, setNewName] = useState('')
 
   const setShared = (v: boolean) => setM(p => ({ ...p, shared: v }))
-  const setSharedVal = (v: string) => setM(p => ({ ...p, sharedVal: v }))
-  const setPerVar = (vid: string, v: string) => setM(p => ({ ...p, perVar: { ...p.perVar, [vid]: v } }))
-
   const sollDirty = JSON.stringify({ ...m, ist: '' }) !== JSON.stringify({ ...JSON.parse(savedSnap), ist: '' })
 
   const entriesPayload = (): CalcEntryInput[] => {
@@ -198,37 +226,21 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   const saveSoll = async () => {
     setBusy(true); setErr('')
     try {
-      let pid = positionId
-      if (isDraft) {
-        if (pickMode === 'new') {
-          const name = newName.trim()
-          if (!name) { setErr('Name fehlt'); setBusy(false); return }
-          pid = (await createCalcPosition(categoryId!, name)).id
-        } else {
-          if (!pickId) { setErr('Position wählen'); setBusy(false); return }
-          pid = pickId
-        }
-      }
-      await replaceCalcEntries(show.id, pid!, entriesPayload())
-      if (norm(m.ist) != null) await setCalcActual(show.id, pid!, norm(m.ist))
+      await replaceCalcEntries(show.id, positionId, entriesPayload())
       setSavedSnap(JSON.stringify(m))
-      if (isDraft) onRemoveDraft?.()
       onChanged()
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
-
   const saveIst = async () => {
-    if (isDraft || !positionId) return
     try { await setCalcActual(show.id, positionId, norm(m.ist)) } catch { /* still */ }
   }
-
   const removeRow = async () => {
-    if (isDraft) { onRemoveDraft?.(); return }
-    if (!confirm(`„${positionName}" aus dieser Show entfernen? (Buchungen + Ist dieser Show)`)) return
+    const hasData = entriesPayload().length > 0 || norm(m.ist) != null
+    if (hasData && !confirm(`„${positionName}" aus dieser Show entfernen? (Buchungen + Ist dieser Show)`)) return
     setBusy(true)
     try {
-      await replaceCalcEntries(show.id, positionId!, [])
-      await setCalcActual(show.id, positionId!, null)
+      if (hasData) { await replaceCalcEntries(show.id, positionId, []); await setCalcActual(show.id, positionId, null) }
+      onRemove()
       onChanged()
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
@@ -237,66 +249,44 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
 
   return (
     <tr>
-      {/* Position */}
       <td>
-        {isDraft ? (
-          <div className="space-y-1">
-            <div className="flex gap-1 text-[11px]">
-              <button onClick={() => setPickMode('existing')} className={pickMode === 'existing' ? 'font-semibold' : ''} style={{ color: pickMode === 'existing' ? '#60a5fa' : '#8b8b8b' }}>Vorhanden</button>
-              <span style={{ color: '#555' }}>·</span>
-              <button onClick={() => setPickMode('new')} className={pickMode === 'new' ? 'font-semibold' : ''} style={{ color: pickMode === 'new' ? '#60a5fa' : '#8b8b8b' }}>Neu</button>
-            </div>
-            {pickMode === 'existing' ? (
-              <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px' }} value={pickId} onChange={e => setPickId(e.target.value)}>
-                <option value="">– wählen –</option>
-                {(availablePositions ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            ) : (
-              <input className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px' }} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Neue Position…" />
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setShared(!m.shared)} title={m.shared ? 'Gleich in allen Varianten (klicken für Alternativen)' : 'Pro Variante (klicken für einen Wert)'}
-              className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
-              <LinkIcon className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => setShared(!m.shared)} title={m.shared ? 'Gleich in allen Varianten (klicken für Alternativen)' : 'Pro Variante (klicken für einen Wert)'}
+            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
+            <LinkIcon className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
+        </div>
       </td>
 
-      {/* Soll je Variante */}
       {m.shared ? (
         <td colSpan={variants.length} className="text-right">
           <div className="flex items-center justify-end gap-2">
             <span className="text-[10px]" style={{ color: '#8b8b8b' }}>alle Varianten:</span>
-            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal} onChange={e => setSharedVal(e.target.value)} placeholder="0" />
+            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 120 }} value={m.sharedVal} onChange={e => setM(p => ({ ...p, sharedVal: e.target.value }))} placeholder="0" />
           </div>
         </td>
       ) : (
         variants.map(v => (
           <td key={v.id} className="text-right">
-            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 100 }} value={m.perVar[v.id] ?? ''} onChange={e => setPerVar(v.id, e.target.value)} placeholder="0" />
+            <input inputMode="decimal" {...cell} style={{ ...cell.style, maxWidth: 100 }} value={m.perVar[v.id] ?? ''} onChange={e => setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: e.target.value } }))} placeholder="0" />
           </td>
         ))
       )}
 
-      {/* Ist */}
       <td className="text-right">
         <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '3px 6px', maxWidth: 100 }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
       </td>
 
-      {/* Aktion */}
       <td>
         <div className="flex items-center gap-1 justify-end">
-          {(sollDirty || isDraft) && (
+          {sollDirty && (
             <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>
-              {busy ? '…' : isDraft ? 'Anlegen' : 'Speichern'}
+              {busy ? '…' : 'Speichern'}
             </button>
           )}
-          <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title={isDraft ? 'Verwerfen' : 'Entfernen'}>
+          <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Entfernen">
             <TrashIcon className="w-3.5 h-3.5" />
           </button>
         </div>
