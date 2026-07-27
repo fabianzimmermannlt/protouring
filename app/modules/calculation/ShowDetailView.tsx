@@ -145,9 +145,11 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
 
   // Sortierung per 6-Punkte-Griff (Drag & Drop) innerhalb des Bereichs
   const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const endDrag = () => { setDragId(null); setDragOverId(null) }
   const reorderTo = async (targetId: string) => {
     const src = dragId
-    setDragId(null)
+    endDrag()
     if (!src || src === targetId) return
     const order = catPositions.map(p => p.id)
     const from = order.indexOf(src)
@@ -230,7 +232,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                 positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={showSpec} showName={showName}
                 variants={variants} onChanged={onChanged}
                 showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))}
-                dragging={dragId === p.id} onDragStartRow={() => setDragId(p.id)} onDropRow={() => reorderTo(p.id)} />
+                dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
+                onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
+                onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
             ))}
             {adding && (
               <tr>
@@ -322,12 +326,13 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, onRemove, showTravel, defaultVar, dragging, onDragStartRow, onDropRow }: {
+function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, onRemove, showTravel, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   positionId: string; positionName: string; positionSpec: string | null; positionPerson: string | null; showSpec: boolean; showName: boolean
   variants: Variant[]; onChanged: () => void; onRemove: () => void
   showTravel: boolean; defaultVar: string
-  dragging: boolean; onDragStartRow: () => void; onDropRow: () => void
+  dragging: boolean; dropTarget: boolean
+  onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
 }) {
   const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId, variants), [dataset, project, show.id, positionId, variants])
   const [m, setM] = useState<RowModel>(initial)
@@ -434,12 +439,18 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
 
   return (
     <>
-      <tr onDragOver={e => e.preventDefault()} onDrop={onDropRow} style={{ opacity: dragging ? 0.4 : 1 }}>
+      <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
+        style={{
+          opacity: dragging ? 0.35 : 1,
+          background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : undefined),
+          boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined,
+          transition: 'background 120ms ease, opacity 120ms ease',
+        }}>
         <td>
           <div className="flex items-center gap-1.5">
-            <span draggable onDragStart={onDragStartRow} onDragEnd={e => e.preventDefault()}
+            <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow}
               title="Zum Sortieren ziehen" className="shrink-0 cursor-grab active:cursor-grabbing"
-              style={{ color: '#6b7280', lineHeight: 0 }}>
+              style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0 }}>
               <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
                 <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
                 <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
