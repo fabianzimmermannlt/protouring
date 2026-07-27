@@ -184,7 +184,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
 
 // ── Positions-Zeile ──────────────────────────────────────────────────────────
 
-interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; ist: string }
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; ist: string; istTravelKm: string; istTravelRate: string }
 
 const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate })
 
@@ -215,7 +215,12 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   })
 
   const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
-  return { shared, sharedVal, perVar, travelKm, travelRate, ist: act?.amount != null ? String(act.amount) : '' }
+  return {
+    shared, sharedVal, perVar, travelKm, travelRate,
+    ist: act?.amount != null ? String(act.amount) : '',
+    istTravelKm: act?.travel_km != null ? String(act.travel_km) : '',
+    istTravelRate: act?.travel_rate != null ? String(act.travel_rate) : '',
+  }
 }
 
 function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove, showTravel }: {
@@ -249,6 +254,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
     if (km == null || rate == null) return null
     try { return new Decimal(km).times(rate) } catch { return null }
   }
+  const istTravelRes = (): Decimal | null => {
+    const km = norm(m.istTravelKm), rate = norm(m.istTravelRate)
+    if (km == null || rate == null) return null
+    try { return new Decimal(km).times(rate) } catch { return null }
+  }
 
   const entriesPayload = (): CalcEntryInput[] => {
     const base: CalcEntryInput[] = m.shared
@@ -271,14 +281,14 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
   const saveIst = async () => {
-    try { await setCalcActual(show.id, positionId, norm(m.ist)) } catch { /* still */ }
+    try { await setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate) }) } catch { /* still */ }
   }
   const removeRow = async () => {
     const hasData = entriesPayload().length > 0 || norm(m.ist) != null
     if (hasData && !confirm(`„${positionName}" aus dieser Show entfernen? (Buchungen + Ist dieser Show)`)) return
     setBusy(true)
     try {
-      if (hasData) { await replaceCalcEntries(show.id, positionId, []); await setCalcActual(show.id, positionId, null) }
+      if (hasData) { await replaceCalcEntries(show.id, positionId, []); await setCalcActual(show.id, positionId, { amount: null, travel_km: null, travel_rate: null }) }
       onRemove()
       onChanged()
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
@@ -372,7 +382,15 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
               </td>
             )
           })}
-          <td />
+          <td style={{ padding: '2px 8px', verticalAlign: 'top' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <input {...tvCell} value={m.istTravelKm} placeholder="km"
+                onChange={e => setM(p => ({ ...p, istTravelKm: e.target.value }))} onBlur={saveIst} />
+              <input {...tvCell} value={m.istTravelRate} placeholder="€/km"
+                onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
+              <span style={{ fontSize: 10, color: '#facc15', textAlign: 'right' }}>{istTravelRes() != null ? '= ' + formatEUR(istTravelRes()!) : ''}</span>
+            </div>
+          </td>
           <td />
         </tr>
       )}

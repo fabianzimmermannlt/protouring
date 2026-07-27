@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS calc_actuals (
   show_id TEXT NOT NULL REFERENCES calc_shows(id) ON DELETE CASCADE,
   position_id TEXT NOT NULL REFERENCES calc_positions(id) ON DELETE CASCADE,
   amount TEXT,
+  travel_km TEXT,
+  travel_rate TEXT,
   note TEXT,
   UNIQUE (show_id, position_id)
 );

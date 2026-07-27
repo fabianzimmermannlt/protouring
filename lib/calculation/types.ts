@@ -90,6 +90,9 @@ export interface CalcActual {
   show_id: string
   position_id: string
   amount?: Money
+  /** Ist-Reisekosten: km × €/km (real gefahren), addiert sich zum Ist-Grundbetrag. */
+  travel_km?: Money
+  travel_rate?: Money
   note?: string | null
 }
 

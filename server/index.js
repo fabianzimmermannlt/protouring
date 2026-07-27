@@ -1920,6 +1920,8 @@ async function initDatabase() {
   await db.exec(calcDb.SCHEMA);
   try { await db.exec('ALTER TABLE calc_entries ADD COLUMN amount TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec("ALTER TABLE calc_entries ADD COLUMN kind TEXT DEFAULT 'base'"); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN travel_km TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN travel_rate TEXT'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8189,15 +8191,17 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
     const owner = await calcShowTenant(req.params.showId);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
     const amount = calcText(req.body?.amount);
+    const travelKm = calcText(req.body?.travel_km);
+    const travelRate = calcText(req.body?.travel_rate);
     const note = req.body?.note ?? null;
     const existing = await db.get('SELECT id FROM calc_actuals WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
-    if (amount == null && (note == null || note === '')) {
+    if (amount == null && travelKm == null && travelRate == null && (note == null || note === '')) {
       if (existing) await db.run('DELETE FROM calc_actuals WHERE id = ?', [existing.id]);
       return res.json({ ok: true });
     }
-    if (existing) await db.run('UPDATE calc_actuals SET amount=?, note=? WHERE id=?', [amount, note, existing.id]);
-    else await db.run('INSERT INTO calc_actuals (id,show_id,position_id,amount,note) VALUES (?,?,?,?,?)',
-      [crypto.randomUUID(), req.params.showId, req.params.positionId, amount, note]);
+    if (existing) await db.run('UPDATE calc_actuals SET amount=?, travel_km=?, travel_rate=?, note=? WHERE id=?', [amount, travelKm, travelRate, note, existing.id]);
+    else await db.run('INSERT INTO calc_actuals (id,show_id,position_id,amount,travel_km,travel_rate,note) VALUES (?,?,?,?,?,?,?)',
+      [crypto.randomUUID(), req.params.showId, req.params.positionId, amount, travelKm, travelRate, note]);
     res.json({ ok: true });
   } catch (e) {
     console.error('[calc] set actual:', e);
