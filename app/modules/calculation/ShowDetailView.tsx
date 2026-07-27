@@ -13,7 +13,7 @@ import {
 } from '@/lib/api-client'
 import type { CalcDataset, CalcShow, CalcProject } from '@/lib/calculation/types'
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
-import { formatEUR, formatDate } from '@/lib/calculation/format'
+import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
 
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
@@ -120,8 +120,10 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
     setBusy(false)
   }
 
-  const colCount = 2 + variants.length + 1
+  const colCount = 2 + variants.length + 2
   const showTravel = /personal/i.test(category.name)   // Reisekosten nur beim Personal
+  const defaultVar = project.default_variant_id ?? variants[0]?.id ?? ''
+  const defaultVarName = variants.find(v => v.id === defaultVar)?.name ?? ''
 
   return (
     <div className="pt-card">
@@ -137,8 +139,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
           <thead>
             <tr>
               <th style={{ minWidth: 200 }}>Position</th>
-              {variants.map(v => <th key={v.id} className="text-right" style={{ minWidth: 110 }}>{v.name}</th>)}
-              <th className="text-right" style={{ minWidth: 110, color: '#facc15' }}>Ist</th>
+              {variants.map(v => <th key={v.id} className="text-right" style={{ minWidth: 130 }}>{v.name}</th>)}
+              <th className="text-right" style={{ minWidth: 130, color: '#facc15' }}>Ist</th>
+              <th className="text-right" style={{ minWidth: 100 }}>Ergebnis{defaultVarName && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}> ({defaultVarName})</span>}</th>
               <th style={{ width: 40 }} />
             </tr>
           </thead>
@@ -149,7 +152,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
             {rowPositions.map(p => (
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
                 positionId={p.id} positionName={p.name} variants={variants} onChanged={onChanged}
-                showTravel={showTravel} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
+                showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
             ))}
             {adding && (
               <tr>
@@ -223,10 +226,10 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove, showTravel }: {
+function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove, showTravel, defaultVar }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   positionId: string; positionName: string; variants: Variant[]; onChanged: () => void; onRemove: () => void
-  showTravel: boolean
+  showTravel: boolean; defaultVar: string
 }) {
   const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId, variants), [dataset, project, show.id, positionId, variants])
   const [m, setM] = useState<RowModel>(initial)
@@ -258,6 +261,14 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
     const km = norm(m.istTravelKm), rate = norm(m.istTravelRate)
     if (km == null || rate == null) return null
     try { return new Decimal(km).times(rate) } catch { return null }
+  }
+  // Zeilenergebnis (Soll) für die Standardvariante: Grundbetrag + Reise
+  const rowResultSoll = (): Decimal => {
+    let sum = new Decimal(0)
+    const baseStr = m.shared ? m.sharedVal : (m.perVar[defaultVar] ?? '')
+    const b = norm(baseStr); if (b != null) { try { sum = sum.plus(b) } catch { /* ignore */ } }
+    const t = travelRes(defaultVar); if (t) sum = sum.plus(t)
+    return sum
   }
 
   const entriesPayload = (): CalcEntryInput[] => {
@@ -343,6 +354,10 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
             value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         </td>
 
+        <td className="text-right" style={{ padding: '4px 8px', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
+          {formatMoney(rowResultSoll())}
+        </td>
+
         <td>
           <div className="flex items-center gap-1 justify-end">
             {sollDirty && (
@@ -371,26 +386,27 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
           {variants.map(v => {
             const res = travelRes(v.id)
             return (
-              <td key={v.id} style={{ padding: '2px 8px', verticalAlign: 'top' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <input {...tvCell} value={m.travelKm[v.id] ?? ''} placeholder="km"
+              <td key={v.id} style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelKm[v.id] ?? ''} placeholder="km"
                     onChange={e => setM(p => ({ ...p, travelKm: { ...p.travelKm, [v.id]: e.target.value } }))} />
-                  <input {...tvCell} value={m.travelRate[v.id] ?? ''} placeholder="€/km"
+                  <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelRate[v.id] ?? ''} placeholder="€/km"
                     onChange={e => setM(p => ({ ...p, travelRate: { ...p.travelRate, [v.id]: e.target.value } }))} />
-                  <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>{res != null ? '= ' + formatEUR(res) : ''}</span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
                 </div>
               </td>
             )
           })}
-          <td style={{ padding: '2px 8px', verticalAlign: 'top' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <input {...tvCell} value={m.istTravelKm} placeholder="km"
+          <td style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelKm} placeholder="km"
                 onChange={e => setM(p => ({ ...p, istTravelKm: e.target.value }))} onBlur={saveIst} />
-              <input {...tvCell} value={m.istTravelRate} placeholder="€/km"
+              <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelRate} placeholder="€/km"
                 onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
-              <span style={{ fontSize: 10, color: '#facc15', textAlign: 'right' }}>{istTravelRes() != null ? '= ' + formatEUR(istTravelRes()!) : ''}</span>
+              <span style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
             </div>
           </td>
+          <td />
           <td />
         </tr>
       )}
