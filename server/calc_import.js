@@ -59,7 +59,14 @@ CREATE TABLE IF NOT EXISTS calc_positions (
   name TEXT NOT NULL,
   spec TEXT,
   person TEXT,
+  is_overhead INTEGER NOT NULL DEFAULT 0,
   sort_order INTEGER NOT NULL DEFAULT 0
+);
+-- Übergeordnete Kosten: von welchen Shows ist ein Posten ausgenommen (Default: alle aktiven)
+CREATE TABLE IF NOT EXISTS calc_overhead_exclude (
+  position_id TEXT NOT NULL REFERENCES calc_positions(id) ON DELETE CASCADE,
+  show_id TEXT NOT NULL REFERENCES calc_shows(id) ON DELETE CASCADE,
+  PRIMARY KEY (position_id, show_id)
 );
 CREATE TABLE IF NOT EXISTS calc_entries (
   id TEXT PRIMARY KEY,
@@ -180,9 +187,10 @@ function rowsToDataset(rows) {
     variants: rows.variants,
     shows: rows.shows.map(x => ({ ...x, is_active: x.is_active === 1 || x.is_active === true })),
     categories: rows.categories,
-    positions: rows.positions,
+    positions: rows.positions.map(x => ({ ...x, is_overhead: x.is_overhead === 1 || x.is_overhead === true })),
     entries: rows.entries,
     actuals: rows.actuals || [],
+    overheadExclude: rows.overheadExclude || [],
   }
 }
 
@@ -198,7 +206,11 @@ async function loadDataset(db, projectId) {
   const entries = await db.all(`SELECT * FROM calc_entries WHERE project_id=?`, [projectId])
   const actuals = await db.all(
     `SELECT a.* FROM calc_actuals a JOIN calc_shows s ON s.id = a.show_id WHERE s.project_id=?`, [projectId])
-  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals })
+  const overheadExclude = await db.all(
+    `SELECT oe.position_id, oe.show_id FROM calc_overhead_exclude oe
+       JOIN calc_positions p ON p.id = oe.position_id
+       JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id=?`, [projectId])
+  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals, overheadExclude })
 }
 
 /** Projektliste eines Tenants (Kurzform). */

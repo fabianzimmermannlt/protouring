@@ -846,8 +846,18 @@ export async function deleteCalcEntry(entryId: string): Promise<void> {
   await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
 }
 
-export async function createCalcPosition(categoryId: string, name: string, spec?: string | null): Promise<{ id: string }> {
-  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec } })
+export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec, is_overhead: isOverhead === true } })
+}
+
+/** Übergeordneter Posten: Soll-/Ist-Betrag setzen (leer = Posten hat keinen Betrag). */
+export async function setCalcOverhead(positionId: string, data: { amount?: Num; ist_amount?: Num }): Promise<void> {
+  await request(`/api/calc/positions/${positionId}/overhead`, { method: 'PUT', body: data })
+}
+
+/** Übergeordneter Posten: gilt für diese Show ja/nein (Häkchen). */
+export async function setCalcOverheadShow(positionId: string, showId: string, included: boolean): Promise<void> {
+  await request(`/api/calc/positions/${positionId}/overhead-shows/${showId}`, { method: 'PUT', body: { included } })
 }
 
 export async function updateCalcPosition(positionId: string, data: { name?: string; spec?: string | null; person?: string | null; sort_order?: number }): Promise<void> {

@@ -1926,6 +1926,7 @@ async function initDatabase() {
   try { await db.run("UPDATE calc_positions SET name = TRIM(SUBSTR(TRIM(name), 2)) WHERE name LIKE ' +%'"); } catch (e) { /* egal */ }
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN spec TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN person TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_positions ADD COLUMN is_overhead INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN vvk INTEGER'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
@@ -8158,10 +8159,11 @@ app.post('/api/calc/categories/:catId/positions', authenticateToken, requireTena
     const name = (req.body?.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Name fehlt' });
     const spec = req.body?.spec ? String(req.body.spec).trim() || null : null;
+    const isOverhead = req.body?.is_overhead === true || req.body?.is_overhead === 1 ? 1 : 0;
     const id = crypto.randomUUID();
     const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_positions WHERE category_id = ?', [req.params.catId]);
-    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,sort_order) VALUES (?,?,?,?,?)',
-      [id, req.params.catId, name, spec, (maxRow?.m ?? 0) + 1]);
+    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,is_overhead,sort_order) VALUES (?,?,?,?,?,?)',
+      [id, req.params.catId, name, spec, isOverhead, (maxRow?.m ?? 0) + 1]);
     res.json({ id });
   } catch (e) {
     console.error('[calc] create position:', e);
@@ -8195,6 +8197,7 @@ app.delete('/api/calc/positions/:id', authenticateToken, requireTenant, requireE
       'SELECT p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
       [req.params.id]);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    await db.run('DELETE FROM calc_overhead_exclude WHERE position_id = ?', [req.params.id]);
     await db.run('DELETE FROM calc_actuals WHERE position_id = ?', [req.params.id]);
     await db.run('DELETE FROM calc_entries WHERE position_id = ?', [req.params.id]);
     await db.run('DELETE FROM calc_positions WHERE id = ?', [req.params.id]);
@@ -8202,6 +8205,49 @@ app.delete('/api/calc/positions/:id', authenticateToken, requireTenant, requireE
   } catch (e) {
     console.error('[calc] delete position:', e);
     res.status(500).json({ error: 'Fehler beim Löschen der Position' });
+  }
+});
+
+// Übergeordneter Posten: Soll-/Ist-Betrag setzen (eine Buchung show_id NULL, variant_id NULL)
+app.put('/api/calc/positions/:id/overhead', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await db.get(
+      'SELECT p.id AS project_id, p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
+      [req.params.id]);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    const amount = calcText(req.body?.amount);
+    const ist = calcText(req.body?.ist_amount);
+    await db.run('DELETE FROM calc_entries WHERE position_id = ? AND show_id IS NULL', [req.params.id]);
+    if (amount != null || ist != null) {
+      await db.run(
+        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        [crypto.randomUUID(), owner.project_id, null, req.params.id, null, amount, 'base', ist]);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] set overhead:', e);
+    res.status(500).json({ error: 'Fehler beim Speichern des übergeordneten Postens' });
+  }
+});
+
+// Übergeordneter Posten: gilt für Show ja/nein (Häkchen). included=false → Ausnahme eintragen.
+app.put('/api/calc/positions/:id/overhead-shows/:showId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await db.get(
+      'SELECT p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
+      [req.params.id]);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    const included = req.body?.included !== false;
+    if (included) {
+      await db.run('DELETE FROM calc_overhead_exclude WHERE position_id = ? AND show_id = ?', [req.params.id, req.params.showId]);
+    } else {
+      await db.run('INSERT OR IGNORE INTO calc_overhead_exclude (position_id,show_id) VALUES (?,?)', [req.params.id, req.params.showId]);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] toggle overhead show:', e);
+    res.status(500).json({ error: 'Fehler beim Ändern der Show-Zuordnung' });
   }
 });
 

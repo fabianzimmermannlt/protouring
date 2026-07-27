@@ -130,21 +130,33 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
     variantByShow && Object.prototype.hasOwnProperty.call(variantByShow, showId)
       ? variantByShow[showId] : variantId
 
-  // Regel 4 – Fixkosten (show_id NULL): Betrag je Position / Anzahl aktiver Shows.
-  // Fixkosten sind projektweit → globale variantId (nicht per Show).
-  const fixedShareByPosition = new Map<string, Decimal>()
-  if (nActive > 0) {
-    for (const e of data.entries) {
-      if (e.show_id != null) continue
-      if (!variantMatches(e, variantId)) continue
-      const amt = entryAmount(e, project)
-      const prev = fixedShareByPosition.get(e.position_id) ?? new Decimal(0)
-      fixedShareByPosition.set(e.position_id, prev.plus(amt))
-    }
-    fixedShareByPosition.forEach((sum, pos) => {
-      fixedShareByPosition.set(pos, sum.div(nActive))
-    })
+  // Regel 4 – Übergeordnete/Fixkosten (show_id NULL): Betrag je Position auf die
+  // zutreffenden aktiven Shows umgelegt. Fixkosten sind projektweit → globale
+  // variantId (nicht per Show). Ein Posten kann von einzelnen Shows ausgenommen
+  // sein (overheadExclude) → Umlage nur auf die verbleibenden Shows.
+  const excludeByPosition = new Map<string, Set<string>>()
+  ;(data.overheadExclude ?? []).forEach(ex => {
+    let s = excludeByPosition.get(ex.position_id)
+    if (!s) { s = new Set(); excludeByPosition.set(ex.position_id, s) }
+    s.add(ex.show_id)
+  })
+  const fixedSumByPosition = new Map<string, Decimal>()
+  for (const e of data.entries) {
+    if (e.show_id != null) continue
+    if (!variantMatches(e, variantId)) continue
+    const prev = fixedSumByPosition.get(e.position_id) ?? new Decimal(0)
+    fixedSumByPosition.set(e.position_id, prev.plus(entryAmount(e, project)))
   }
+  // Je Posten: Menge der zutreffenden Shows + Anteil = Summe ÷ Anzahl zutreffender Shows.
+  const fixedIncludedByPosition = new Map<string, Set<string>>()
+  const fixedShareByPosition = new Map<string, Decimal>()
+  fixedSumByPosition.forEach((sum, pos) => {
+    const excl = excludeByPosition.get(pos)
+    const ids = new Set<string>()
+    activeShows.forEach(s => { if (!(excl && excl.has(s.id))) ids.add(s.id) })
+    fixedIncludedByPosition.set(pos, ids)
+    if (ids.size > 0) fixedShareByPosition.set(pos, sum.div(ids.size))
+  })
 
   // Variable Buchungen je (show, position) – Variantenfilter pro Show (Regel 3).
   const variableByShowPosition = new Map<string, Map<string, Decimal>>()
@@ -174,10 +186,14 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
     // Alle bebuchten Positionen dieser Show (variabel) + alle mit Fixkostenanteil
     const positionIds = new Set<string>()
     if (varByPos) varByPos.forEach((_amt, posId) => positionIds.add(posId))
-    fixedShareByPosition.forEach((_amt, posId) => positionIds.add(posId))
+    fixedShareByPosition.forEach((_amt, posId) => {
+      const inc = fixedIncludedByPosition.get(posId)
+      if (inc && inc.has(show.id)) positionIds.add(posId)
+    })
     positionIds.forEach(posId => {
       const variable = varByPos?.get(posId) ?? new Decimal(0)
-      const fixed = fixedShareByPosition.get(posId) ?? new Decimal(0)
+      const inc = fixedIncludedByPosition.get(posId)
+      const fixed = (inc && inc.has(show.id)) ? (fixedShareByPosition.get(posId) ?? new Decimal(0)) : new Decimal(0)
       const amount = variable.plus(fixed)
       positionAmount.set(posId, amount)
       const catId = positionToCategory.get(posId)

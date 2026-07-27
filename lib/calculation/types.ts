@@ -65,7 +65,15 @@ export interface CalcPosition {
   spec?: string | null
   /** Name (z.B. Person), separat ein-/ausblendbar. */
   person?: string | null
+  /** Übergeordneter Kostenposten (Umlage auf mehrere Shows) statt normaler Show-Position. */
+  is_overhead?: boolean
   sort_order: number
+}
+
+/** Ausnahme: übergeordneter Posten gilt NICHT für diese Show (Default: alle aktiven Shows). */
+export interface CalcOverheadExclude {
+  position_id: string
+  show_id: string
 }
 
 export interface CalcEntry {
@@ -112,6 +120,8 @@ export interface CalcDataset {
   entries: CalcEntry[]
   /** Ist-Werte pro Position/Show (optional; leer bei Alt-Daten). */
   actuals?: CalcActual[]
+  /** Show-Ausnahmen für übergeordnete Posten (optional; leer = jeder Posten gilt für alle aktiven Shows). */
+  overheadExclude?: CalcOverheadExclude[]
 }
 
 export interface OverviewOptions {
