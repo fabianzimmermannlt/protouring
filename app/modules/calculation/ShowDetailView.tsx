@@ -159,6 +159,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const rowPositions = catPositions.filter(p => !p.is_overhead)
   const availablePositions: typeof catPositions = []   // alle Positionen sind bereits sichtbar
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
+  const isUnterkunft = /unterkunft|verpflegung/i.test(category.name)   // nur hier: Hotel-Option
   // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile),
   // projektweit gemerkt (alle Shows, auch nach Verlassen der Kalkulation)
   const [showSpec, setShowSpec] = useState(() => readPref('pt_calc_show_spec', true))
@@ -314,13 +315,13 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                         <span style={{ color: '#555' }}>·</span>
                         <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
                       </div>
-                    ) : (
+                    ) : isUnterkunft ? (
                       <div className="flex gap-1 text-[11px]">
                         <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
                         <span style={{ color: '#555' }}>·</span>
                         <button onClick={() => setMode('hotel')} style={{ color: mode === 'hotel' ? '#e0b877' : '#8b8b8b', fontWeight: mode === 'hotel' ? 600 : 400 }}>🏨 Hotel</button>
                       </div>
-                    )}
+                    ) : null}
                     {mode === 'hotel' ? (
                       <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
                         Hotel für:
