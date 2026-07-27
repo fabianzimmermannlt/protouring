@@ -143,6 +143,26 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const availablePositions = catPositions.filter(p => !rowIds.has(p.id))
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
 
+  // Sortierung per 6-Punkte-Griff (Drag & Drop) innerhalb des Bereichs
+  const [dragId, setDragId] = useState<string | null>(null)
+  const reorderTo = async (targetId: string) => {
+    const src = dragId
+    setDragId(null)
+    if (!src || src === targetId) return
+    const order = catPositions.map(p => p.id)
+    const from = order.indexOf(src)
+    if (from < 0 || order.indexOf(targetId) < 0) return
+    order.splice(from, 1)
+    order.splice(order.indexOf(targetId), 0, src)   // src vor Ziel einfügen
+    const updates = order
+      .map((id, i) => ({ id, i, cur: catPositions.find(p => p.id === id) }))
+      .filter(x => x.cur && x.cur.sort_order !== x.i)
+    try {
+      await Promise.all(updates.map(x => updateCalcPosition(x.id, { sort_order: x.i })))
+      onChanged()
+    } catch { /* Sortierung nicht kritisch */ }
+  }
+
   const [adding, setAdding] = useState(false)
   const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'existing')
   const [pickId, setPickId] = useState('')
@@ -209,7 +229,8 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
                 positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={showSpec} showName={showName}
                 variants={variants} onChanged={onChanged}
-                showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
+                showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))}
+                dragging={dragId === p.id} onDragStartRow={() => setDragId(p.id)} onDropRow={() => reorderTo(p.id)} />
             ))}
             {adding && (
               <tr>
@@ -301,11 +322,12 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, onRemove, showTravel, defaultVar }: {
+function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, onRemove, showTravel, defaultVar, dragging, onDragStartRow, onDropRow }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   positionId: string; positionName: string; positionSpec: string | null; positionPerson: string | null; showSpec: boolean; showName: boolean
   variants: Variant[]; onChanged: () => void; onRemove: () => void
   showTravel: boolean; defaultVar: string
+  dragging: boolean; onDragStartRow: () => void; onDropRow: () => void
 }) {
   const initial = useMemo<RowModel>(() => buildRowModel(dataset, project, show.id, positionId, variants), [dataset, project, show.id, positionId, variants])
   const [m, setM] = useState<RowModel>(initial)
@@ -412,9 +434,18 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
 
   return (
     <>
-      <tr>
+      <tr onDragOver={e => e.preventDefault()} onDrop={onDropRow} style={{ opacity: dragging ? 0.4 : 1 }}>
         <td>
           <div className="flex items-center gap-1.5">
+            <span draggable onDragStart={onDragStartRow} onDragEnd={e => e.preventDefault()}
+              title="Zum Sortieren ziehen" className="shrink-0 cursor-grab active:cursor-grabbing"
+              style={{ color: '#6b7280', lineHeight: 0 }}>
+              <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
+                <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
+                <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
+                <circle cx="2.2" cy="12" r="1.25" /><circle cx="6.8" cy="12" r="1.25" />
+              </svg>
+            </span>
             <button onClick={toggleLink}
               title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
               className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
