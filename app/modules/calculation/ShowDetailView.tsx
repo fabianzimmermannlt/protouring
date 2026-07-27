@@ -184,14 +184,14 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged }
 
 // ── Positions-Zeile ──────────────────────────────────────────────────────────
 
-interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: string; travelRate: string; ist: string }
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; ist: string }
 
 const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate })
 
 function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: string, positionId: string, variants: Variant[]): RowModel {
   const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId)
   const baseE = es.filter(e => (e.kind ?? 'base') !== 'travel')
-  const travelE = es.find(e => e.kind === 'travel')
+  const travelE = es.filter(e => e.kind === 'travel')
   const nullE = baseE.filter(e => e.variant_id == null)
   const varE = baseE.filter(e => e.variant_id != null)
   const shared = varE.length === 0            // nur eine „gilt für alle"-Buchung (oder gar keine) → verknüpft
@@ -199,13 +199,23 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   const perVar: Record<string, string> = {}
   if (nullE.length) variants.forEach(v => { perVar[v.id] = sharedVal })     // Startwerte auch für den Aufgelöst-Fall
   varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = numStr(entryAmount(e, project)) })
+
+  // Reise pro Variante (variant_id) + geerbt aus „gilt für alle" (variant_id NULL)
+  const travelKm: Record<string, string> = {}
+  const travelRate: Record<string, string> = {}
+  const tNull = travelE.find(e => e.variant_id == null)
+  if (tNull) variants.forEach(v => {
+    travelKm[v.id] = tNull.quantity != null ? String(tNull.quantity) : ''
+    travelRate[v.id] = tNull.unit_price != null ? String(tNull.unit_price) : ''
+  })
+  travelE.filter(e => e.variant_id != null).forEach(e => {
+    if (!e.variant_id) return
+    travelKm[e.variant_id] = e.quantity != null ? String(e.quantity) : ''
+    travelRate[e.variant_id] = e.unit_price != null ? String(e.unit_price) : ''
+  })
+
   const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
-  return {
-    shared, sharedVal, perVar,
-    travelKm: travelE?.quantity != null ? String(travelE.quantity) : '',
-    travelRate: travelE?.unit_price != null ? String(travelE.unit_price) : '',
-    ist: act?.amount != null ? String(act.amount) : '',
-  }
+  return { shared, sharedVal, perVar, travelKm, travelRate, ist: act?.amount != null ? String(act.amount) : '' }
 }
 
 function PositionRow({ show, dataset, project, positionId, positionName, variants, onChanged, onRemove, showTravel }: {
@@ -218,7 +228,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   const [savedSnap, setSavedSnap] = useState(() => sollSnap(initial))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [travelOpen, setTravelOpen] = useState(() => !!(initial.travelKm || initial.travelRate))
+  const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== ''))
 
   const sollDirty = sollSnap(m) !== savedSnap
 
@@ -234,18 +244,21 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
     return { ...p, shared: true, sharedVal: p.sharedVal || first }
   })
 
-  const travelAmount = (): Decimal => {
-    const km = norm(m.travelKm), rate = norm(m.travelRate)
-    if (km == null || rate == null) return new Decimal(0)
-    try { return new Decimal(km).times(rate) } catch { return new Decimal(0) }
+  const travelRes = (vid: string): Decimal | null => {
+    const km = norm(m.travelKm[vid] ?? ''), rate = norm(m.travelRate[vid] ?? '')
+    if (km == null || rate == null) return null
+    try { return new Decimal(km).times(rate) } catch { return null }
   }
 
   const entriesPayload = (): CalcEntryInput[] => {
     const base: CalcEntryInput[] = m.shared
       ? (norm(m.sharedVal) == null ? [] : [{ kind: 'base', variant_id: null, amount: norm(m.sharedVal) }])
       : variants.map(v => ({ v, a: norm(m.perVar[v.id] ?? '') })).filter(x => x.a != null).map(x => ({ kind: 'base', variant_id: x.v.id, amount: x.a }))
-    const km = norm(m.travelKm), rate = norm(m.travelRate)
-    const travel: CalcEntryInput[] = (showTravel && km != null && rate != null) ? [{ kind: 'travel', variant_id: null, quantity: km, unit_price: rate }] : []
+    const travel: CalcEntryInput[] = []
+    if (showTravel) variants.forEach(v => {
+      const km = norm(m.travelKm[v.id] ?? ''), rate = norm(m.travelRate[v.id] ?? '')
+      if (km != null && rate != null) travel.push({ kind: 'travel', variant_id: v.id, quantity: km, unit_price: rate })
+    })
     return [...base, ...travel]
   }
 
@@ -272,8 +285,8 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
   }
 
   const cell = { className: 'form-input text-right', style: { fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' } as const }
-  const tvCell = { className: 'form-input text-right', inputMode: 'decimal' as const, style: { fontSize: '0.75rem', padding: '2px 5px', maxWidth: 70 } }
-  const travelActive = travelOpen || m.travelKm !== '' || m.travelRate !== ''
+  const tvCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.72rem', padding: '2px 6px', width: '100%', textAlign: 'right' as const } }
+  const travelActive = travelOpen || variants.some(v => (m.travelKm[v.id] ?? '') !== '' || (m.travelRate[v.id] ?? '') !== '')
 
   return (
     <>
@@ -337,20 +350,30 @@ function PositionRow({ show, dataset, project, positionId, positionName, variant
 
       {showTravel && travelOpen && (
         <tr>
-          <td />
-          <td colSpan={variants.length + 2}>
-            <div className="flex items-center gap-2 text-xs" style={{ color: '#9ca3af', paddingLeft: 20 }}>
-              <span>🚗 Reisekosten:</span>
-              <input {...tvCell} value={m.travelKm} onChange={e => setM(p => ({ ...p, travelKm: e.target.value }))} placeholder="km" />
-              <span>km ×</span>
-              <input {...tvCell} value={m.travelRate} onChange={e => setM(p => ({ ...p, travelRate: e.target.value }))} placeholder="€/km" />
-              <span>= <b style={{ color: '#e0e0e0' }}>{formatEUR(travelAmount())}</b></span>
-              {(m.travelKm !== '' || m.travelRate !== '') && (
-                <button onClick={() => setM(p => ({ ...p, travelKm: '', travelRate: '' }))} className="text-gray-500 hover:text-red-500" title="Reisekosten löschen">✕</button>
+          <td style={{ verticalAlign: 'top' }}>
+            <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22 }}>
+              <TruckIcon className="w-3.5 h-3.5" /> Reise <span style={{ color: '#6b7280', fontSize: 10 }}>(km × €/km)</span>
+              {travelActive && (
+                <button onClick={() => setM(p => ({ ...p, travelKm: {}, travelRate: {} }))} className="text-gray-500 hover:text-red-500 ml-1" title="Reisekosten löschen">✕</button>
               )}
-              <span className="text-[10px]" style={{ color: '#6b7280' }}>(gilt für alle Varianten, addiert sich zum Betrag)</span>
             </div>
           </td>
+          {variants.map(v => {
+            const res = travelRes(v.id)
+            return (
+              <td key={v.id} style={{ padding: '2px 8px', verticalAlign: 'top' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <input {...tvCell} value={m.travelKm[v.id] ?? ''} placeholder="km"
+                    onChange={e => setM(p => ({ ...p, travelKm: { ...p.travelKm, [v.id]: e.target.value } }))} />
+                  <input {...tvCell} value={m.travelRate[v.id] ?? ''} placeholder="€/km"
+                    onChange={e => setM(p => ({ ...p, travelRate: { ...p.travelRate, [v.id]: e.target.value } }))} />
+                  <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'right' }}>{res != null ? '= ' + formatEUR(res) : ''}</span>
+                </div>
+              </td>
+            )
+          })}
+          <td />
+          <td />
         </tr>
       )}
     </>
