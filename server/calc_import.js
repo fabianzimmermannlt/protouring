@@ -115,7 +115,10 @@ function buildImportRows(seed, tenantId) {
     member_count: seed.project.member_count ?? 1,
     default_variant_id: seed.project.default_variant_id ? vmap[seed.project.default_variant_id] : null,
   }
-  const variants = seed.variants.map(v => ({ id: vmap[v.id], project_id: pid, name: v.name, sort_order: v.sort_order ?? 0 }))
+  // Generische Namen „Variante 1/2/…" (nach sort_order); IDs bleiben gemappt.
+  const variants = seed.variants
+    .slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((v, i) => ({ id: vmap[v.id], project_id: pid, name: `Variante ${i + 1}`, sort_order: v.sort_order ?? (i + 1) }))
   const shows = seed.shows.map(x => ({
     id: smap[x.id], project_id: pid, sort_order: x.sort_order ?? 0,
     show_date: x.show_date ?? null, city: x.city ?? null, venue: x.venue ?? null,

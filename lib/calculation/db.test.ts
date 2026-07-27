@@ -33,15 +33,15 @@ describe('DB-Serialisierung (Import → Dataset → Rechenkern)', () => {
     expect(typeof dataset.shows[0].guarantee).toBe('string')
   })
 
-  it('Sollwerte „mit NL"', () => {
-    const r = buildOverview(dataset, { variantId: variant('mit NL'), memberCount: 5 })
+  it('Sollwerte „Variante 1" (ex mit NL)', () => {
+    const r = buildOverview(dataset, { variantId: variant('Variante 1'), memberCount: 5 })
     expect(num(r.sumAusgaben)).toBeCloseTo(98960.22, 4)
     expect(num(r.ergebnis)).toBeCloseTo(23439.78, 4)
     expect(num(r.jeBandmitglied)).toBeCloseTo(4687.956, 4)
   })
 
-  it('Sollwerte „ohne NL"', () => {
-    const r = buildOverview(dataset, { variantId: variant('ohne NL'), memberCount: 5 })
+  it('Sollwerte „Variante 2" (ex ohne NL)', () => {
+    const r = buildOverview(dataset, { variantId: variant('Variante 2'), memberCount: 5 })
     expect(num(r.sumAusgaben)).toBeCloseTo(92092.48, 4)
     expect(num(r.ergebnis)).toBeCloseTo(30307.52, 4)
   })
