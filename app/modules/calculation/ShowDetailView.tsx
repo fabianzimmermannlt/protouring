@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, replaceCalcEntries, setCalcActual, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
 } from '@/lib/api-client'
 
 interface FuncGroup { group: string; names: string[] }
@@ -57,6 +57,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
   const [resultVar, setResultVar] = useState<string>(project.default_variant_id ?? variants[0]?.id ?? '')
   const [showSpec, setShowSpec] = useState(true)
+  const [showName, setShowName] = useState(false)
 
   const summary = useMemo(() => {
     const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
@@ -85,6 +86,9 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
           <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
         </label>
+        <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+          <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
+        </label>
         {summary && (
           <div className="ml-auto text-xs flex gap-4" style={{ color: '#9ca3af' }}>
             <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
@@ -101,7 +105,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         {categories.map(cat => (
           <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
             category={cat} variants={variants} onChanged={onChanged}
-            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} showSpec={showSpec} />
+            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} showSpec={showSpec} showName={showName} />
         ))}
       </div>
 
@@ -115,10 +119,10 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
 // ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar, showSpec }: {
+function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar, showSpec, showName }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
-  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string; showSpec: boolean
+  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string; showSpec: boolean; showName: boolean
 }) {
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -203,7 +207,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             )}
             {rowPositions.map(p => (
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
-                positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} showSpec={showSpec}
+                positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={showSpec} showName={showName}
                 variants={variants} onChanged={onChanged}
                 showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))} />
             ))}
@@ -297,9 +301,9 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   }
 }
 
-function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, showSpec, variants, onChanged, onRemove, showTravel, defaultVar }: {
+function PositionRow({ show, dataset, project, positionId, positionName, positionSpec, positionPerson, showSpec, showName, variants, onChanged, onRemove, showTravel, defaultVar }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
-  positionId: string; positionName: string; positionSpec: string | null; showSpec: boolean
+  positionId: string; positionName: string; positionSpec: string | null; positionPerson: string | null; showSpec: boolean; showName: boolean
   variants: Variant[]; onChanged: () => void; onRemove: () => void
   showTravel: boolean; defaultVar: string
 }) {
@@ -311,6 +315,14 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== ''))
   const [spec, setSpec] = useState(positionSpec ?? '')
   const saveSpec = async () => { try { await updateCalcPosition(positionId, { spec: spec.trim() || null }) } catch { /* still */ } }
+  const [person, setPerson] = useState(positionPerson ?? '')
+  const savePerson = async () => { try { await updateCalcPosition(positionId, { person: person.trim() || null }); onChanged() } catch { /* still */ } }
+  const [nameVal, setNameVal] = useState(positionName)
+  const saveName = async () => {
+    const nn = nameVal.trim()
+    if (!nn || nn === positionName) { setNameVal(positionName); return }
+    try { await updateCalcPosition(positionId, { name: nn }); onChanged() } catch { setNameVal(positionName) }
+  }
 
   const sollDirty = sollSnap(m) !== savedSnap
 
@@ -376,11 +388,19 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const removeRow = async () => {
-    const hasData = entriesPayload().length > 0 || norm(m.ist) != null
-    if (hasData && !confirm(`„${positionName}" aus dieser Show entfernen? (Buchungen + Ist dieser Show)`)) return
+    const hasDataHere = entriesPayload().length > 0 || norm(m.ist) != null
+    // Wird die Position in ANDEREN Shows (oder als Fixkosten) verwendet? Dann nur hier entfernen.
+    const filled = (v: string | number | null | undefined) => v != null && String(v).trim() !== ''
+    const usedElsewhere = dataset.entries.some(e => e.position_id === positionId && e.show_id !== show.id)
+      || (dataset.actuals ?? []).some(a => a.position_id === positionId && a.show_id !== show.id && (filled(a.amount) || filled(a.travel_km)))
+    const msg = usedElsewhere
+      ? `„${positionName}" aus dieser Show entfernen? Buchungen + Ist nur dieser Show – in anderen Shows bleibt die Position erhalten.`
+      : `„${positionName}" komplett aus der Kalkulation löschen?`
+    if ((hasDataHere || !usedElsewhere) && !confirm(msg)) return
     setBusy(true)
     try {
-      if (hasData) { await replaceCalcEntries(show.id, positionId, []); await setCalcActual(show.id, positionId, { amount: null, travel_km: null, travel_rate: null }) }
+      if (hasDataHere) { await replaceCalcEntries(show.id, positionId, []); await setCalcActual(show.id, positionId, { amount: null, travel_km: null, travel_rate: null }) }
+      if (!usedElsewhere) await deleteCalcPosition(positionId)
       onRemove()
       onChanged()
     } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
@@ -400,10 +420,16 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
               className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
               <LinkIcon className="w-3.5 h-3.5" />
             </button>
-            <span className="text-sm" style={{ color: '#e0e0e0' }}>{positionName}</span>
+            <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              title="Name bearbeiten"
+              className="text-sm"
+              style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(6, nameVal.length + 1)}ch`, minWidth: 60 }}
+              onFocus={e => { e.target.style.border = '1px solid #4a4a4a'; e.target.style.background = '#1f2937' }}
+              onBlurCapture={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent' }} />
             {showSpec ? (
               <input className="form-input" style={{ fontSize: '0.72rem', padding: '1px 5px', width: 110 }} value={spec}
-                onChange={e => setSpec(e.target.value)} onBlur={saveSpec} placeholder="Name/Spez." />
+                onChange={e => setSpec(e.target.value)} onBlur={saveSpec} placeholder="Spezifikation" />
             ) : (spec ? <span className="text-xs" style={{ color: '#9ca3af' }}>· {spec}</span> : null)}
             {showTravel && (
               <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
@@ -413,6 +439,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
               </button>
             )}
           </div>
+          {showName && (
+            <input value={person} onChange={e => setPerson(e.target.value)} onBlur={savePerson}
+              className="form-input" placeholder="Name (Person)"
+              style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, marginLeft: 22, width: 'calc(100% - 22px)', maxWidth: 220 }} />
+          )}
         </td>
 
         {variants.map(v => (

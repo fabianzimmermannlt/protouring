@@ -1925,6 +1925,8 @@ async function initDatabase() {
   // Excel-Altlast: Positionsnamen mit führendem " + " bereinigen (App-erstellte Namen sind getrimmt → nie führendes Leerzeichen)
   try { await db.run("UPDATE calc_positions SET name = TRIM(SUBSTR(TRIM(name), 2)) WHERE name LIKE ' +%'"); } catch (e) { /* egal */ }
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN spec TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_positions ADD COLUMN person TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_shows ADD COLUMN vvk INTEGER'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8042,9 +8044,9 @@ app.post('/api/calc/projects/:id/shows', authenticateToken, requireTenant, requi
     const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_shows WHERE project_id = ?', [req.params.id]);
     const sort = (maxRow?.m ?? 0) + 1;
     await db.run(
-      `INSERT INTO calc_shows (id,project_id,sort_order,show_date,city,venue,capacity,ticket_price,guarantee,deal_share,break_even,commission,deal_type,is_active,note)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, req.params.id, sort, b.show_date ?? null, b.city ?? null, b.venue ?? null, b.capacity ?? null,
+      `INSERT INTO calc_shows (id,project_id,sort_order,show_date,city,venue,capacity,vvk,ticket_price,guarantee,deal_share,break_even,commission,deal_type,is_active,note)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, req.params.id, sort, b.show_date ?? null, b.city ?? null, b.venue ?? null, b.capacity ?? null, b.vvk ?? null,
        calcText(b.ticket_price), calcText(b.guarantee) ?? '0', calcText(b.deal_share) ?? '0',
        calcText(b.break_even) ?? '0', calcText(b.commission) ?? '0', b.deal_type || 'vs',
        b.is_active === false ? 0 : 1, b.note ?? null]);
@@ -8062,9 +8064,9 @@ app.put('/api/calc/shows/:showId', authenticateToken, requireTenant, requireEdit
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
     const b = req.body || {};
     await db.run(
-      `UPDATE calc_shows SET show_date=?,city=?,venue=?,capacity=?,ticket_price=?,guarantee=?,deal_share=?,break_even=?,commission=?,deal_type=?,is_active=?,note=?,sort_order=COALESCE(?,sort_order)
+      `UPDATE calc_shows SET show_date=?,city=?,venue=?,capacity=?,vvk=?,ticket_price=?,guarantee=?,deal_share=?,break_even=?,commission=?,deal_type=?,is_active=?,note=?,sort_order=COALESCE(?,sort_order)
        WHERE id=?`,
-      [b.show_date ?? null, b.city ?? null, b.venue ?? null, b.capacity ?? null,
+      [b.show_date ?? null, b.city ?? null, b.venue ?? null, b.capacity ?? null, b.vvk ?? null,
        calcText(b.ticket_price), calcText(b.guarantee) ?? '0', calcText(b.deal_share) ?? '0',
        calcText(b.break_even) ?? '0', calcText(b.commission) ?? '0', b.deal_type || 'vs',
        b.is_active === false ? 0 : 1, b.note ?? null, (b.sort_order ?? null), req.params.showId]);
@@ -8177,11 +8179,29 @@ app.put('/api/calc/positions/:id', authenticateToken, requireTenant, requireEdit
     const b = req.body || {};
     if (b.name !== undefined) await db.run('UPDATE calc_positions SET name=? WHERE id=?', [String(b.name).trim() || 'Position', req.params.id]);
     if (b.spec !== undefined) await db.run('UPDATE calc_positions SET spec=? WHERE id=?', [b.spec ? String(b.spec).trim() || null : null, req.params.id]);
+    if (b.person !== undefined) await db.run('UPDATE calc_positions SET person=? WHERE id=?', [b.person ? String(b.person).trim() || null : null, req.params.id]);
     if (b.sort_order !== undefined) await db.run('UPDATE calc_positions SET sort_order=? WHERE id=?', [b.sort_order, req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error('[calc] update position:', e);
     res.status(500).json({ error: 'Fehler beim Ändern der Position' });
+  }
+});
+
+// Position ganz löschen (Katalog + Buchungen/Ist in ALLEN Shows)
+app.delete('/api/calc/positions/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await db.get(
+      'SELECT p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
+      [req.params.id]);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    await db.run('DELETE FROM calc_actuals WHERE position_id = ?', [req.params.id]);
+    await db.run('DELETE FROM calc_entries WHERE position_id = ?', [req.params.id]);
+    await db.run('DELETE FROM calc_positions WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] delete position:', e);
+    res.status(500).json({ error: 'Fehler beim Löschen der Position' });
   }
 });
 

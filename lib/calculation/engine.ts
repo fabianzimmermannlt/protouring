@@ -37,15 +37,17 @@ export function entryAmount(entry: CalcEntry, project: CalcProject): Decimal {
 
 // ── Regel 2 – Gage netto einer Show ──────────────────────────────────────────
 // deal_type steuert die Kombination aus Garantie und Beteiligung.
-export function showGage(show: CalcShow, project: CalcProject, scenarioFactor?: Money | Decimal): Decimal {
+export function showGage(show: CalcShow, project: CalcProject, scenarioFactor?: Money | Decimal, useVVK?: boolean): Decimal {
   const factor = scenarioFactor != null ? D(scenarioFactor) : D(project.scenario_factor)
   const commission = D(show.commission)
   const netFactor = new Decimal(1).minus(commission)
 
   const guaranteeNet = D(show.guarantee).times(netFactor)
   const share = D(show.deal_share)
-  // Überschuss = Kapazität × Ticketpreis × Auslastung − Break Even
-  const ueberschuss = D(show.capacity).times(D(show.ticket_price)).times(factor).minus(D(show.break_even))
+  // Besucherzahl: echter VVK-Stand (wenn aktiviert & gesetzt) ODER geplante Auslastung (Kapazität × Szenario-%)
+  const attendance = (useVVK && show.vvk != null && String(show.vvk) !== '') ? D(show.vvk) : D(show.capacity).times(factor)
+  // Überschuss = Besucher × Ticketpreis − Break Even
+  const ueberschuss = attendance.times(D(show.ticket_price)).minus(D(show.break_even))
 
   const dealType: DealType = show.deal_type ?? 'vs'
   switch (dealType) {
@@ -109,6 +111,7 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
   const variantId = opts.variantId !== undefined ? opts.variantId : (project.default_variant_id ?? null)
   const scenarioFactor = opts.scenarioFactor != null ? D(opts.scenarioFactor) : D(project.scenario_factor)
   const memberCount = opts.memberCount != null ? opts.memberCount : project.member_count
+  const useVVK = opts.useVVK === true
 
   const activeShows = data.shows
     .filter(s => s.is_active)
@@ -190,7 +193,7 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
       else ausgabenBereiche = ausgabenBereiche.plus(amt)
     })
 
-    const gageNet = showGage(show, project, scenarioFactor)
+    const gageNet = showGage(show, project, scenarioFactor, useVVK)
     const einnahmen = gageNet.plus(einnahmenBereiche)
     const ausgaben = ausgabenBereiche
     const ergebnis = einnahmen.minus(ausgaben)

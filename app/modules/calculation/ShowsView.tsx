@@ -132,7 +132,7 @@ export default function ShowsView({ dataset, projectId, onChanged }: {
 interface FormState {
   show_date: string; city: string; venue: string; deal_type: DealType
   guarantee: string; commissionPct: string; deal_sharePct: string; break_even: string
-  capacity: string; ticket_price: string; is_active: boolean; note: string
+  capacity: string; vvk: string; ticket_price: string; is_active: boolean; note: string
 }
 
 function showToInput(s: CalcShow): CalcShowInput {
@@ -163,6 +163,7 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
     deal_sharePct: ratioToPct(show?.deal_share),
     break_even: show?.break_even != null && String(show.break_even) !== '0' ? String(show.break_even) : '',
     capacity: show?.capacity != null ? String(show.capacity) : '',
+    vvk: show?.vvk != null ? String(show.vvk) : '',
     ticket_price: show?.ticket_price != null ? String(show.ticket_price) : '',
     is_active: show ? show.is_active : true, note: show?.note ?? '',
   }))
@@ -173,6 +174,7 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
   const otherShows = (shows ?? []).slice().sort((a, b) => a.sort_order - b.sort_order)
   const set = (k: keyof FormState, v: string | boolean) => setF(p => ({ ...p, [k]: v }))
   const showDeal = f.deal_type !== 'guarantee'
+  const noGuarantee = f.deal_type === 'door'   // Door / nur Deal: keine Garantie
 
   const save = async () => {
     setSaving(true); setErr('')
@@ -180,10 +182,11 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
       const data: CalcShowInput = {
         show_date: f.show_date || null, city: f.city || null, venue: f.venue || null,
         deal_type: f.deal_type,
-        guarantee: norm(f.guarantee), commission: pctToRatio(f.commissionPct),
+        guarantee: noGuarantee ? null : norm(f.guarantee), commission: pctToRatio(f.commissionPct),
         deal_share: showDeal ? pctToRatio(f.deal_sharePct) : null,
         break_even: showDeal ? norm(f.break_even) : null,
         capacity: showDeal && f.capacity.trim() ? parseInt(f.capacity, 10) : null,
+        vvk: showDeal && f.vvk.trim() ? parseInt(f.vvk, 10) : null,
         ticket_price: showDeal ? norm(f.ticket_price) : null,
         is_active: f.is_active, note: f.note || null,
       }
@@ -242,8 +245,10 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
               </select>
             </div>
             <div>
-              <label className="form-label">Garantie (€)</label>
-              <input inputMode="decimal" className="form-input" value={f.guarantee} onChange={e => set('guarantee', e.target.value)} placeholder="z.B. 16000" />
+              <label className="form-label" style={{ opacity: noGuarantee ? 0.4 : 1 }}>Garantie (€)</label>
+              <input inputMode="decimal" className="form-input" value={noGuarantee ? '' : f.guarantee} disabled={noGuarantee}
+                onChange={e => set('guarantee', e.target.value)} placeholder={noGuarantee ? 'entfällt bei nur Deal' : 'z.B. 16000'}
+                style={{ opacity: noGuarantee ? 0.4 : 1 }} title={noGuarantee ? 'Bei „Door / nur Deal" gibt es keine Garantie' : undefined} />
             </div>
           </div>
 
@@ -261,18 +266,22 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
           </div>
 
           {showDeal && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="form-label">Break Even (€)</label>
                 <input inputMode="decimal" className="form-input" value={f.break_even} onChange={e => set('break_even', e.target.value)} placeholder="0 = am Eintritt" />
               </div>
               <div>
-                <label className="form-label">Kapazität</label>
-                <input inputMode="numeric" className="form-input" value={f.capacity} onChange={e => set('capacity', e.target.value)} placeholder="Plätze" />
-              </div>
-              <div>
                 <label className="form-label">Ticketpreis (€)</label>
                 <input inputMode="decimal" className="form-input" value={f.ticket_price} onChange={e => set('ticket_price', e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label">Kapazität</label>
+                <input inputMode="numeric" className="form-input" value={f.capacity} onChange={e => set('capacity', e.target.value)} placeholder="Plätze (geplant)" />
+              </div>
+              <div>
+                <label className="form-label">VVK-Stand</label>
+                <input inputMode="numeric" className="form-input" value={f.vvk} onChange={e => set('vvk', e.target.value)} placeholder="verkaufte Tickets (tatsächlich)" />
               </div>
             </div>
           )}

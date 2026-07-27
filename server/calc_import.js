@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS calc_shows (
   city TEXT,
   venue TEXT,
   capacity INTEGER,
+  vvk INTEGER,
   ticket_price TEXT,
   guarantee TEXT NOT NULL DEFAULT '0',
   deal_share TEXT NOT NULL DEFAULT '0',
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS calc_positions (
   category_id TEXT NOT NULL REFERENCES calc_categories(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   spec TEXT,
+  person TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS calc_entries (
@@ -126,7 +128,7 @@ function buildImportRows(seed, tenantId) {
   const shows = seed.shows.map(x => ({
     id: smap[x.id], project_id: pid, sort_order: x.sort_order ?? 0,
     show_date: x.show_date ?? null, city: x.city ?? null, venue: x.venue ?? null,
-    capacity: x.capacity ?? null, ticket_price: s(x.ticket_price),
+    capacity: x.capacity ?? null, vvk: x.vvk ?? null, ticket_price: s(x.ticket_price),
     guarantee: s(x.guarantee) ?? '0', deal_share: s(x.deal_share) ?? '0',
     break_even: s(x.break_even) ?? '0', commission: s(x.commission) ?? '0',
     deal_type: x.deal_type || 'vs', is_active: x.is_active === false ? 0 : 1, note: x.note ?? null,
@@ -157,9 +159,9 @@ async function insertRows(db, r) {
     await db.run(`INSERT INTO calc_variants (id,project_id,name,sort_order) VALUES (?,?,?,?)`, [v.id, v.project_id, v.name, v.sort_order])
   for (const x of r.shows)
     await db.run(
-      `INSERT INTO calc_shows (id,project_id,sort_order,show_date,city,venue,capacity,ticket_price,guarantee,deal_share,break_even,commission,deal_type,is_active,note)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [x.id, x.project_id, x.sort_order, x.show_date, x.city, x.venue, x.capacity, x.ticket_price, x.guarantee, x.deal_share, x.break_even, x.commission, x.deal_type, x.is_active, x.note])
+      `INSERT INTO calc_shows (id,project_id,sort_order,show_date,city,venue,capacity,vvk,ticket_price,guarantee,deal_share,break_even,commission,deal_type,is_active,note)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [x.id, x.project_id, x.sort_order, x.show_date, x.city, x.venue, x.capacity, x.vvk ?? null, x.ticket_price, x.guarantee, x.deal_share, x.break_even, x.commission, x.deal_type, x.is_active, x.note])
   for (const c of r.categories)
     await db.run(`INSERT INTO calc_categories (id,project_id,name,kind,sort_order) VALUES (?,?,?,?,?)`, [c.id, c.project_id, c.name, c.kind, c.sort_order])
   for (const p2 of r.positions)

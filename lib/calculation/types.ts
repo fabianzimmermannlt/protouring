@@ -34,6 +34,8 @@ export interface CalcShow {
   venue?: string | null
   // Deal-Parameter
   capacity?: number | null
+  /** Tatsächlicher VVK-Stand (verkaufte Tickets) – Alternative zu Kapazität×Szenario. */
+  vvk?: number | null
   ticket_price?: Money
   guarantee: Money
   deal_share: Money         // Anteil am Überschuss, 0.7 = 70 %
@@ -59,8 +61,10 @@ export interface CalcPosition {
   id: string
   category_id: string
   name: string
-  /** Freie Spezifikation/Name (z.B. Person), um mehrere gleiche Funktionen zu unterscheiden. */
+  /** Freie Spezifikation, um mehrere gleiche Funktionen zu unterscheiden. */
   spec?: string | null
+  /** Name (z.B. Person), separat ein-/ausblendbar. */
+  person?: string | null
   sort_order: number
 }
 
@@ -126,4 +130,6 @@ export interface OverviewOptions {
   scenarioFactor?: Money
   /** Überschreibt project.member_count. */
   memberCount?: number
+  /** Deal mit echtem VVK-Stand rechnen statt Kapazität×Szenario. */
+  useVVK?: boolean
 }

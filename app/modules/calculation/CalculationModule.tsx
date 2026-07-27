@@ -225,11 +225,12 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   }
   const [variantByShow, setVariantByShow] = useState<Record<string, string>>(() => mkVariants(defaultVariant))
   const [scenario, setScenario] = useState<number>(Number(dataset.project.scenario_factor) || 1)
+  const [useVVK, setUseVVK] = useState(false)
   const [hideZero, setHideZero] = useState(false)
 
   const overview = useMemo(
-    () => buildOverview(dataset, { variantByShow, variantId: defaultVariant, scenarioFactor: scenario, memberCount: dataset.project.member_count }),
-    [dataset, variantByShow, scenario, defaultVariant])
+    () => buildOverview(dataset, { variantByShow, variantId: defaultVariant, scenarioFactor: scenario, useVVK, memberCount: dataset.project.member_count }),
+    [dataset, variantByShow, scenario, defaultVariant, useVVK])
 
   const shows = overview.shows
   const rows = useMemo<Row[]>(() => {
@@ -286,9 +287,13 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>
             Szenario-Faktor: <span style={{ color: '#e0e0e0' }}>{(scenario * 100).toFixed(0)} %</span>
           </label>
-          <input type="range" min={0} max={1.5} step={0.05} value={scenario}
-            onChange={e => setScenario(Number(e.target.value))} style={{ width: 180 }} />
+          <input type="range" min={0} max={1.5} step={0.05} value={scenario} disabled={useVVK}
+            onChange={e => setScenario(Number(e.target.value))} style={{ width: 180, opacity: useVVK ? 0.4 : 1 }} />
         </div>
+        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK ? '#facc15' : '#9ca3af' }}>
+          <input type="checkbox" checked={useVVK} onChange={e => setUseVVK(e.target.checked)} />
+          Ist-VVK verwenden
+        </label>
         <div className="text-xs" style={{ color: '#9ca3af' }}>
           Aktive Shows: <span style={{ color: '#e0e0e0' }}>{overview.activeShowCount}</span>
         </div>

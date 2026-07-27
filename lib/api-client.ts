@@ -795,6 +795,7 @@ export interface CalcShowInput {
   city?: string | null
   venue?: string | null
   capacity?: number | null
+  vvk?: number | null
   ticket_price?: string | number | null
   guarantee?: string | number | null
   deal_share?: string | number | null
@@ -849,8 +850,12 @@ export async function createCalcPosition(categoryId: string, name: string, spec?
   return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec } })
 }
 
-export async function updateCalcPosition(positionId: string, data: { name?: string; spec?: string | null; sort_order?: number }): Promise<void> {
+export async function updateCalcPosition(positionId: string, data: { name?: string; spec?: string | null; person?: string | null; sort_order?: number }): Promise<void> {
   await request(`/api/calc/positions/${positionId}`, { method: 'PUT', body: data })
+}
+
+export async function deleteCalcPosition(positionId: string): Promise<void> {
+  await request(`/api/calc/positions/${positionId}`, { method: 'DELETE' })
 }
 
 /** Ersetzt alle Buchungen einer (Show, Position) durch die übergebene Liste. */
