@@ -48,4 +48,13 @@ describe('Übergeordnete Kosten – Umlage', () => {
     expect(showAmt(r, 's1')).toBeCloseTo(450, 4)
     expect(showAmt(r, 's2')).toBeCloseTo(450, 4)
   })
+
+  it('allocation_pct 50%: nur die Hälfte umlegen (900 → 450 auf 3 Shows = je 150)', () => {
+    const data: CalcDataset = { ...base, positions: [{ ...base.positions[0], allocation_pct: '50' }] }
+    const r = buildOverview(data, { memberCount: 1 })
+    expect(showAmt(r, 's1')).toBeCloseTo(150, 4)
+    expect(showAmt(r, 's2')).toBeCloseTo(150, 4)
+    expect(showAmt(r, 's3')).toBeCloseTo(150, 4)
+    expect(num(r.categories[0].total)).toBeCloseTo(450, 4)
+  })
 })

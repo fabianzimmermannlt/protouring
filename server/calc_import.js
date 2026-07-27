@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS calc_positions (
   person TEXT,
   is_overhead INTEGER NOT NULL DEFAULT 0,
   pos_type TEXT NOT NULL DEFAULT 'standard',   -- 'standard' | 'hotel'
+  allocation_pct TEXT NOT NULL DEFAULT '100',  -- Anteil übergeordneter Kosten auf DIESE Kalkulation (Prozent)
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 -- Übergeordnete Kosten: von welchen Shows ist ein Posten ausgenommen (Default: alle aktiven)

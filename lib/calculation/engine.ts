@@ -149,6 +149,14 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
     const prev = fixedSumByPosition.get(e.position_id) ?? new Decimal(0)
     fixedSumByPosition.set(e.position_id, prev.plus(entryAmount(e, project)))
   }
+  // Anteil auf DIESE Kalkulation (allocation_pct, Default 100 %) auf den Posten anwenden.
+  const pctByPosition = new Map<string, Decimal>()
+  for (const p of data.positions) {
+    pctByPosition.set(p.id, (p.allocation_pct == null || p.allocation_pct === '') ? new Decimal(100) : D(p.allocation_pct))
+  }
+  fixedSumByPosition.forEach((sum, pos) => {
+    fixedSumByPosition.set(pos, sum.times(pctByPosition.get(pos) ?? new Decimal(100)).div(100))
+  })
   // Je Posten: Menge der zutreffenden Shows + Anteil = Summe ÷ Anzahl zutreffender Shows.
   const fixedIncludedByPosition = new Map<string, Set<string>>()
   const fixedShareByPosition = new Map<string, Decimal>()

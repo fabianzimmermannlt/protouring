@@ -69,6 +69,8 @@ export interface CalcPosition {
   is_overhead?: boolean
   /** Positionstyp: 'standard' (freier Betrag) oder 'hotel' (Zimmer×Nächte×€/Nacht). */
   pos_type?: string
+  /** Nur übergeordnete Posten: Anteil (Prozent), der auf DIESE Kalkulation entfällt. Default 100. */
+  allocation_pct?: Money
   sort_order: number
 }
 

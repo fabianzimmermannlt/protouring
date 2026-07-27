@@ -55,12 +55,15 @@ export default function OverheadView({ dataset, onChanged }: { dataset: CalcData
           {items.map(item => {
             const e = amountOf(item.id)
             const n = includedCount(item.id)
-            const soll = D(e?.amount)
-            const share = n > 0 ? soll.div(n) : new Decimal(0)
+            const pctRaw = item.allocation_pct != null && item.allocation_pct !== '' ? String(item.allocation_pct) : '100'
+            const pct = D(pctRaw)
+            const effective = D(e?.amount).times(pct).div(100)   // Anteil auf diese Kalkulation
+            const share = n > 0 ? effective.div(n) : new Decimal(0)
+            const pctNote = pct.eq(100) ? '' : ` · ${pct.toString()} % von ${formatMoney(D(e?.amount))}`
             return (
               <OverheadRow key={item.id} item={item} catName={catName(item.category_id)}
-                soll={e?.amount != null ? String(e.amount) : ''} ist={e?.ist_amount != null ? String(e.ist_amount) : ''}
-                shareLabel={n > 0 ? `${formatMoney(share)} je Show (${n})` : 'keine Show angehakt'}
+                soll={e?.amount != null ? String(e.amount) : ''} ist={e?.ist_amount != null ? String(e.ist_amount) : ''} pct={pctRaw}
+                shareLabel={n > 0 ? `${formatMoney(share)} je Show (${n})${pctNote}` : 'keine Show angehakt'}
                 activeShows={activeShows} isExcluded={sid => excluded(item.id, sid)} onChanged={onChanged} />
             )
           })}
@@ -72,9 +75,9 @@ export default function OverheadView({ dataset, onChanged }: { dataset: CalcData
   )
 }
 
-function OverheadRow({ item, catName, soll, ist, shareLabel, activeShows, isExcluded, onChanged }: {
+function OverheadRow({ item, catName, soll, ist, pct, shareLabel, activeShows, isExcluded, onChanged }: {
   item: { id: string; name: string }
-  catName: string; soll: string; ist: string; shareLabel: string
+  catName: string; soll: string; ist: string; pct: string; shareLabel: string
   activeShows: CalcDataset['shows']
   isExcluded: (showId: string) => boolean
   onChanged: () => void
@@ -82,10 +85,11 @@ function OverheadRow({ item, catName, soll, ist, shareLabel, activeShows, isExcl
   const [name, setName] = useState(item.name)
   const [sollV, setSollV] = useState(soll)
   const [istV, setIstV] = useState(ist)
+  const [pctV, setPctV] = useState(pct)
   const [busy, setBusy] = useState(false)
 
   const saveName = async () => { const nn = name.trim(); if (!nn || nn === item.name) { setName(item.name); return } try { await updateCalcPosition(item.id, { name: nn }); onChanged() } catch { setName(item.name) } }
-  const saveAmount = async () => { try { await setCalcOverhead(item.id, { amount: norm(sollV), ist_amount: norm(istV) }); onChanged() } catch { /* still */ } }
+  const saveAmount = async () => { try { await setCalcOverhead(item.id, { amount: norm(sollV), ist_amount: norm(istV), allocation_pct: norm(pctV) ?? '100' }); onChanged() } catch { /* still */ } }
   const toggleShow = async (showId: string, included: boolean) => {
     setBusy(true)
     try { await setCalcOverheadShow(item.id, showId, included); onChanged() } finally { setBusy(false) }
@@ -109,6 +113,14 @@ function OverheadRow({ item, catName, soll, ist, shareLabel, activeShows, isExcl
         <label className="text-xs" style={{ color: '#9ca3af' }}>Ist
           <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: '#facc15' }}
             value={istV} onChange={e => setIstV(e.target.value)} onBlur={saveAmount} placeholder="0" />
+        </label>
+        <label className="text-xs" style={{ color: '#9ca3af' }} title="Anteil, der auf DIESE Kalkulation entfällt (z.B. 50 %, wenn die Anschaffung auch für andere Touren/Saisons genutzt wird). Gilt für Soll und Ist.">
+          Anteil
+          <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6 }}>
+            <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 60 }}
+              value={pctV} onChange={e => setPctV(e.target.value)} onBlur={saveAmount} placeholder="100" />
+            <span style={{ marginLeft: 3 }}>%</span>
+          </span>
         </label>
         <span className="text-xs" style={{ color: '#93c5fd', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{shareLabel}</span>
         <button onClick={del} disabled={busy} className="p-1 text-gray-400 hover:text-red-500 ml-auto" title="Löschen">

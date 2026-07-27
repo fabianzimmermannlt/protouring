@@ -1928,6 +1928,7 @@ async function initDatabase() {
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN person TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN is_overhead INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec("ALTER TABLE calc_positions ADD COLUMN pos_type TEXT NOT NULL DEFAULT 'standard'"); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec("ALTER TABLE calc_positions ADD COLUMN allocation_pct TEXT NOT NULL DEFAULT '100'"); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_entries ADD COLUMN nights TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN vvk INTEGER'); } catch (e) { /* Spalte existiert bereits */ }
 
@@ -8218,14 +8219,22 @@ app.put('/api/calc/positions/:id/overhead', authenticateToken, requireTenant, re
       'SELECT p.id AS project_id, p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
       [req.params.id]);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
-    const amount = calcText(req.body?.amount);
-    const ist = calcText(req.body?.ist_amount);
-    await db.run('DELETE FROM calc_entries WHERE position_id = ? AND show_id IS NULL', [req.params.id]);
-    if (amount != null || ist != null) {
-      await db.run(
-        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
-         VALUES (?,?,?,?,?,?,?,?)`,
-        [crypto.randomUUID(), owner.project_id, null, req.params.id, null, amount, 'base', ist]);
+    // Buchung nur anfassen, wenn Betrag oder Ist im Request stehen (reines Prozent-Update darf nichts löschen)
+    if (req.body?.amount !== undefined || req.body?.ist_amount !== undefined) {
+      const amount = calcText(req.body?.amount);
+      const ist = calcText(req.body?.ist_amount);
+      await db.run('DELETE FROM calc_entries WHERE position_id = ? AND show_id IS NULL', [req.params.id]);
+      if (amount != null || ist != null) {
+        await db.run(
+          `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
+           VALUES (?,?,?,?,?,?,?,?)`,
+          [crypto.randomUUID(), owner.project_id, null, req.params.id, null, amount, 'base', ist]);
+      }
+    }
+    // Anteil auf diese Kalkulation (Prozent), Default 100
+    if (req.body?.allocation_pct !== undefined) {
+      const pct = calcText(req.body.allocation_pct);
+      await db.run('UPDATE calc_positions SET allocation_pct = ? WHERE id = ?', [pct == null ? '100' : pct, req.params.id]);
     }
     res.json({ ok: true });
   } catch (e) {

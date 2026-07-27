@@ -289,7 +289,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               )
             ))}
             {overheadItems.map(item => {
-              const soll = new Decimal(String(dataset.entries.find(e => e.position_id === item.id && e.show_id == null)?.amount ?? 0) || 0)
+              const rawSoll = new Decimal(String(dataset.entries.find(e => e.position_id === item.id && e.show_id == null)?.amount ?? 0) || 0)
+              const pct = item.allocation_pct != null && item.allocation_pct !== '' ? new Decimal(String(item.allocation_pct)) : new Decimal(100)
+              const soll = rawSoll.times(pct).div(100)   // Anteil auf diese Kalkulation
               const includedCount = activeShowsList.filter(s => !overheadExcluded(item.id, s.id)).length
               const included = !overheadExcluded(item.id, show.id)
               const share = included && includedCount > 0 ? soll.div(includedCount) : new Decimal(0)
