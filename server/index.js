@@ -1927,6 +1927,8 @@ async function initDatabase() {
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN spec TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN person TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN is_overhead INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec("ALTER TABLE calc_positions ADD COLUMN pos_type TEXT NOT NULL DEFAULT 'standard'"); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_entries ADD COLUMN nights TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN vvk INTEGER'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
@@ -8160,10 +8162,11 @@ app.post('/api/calc/categories/:catId/positions', authenticateToken, requireTena
     if (!name) return res.status(400).json({ error: 'Name fehlt' });
     const spec = req.body?.spec ? String(req.body.spec).trim() || null : null;
     const isOverhead = req.body?.is_overhead === true || req.body?.is_overhead === 1 ? 1 : 0;
+    const posType = req.body?.pos_type === 'hotel' ? 'hotel' : 'standard';
     const id = crypto.randomUUID();
     const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_positions WHERE category_id = ?', [req.params.catId]);
-    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,is_overhead,sort_order) VALUES (?,?,?,?,?,?)',
-      [id, req.params.catId, name, spec, isOverhead, (maxRow?.m ?? 0) + 1]);
+    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,is_overhead,pos_type,sort_order) VALUES (?,?,?,?,?,?,?)',
+      [id, req.params.catId, name, spec, isOverhead, posType, (maxRow?.m ?? 0) + 1]);
     res.json({ id });
   } catch (e) {
     console.error('[calc] create position:', e);
@@ -8260,11 +8263,11 @@ app.put('/api/calc/shows/:showId/positions/:positionId/entries', authenticateTok
     await db.run('DELETE FROM calc_entries WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
     for (const e of list) {
       await db.run(
-        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,amount,kind,ist_amount,note)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,nights,amount,kind,ist_amount,note)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [crypto.randomUUID(), owner.project_id, req.params.showId, req.params.positionId, e.variant_id ?? null,
          calcText(e.quantity), calcText(e.unit_price), calcText(e.distance_km), calcText(e.rental_price),
-         calcText(e.included_km), calcText(e.price_extra_km), calcText(e.amount), e.kind || 'base', null, e.note ?? null]);
+         calcText(e.included_km), calcText(e.price_extra_km), calcText(e.nights), calcText(e.amount), e.kind || 'base', null, e.note ?? null]);
     }
     res.json({ ok: true });
   } catch (e) {

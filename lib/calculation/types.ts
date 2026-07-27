@@ -67,6 +67,8 @@ export interface CalcPosition {
   person?: string | null
   /** Übergeordneter Kostenposten (Umlage auf mehrere Shows) statt normaler Show-Position. */
   is_overhead?: boolean
+  /** Positionstyp: 'standard' (freier Betrag) oder 'hotel' (Zimmer×Nächte×€/Nacht). */
+  pos_type?: string
   sort_order: number
 }
 
@@ -89,9 +91,11 @@ export interface CalcEntry {
   rental_price?: Money
   included_km?: Money
   price_extra_km?: Money
+  /** Hotel: Anzahl Übernachtungen (Betrag = quantity[Zimmer] × nights × unit_price[€/Nacht]). */
+  nights?: Money
   /** Direktbetrag – überschreibt Menge×Preis/Fahrzeug (Tabellen-Eingabe). */
   amount?: Money
-  /** 'base' = normaler Positionsbetrag, 'travel' = Reisekosten (km×Preis), addiert sich. */
+  /** 'base' = normaler Positionsbetrag, 'travel' = Reisekosten (km×Preis), 'hotel' = Zimmer×Nächte×€/Nacht. */
   kind?: string
   /** @deprecated Ist liegt jetzt pro Position/Show in CalcActual (nicht pro Variante). */
   ist_amount?: Money

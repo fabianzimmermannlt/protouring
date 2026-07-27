@@ -828,6 +828,7 @@ export interface CalcEntryInput {
   rental_price?: Num
   included_km?: Num
   price_extra_km?: Num
+  nights?: Num
   amount?: Num
   kind?: string
   ist_amount?: Num
@@ -846,8 +847,8 @@ export async function deleteCalcEntry(entryId: string): Promise<void> {
   await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
 }
 
-export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean): Promise<{ id: string }> {
-  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec, is_overhead: isOverhead === true } })
+export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean, posType?: 'standard' | 'hotel'): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec, is_overhead: isOverhead === true, pos_type: posType ?? 'standard' } })
 }
 
 /** Übergeordneter Posten: Soll-/Ist-Betrag setzen (leer = Posten hat keinen Betrag). */

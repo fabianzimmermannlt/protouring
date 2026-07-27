@@ -21,6 +21,8 @@ export function D(v: Money | Decimal): Decimal {
 // ── Regel 1 – Betrag einer Buchung ───────────────────────────────────────────
 // Fahrzeugrechnung greift, sobald distance_km > 0 ODER rental_price > 0.
 export function entryAmount(entry: CalcEntry, project: CalcProject): Decimal {
+  // Hotel: Zimmer × Nächte × €/Nacht.
+  if (entry.kind === 'hotel') return D(entry.quantity).times(D(entry.nights)).times(D(entry.unit_price))
   // Direktbetrag hat Vorrang (Tabellen-Eingabe); sonst Menge×Preis / Fahrzeug.
   if (entry.amount != null && entry.amount !== '') return D(entry.amount)
   const dist = D(entry.distance_km)

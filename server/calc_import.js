@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS calc_positions (
   spec TEXT,
   person TEXT,
   is_overhead INTEGER NOT NULL DEFAULT 0,
+  pos_type TEXT NOT NULL DEFAULT 'standard',   -- 'standard' | 'hotel'
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 -- Übergeordnete Kosten: von welchen Shows ist ein Posten ausgenommen (Default: alle aktiven)
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS calc_entries (
   rental_price TEXT,
   included_km TEXT,
   price_extra_km TEXT,
+  nights TEXT,
   amount TEXT,
   kind TEXT DEFAULT 'base',
   ist_amount TEXT,

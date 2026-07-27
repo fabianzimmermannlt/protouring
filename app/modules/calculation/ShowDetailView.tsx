@@ -21,6 +21,17 @@ import { ShowFormModal } from './ShowsView'
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
 
+// UI-Präferenz (Name/Spezifikation-Häkchen) projektweit merken – gilt für alle
+// Shows und übersteht das Verlassen/Wiederkommen (localStorage).
+const readPref = (key: string, def: boolean): boolean => {
+  if (typeof window === 'undefined') return def
+  const v = window.localStorage.getItem(key)
+  return v == null ? def : v === '1'
+}
+const writePref = (key: string, val: boolean) => {
+  if (typeof window !== 'undefined') window.localStorage.setItem(key, val ? '1' : '0')
+}
+
 // Registry offener (ungespeicherter) Zeilen → globales window.__pt_isDirty,
 // dasselbe Flag, das der L2-Nav-Guard (Popup) und beforeunload auswerten.
 const dirtyRows = new Set<string>()
@@ -145,9 +156,12 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const rowPositions = catPositions.filter(p => !p.is_overhead)
   const availablePositions: typeof catPositions = []   // alle Positionen sind bereits sichtbar
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
-  // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile)
-  const [showSpec, setShowSpec] = useState(true)
-  const [showName, setShowName] = useState(false)
+  // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile),
+  // projektweit gemerkt (alle Shows, auch nach Verlassen der Kalkulation)
+  const [showSpec, setShowSpec] = useState(() => readPref('pt_calc_show_spec', true))
+  const [showName, setShowName] = useState(() => readPref('pt_calc_show_name', false))
+  useEffect(() => { writePref('pt_calc_show_spec', showSpec) }, [showSpec])
+  useEffect(() => { writePref('pt_calc_show_name', showName) }, [showName])
 
   // Sortierung per 6-Punkte-Griff (Drag & Drop) innerhalb des Bereichs
   const [dragId, setDragId] = useState<string | null>(null)
@@ -172,11 +186,12 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   }
 
   const [adding, setAdding] = useState(false)
-  const [mode, setMode] = useState<'existing' | 'new' | 'function'>(isPersonal ? 'function' : 'new')
+  const [mode, setMode] = useState<'existing' | 'new' | 'function' | 'hotel'>(isPersonal ? 'function' : 'new')
   const [pickId, setPickId] = useState('')
   const [newName, setNewName] = useState('')
   const [funcName, setFuncName] = useState('')
   const [funcSpec, setFuncSpec] = useState('')
+  const [hotelWho, setHotelWho] = useState('Band')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -184,7 +199,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     setBusy(true); setErr('')
     try {
       let pid = pickId
-      if (mode === 'function' || mode === 'new') {
+      if (mode === 'hotel') {
+        pid = (await createCalcPosition(category.id, 'Hotel', hotelWho || null, false, 'hotel')).id
+      } else if (mode === 'function' || mode === 'new') {
         const name = (mode === 'function' ? funcName : newName).trim()
         if (!name) { setErr(mode === 'function' ? 'Funktion wählen' : 'Name fehlt'); setBusy(false); return }
         if (isPersonal) {
@@ -254,13 +271,22 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <tr><td colSpan={colCount} className="text-center py-4" style={{ color: '#6b7280' }}>Keine Position – „+ Position".</td></tr>
             )}
             {rowPositions.map(p => (
-              <PositionRow key={p.id} show={show} dataset={dataset} project={project}
-                positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={isPersonal && showSpec} showName={isPersonal && showName}
-                variants={variants} onChanged={onChanged}
-                showTravel={showTravel} defaultVar={defaultVar}
-                dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
-                onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
-                onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
+              p.pos_type === 'hotel' ? (
+                <HotelRow key={p.id} show={show} dataset={dataset}
+                  positionId={p.id} positionName={p.name} who={p.spec ?? null}
+                  variants={variants} onChanged={onChanged} defaultVar={defaultVar}
+                  dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
+                  onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
+                  onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
+              ) : (
+                <PositionRow key={p.id} show={show} dataset={dataset} project={project}
+                  positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={isPersonal && showSpec} showName={isPersonal && showName}
+                  variants={variants} onChanged={onChanged}
+                  showTravel={showTravel} defaultVar={defaultVar}
+                  dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
+                  onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
+                  onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
+              )
             ))}
             {overheadItems.map(item => {
               const soll = new Decimal(String(dataset.entries.find(e => e.position_id === item.id && e.show_id == null)?.amount ?? 0) || 0)
@@ -277,14 +303,27 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <tr>
                 <td colSpan={colCount}>
                   <div className="flex flex-wrap items-center gap-2 py-1">
-                    {isPersonal && (
+                    {isPersonal ? (
                       <div className="flex gap-1 text-[11px]">
                         <button onClick={() => setMode('function')} style={{ color: mode === 'function' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'function' ? 600 : 400 }}>Funktion</button>
                         <span style={{ color: '#555' }}>·</span>
                         <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
                       </div>
+                    ) : (
+                      <div className="flex gap-1 text-[11px]">
+                        <button onClick={() => setMode('new')} style={{ color: mode === 'new' ? '#60a5fa' : '#8b8b8b', fontWeight: mode === 'new' ? 600 : 400 }}>Neu</button>
+                        <span style={{ color: '#555' }}>·</span>
+                        <button onClick={() => setMode('hotel')} style={{ color: mode === 'hotel' ? '#e0b877' : '#8b8b8b', fontWeight: mode === 'hotel' ? 600 : 400 }}>🏨 Hotel</button>
+                      </div>
                     )}
-                    {mode === 'function' ? (
+                    {mode === 'hotel' ? (
+                      <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
+                        Hotel für:
+                        <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 120 }} value={hotelWho} onChange={e => setHotelWho(e.target.value)} autoFocus>
+                          {['Band', 'Crew', '1', '2', '3'].map(w => <option key={w} value={w}>{w}</option>)}
+                        </select>
+                      </label>
+                    ) : mode === 'function' ? (
                       <select className="form-input" style={{ fontSize: '0.78rem', padding: '3px 6px', minWidth: 200 }} value={funcName} onChange={e => setFuncName(e.target.value)} autoFocus>
                         <option value="">– Funktion –</option>
                         {functions.map(g => (
@@ -649,6 +688,175 @@ function OverheadShowRow({ positionId, showId, name, variantCols, included, incl
         {included ? formatMoney(share) : '—'}
       </td>
       <td />
+    </tr>
+  )
+}
+
+// ── Hotel-Zeile: Betrag = Zimmer × Nächte × €/Nacht, pro Variante (mit 🔗) ─────
+interface HVals { rooms: string; nights: string; price: string }
+interface HModel { shared: boolean; s: HVals; perVar: Record<string, HVals>; ist: string }
+const emptyH = (): HVals => ({ rooms: '', nights: '', price: '' })
+const hSnap = (m: HModel) => JSON.stringify({ shared: m.shared, s: m.s, perVar: m.perVar })
+const hProd = (v: HVals): Decimal | null => {
+  const r = norm(v.rooms), n = norm(v.nights), p = norm(v.price)
+  if (r == null || n == null || p == null) return null
+  try { return new Decimal(r).times(n).times(p) } catch { return null }
+}
+
+function buildHotelModel(dataset: CalcDataset, showId: string, positionId: string, variants: Variant[]): HModel {
+  const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId && e.kind === 'hotel')
+  const nullE = es.filter(e => e.variant_id == null)
+  const varE = es.filter(e => e.variant_id != null)
+  const toVals = (e?: CalcEntry): HVals => ({
+    rooms: e?.quantity != null ? String(e.quantity) : '',
+    nights: e?.nights != null ? String(e.nights) : '',
+    price: e?.unit_price != null ? String(e.unit_price) : '',
+  })
+  const s = nullE.length ? toVals(nullE[0]) : emptyH()
+  const perVar: Record<string, HVals> = {}
+  variants.forEach(v => { perVar[v.id] = nullE.length ? { ...s } : emptyH() })
+  varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = toVals(e) })
+  const ist = (() => {
+    const a = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
+    return a?.amount != null ? String(a.amount) : ''
+  })()
+  return { shared: varE.length === 0, s, perVar, ist }
+}
+
+function HotelRow({ show, dataset, positionId, positionName, who, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; who: string | null
+  variants: Variant[]; onChanged: () => void; defaultVar: string
+  dragging: boolean; dropTarget: boolean
+  onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
+}) {
+  const initial = useMemo(() => buildHotelModel(dataset, show.id, positionId, variants), [dataset, show.id, positionId, variants])
+  const [m, setM] = useState<HModel>(initial)
+  const [savedSnap, setSavedSnap] = useState(() => hSnap(initial))
+  const [nameVal, setNameVal] = useState(positionName)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const dirty = hSnap(m) !== savedSnap
+
+  useEffect(() => {
+    const key = `${show.id}:${positionId}`
+    markRowDirty(key, dirty)
+    return () => markRowDirty(key, false)
+  }, [dirty, show.id, positionId])
+
+  const setVals = (vid: string, patch: Partial<HVals>) => setM(p => {
+    if (p.shared) return { ...p, s: { ...p.s, ...patch } }
+    return { ...p, perVar: { ...p.perVar, [vid]: { ...(p.perVar[vid] ?? emptyH()), ...patch } } }
+  })
+  const toggleLink = () => setM(p => {
+    if (p.shared) {
+      const perVar = { ...p.perVar }
+      variants.forEach(v => { const cur = perVar[v.id] ?? emptyH(); if (!cur.rooms && !cur.nights && !cur.price) perVar[v.id] = { ...p.s } })
+      return { ...p, shared: false, perVar }
+    }
+    const first = variants.map(v => p.perVar[v.id]).find(x => x && (x.rooms || x.nights || x.price)) ?? p.s
+    return { ...p, shared: true, s: { ...first } }
+  })
+
+  const valsFor = (vid: string): HVals => (m.shared ? m.s : (m.perVar[vid] ?? emptyH()))
+  const rowResult = (): Decimal => {
+    if (defaultVar === 'ist') { const b = norm(m.ist); if (b != null) { try { return new Decimal(b) } catch { /* */ } } return new Decimal(0) }
+    return hProd(valsFor(defaultVar)) ?? new Decimal(0)
+  }
+
+  const payload = (): CalcEntryInput[] => {
+    const any = (v: HVals) => norm(v.rooms) != null || norm(v.nights) != null || norm(v.price) != null
+    if (m.shared) return any(m.s) ? [{ kind: 'hotel', variant_id: null, quantity: norm(m.s.rooms), nights: norm(m.s.nights), unit_price: norm(m.s.price) }] : []
+    return variants.map(v => ({ v, val: m.perVar[v.id] ?? emptyH() })).filter(x => any(x.val))
+      .map(x => ({ kind: 'hotel', variant_id: x.v.id, quantity: norm(x.val.rooms), nights: norm(x.val.nights), unit_price: norm(x.val.price) }))
+  }
+
+  const saveSoll = async () => {
+    setBusy(true); setErr('')
+    try { await withTimeout(replaceCalcEntries(show.id, positionId, payload())); setSavedSnap(hSnap(m)); onChanged() }
+    catch (e: any) { setErr(e?.message ?? 'Fehler beim Speichern') }
+    finally { setBusy(false) }
+  }
+  const saveIst = async () => {
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })) }
+    catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
+  }
+  const saveName = async () => { const nn = nameVal.trim(); if (!nn || nn === positionName) { setNameVal(positionName); return } try { await updateCalcPosition(positionId, { name: nn }); onChanged() } catch { setNameVal(positionName) } }
+  const removeRow = async () => {
+    if (!confirm(`„${positionName}${who ? ' · ' + who : ''}" (Hotel) aus der Kalkulation löschen?`)) return
+    setBusy(true)
+    try { await deleteCalcPosition(positionId); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+  }
+
+  const hCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'right' as const } }
+
+  return (
+    <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
+      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#211f17'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined }}>
+      <td style={{ verticalAlign: 'top' }}>
+        <div className="flex items-start gap-1.5">
+          <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
+            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0, marginTop: 4 }}>
+            <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
+              <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
+              <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
+              <circle cx="2.2" cy="12" r="1.25" /><circle cx="6.8" cy="12" r="1.25" />
+            </svg>
+          </span>
+          <button onClick={toggleLink} title={m.shared ? 'Verknüpft (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
+            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
+            <LinkIcon className="w-3.5 h-3.5" />
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ background: '#3a2f22', color: '#e0b877' }}>🏨 Hotel</span>
+              <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
+                style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
+                onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
+            </div>
+            {who && <div className="text-xs" style={{ color: '#9ca3af', marginTop: 2, marginLeft: 2 }}>Für: {who}</div>}
+          </div>
+        </div>
+      </td>
+
+      {variants.map(v => {
+        const val = valsFor(v.id)
+        const prod = hProd(val)
+        return (
+          <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
+            <div style={{ display: 'flex', gap: 3 }}>
+              <input {...hCell} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
+                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined }} />
+              <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
+              <input {...hCell} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
+                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined }} />
+              <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
+              <input {...hCell} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
+                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined }} />
+            </div>
+            <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
+          </td>
+        )
+      })}
+
+      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
+        <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+          value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
+      </td>
+
+      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
+        {formatMoney(rowResult())}
+      </td>
+
+      <td style={{ verticalAlign: 'top' }}>
+        <div className="flex items-center gap-1 justify-end">
+          {dirty && (
+            <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>{busy ? '…' : 'Speichern'}</button>
+          )}
+          <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Löschen"><TrashIcon className="w-3.5 h-3.5" /></button>
+        </div>
+        {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
+      </td>
     </tr>
   )
 }
