@@ -20,6 +20,14 @@ import { ShowFormModal } from './ShowsView'
 
 const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
+
+// Registry offener (ungespeicherter) Zeilen → globales window.__pt_isDirty,
+// dasselbe Flag, das der L2-Nav-Guard (Popup) und beforeunload auswerten.
+const dirtyRows = new Set<string>()
+function markRowDirty(key: string, dirty: boolean) {
+  if (dirty) dirtyRows.add(key); else dirtyRows.delete(key)
+  ;(window as unknown as { __pt_isDirty?: boolean }).__pt_isDirty = dirtyRows.size > 0
+}
 const hv = (v: unknown) => v != null && v !== ''
 const entryHasValue = (e: CalcEntry): boolean => hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price)
 
@@ -54,10 +62,21 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
     }).catch(() => {})
   }
   useEffect(() => { loadFunctions() }, [])
+  // Vor Reload/Schließen warnen, solange ungespeicherte Zeilen offen sind;
+  // beim Verlassen der Show-Ansicht das Dirty-Flag sicher zurücksetzen.
+  useEffect(() => {
+    const h = (e: BeforeUnloadEvent) => {
+      if ((window as unknown as { __pt_isDirty?: boolean }).__pt_isDirty) { e.preventDefault(); e.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', h)
+    return () => {
+      window.removeEventListener('beforeunload', h)
+      dirtyRows.clear()
+      ;(window as unknown as { __pt_isDirty?: boolean }).__pt_isDirty = false
+    }
+  }, [])
 
   const [resultVar, setResultVar] = useState<string>(project.default_variant_id ?? variants[0]?.id ?? '')
-  const [showSpec, setShowSpec] = useState(true)
-  const [showName, setShowName] = useState(false)
 
   const summary = useMemo(() => {
     const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
@@ -83,12 +102,6 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
             <option value="ist">Ist</option>
           </select>
         </label>
-        <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
-          <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
-        </label>
-        <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
-          <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
-        </label>
         {summary && (
           <div className="ml-auto text-xs flex gap-4" style={{ color: '#9ca3af' }}>
             <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
@@ -105,7 +118,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         {categories.map(cat => (
           <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
             category={cat} variants={variants} onChanged={onChanged}
-            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} showSpec={showSpec} showName={showName} />
+            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} />
         ))}
       </div>
 
@@ -119,10 +132,10 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
 // ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar, showSpec, showName }: {
+function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
-  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string; showSpec: boolean; showName: boolean
+  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string
 }) {
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -142,6 +155,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const rowIds = new Set(rowPositions.map(p => p.id))
   const availablePositions = catPositions.filter(p => !rowIds.has(p.id))
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
+  // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile)
+  const [showSpec, setShowSpec] = useState(true)
+  const [showName, setShowName] = useState(false)
 
   // Sortierung per 6-Punkte-Griff (Drag & Drop) innerhalb des Bereichs
   const [dragId, setDragId] = useState<string | null>(null)
@@ -213,10 +229,25 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     <div className="pt-card">
       <div className="pt-card-header flex items-center justify-between"
         style={{ background: category.kind === 'income' ? '#173a28' : '#26313f', borderLeft: `4px solid ${category.kind === 'income' ? '#4ade80' : '#60a5fa'}` }}>
-        <span className="pt-card-title" style={{ color: '#e5e7eb', letterSpacing: '0.02em' }}>{category.name} <span style={{ opacity: 0.55, fontWeight: 400 }}>· {category.kind === 'income' ? 'Einnahme' : 'Ausgabe'}</span></span>
-        <button onClick={() => setAdding(a => !a)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
-          <PlusIcon className="w-3.5 h-3.5" /> Position
-        </button>
+        <span className="pt-card-title" style={{ color: '#e5e7eb', letterSpacing: '0.02em' }}>
+          <span style={{ fontWeight: 700, color: category.kind === 'income' ? '#4ade80' : '#93c5fd' }}>{category.kind === 'income' ? 'EINNAHME' : 'AUSGABE'}</span>
+          <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
+        </span>
+        <div className="flex items-center gap-3">
+          {isPersonal && (
+            <>
+              <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+                <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
+              </label>
+              <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+                <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
+              </label>
+            </>
+          )}
+          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
+            <PlusIcon className="w-3.5 h-3.5" /> Position
+          </button>
+        </div>
       </div>
       <div className="pt-card-body" style={{ overflowX: 'auto' }}>
         <table className="data-table" style={{ minWidth: 620 }}>
@@ -235,7 +266,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             )}
             {rowPositions.map(p => (
               <PositionRow key={p.id} show={show} dataset={dataset} project={project}
-                positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={showSpec} showName={showName}
+                positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={isPersonal && showSpec} showName={isPersonal && showName}
                 variants={variants} onChanged={onChanged}
                 showTravel={showTravel} defaultVar={defaultVar} onRemove={() => setAddedIds(prev => prev.filter(x => x !== p.id))}
                 dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
@@ -369,6 +400,12 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   }
 
   const sollDirty = sollSnap(m) !== savedSnap
+  // Ungespeicherte Zeile global melden (Nav-Guard/Popup + beforeunload)
+  useEffect(() => {
+    const key = `${show.id}:${positionId}`
+    markRowDirty(key, sollDirty)
+    return () => markRowDirty(key, false)
+  }, [sollDirty, show.id, positionId])
 
   // Verknüpfung umschalten. WICHTIG: beim Auflösen bleibt der Wert erhalten
   // (wird in leere Varianten-Spalten übernommen, u.a. Var 1) statt gelöscht zu werden.
@@ -464,10 +501,10 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           transition: 'background 120ms ease, opacity 120ms ease',
         }}>
         <td>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-start gap-1.5">
             <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow}
               title="Zum Sortieren ziehen" className="shrink-0 cursor-grab active:cursor-grabbing"
-              style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0 }}>
+              style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0, marginTop: 4 }}>
               <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
                 <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
                 <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -476,33 +513,40 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
             </span>
             <button onClick={toggleLink}
               title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
-              className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280' }}>
+              className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
               <LinkIcon className="w-3.5 h-3.5" />
             </button>
-            <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
-              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-              title="Name bearbeiten"
-              className="text-sm"
-              style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(6, nameVal.length + 1)}ch`, minWidth: 60 }}
-              onFocus={e => { e.target.style.border = '1px solid #4a4a4a'; e.target.style.background = '#1f2937' }}
-              onBlurCapture={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent' }} />
-            {showSpec ? (
-              <input className="form-input" style={{ fontSize: '0.72rem', padding: '1px 5px', width: 110 }} value={spec}
-                onChange={e => setSpec(e.target.value)} onBlur={saveSpec} placeholder="Spezifikation" />
-            ) : (spec ? <span className="text-xs" style={{ color: '#9ca3af' }}>· {spec}</span> : null)}
-            {showTravel && (
-              <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
-                className="shrink-0 inline-flex items-center gap-1 rounded"
-                style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? '#facc15' : 'transparent', border: `1px solid ${travelActive ? '#facc15' : '#4a4a4a'}` }}>
-                <TruckIcon className="w-3.5 h-3.5" /> Reise
-              </button>
-            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="flex items-center gap-1.5">
+                <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  title="Name bearbeiten"
+                  className="text-sm"
+                  style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(6, nameVal.length + 1)}ch`, minWidth: 60 }}
+                  onFocus={e => { e.target.style.border = '1px solid #4a4a4a'; e.target.style.background = '#1f2937' }}
+                  onBlurCapture={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent' }} />
+                {/* Spezifikation + Reise rechtsbündig vor Variante 1 */}
+                <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
+                  {showSpec ? (
+                    <input className="form-input text-right" style={{ fontSize: '0.72rem', padding: '1px 5px', width: 120 }} value={spec}
+                      onChange={e => setSpec(e.target.value)} onBlur={saveSpec} placeholder="Spezifikation" />
+                  ) : (spec ? <span className="text-xs" style={{ color: '#9ca3af' }}>{spec} ·</span> : null)}
+                  {showTravel && (
+                    <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
+                      className="shrink-0 inline-flex items-center gap-1 rounded"
+                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? '#facc15' : 'transparent', border: `1px solid ${travelActive ? '#facc15' : '#4a4a4a'}` }}>
+                      <TruckIcon className="w-3.5 h-3.5" /> Reise
+                    </button>
+                  )}
+                </div>
+              </div>
+              {showName && (
+                <input value={person} onChange={e => setPerson(e.target.value)} onBlur={savePerson}
+                  className="form-input" placeholder="Name (Person)"
+                  style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, width: '100%', maxWidth: 200 }} />
+              )}
+            </div>
           </div>
-          {showName && (
-            <input value={person} onChange={e => setPerson(e.target.value)} onBlur={savePerson}
-              className="form-input" placeholder="Name (Person)"
-              style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, marginLeft: 22, width: 'calc(100% - 22px)', maxWidth: 220 }} />
-          )}
         </td>
 
         {variants.map(v => (

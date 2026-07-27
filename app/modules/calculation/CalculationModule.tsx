@@ -29,6 +29,12 @@ export default function CalculationModule() {
   const [view, setView] = useState<View>('overview')
   const [showNewProject, setShowNewProject] = useState(false)
   const [showVariants, setShowVariants] = useState(false)
+  // Nav-Guard: bei ungespeicherten Zeilen (window.__pt_isDirty) vor dem Wechseln warnen
+  const [pendingNav, setPendingNav] = useState<{ go: () => void } | null>(null)
+  const guardNav = (fn: () => void) => {
+    if ((window as unknown as { __pt_isDirty?: boolean }).__pt_isDirty) setPendingNav({ go: fn })
+    else fn()
+  }
 
   const loadProjects = async (selectFirst = true) => {
     try {
@@ -120,14 +126,36 @@ export default function CalculationModule() {
       ) : (
         <>
           <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '1rem' }}>
-            <button onClick={() => setView('overview')} className={`pt-detail-tab${view === 'overview' ? ' active' : ''}`}>Übersicht</button>
-            <button onClick={() => setView('shows')} className={`pt-detail-tab${view === 'shows' ? ' active' : ''}`}>Shows</button>
-            <button onClick={() => setView('overhead')} className={`pt-detail-tab${view === 'overhead' ? ' active' : ''}`}>Übergeordnet</button>
+            <button onClick={() => guardNav(() => setView('overview'))} className={`pt-detail-tab${view === 'overview' ? ' active' : ''}`}>Übersicht</button>
+            <button onClick={() => guardNav(() => setView('shows'))} className={`pt-detail-tab${view === 'shows' ? ' active' : ''}`}>Shows</button>
+            <button onClick={() => guardNav(() => setView('overhead'))} className={`pt-detail-tab${view === 'overhead' ? ' active' : ''}`}>Übergeordnet</button>
           </div>
           {view === 'overview' && <OverviewMatrix key={selectedId} dataset={dataset} />}
-          {view === 'shows' && <ShowsView dataset={dataset} projectId={selectedId} onChanged={reloadDataset} />}
+          {view === 'shows' && <ShowsView dataset={dataset} projectId={selectedId} onChanged={reloadDataset} guardNav={guardNav} />}
           {view === 'overhead' && <OverheadView key={selectedId} dataset={dataset} projectId={selectedId} onChanged={reloadDataset} />}
         </>
+      )}
+
+      {pendingNav && (
+        <div className="modal-overlay">
+          <div className="modal-container" style={{ maxWidth: 420 }}>
+            <div className="modal-header"><h3 className="modal-title">Ungespeicherte Änderungen</h3></div>
+            <div className="modal-body">
+              <p style={{ color: '#cbd5e1', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                Es gibt Zeilen mit ungespeicherten Werten. Wenn du wechselst, gehen diese Eingaben verloren.
+              </p>
+            </div>
+            <div className="modal-footer flex justify-end gap-2">
+              <button className="btn btn-ghost" onClick={() => setPendingNav(null)}>Zurück</button>
+              <button className="btn btn-primary" onClick={() => {
+                const go = pendingNav.go
+                setPendingNav(null)
+                ;(window as unknown as { __pt_isDirty?: boolean }).__pt_isDirty = false
+                go()
+              }}>Verwerfen & wechseln</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} onCreate={handleCreateProject} />}

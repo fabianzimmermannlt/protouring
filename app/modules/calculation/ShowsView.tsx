@@ -20,10 +20,11 @@ const DEAL_TYPES: { value: DealType; label: string }[] = [
 ]
 const dealLabel = (t?: DealType) => DEAL_TYPES.find(d => d.value === (t ?? 'vs'))?.label ?? t
 
-export default function ShowsView({ dataset, projectId, onChanged }: {
+export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
   dataset: CalcDataset
   projectId: string
   onChanged: () => void
+  guardNav?: (fn: () => void) => void
 }) {
   const [modal, setModal] = useState<{ open: boolean; show: CalcShow | null }>({ open: false, show: null })
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -33,7 +34,8 @@ export default function ShowsView({ dataset, projectId, onChanged }: {
 
   const detailShow = detailId ? dataset.shows.find(s => s.id === detailId) : null
   if (detailId && detailShow) {
-    return <ShowDetailView show={detailShow} dataset={dataset} onChanged={onChanged} onBack={() => setDetailId(null)} />
+    const back = () => setDetailId(null)
+    return <ShowDetailView show={detailShow} dataset={dataset} onChanged={onChanged} onBack={() => (guardNav ? guardNav(back) : back())} />
   }
 
   const handleDelete = async (show: CalcShow) => {
