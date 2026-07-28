@@ -220,9 +220,6 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
               <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
             </label>
           )}
-          <button onClick={() => setAdding(a => !a)} className="btn btn-ghost" style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem' }}>
-            <PlusIcon className="w-3.5 h-3.5" /> Position
-          </button>
         </div>
       </div>
       <div className="pt-card-body" style={{ overflowX: 'auto' }}>
@@ -238,7 +235,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           </thead>
           <tbody>
             {rowPositions.length === 0 && !adding && (
-              <tr><td colSpan={colCount} className="text-center py-4" style={{ color: '#6b7280' }}>Keine Position – „+ Position".</td></tr>
+              <tr><td colSpan={colCount} className="text-center py-4" style={{ color: '#6b7280' }}>Noch keine Position – unten „+ Neue Position".</td></tr>
             )}
             {rowPositions.map(p => (
               p.pos_type === 'hotel' ? (
@@ -275,18 +272,25 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
         </table>
       </div>
     </div>
-    {/* Anlege-Dropdown AUSSERHALB der .pt-card (overflow:hidden!), damit es nicht abgeschnitten/überlagert wird */}
-    {adding && (
-      <div className="flex items-center gap-2" style={{ padding: '8px 2px 2px', maxWidth: 440, position: 'relative', zIndex: 30 }}>
-        <div style={{ flex: 1 }}>
-          <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft}
-            catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
-            onDone={() => { setAdding(false); onChanged() }} />
+    {/* Fußzeile AUSSERHALB der .pt-card (overflow:hidden!): Anlege-Button bzw. Dropdown
+        liegen direkt unter dem Bereich – so sieht man sofort, dass etwas passiert. */}
+    <div style={{ padding: '8px 2px 2px', position: 'relative', zIndex: 30 }}>
+      {adding ? (
+        <div className="flex items-center gap-2" style={{ maxWidth: 440 }}>
+          <div style={{ flex: 1 }}>
+            <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft}
+              catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
+              onDone={() => { setAdding(false); onChanged() }} />
+          </div>
+          <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
+          <button onClick={() => setAdding(false)} className="btn btn-primary shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
         </div>
-        <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
-        <button onClick={() => setAdding(false)} className="btn btn-primary shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
-      </div>
-    )}
+      ) : (
+        <button onClick={() => setAdding(true)} className="btn btn-ghost inline-flex items-center gap-1" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', color: '#93c5fd' }}>
+          <PlusIcon className="w-3.5 h-3.5" /> Neue Position
+        </button>
+      )}
+    </div>
     </div>
   )
 }
