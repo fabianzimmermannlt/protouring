@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, ArrowLeft, Download, Upload, Trash2 } from 'lucide-react'
 import { getVehicles, deleteVehicle, isEditorRole, getEffectiveRole, type Vehicle } from '@/lib/api-client'
-import VehicleFormModal from './VehicleFormModal'
 import { QuickCreateVehicleModal } from '@/app/components/shared/modals/QuickCreateVehicleModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -22,9 +21,7 @@ export default function VehiclesPage() {
   const isEditor = isEditorRole(getEffectiveRole())
   const isAdmin = getEffectiveRole() === 'admin'
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
-  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(() => {
@@ -68,13 +65,12 @@ export default function VehiclesPage() {
     }
   }, [])
 
-  const openNewVehicleModal = () => { setEditingVehicle(null); setIsModalOpen(true) }
-  const openEditVehicleModal = (vehicle: Vehicle) => { setEditingVehicle(vehicle); setIsModalOpen(true) }
+  const selectVehicle = (id: string) => { if (typeof window !== 'undefined') localStorage.setItem('pt_vehicles_last_id', id); setSelectedVehicleId(id) }
 
-  // Sidebar events
+  // Sidebar events: Anlegen über QuickCreate, Auswahl öffnet die Detailseite
   useEffect(() => {
-    const onCreate = () => openNewVehicleModal()
-    const onSelect = (e: Event) => { const v = (e as CustomEvent<Vehicle>).detail; if (v) openEditVehicleModal(v) }
+    const onCreate = () => setShowQuickCreate(true)
+    const onSelect = (e: Event) => { const v = (e as CustomEvent<Vehicle>).detail; if (v) selectVehicle(v.id) }
     window.addEventListener('vehicle-sidebar-create', onCreate)
     window.addEventListener('vehicle-sidebar-select', onSelect)
     return () => {
@@ -140,7 +136,7 @@ export default function VehiclesPage() {
         <>
           {isMobile && isEditor && (
             <div className="flex items-center gap-2">
-              <button onClick={openNewVehicleModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
+              <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
             </div>
           )}
           <input type="text" placeholder={t('vehicles.searchPlaceholder')} value={searchTerm}
@@ -187,24 +183,6 @@ export default function VehiclesPage() {
             localStorage.setItem('pt_vehicles_last_id', v.id)
             setSelectedVehicleId(v.id)
             setShowQuickCreate(false)
-          }}
-        />
-      )}
-
-      {isModalOpen && (
-        <VehicleFormModal
-          vehicle={editingVehicle}
-          onClose={() => setIsModalOpen(false)}
-          onSaved={saved => {
-            setVehicles(prev => {
-              const idx = prev.findIndex(v => v.id === saved.id)
-              if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
-              return [...prev, saved]
-            })
-            setIsModalOpen(false)
-          }}
-          onDeleted={id => {
-            setVehicles(prev => prev.filter(v => v.id !== id))
           }}
         />
       )}
