@@ -290,7 +290,11 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     () => buildOverview(dataset, { variantByShow, variantId: defaultVariant, scenarioFactor: scenario, useVVK, memberCount: dataset.project.member_count }),
     [dataset, variantByShow, scenario, defaultVariant, useVVK])
 
-  const shows = overview.shows
+  // Show-Spalten nach Datum sortieren (nicht nach Anlege-Reihenfolge).
+  const shows = useMemo(() => {
+    const dateOf = (id: string) => dataset.shows.find(s => s.id === id)?.show_date ?? ''
+    return [...overview.shows].sort((a, b) => dateOf(a.showId).localeCompare(dateOf(b.showId)))
+  }, [overview, dataset])
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = []
     const sumE = overview.sumEinnahmen
