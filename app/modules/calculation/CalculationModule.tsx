@@ -160,7 +160,7 @@ export default function CalculationModule() {
 
       {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} onCreate={handleCreateProject} />}
       {showVariants && dataset && (
-        <VariantsModal projectId={selectedId} variants={dataset.variants} onClose={() => setShowVariants(false)} onChanged={reloadDataset} />
+        <VariantsModal projectId={selectedId} variants={dataset.variants} dataset={dataset} onClose={() => setShowVariants(false)} onChanged={reloadDataset} />
       )}
     </div>
   )
@@ -198,8 +198,8 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
   )
 }
 
-function VariantsModal({ projectId, variants, onClose, onChanged }: {
-  projectId: string; variants: CalcVariant[]; onClose: () => void; onChanged: () => void
+function VariantsModal({ projectId, variants, dataset, onClose, onChanged }: {
+  projectId: string; variants: CalcVariant[]; dataset: CalcDataset; onClose: () => void; onChanged: () => void
 }) {
   const sorted = [...variants].sort((a, b) => a.sort_order - b.sort_order)
   const [err, setErr] = useState('')
@@ -215,14 +215,32 @@ function VariantsModal({ projectId, variants, onClose, onChanged }: {
   }
   const del = async (id: string) => {
     setErr('')
-    try { await deleteCalcVariant(id); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler') }
+    const vname = variants.find(v => v.id === id)?.name || 'Variante'
+    const affected = dataset.entries.filter(e => e.variant_id === id)
+    let force = false
+    if (affected.length > 0) {
+      const showIds = Array.from(new Set(affected.map(e => e.show_id).filter((x): x is string => !!x)))
+      const labels = showIds.map(sid => {
+        const s = dataset.shows.find(x => x.id === sid)
+        return s ? `${s.city || '(ohne Stadt)'}${s.show_date ? ' · ' + formatDate(s.show_date) : ''}` : '?'
+      })
+      const shown = labels.slice(0, 8).join('\n• ')
+      const more = labels.length > 8 ? `\n… und ${labels.length - 8} weitere` : ''
+      const scope = labels.length > 0 ? `in ${labels.length} Show(s):\n\n• ${shown}${more}` : `(projektweite Fixkosten)`
+      if (!confirm(`„${vname}" hat variantenspezifische Werte ${scope}\n\nDiese Werte gehen beim Löschen verloren; gemeinsame (🔗-verknüpfte) Werte bleiben erhalten.\n\nTrotzdem löschen?`)) return
+      force = true
+    } else {
+      if (!confirm(`„${vname}" löschen?`)) return
+    }
+    setBusy(true)
+    try { await deleteCalcVariant(id, force); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) }
   }
   return (
     <div className="modal-overlay">
       <div className="modal-container" style={{ maxWidth: 440 }}>
         <div className="modal-header"><h3 className="modal-title">Varianten</h3><button onClick={onClose} className="text-gray-400 hover:text-white">✕</button></div>
         <div className="modal-body space-y-2">
-          <p className="text-xs" style={{ color: '#6b7280' }}>Benenne die Varianten (z.B. „Variante 1"). Löschen nur, wenn keine Buchung sie nutzt.</p>
+          <p className="text-xs" style={{ color: '#6b7280' }}>Benenne die Varianten (z.B. „Variante 1"). Beim Löschen zeigt eine Abfrage, in welchen Shows variantenspezifische Werte liegen – diese kannst du dann bewusst mit verwerfen (gemeinsame 🔗-Werte bleiben).</p>
           {sorted.map(v => (
             <div key={v.id} className="flex items-center gap-2">
               <input className="form-input" defaultValue={v.name} onBlur={e => rename(v.id, e.target.value, v.name)} style={{ fontSize: '0.85rem' }} />

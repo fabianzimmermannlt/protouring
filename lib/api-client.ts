@@ -786,8 +786,8 @@ export async function updateCalcVariant(variantId: string, name: string): Promis
   await request(`/api/calc/variants/${variantId}`, { method: 'PUT', body: { name } })
 }
 
-export async function deleteCalcVariant(variantId: string): Promise<void> {
-  await request(`/api/calc/variants/${variantId}`, { method: 'DELETE' })
+export async function deleteCalcVariant(variantId: string, force?: boolean): Promise<void> {
+  await request(`/api/calc/variants/${variantId}${force ? '?force=1' : ''}`, { method: 'DELETE' })
 }
 
 export interface CalcShowInput {

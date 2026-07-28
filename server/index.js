@@ -8437,10 +8437,12 @@ app.delete('/api/calc/variants/:vid', authenticateToken, requireTenant, requireE
   try {
     const owner = await calcVariantTenant(req.params.vid);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Variante nicht gefunden' });
+    const force = req.query.force === '1' || req.query.force === 'true';
     const used = await db.get('SELECT COUNT(*) AS c FROM calc_entries WHERE variant_id = ?', [req.params.vid]);
-    if ((used?.c ?? 0) > 0) return res.status(409).json({ error: 'Variante wird von Buchungen genutzt – dort erst ändern.' });
+    if ((used?.c ?? 0) > 0 && !force) return res.status(409).json({ error: 'Variante wird von Buchungen genutzt – dort erst ändern.', count: used.c });
     const cnt = await db.get('SELECT COUNT(*) AS c FROM calc_variants WHERE project_id = ?', [owner.project_id]);
     if ((cnt?.c ?? 0) <= 1) return res.status(409).json({ error: 'Mindestens eine Variante muss bleiben.' });
+    if (force) await db.run('DELETE FROM calc_entries WHERE variant_id=?', [req.params.vid]); // variantenspezifische Buchungen mitlöschen
     await db.run('UPDATE calc_projects SET default_variant_id=NULL WHERE default_variant_id=?', [req.params.vid]);
     await db.run('DELETE FROM calc_variants WHERE id=?', [req.params.vid]);
     res.json({ ok: true });
