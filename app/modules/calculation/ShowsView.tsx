@@ -52,7 +52,10 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
     const idx = shows.findIndex(s => s.id === detailId)
     const prev = idx > 0 ? shows[idx - 1] : null
     const next = idx >= 0 && idx < shows.length - 1 ? shows[idx + 1] : null
-    return <ShowDetailView show={detailShow} dataset={dataset} onChanged={onChanged}
+    // WICHTIG: key={detailShow.id} → beim Wechsel (Prev/Next) wird die Detailansicht
+    // inkl. aller Zeilen-States neu gemountet; sonst zeigt/speichert sie Werte der
+    // vorherigen Show (useState wird bei Prop-Wechsel nicht neu initialisiert).
+    return <ShowDetailView key={detailShow.id} show={detailShow} dataset={dataset} onChanged={onChanged}
       onBack={() => go(() => setDetailId(null))}
       onPrev={prev ? () => go(() => setDetailId(prev.id)) : undefined}
       onNext={next ? () => go(() => setDetailId(next.id)) : undefined} />
