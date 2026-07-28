@@ -847,8 +847,9 @@ export async function deleteCalcEntry(entryId: string): Promise<void> {
   await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
 }
 
-export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean, posType?: 'standard' | 'hotel' | 'vehicle'): Promise<{ id: string }> {
-  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec, is_overhead: isOverhead === true, pos_type: posType ?? 'standard' } })
+export interface VehicleSnapshot { rental?: Num; included?: Num; extra?: Num; consumption?: Num; price?: Num }
+export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean, posType?: 'standard' | 'hotel' | 'vehicle', vehicle?: VehicleSnapshot): Promise<{ id: string }> {
+  return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec, is_overhead: isOverhead === true, pos_type: posType ?? 'standard', vehicle } })
 }
 
 /** Übergeordneter Posten: Soll-/Ist-Betrag + Anteil (Prozent) auf diese Kalkulation setzen. */

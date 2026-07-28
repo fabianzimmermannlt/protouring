@@ -252,6 +252,13 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                   dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
                   onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
                   onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
+              ) : p.pos_type === 'vehicle' ? (
+                <VehicleRow key={p.id} show={show} dataset={dataset}
+                  positionId={p.id} positionName={p.name} snapshot={p}
+                  variants={variants} onChanged={onChanged} defaultVar={defaultVar}
+                  dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
+                  onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
+                  onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
               ) : (
                 <PositionRow key={p.id} show={show} dataset={dataset} project={project}
                   positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={isPersonal && showSpec} showName={isPersonal && showName}
@@ -811,6 +818,183 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
   )
 }
 
+// ── Fahrzeug-Zeile: Miete + Mehr-km × Preis (Sprit separat), pro Variante (mit 🔗) ─────
+interface VVals { rental: string; km: string; included: string; extra: string }
+interface VModel { shared: boolean; s: VVals; perVar: Record<string, VVals>; ist: string }
+const emptyV = (): VVals => ({ rental: '', km: '', included: '', extra: '' })
+const vSnapKey = (m: VModel) => JSON.stringify({ shared: m.shared, s: m.s, perVar: m.perVar })
+const vAmount = (v: VVals): Decimal => {
+  const rental = new Decimal(norm(v.rental) ?? '0')
+  const km = new Decimal(norm(v.km) ?? '0')
+  const inc = new Decimal(norm(v.included) ?? '0')
+  const ex = new Decimal(norm(v.extra) ?? '0')
+  try { return rental.plus(Decimal.max(0, km.minus(inc)).times(ex)) } catch { return new Decimal(0) }
+}
+
+function buildVehicleModel(dataset: CalcDataset, showId: string, positionId: string, variants: Variant[]): VModel {
+  const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId && e.kind === 'vehicle')
+  const nullE = es.filter(e => e.variant_id == null)
+  const varE = es.filter(e => e.variant_id != null)
+  const toVals = (e?: CalcEntry): VVals => ({
+    rental: e?.rental_price != null ? String(e.rental_price) : '',
+    km: e?.distance_km != null ? String(e.distance_km) : '',
+    included: e?.included_km != null ? String(e.included_km) : '',
+    extra: e?.price_extra_km != null ? String(e.price_extra_km) : '',
+  })
+  const s = nullE.length ? toVals(nullE[0]) : emptyV()
+  const perVar: Record<string, VVals> = {}
+  variants.forEach(v => { perVar[v.id] = nullE.length ? { ...s } : emptyV() })
+  varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = toVals(e) })
+  const ist = (() => {
+    const a = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
+    return a?.amount != null ? String(a.amount) : ''
+  })()
+  return { shared: varE.length === 0, s, perVar, ist }
+}
+
+function VehicleRow({ show, dataset, positionId, positionName, snapshot, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; snapshot: CalcDataset['positions'][number]
+  variants: Variant[]; onChanged: () => void; defaultVar: string
+  dragging: boolean; dropTarget: boolean
+  onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
+}) {
+  const initial = useMemo(() => buildVehicleModel(dataset, show.id, positionId, variants), [dataset, show.id, positionId, variants])
+  const [m, setM] = useState<VModel>(initial)
+  const [savedSnap, setSavedSnap] = useState(() => vSnapKey(initial))
+  const [nameVal, setNameVal] = useState(positionName)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const dirty = vSnapKey(m) !== savedSnap
+  const snapStr = (v: unknown) => (v == null || v === '') ? '' : String(v)
+  const hasDefaults = !!(snapStr(snapshot.veh_rental) || snapStr(snapshot.veh_included) || snapStr(snapshot.veh_extra))
+
+  useEffect(() => {
+    const key = `${show.id}:${positionId}`
+    markRowDirty(key, dirty)
+    return () => markRowDirty(key, false)
+  }, [dirty, show.id, positionId])
+
+  const setVals = (vid: string, patch: Partial<VVals>) => setM(p => {
+    if (p.shared) return { ...p, s: { ...p.s, ...patch } }
+    return { ...p, perVar: { ...p.perVar, [vid]: { ...(p.perVar[vid] ?? emptyV()), ...patch } } }
+  })
+  const toggleLink = () => setM(p => {
+    if (p.shared) {
+      const perVar = { ...p.perVar }
+      variants.forEach(v => { const cur = perVar[v.id] ?? emptyV(); if (!cur.rental && !cur.km && !cur.included && !cur.extra) perVar[v.id] = { ...p.s } })
+      return { ...p, shared: false, perVar }
+    }
+    const first = variants.map(v => p.perVar[v.id]).find(x => x && (x.rental || x.km || x.included || x.extra)) ?? p.s
+    return { ...p, shared: true, s: { ...first } }
+  })
+  const applyDefaults = () => setM(p => {
+    const patch: Partial<VVals> = { rental: snapStr(snapshot.veh_rental), included: snapStr(snapshot.veh_included), extra: snapStr(snapshot.veh_extra) }
+    if (p.shared) return { ...p, s: { ...p.s, ...patch } }
+    const perVar = { ...p.perVar }; variants.forEach(v => { perVar[v.id] = { ...(perVar[v.id] ?? emptyV()), ...patch } })
+    return { ...p, perVar }
+  })
+
+  const valsFor = (vid: string): VVals => (m.shared ? m.s : (m.perVar[vid] ?? emptyV()))
+  const rowResult = (): Decimal => {
+    if (defaultVar === 'ist') { const b = norm(m.ist); if (b != null) { try { return new Decimal(b) } catch { /* */ } } return new Decimal(0) }
+    return vAmount(valsFor(defaultVar))
+  }
+
+  const payload = (): CalcEntryInput[] => {
+    const any = (v: VVals) => norm(v.rental) != null || norm(v.km) != null || norm(v.included) != null || norm(v.extra) != null
+    const mk = (variant_id: string | null, v: VVals): CalcEntryInput => ({ kind: 'vehicle', variant_id, rental_price: norm(v.rental), distance_km: norm(v.km), included_km: norm(v.included), price_extra_km: norm(v.extra) })
+    if (m.shared) return any(m.s) ? [mk(null, m.s)] : []
+    return variants.map(v => ({ v, val: m.perVar[v.id] ?? emptyV() })).filter(x => any(x.val)).map(x => mk(x.v.id, x.val))
+  }
+
+  const saveSoll = async () => {
+    setBusy(true); setErr('')
+    try { await withTimeout(replaceCalcEntries(show.id, positionId, payload())); setSavedSnap(vSnapKey(m)); onChanged() }
+    catch (e: any) { setErr(e?.message ?? 'Fehler beim Speichern') }
+    finally { setBusy(false) }
+  }
+  const saveIst = async () => {
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })) }
+    catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
+  }
+  const saveName = async () => { const nn = nameVal.trim(); if (!nn || nn === positionName) { setNameVal(positionName); return } try { await updateCalcPosition(positionId, { name: nn }); onChanged() } catch { setNameVal(positionName) } }
+  const removeRow = async () => {
+    if (!confirm(`„${positionName}" (Fahrzeug) aus der Kalkulation löschen?`)) return
+    setBusy(true)
+    try { await deleteCalcPosition(positionId); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
+  }
+
+  const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'right' as const } }
+
+  return (
+    <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
+      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#1a2420'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined }}>
+      <td style={{ verticalAlign: 'top' }}>
+        <div className="flex items-start gap-1.5">
+          <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
+            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0, marginTop: 4 }}>
+            <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
+              <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
+              <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
+              <circle cx="2.2" cy="12" r="1.25" /><circle cx="6.8" cy="12" r="1.25" />
+            </svg>
+          </span>
+          <button onClick={toggleLink} title={m.shared ? 'Verknüpft (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
+            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
+            <LinkIcon className="w-3.5 h-3.5" />
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <div className="flex items-center gap-1.5">
+              <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
+                style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
+                onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
+            </div>
+            {hasDefaults && (
+              <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
+                className="text-xs" style={{ color: '#60a5fa', marginTop: 2 }}>Fahrzeugwerte übernehmen</button>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {variants.map(v => {
+        const val = valsFor(v.id)
+        return (
+          <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
+            </div>
+            <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(vAmount(val))}</div>
+          </td>
+        )
+      })}
+
+      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
+        <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+          value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
+      </td>
+
+      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
+        {formatMoney(rowResult())}
+      </td>
+
+      <td style={{ verticalAlign: 'top' }}>
+        <div className="flex items-center gap-1 justify-end">
+          {dirty && (
+            <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>{busy ? '…' : 'Speichern'}</button>
+          )}
+          <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Löschen"><TrashIcon className="w-3.5 h-3.5" /></button>
+        </div>
+        {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
+      </td>
+    </tr>
+  )
+}
+
 // ── Position anlegen: Dropdown mit Vorschlägen (bisherige Einträge) + „Neu anlegen" ──
 interface PItem { id: string; name: string; group?: string; kind: 'function' | 'name' | 'hotel' | 'vehicle' }
 
@@ -840,11 +1024,15 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, isTransport, c
     if (!name) return
     if (isTransport) {
       // Neu getipptes Fahrzeug → in den App-Fuhrpark schreiben (bidirektional)
+      let snap: { rental?: string; included?: string; extra?: string; consumption?: string; price?: string } | undefined
       if (data.kind === 'new') {
         await createVehicle({ designation: name, vehicleType: '', driver: '', licensePlate: '', dimensions: '', powerConnection: '', hasTrailer: false, trailerDimensions: '', trailerLicensePlate: '', seats: '', sleepingPlaces: '', notes: '' })
         reloadVehicles()
+      } else {
+        const v = vehicles.find(x => x.designation === name)
+        if (v) snap = { rental: v.rentalPrice, included: v.includedKm, extra: v.priceExtraKm, consumption: v.fuelConsumption, price: v.fuelPrice }
       }
-      await createCalcPosition(category.id, name, null, false, 'vehicle')
+      await createCalcPosition(category.id, name, null, false, 'vehicle', snap)
     } else if (data.kind === 'hotel' || (isUnterkunft && name.toLowerCase() === 'hotel')) {
       await createCalcPosition(category.id, 'Hotel', null, false, 'hotel')
     } else if (isPersonal) {

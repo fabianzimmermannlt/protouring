@@ -67,10 +67,12 @@ export interface CalcPosition {
   person?: string | null
   /** Übergeordneter Kostenposten (Umlage auf mehrere Shows) statt normaler Show-Position. */
   is_overhead?: boolean
-  /** Positionstyp: 'standard' (freier Betrag) oder 'hotel' (Zimmer×Nächte×€/Nacht). */
+  /** Positionstyp: 'standard' (freier Betrag), 'hotel' (Zimmer×Nächte×€/Nacht) oder 'vehicle' (Miete+Mehr-km). */
   pos_type?: string
   /** Nur übergeordnete Posten: Anteil (Prozent), der auf DIESE Kalkulation entfällt. Default 100. */
   allocation_pct?: Money
+  /** Fahrzeug-Snapshot (Erfahrungswerte zum Vorbefüllen der Fahrzeugzeile). */
+  veh_rental?: Money; veh_included?: Money; veh_extra?: Money; veh_consumption?: Money; veh_price?: Money
   sort_order: number
 }
 

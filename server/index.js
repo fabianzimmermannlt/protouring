@@ -1947,6 +1947,9 @@ async function initDatabase() {
   try { await db.exec('ALTER TABLE calc_positions ADD COLUMN is_overhead INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec("ALTER TABLE calc_positions ADD COLUMN pos_type TEXT NOT NULL DEFAULT 'standard'"); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec("ALTER TABLE calc_positions ADD COLUMN allocation_pct TEXT NOT NULL DEFAULT '100'"); } catch (e) { /* Spalte existiert bereits */ }
+  for (const col of ['veh_rental', 'veh_included', 'veh_extra', 'veh_consumption', 'veh_price']) {
+    try { await db.exec(`ALTER TABLE calc_positions ADD COLUMN ${col} TEXT`); } catch (e) { /* Spalte existiert bereits */ }
+  }
   try { await db.exec('ALTER TABLE calc_entries ADD COLUMN nights TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN vvk INTEGER'); } catch (e) { /* Spalte existiert bereits */ }
 
@@ -8194,10 +8197,13 @@ app.post('/api/calc/categories/:catId/positions', authenticateToken, requireTena
     const spec = req.body?.spec ? String(req.body.spec).trim() || null : null;
     const isOverhead = req.body?.is_overhead === true || req.body?.is_overhead === 1 ? 1 : 0;
     const posType = ['hotel', 'vehicle'].includes(req.body?.pos_type) ? req.body.pos_type : 'standard';
+    const veh = req.body?.vehicle || {};
     const id = crypto.randomUUID();
     const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_positions WHERE category_id = ?', [req.params.catId]);
-    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,is_overhead,pos_type,sort_order) VALUES (?,?,?,?,?,?,?)',
-      [id, req.params.catId, name, spec, isOverhead, posType, (maxRow?.m ?? 0) + 1]);
+    await db.run('INSERT INTO calc_positions (id,category_id,name,spec,is_overhead,pos_type,veh_rental,veh_included,veh_extra,veh_consumption,veh_price,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      [id, req.params.catId, name, spec, isOverhead, posType,
+       calcText(veh.rental), calcText(veh.included), calcText(veh.extra), calcText(veh.consumption), calcText(veh.price),
+       (maxRow?.m ?? 0) + 1]);
     res.json({ id });
   } catch (e) {
     console.error('[calc] create position:', e);

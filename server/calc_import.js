@@ -60,8 +60,10 @@ CREATE TABLE IF NOT EXISTS calc_positions (
   spec TEXT,
   person TEXT,
   is_overhead INTEGER NOT NULL DEFAULT 0,
-  pos_type TEXT NOT NULL DEFAULT 'standard',   -- 'standard' | 'hotel'
+  pos_type TEXT NOT NULL DEFAULT 'standard',   -- 'standard' | 'hotel' | 'vehicle'
   allocation_pct TEXT NOT NULL DEFAULT '100',  -- Anteil übergeordneter Kosten auf DIESE Kalkulation (Prozent)
+  -- Fahrzeug-Snapshot (Erfahrungswerte zum Vorbefüllen der Fahrzeugzeile)
+  veh_rental TEXT, veh_included TEXT, veh_extra TEXT, veh_consumption TEXT, veh_price TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 -- Übergeordnete Kosten: von welchen Shows ist ein Posten ausgenommen (Default: alle aktiven)
