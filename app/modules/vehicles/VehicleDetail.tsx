@@ -10,7 +10,7 @@ import {
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
-const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
+const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Anhänger', 'Sonstiges', 'Coach']
 
 function IField({ label, required, value, onChange, placeholder = '', readOnly = false }: {
   label: string; required?: boolean; value: string; onChange: (v: string) => void; placeholder?: string; readOnly?: boolean
@@ -114,7 +114,9 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
     if (!vehicle) return false
     setSaving(true); setSaveError('')
     try {
-      const payload = { ...form, hasTrailer: form.hasTrailer === 'true' } as unknown as VehicleFormData
+      // Abmessungen aus L/B/H zusammensetzen (Anzeige/Altbestand); Altwert behalten, wenn L/B/H leer
+      const composedDims = [form.dimLength, form.dimWidth, form.dimHeight].map(x => (x ?? '').trim()).filter(Boolean).join(' × ')
+      const payload = { ...form, hasTrailer: form.hasTrailer === 'true', dimensions: composedDims || (form.dimensions ?? '') } as unknown as VehicleFormData
       const updated = await updateVehicle(vehicleId, payload)
       setVehicle(updated)
       const data: Record<string, string> = {
@@ -208,7 +210,14 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
                 <ISelect label={t('vehicles.vehicleType')} value={form.vehicleType ?? ''} onChange={v => f('vehicleType', v)} options={vehicleTypes} readOnly={ro} />
                 <IField label={t('vehicles.driver')} value={form.driver ?? ''} onChange={v => f('driver', v)} readOnly={ro} />
                 <IField label={t('vehicles.licensePlate')} value={form.licensePlate ?? ''} onChange={v => f('licensePlate', v)} readOnly={ro} />
-                <IField label={t('vehicles.dimensions')} value={form.dimensions ?? ''} onChange={v => f('dimensions', v)} placeholder={t('vehicles.dimensionsPlaceholder')} readOnly={ro} />
+                <div>
+                  <label className="detail-label">Abmessungen (L × B × H)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="text" inputMode="decimal" value={form.dimLength ?? ''} onChange={e => f('dimLength', e.target.value)} placeholder="Länge" readOnly={ro} className="detail-input" />
+                    <input type="text" inputMode="decimal" value={form.dimWidth ?? ''} onChange={e => f('dimWidth', e.target.value)} placeholder="Breite" readOnly={ro} className="detail-input" />
+                    <input type="text" inputMode="decimal" value={form.dimHeight ?? ''} onChange={e => f('dimHeight', e.target.value)} placeholder="Höhe" readOnly={ro} className="detail-input" />
+                  </div>
+                </div>
                 <IField label={t('vehicles.powerConnection')} value={form.powerConnection ?? ''} onChange={v => f('powerConnection', v)} placeholder={t('vehicles.powerConnectionPlaceholder')} readOnly={ro} />
               </div>
             </div>
@@ -228,7 +237,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
                       onChange={e => f('hasTrailer', e.target.checked ? 'true' : 'false')}
                       style={{ accentColor: '#60a5fa', width: '14px', height: '14px', cursor: ro ? 'default' : 'pointer' }} />
                     <label htmlFor="hasTrailer" style={{ marginLeft: '6px', fontSize: '0.875rem', color: labelColor, cursor: ro ? 'default' : 'pointer' }}>
-                      {hasTrailer ? t('vehicles.trailerYes') : 'Nein'}
+                      Kann Anhänger ziehen
                     </label>
                   </div>
                 </div>
@@ -254,6 +263,25 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
                   <IField label={t('vehicles.sleepingPlaces')} value={form.sleepingPlaces ?? ''} onChange={v => f('sleepingPlaces', v)} placeholder={t('vehicles.sleepingPlacesPlaceholder')} readOnly={ro} />
                 </div>
                 <ITextarea label={t('vehicles.notes')} value={form.notes ?? ''} onChange={v => f('notes', v)} readOnly={ro} />
+              </div>
+            </div>
+          </div>
+
+          {/* Kalkulation (Erfahrungswerte) – befüllen die Transport-Zeile vor, editierbar */}
+          <div className="pt-card md:col-span-2">
+            <div className="pt-card-header">
+              <span className="pt-card-title"><Truck className="w-3.5 h-3.5 inline mr-1" />Kalkulation (Erfahrungswerte)</span>
+            </div>
+            <div className="pt-card-body">
+              <p className="text-xs mb-2" style={{ color: '#8b949e' }}>
+                Optional – dienen zum Vorbefüllen der Transport-Zeile in der Kalkulation. Sprit wird dort als eigene Zeile gerechnet; bei einem Anhänger = Mehrverbrauch (L/100&nbsp;km).
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <IField label="Fixmiete (€)" value={form.rentalPrice ?? ''} onChange={v => f('rentalPrice', v)} placeholder="z.B. 450" readOnly={ro} />
+                <IField label="inkl. km" value={form.includedKm ?? ''} onChange={v => f('includedKm', v)} placeholder="z.B. 500" readOnly={ro} />
+                <IField label="€ / Mehr-km" value={form.priceExtraKm ?? ''} onChange={v => f('priceExtraKm', v)} placeholder="z.B. 0,35" readOnly={ro} />
+                <IField label="Spritverbrauch (L/100 km)" value={form.fuelConsumption ?? ''} onChange={v => f('fuelConsumption', v)} placeholder="z.B. 15" readOnly={ro} />
+                <IField label="Spritpreis (€/L)" value={form.fuelPrice ?? ''} onChange={v => f('fuelPrice', v)} placeholder="z.B. 1,80" readOnly={ro} />
               </div>
             </div>
           </div>
