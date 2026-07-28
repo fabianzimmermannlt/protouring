@@ -291,7 +291,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
 
   const colCount = 2 + variants.length + 2
   // Festes Spaltenraster → alle Bereichs-Tabellen richten die Felder bündig untereinander aus.
-  const COLW = { pos: 480, variant: 205, ist: 190, erg: 145, act: 120 }
+  const COLW = { pos: 480, variant: 245, ist: 230, erg: 145, act: 120 }
   const tableWidth = COLW.pos + variants.length * COLW.variant + COLW.ist + COLW.erg + COLW.act
   // Übergeordnete Kosten dieses Bereichs → read-only Umlage-Zeile in der Show
   const activeShowsList = useMemo(() => dataset.shows.filter(s => s.is_active), [dataset])
@@ -703,7 +703,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                     onChange={e => setM(p => ({ ...p, travelRate: { ...p.travelRate, [v.id]: e.target.value } }))} />
                   <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelFix[v.id] ?? ''} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                     onChange={e => setM(p => ({ ...p, travelFix: { ...p.travelFix, [v.id]: e.target.value } }))} />
-                  <span style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
+                  <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
                 </div>
               </td>
             )
@@ -716,7 +716,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
               <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                 onChange={e => setM(p => ({ ...p, istTravelFix: e.target.value }))} onBlur={saveIst} />
-              <span style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
+              <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
             </div>
           </td>
           <td />
