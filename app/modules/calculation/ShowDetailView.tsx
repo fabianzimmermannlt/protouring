@@ -170,7 +170,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
             </label>
           </>
         )}
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2">
           {show.locked ? (
             <>
               <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#3a2f22', color: '#e0b877' }}>🔒 Abgerechnet</span>
@@ -178,19 +178,17 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
               <button onClick={() => setUnlockOpen(true)} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Entsperren</button>
             </>
           ) : (
-            <>
-              {summary && (
-                <div className="text-xs flex gap-4" style={{ color: '#9ca3af' }}>
-                  <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
-                  <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
-                  <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
-                </div>
-              )}
-              <button onClick={doLock} disabled={busyLock} className="btn btn-primary" style={{ fontSize: '0.78rem' }}>{busyLock ? '…' : '🔒 Sperren & abrechnen'}</button>
-            </>
+            <button onClick={doLock} disabled={busyLock} className="btn btn-primary" style={{ fontSize: '0.78rem' }}>{busyLock ? '…' : '🔒 Sperren & abrechnen'}</button>
           )}
         </div>
       </div>
+      {!show.locked && summary && (
+        <div className="text-xs flex gap-4 mb-4" style={{ color: '#9ca3af' }}>
+          <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
+          <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
+          <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
+        </div>
+      )}
       {show.locked && lockedSnap ? (
         <AbrechnungView snap={lockedSnap} />
       ) : (
