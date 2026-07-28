@@ -617,10 +617,10 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   onBlurCapture={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent' }} />
                 {/* Spezifikation + Reise rechtsbündig vor Variante 1 */}
                 <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
-                  {showSpec ? (
+                  {showSpec && (
                     <input className="form-input text-right" style={{ fontSize: '0.72rem', padding: '1px 5px', width: 120 }} value={spec}
                       onChange={e => setSpec(e.target.value)} onBlur={saveSpec} placeholder="Spezifikation" />
-                  ) : (spec ? <span className="text-xs" style={{ color: '#9ca3af' }}>{spec} ·</span> : null)}
+                  )}
                   {showTravel && (
                     <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
                       className="shrink-0 inline-flex items-center gap-1 rounded"
@@ -884,10 +884,10 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
-              {showSpec ? (
+              {showSpec && (
                 <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho}
                   className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190 }} />
-              ) : (whoVal ? <span className="text-xs" style={{ color: '#9ca3af' }}>· {whoVal}</span> : null)}
+              )}
             </div>
           </div>
         </div>
@@ -1075,7 +1075,8 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
     try { await deleteCalcPosition(positionId); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
 
-  const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.64rem', padding: '1px 3px', width: '100%', textAlign: 'right' as const } }
+  const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.75rem', padding: '2px 5px', width: '100%', textAlign: 'right' as const } }
+  const tvCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.72rem', padding: '2px 6px', width: '100%', textAlign: 'right' as const } }
 
   return (
     <>
@@ -1095,24 +1096,24 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
             className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
             <LinkIcon className="w-3.5 h-3.5" />
           </button>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="flex items-center gap-1.5">
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
+              <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
+                <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
+                  className="shrink-0 inline-flex items-center gap-1 rounded"
+                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? '#facc15' : 'transparent', border: `1px solid ${m.fuelOn ? '#facc15' : '#4a4a4a'}` }}>
+                  ⛽ Sprit
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 3 }}>
-              {hasDefaults && (
-                <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
-                  className="text-xs" style={{ color: '#60a5fa' }}>Fahrzeugwerte übernehmen</button>
-              )}
-              <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
-                className="shrink-0 inline-flex items-center gap-1 rounded"
-                style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? '#facc15' : 'transparent', border: `1px solid ${m.fuelOn ? '#facc15' : '#4a4a4a'}` }}>
-                ⛽ Sprit
-              </button>
-            </div>
+            {hasDefaults && (
+              <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
+                className="text-xs" style={{ color: '#60a5fa', marginTop: 2, display: 'inline-block' }}>Fahrzeugwerte übernehmen</button>
+            )}
           </div>
         </div>
       </td>
@@ -1163,13 +1164,12 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
         {variants.map(v => {
           const val = valsFor(v.id)
           return (
-            <td key={v.id} style={{ padding: '2px 8px', verticalAlign: 'top' }}>
-              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                <input {...vCell} style={{ ...vCell.style, flex: 1, color: m.shared ? '#93c5fd' : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
-                <span style={{ color: '#555', fontSize: 10 }}>×</span>
-                <input {...vCell} style={{ ...vCell.style, flex: 1, color: m.shared ? '#93c5fd' : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+            <td key={v.id} style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
+                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+                <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatMoney(fuelAmount(val))}</span>
               </div>
-              <div className="text-right" style={{ fontSize: 11, color: '#facc15', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(fuelAmount(val))}</div>
             </td>
           )
         })}
