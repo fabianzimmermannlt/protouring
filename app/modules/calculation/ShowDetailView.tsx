@@ -283,7 +283,8 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
             onDone={() => { setAdding(false); onChanged() }} />
         </div>
-        <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
+        <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
+        <button onClick={() => setAdding(false)} className="btn btn-primary shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
       </div>
     )}
     </div>
