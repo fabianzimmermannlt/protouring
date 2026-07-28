@@ -4,12 +4,13 @@
 // Liste aller Shows + Maske pro Show (Deal-Parameter). Anlegen/Ändern/Löschen/
 // Deaktivieren. Buchungen der Show folgen in Schritt 2. Siehe ADR-105.
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Decimal from 'decimal.js'
 import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { createCalcShow, updateCalcShow, deleteCalcShow, copyCalcPositions, getTermine, type CalcShowInput, type Termin } from '@/lib/api-client'
 import type { CalcDataset, CalcShow, DealType } from '@/lib/calculation/types'
 import { formatDate } from '@/lib/calculation/format'
+import { useSortable } from '@/app/hooks/useSortable'
 import ShowDetailView from './ShowDetailView'
 
 const DEAL_TYPES: { value: DealType; label: string }[] = [
@@ -31,6 +32,19 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
   const [detailId, setDetailId] = useState<string | null>(null)
 
   const shows = [...dataset.shows].sort((a, b) => a.sort_order - b.sort_order)
+
+  // Sortierbare Tabelle (wie Fahrzeuge/Venues): Klick auf Spaltentitel sortiert.
+  const sortRows = useMemo(() => shows.map(s => ({
+    show: s,
+    date: s.show_date ?? '',
+    city: s.city ?? '',
+    venue: s.venue ?? '',
+    guarantee: s.guarantee != null ? Number(s.guarantee) : 0,
+    deal: dealLabel(s.deal_type),
+    prov: s.commission != null ? Number(s.commission) : 0,
+    active: s.is_active ? '1' : '0',
+  })), [shows])
+  const { sortKey, sortDir, sorted, toggleSort } = useSortable(sortRows, 'date')
 
   const detailShow = detailId ? dataset.shows.find(s => s.id === detailId) : null
   if (detailId && detailShow) {
@@ -72,20 +86,28 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
         <table className="data-table" style={{ minWidth: 760 }}>
           <thead>
             <tr>
-              <th>Datum</th>
-              <th>Stadt</th>
-              <th>Venue</th>
-              <th className="text-right">Garantie</th>
-              <th>Deal</th>
-              <th className="text-right">Prov.</th>
-              <th>Aktiv</th>
+              {([
+                { k: 'date', label: 'Datum' },
+                { k: 'city', label: 'Stadt' },
+                { k: 'venue', label: 'Venue' },
+                { k: 'guarantee', label: 'Garantie', right: true },
+                { k: 'deal', label: 'Deal' },
+                { k: 'prov', label: 'Prov.', right: true },
+                { k: 'active', label: 'Aktiv' },
+              ] as const).map(c => (
+                <th key={c.k} className={`sortable${'right' in c && c.right ? ' text-right' : ''}`}
+                  onClick={() => toggleSort(c.k)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  {c.label}
+                  <span className={`sort-indicator${sortKey === c.k ? ' active' : ''}`}>{sortKey === c.k ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                </th>
+              ))}
               <th style={{ width: 72 }} />
             </tr>
           </thead>
           <tbody>
-            {shows.length === 0 ? (
+            {sorted.length === 0 ? (
               <tr><td colSpan={8} className="text-center py-6" style={{ color: '#9ca3af' }}>Noch keine Shows – „Neue Show" anlegen.</td></tr>
-            ) : shows.map(show => (
+            ) : sorted.map(({ show }) => (
               <tr key={show.id} style={{ opacity: show.is_active ? 1 : 0.5 }}>
                 <td className="text-xs">{formatDate(show.show_date)}</td>
                 <td className="font-medium text-sm">

@@ -25,7 +25,8 @@ export function useSortable<T extends Record<string, unknown>>(
       const bv = b[sortKey]
       const aStr = (av == null ? '' : String(av)).toLowerCase()
       const bStr = (bv == null ? '' : String(bv)).toLowerCase()
-      const cmp = aStr.localeCompare(bStr, 'de')
+      // numeric: true → „9" < „100" und „Tag 2" < „Tag 10"
+      const cmp = aStr.localeCompare(bStr, 'de', { numeric: true })
       return sortDir === 'asc' ? cmp : -cmp
     })
   }, [items, sortKey, sortDir])
