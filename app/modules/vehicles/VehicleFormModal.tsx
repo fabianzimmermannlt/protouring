@@ -6,7 +6,7 @@ import { createVehicle, updateVehicle, deleteVehicle, getVehicleTypes, type Vehi
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
-const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Sonstiges', 'Coach']
+const VEHICLE_TYPES_FALLBACK = ['Nightliner', 'Van', 'Transporter', 'LKW', 'PKW', 'Limousine', 'Anhänger', 'Sonstiges', 'Coach']
 
 const MOCK_USERS = [
   'Max Mustermann', 'Erika Mustermann', 'Thomas Schmidt',
@@ -26,6 +26,11 @@ const EMPTY_FORM: VehicleFormData = {
   seats: '',
   sleepingPlaces: '',
   notes: '',
+  rentalPrice: '',
+  includedKm: '',
+  priceExtraKm: '',
+  fuelConsumption: '',
+  fuelPrice: '',
 }
 
 interface VehicleFormModalProps {
@@ -53,6 +58,11 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
           seats: vehicle.seats,
           sleepingPlaces: vehicle.sleepingPlaces,
           notes: vehicle.notes,
+          rentalPrice: vehicle.rentalPrice ?? '',
+          includedKm: vehicle.includedKm ?? '',
+          priceExtraKm: vehicle.priceExtraKm ?? '',
+          fuelConsumption: vehicle.fuelConsumption ?? '',
+          fuelPrice: vehicle.fuelPrice ?? '',
         }
       : { ...EMPTY_FORM }
   )
@@ -188,7 +198,7 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
                     onChange={e => set({ hasTrailer: e.target.checked })}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
-                  <span className="ml-2 text-sm text-gray-700">{t('vehicles.hasTrailer')}</span>
+                  <span className="ml-2 text-sm text-gray-700">Kann Anhänger ziehen</span>
                 </div>
               </div>
 
@@ -251,6 +261,36 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
               rows={3}
               placeholder="Zusätzliche Informationen oder Bemerkungen"
             />
+          </div>
+
+          {/* Kalkulations-Erfahrungswerte: befüllen die Transport-Zeile vor, sind editierbar */}
+          <div className="mt-6" style={{ borderTop: '1px solid #3c3c3c', paddingTop: '1rem' }}>
+            <div className="text-sm font-semibold mb-1" style={{ color: '#e0e0e0' }}>Kalkulation (Erfahrungswerte)</div>
+            <p className="text-xs mb-3" style={{ color: '#8b949e' }}>
+              Optional – dienen zum Vorbefüllen der Transport-Zeile in der Kalkulation. Sprit wird dort als eigene Zeile gerechnet; die Werte hier sind nur Richtwerte. Bei einem Anhänger = Mehrverbrauch (zusätzliche L/100&nbsp;km).
+            </p>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div>
+                <label className="form-label">Fixmiete (€)</label>
+                <input type="text" inputMode="decimal" value={formData.rentalPrice ?? ''} onChange={e => set({ rentalPrice: e.target.value })} className="form-input" placeholder="z.B. 450" />
+              </div>
+              <div>
+                <label className="form-label">inkl. km</label>
+                <input type="text" inputMode="decimal" value={formData.includedKm ?? ''} onChange={e => set({ includedKm: e.target.value })} className="form-input" placeholder="z.B. 500" />
+              </div>
+              <div>
+                <label className="form-label">€ / Mehr-km</label>
+                <input type="text" inputMode="decimal" value={formData.priceExtraKm ?? ''} onChange={e => set({ priceExtraKm: e.target.value })} className="form-input" placeholder="z.B. 0,35" />
+              </div>
+              <div>
+                <label className="form-label">Spritverbrauch (L/100 km)</label>
+                <input type="text" inputMode="decimal" value={formData.fuelConsumption ?? ''} onChange={e => set({ fuelConsumption: e.target.value })} className="form-input" placeholder="z.B. 15" />
+              </div>
+              <div>
+                <label className="form-label">Spritpreis (€/L)</label>
+                <input type="text" inputMode="decimal" value={formData.fuelPrice ?? ''} onChange={e => set({ fuelPrice: e.target.value })} className="form-input" placeholder="z.B. 1,80" />
+              </div>
+            </div>
           </div>
         </div>
 

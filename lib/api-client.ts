@@ -1204,6 +1204,9 @@ export interface Vehicle {
   licensePlate: string; dimensions: string; powerConnection: string;
   hasTrailer: boolean; trailerDimensions: string; trailerLicensePlate: string;
   seats: string; sleepingPlaces: string; notes: string;
+  // Kalkulations-Erfahrungswerte (optional, informativ – befüllen die Transport-Zeile vor)
+  rentalPrice?: string; includedKm?: string; priceExtraKm?: string;
+  fuelConsumption?: string; fuelPrice?: string;
   createdAt?: string; updatedAt?: string;
 }
 export type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>;
