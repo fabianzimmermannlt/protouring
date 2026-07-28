@@ -241,7 +241,7 @@ function VariantsModal({ projectId, variants, onClose, onChanged }: {
 // ── Übersichts-Matrix ────────────────────────────────────────────────────────
 
 type RowType = 'section' | 'line' | 'catsum' | 'grand' | 'member'
-interface Row { type: RowType; label: string; perShow?: Decimal[]; total?: Decimal; percent?: Decimal | null }
+interface Row { type: RowType; label: string; note?: string; perShow?: Decimal[]; total?: Decimal; percent?: Decimal | null }
 const ZERO = new Decimal(0)
 
 function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
@@ -274,11 +274,15 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
 
     const pushCategory = (catId: string, kind: 'income' | 'expense', name: string) => {
       const basis = kind === 'income' ? sumE : sumA
+      const personal = /personal/i.test(name || '')
       for (const pos of posByCat(catId)) {
         const perShow = shows.map(s => s.positionAmount.get(pos.id) ?? ZERO)
         const total = perShow.reduce((a, b) => a.plus(b), ZERO)
         if (hideZero && total.isZero()) continue
-        out.push({ type: 'line', label: pos.name, perShow, total, percent: percentOf(total, basis) })
+        // Beim Personal Hinweis, wenn für die Position in einer aktiven Show Reisekosten hinterlegt sind
+        const hasTravel = personal && dataset.entries.some(e =>
+          e.position_id === pos.id && e.kind === 'travel' && e.show_id != null && activeShowIds.includes(e.show_id))
+        out.push({ type: 'line', label: pos.name, note: hasTravel ? 'inkl. Reisekosten' : undefined, perShow, total, percent: percentOf(total, basis) })
       }
       const perShow = shows.map(s => s.categoryAmount.get(catId) ?? ZERO)
       out.push({ type: 'catsum', label: `Gesamt ${name}`, perShow, total: catTotal(catId), percent: percentOf(catTotal(catId), basis) })
@@ -383,6 +387,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                 <tr key={i} style={rowStyle}>
                   <td style={{ position: 'sticky', left: 0, background: strong ? '#2f2f2f' : 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>
                     {r.label}
+                    {r.note && <span style={{ marginLeft: 6, fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467' }}>· {r.note}</span>}
                   </td>
                   {r.perShow!.map((v, j) => (
                     <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', ...neg(v) }}>
