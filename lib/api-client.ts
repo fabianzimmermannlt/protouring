@@ -884,7 +884,7 @@ export async function replaceCalcEntries(showId: string, positionId: string, ent
   await request(`/api/calc/shows/${showId}/positions/${positionId}/entries`, { method: 'PUT', body: { entries } })
 }
 
-export interface CalcActualInput { amount?: Num; travel_km?: Num; travel_rate?: Num; note?: string | null }
+export interface CalcActualInput { amount?: Num; travel_km?: Num; travel_rate?: Num; travel_fix?: Num; note?: string | null }
 export async function setCalcActual(showId: string, positionId: string, data: CalcActualInput): Promise<void> {
   await request(`/api/calc/shows/${showId}/actuals/${positionId}`, { method: 'PUT', body: data })
 }

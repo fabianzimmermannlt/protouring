@@ -46,6 +46,18 @@ function markRowDirty(key: string, dirty: boolean) {
 const hv = (v: unknown) => v != null && v !== ''
 const entryHasValue = (e: CalcEntry): boolean => hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price)
 
+// Tab springt spaltenweise nach unten: Inputs mit gleichem data-calc-col in DOM-
+// Reihenfolge; Tab → nächstes Feld unten, Shift+Tab → oben. Erleichtert die Eingabe.
+type GridKE = { key: string; shiftKey: boolean; currentTarget: HTMLInputElement; preventDefault: () => void }
+function gridTabDown(e: GridKE, col: string) {
+  if (e.key !== 'Tab') return
+  const nodes = Array.from(document.querySelectorAll<HTMLInputElement>(`input[data-calc-col="${col}"]`))
+  const i = nodes.indexOf(e.currentTarget)
+  if (i < 0) return
+  const next = nodes[i + (e.shiftKey ? -1 : 1)]
+  if (next) { e.preventDefault(); next.focus(); next.select() }
+}
+
 /** Schützt vor hängenden Requests: bricht nach ms mit Fehler ab. */
 function withTimeout<T>(p: Promise<T>, ms = 15000): Promise<T> {
   return Promise.race([
@@ -391,7 +403,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
 
 // ── Positions-Zeile ──────────────────────────────────────────────────────────
 
-interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; travelFix: Record<string, string>; ist: string; istTravelKm: string; istTravelRate: string }
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; travelFix: Record<string, string>; ist: string; istTravelKm: string; istTravelRate: string; istTravelFix: string }
 
 const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate, travelFix: x.travelFix })
 
@@ -432,6 +444,7 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
     ist: act?.amount != null ? String(act.amount) : '',
     istTravelKm: act?.travel_km != null ? String(act.travel_km) : '',
     istTravelRate: act?.travel_rate != null ? String(act.travel_rate) : '',
+    istTravelFix: act?.travel_fix != null ? String(act.travel_fix) : '',
   }
 }
 
@@ -492,9 +505,15 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
     } catch { return null }
   }
   const istTravelRes = (): Decimal | null => {
-    const km = norm(m.istTravelKm), rate = norm(m.istTravelRate)
-    if (km == null || rate == null) return null
-    try { return new Decimal(km).times(rate) } catch { return null }
+    const km = norm(m.istTravelKm), rate = norm(m.istTravelRate), fix = norm(m.istTravelFix)
+    const hasKm = km != null && rate != null
+    if (!hasKm && fix == null) return null
+    try {
+      let r = new Decimal(0)
+      if (hasKm) r = r.plus(new Decimal(km!).times(rate!))
+      if (fix != null) r = r.plus(new Decimal(fix))
+      return r
+    } catch { return null }
   }
   // Zeilenergebnis (Soll) für die Standardvariante: Grundbetrag + Reise
   const rowResultSoll = (): Decimal => {
@@ -533,7 +552,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
     finally { setBusy(false) }
   }
   const saveIst = async () => {
-    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate) })) }
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate), travel_fix: norm(m.istTravelFix) })) }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const removeRow = async () => {
@@ -617,7 +636,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
 
         {variants.map(v => (
           <td key={v.id} className="text-right" style={{ padding: '4px 8px' }}>
-            <input inputMode="decimal" {...cell}
+            <input inputMode="decimal" {...cell} data-calc-col={v.id} onKeyDown={e => gridTabDown(e, v.id)}
               value={m.shared ? m.sharedVal : (m.perVar[v.id] ?? '')}
               onChange={e => {
                 const val = e.target.value
@@ -635,7 +654,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
         ))}
 
         <td className="text-right" style={{ padding: '4px 8px' }}>
-          <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+          <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
             value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         </td>
 
@@ -690,6 +709,8 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 onChange={e => setM(p => ({ ...p, istTravelKm: e.target.value }))} onBlur={saveIst} />
               <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelRate} placeholder="€/km"
                 onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
+              <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
+                onChange={e => setM(p => ({ ...p, istTravelFix: e.target.value }))} onBlur={saveIst} />
               <span style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
             </div>
           </td>
@@ -888,7 +909,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
       })}
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-        <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
       </td>
 
@@ -1107,7 +1128,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
       })}
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-        <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
       </td>
 

@@ -120,6 +120,8 @@ export interface CalcActual {
   /** Ist-Reisekosten: km × €/km (real gefahren), addiert sich zum Ist-Grundbetrag. */
   travel_km?: Money
   travel_rate?: Money
+  /** Ist-Reisekosten: optionaler Fixpreis (z.B. Zugticket), addiert sich. */
+  travel_fix?: Money
   note?: string | null
 }
 

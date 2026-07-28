@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS calc_actuals (
   amount TEXT,
   travel_km TEXT,
   travel_rate TEXT,
+  travel_fix TEXT,
   note TEXT,
   UNIQUE (show_id, position_id)
 );
