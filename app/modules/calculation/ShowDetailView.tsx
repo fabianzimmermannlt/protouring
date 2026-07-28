@@ -743,16 +743,15 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
           </button>
           <div style={{ minWidth: 0 }}>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ background: '#3a2f22', color: '#e0b877' }}>Hotel</span>
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
+              {showSpec ? (
+                <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho}
+                  className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190 }} />
+              ) : (whoVal ? <span className="text-xs" style={{ color: '#9ca3af' }}>· {whoVal}</span> : null)}
             </div>
-            {showSpec ? (
-              <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho}
-                className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190, marginTop: 3 }} />
-            ) : (whoVal ? <div className="text-xs" style={{ color: '#9ca3af', marginTop: 2 }}>· {whoVal}</div> : null)}
           </div>
         </div>
       </td>
