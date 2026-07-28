@@ -969,7 +969,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
     try { await deleteCalcPosition(positionId); onChanged() } catch (e: any) { setErr(e?.message ?? 'Fehler'); setBusy(false) }
   }
 
-  const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'right' as const } }
+  const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.64rem', padding: '1px 3px', width: '100%', textAlign: 'right' as const } }
 
   return (
     <>
@@ -1049,8 +1049,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
     {m.fuelOn && (
       <tr style={{ background: '#211f17' }}>
         <td style={{ verticalAlign: 'top' }}>
-          <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22 }}>
-            ⛽ Sprit <span style={{ color: '#6b7280', fontSize: 10 }}>(Strecke/100 × Verbrauch × €/L)</span>
+          <div className="flex items-center gap-1 text-xs" title="Strecke/100 × Verbrauch × €/L"
+            style={{ color: '#facc15', paddingLeft: 22, whiteSpace: 'nowrap' }}>
+            ⛽ Sprit <span style={{ color: '#6b7280', fontSize: 10 }}>L/100 × €/L</span>
           </div>
         </td>
         {variants.map(v => {
