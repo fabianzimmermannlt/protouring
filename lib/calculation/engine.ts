@@ -30,6 +30,8 @@ export function entryAmount(entry: CalcEntry, project: CalcProject): Decimal {
   }
   // Sprit: Strecke/100 × Verbrauch (L/100 km) × Preis (€/L).
   if (entry.kind === 'fuel') return D(entry.distance_km).div(100).times(D(entry.quantity)).times(D(entry.unit_price))
+  // Reisekosten: km × €/km PLUS optionaler Fixpreis (z.B. Zugticket). Beide Teile optional.
+  if (entry.kind === 'travel') return D(entry.quantity).times(D(entry.unit_price)).plus(D(entry.amount))
   // Direktbetrag hat Vorrang (Tabellen-Eingabe); sonst Menge×Preis / Fahrzeug.
   if (entry.amount != null && entry.amount !== '') return D(entry.amount)
   const dist = D(entry.distance_km)

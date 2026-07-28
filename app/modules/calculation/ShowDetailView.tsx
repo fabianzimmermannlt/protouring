@@ -323,9 +323,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
 
 // ── Positions-Zeile ──────────────────────────────────────────────────────────
 
-interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; ist: string; istTravelKm: string; istTravelRate: string }
+interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, string>; travelKm: Record<string, string>; travelRate: Record<string, string>; travelFix: Record<string, string>; ist: string; istTravelKm: string; istTravelRate: string }
 
-const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate })
+const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate, travelFix: x.travelFix })
 
 function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: string, positionId: string, variants: Variant[]): RowModel {
   const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId)
@@ -344,20 +344,23 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   // Reise pro Variante (variant_id) + geerbt aus „gilt für alle" (variant_id NULL)
   const travelKm: Record<string, string> = {}
   const travelRate: Record<string, string> = {}
+  const travelFix: Record<string, string> = {}
   const tNull = travelE.find(e => e.variant_id == null)
   if (tNull) variants.forEach(v => {
     travelKm[v.id] = tNull.quantity != null ? String(tNull.quantity) : ''
     travelRate[v.id] = tNull.unit_price != null ? String(tNull.unit_price) : ''
+    travelFix[v.id] = tNull.amount != null ? String(tNull.amount) : ''
   })
   travelE.filter(e => e.variant_id != null).forEach(e => {
     if (!e.variant_id) return
     travelKm[e.variant_id] = e.quantity != null ? String(e.quantity) : ''
     travelRate[e.variant_id] = e.unit_price != null ? String(e.unit_price) : ''
+    travelFix[e.variant_id] = e.amount != null ? String(e.amount) : ''
   })
 
   const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
   return {
-    shared, sharedVal, perVar, travelKm, travelRate,
+    shared, sharedVal, perVar, travelKm, travelRate, travelFix,
     ist: act?.amount != null ? String(act.amount) : '',
     istTravelKm: act?.travel_km != null ? String(act.travel_km) : '',
     istTravelRate: act?.travel_rate != null ? String(act.travel_rate) : '',
@@ -377,7 +380,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const [savedSnap, setSavedSnap] = useState(() => sollSnap(initial))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== ''))
+  const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== '' || (initial.travelFix[v.id] ?? '') !== ''))
   const [spec, setSpec] = useState(positionSpec ?? '')
   const saveSpec = async () => { try { await updateCalcPosition(positionId, { spec: spec.trim() || null }) } catch { /* still */ } }
   const [person, setPerson] = useState(positionPerson ?? '')
@@ -410,9 +413,15 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   })
 
   const travelRes = (vid: string): Decimal | null => {
-    const km = norm(m.travelKm[vid] ?? ''), rate = norm(m.travelRate[vid] ?? '')
-    if (km == null || rate == null) return null
-    try { return new Decimal(km).times(rate) } catch { return null }
+    const km = norm(m.travelKm[vid] ?? ''), rate = norm(m.travelRate[vid] ?? ''), fix = norm(m.travelFix[vid] ?? '')
+    const hasKm = km != null && rate != null
+    if (!hasKm && fix == null) return null
+    try {
+      let r = new Decimal(0)
+      if (hasKm) r = r.plus(new Decimal(km!).times(rate!))
+      if (fix != null) r = r.plus(new Decimal(fix))
+      return r
+    } catch { return null }
   }
   const istTravelRes = (): Decimal | null => {
     const km = norm(m.istTravelKm), rate = norm(m.istTravelRate)
@@ -439,8 +448,9 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
       : variants.map(v => ({ v, a: norm(m.perVar[v.id] ?? '') })).filter(x => x.a != null).map(x => ({ kind: 'base', variant_id: x.v.id, amount: x.a }))
     const travel: CalcEntryInput[] = []
     if (showTravel) variants.forEach(v => {
-      const km = norm(m.travelKm[v.id] ?? ''), rate = norm(m.travelRate[v.id] ?? '')
-      if (km != null && rate != null) travel.push({ kind: 'travel', variant_id: v.id, quantity: km, unit_price: rate })
+      const km = norm(m.travelKm[v.id] ?? ''), rate = norm(m.travelRate[v.id] ?? ''), fix = norm(m.travelFix[v.id] ?? '')
+      const hasKm = km != null && rate != null
+      if (hasKm || fix != null) travel.push({ kind: 'travel', variant_id: v.id, quantity: hasKm ? km : null, unit_price: hasKm ? rate : null, amount: fix })
     })
     return [...base, ...travel]
   }
@@ -477,7 +487,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
 
   const cell = { className: 'form-input text-right', style: { fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' } as const }
   const tvCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.72rem', padding: '2px 6px', width: '100%', textAlign: 'right' as const } }
-  const travelActive = travelOpen || variants.some(v => (m.travelKm[v.id] ?? '') !== '' || (m.travelRate[v.id] ?? '') !== '')
+  const travelActive = travelOpen || variants.some(v => (m.travelKm[v.id] ?? '') !== '' || (m.travelRate[v.id] ?? '') !== '' || (m.travelFix[v.id] ?? '') !== '')
 
   return (
     <>
@@ -583,10 +593,10 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
       {showTravel && travelOpen && (
         <tr>
           <td style={{ verticalAlign: 'top' }}>
-            <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22 }}>
-              <TruckIcon className="w-3.5 h-3.5" /> Reise <span style={{ color: '#6b7280', fontSize: 10 }}>(km × €/km)</span>
+            <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22, whiteSpace: 'nowrap' }} title="km × €/km plus optionaler Fixpreis (z.B. Zugticket)">
+              <TruckIcon className="w-3.5 h-3.5" /> Reise <span style={{ color: '#6b7280', fontSize: 10 }}>km×€ + Fix</span>
               {travelActive && (
-                <button onClick={() => setM(p => ({ ...p, travelKm: {}, travelRate: {} }))} className="text-gray-500 hover:text-red-500 ml-1" title="Reisekosten löschen">✕</button>
+                <button onClick={() => setM(p => ({ ...p, travelKm: {}, travelRate: {}, travelFix: {} }))} className="text-gray-500 hover:text-red-500 ml-1" title="Reisekosten löschen">✕</button>
               )}
             </div>
           </td>
@@ -599,6 +609,8 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                     onChange={e => setM(p => ({ ...p, travelKm: { ...p.travelKm, [v.id]: e.target.value } }))} />
                   <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelRate[v.id] ?? ''} placeholder="€/km"
                     onChange={e => setM(p => ({ ...p, travelRate: { ...p.travelRate, [v.id]: e.target.value } }))} />
+                  <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelFix[v.id] ?? ''} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
+                    onChange={e => setM(p => ({ ...p, travelFix: { ...p.travelFix, [v.id]: e.target.value } }))} />
                   <span style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
                 </div>
               </td>
