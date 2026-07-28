@@ -1207,6 +1207,8 @@ export interface Vehicle {
   // Kalkulations-Erfahrungswerte (optional, informativ – befüllen die Transport-Zeile vor)
   rentalPrice?: string; includedKm?: string; priceExtraKm?: string;
   fuelConsumption?: string; fuelPrice?: string;
+  // Abmessungen einzeln (dimensions = zusammengesetzte Anzeige)
+  dimLength?: string; dimWidth?: string; dimHeight?: string;
   createdAt?: string; updatedAt?: string;
 }
 export type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>;

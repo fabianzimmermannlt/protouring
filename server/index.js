@@ -392,6 +392,9 @@ async function initDatabase() {
       price_extra_km TEXT,
       fuel_consumption TEXT,
       fuel_price TEXT,
+      dim_length TEXT,
+      dim_width TEXT,
+      dim_height TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
@@ -752,6 +755,10 @@ async function initDatabase() {
     `ALTER TABLE vehicles ADD COLUMN price_extra_km TEXT`,
     `ALTER TABLE vehicles ADD COLUMN fuel_consumption TEXT`,
     `ALTER TABLE vehicles ADD COLUMN fuel_price TEXT`,
+    // Fahrzeuge: Abmessungen einzeln (Länge/Breite/Höhe); dimensions bleibt als zusammengesetzte Anzeige
+    `ALTER TABLE vehicles ADD COLUMN dim_length TEXT`,
+    `ALTER TABLE vehicles ADD COLUMN dim_width TEXT`,
+    `ALTER TABLE vehicles ADD COLUMN dim_height TEXT`,
   ]) { try { await db.run(sql) } catch { /* already exists */ } }
 
   // equipment_materials.modell: NOT NULL Constraint entfernen (war produkt TEXT NOT NULL)
@@ -3777,6 +3784,7 @@ const vehicleFromRow = (r) => ({
   seats: r.seats||'', sleepingPlaces: r.sleeping_places||'', notes: r.notes||'',
   rentalPrice: r.rental_price||'', includedKm: r.included_km||'', priceExtraKm: r.price_extra_km||'',
   fuelConsumption: r.fuel_consumption||'', fuelPrice: r.fuel_price||'',
+  dimLength: r.dim_length||'', dimWidth: r.dim_width||'', dimHeight: r.dim_height||'',
   createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -3801,12 +3809,14 @@ app.post('/api/vehicles', authenticateToken, requireTenant, requireEditor, async
     const result = await db.run(`
       INSERT INTO vehicles (tenant_id, designation, vehicle_type, driver, license_plate,
         dimensions, power_connection, has_trailer, trailer_dimensions, trailer_license_plate,
-        seats, sleeping_places, notes, rental_price, included_km, price_extra_km, fuel_consumption, fuel_price)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        seats, sleeping_places, notes, rental_price, included_km, price_extra_km, fuel_consumption, fuel_price,
+        dim_length, dim_width, dim_height)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `, [req.tenant.id, v.designation||'', v.vehicleType||'', v.driver||'', v.licensePlate||'',
         v.dimensions||'', v.powerConnection||'', v.hasTrailer?1:0, v.trailerDimensions||'',
         v.trailerLicensePlate||'', v.seats||'', v.sleepingPlaces||'', v.notes||'',
-        v.rentalPrice||'', v.includedKm||'', v.priceExtraKm||'', v.fuelConsumption||'', v.fuelPrice||'']);
+        v.rentalPrice||'', v.includedKm||'', v.priceExtraKm||'', v.fuelConsumption||'', v.fuelPrice||'',
+        v.dimLength||'', v.dimWidth||'', v.dimHeight||'']);
     const row = await db.get('SELECT * FROM vehicles WHERE id = ?', [result.lastID]);
     res.status(201).json({ vehicle: vehicleFromRow(row) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Failed to create vehicle' }); }
@@ -3822,12 +3832,14 @@ app.put('/api/vehicles/:id', authenticateToken, requireTenant, requireEditor, as
         power_connection=?, has_trailer=?, trailer_dimensions=?, trailer_license_plate=?,
         seats=?, sleeping_places=?, notes=?,
         rental_price=?, included_km=?, price_extra_km=?, fuel_consumption=?, fuel_price=?,
+        dim_length=?, dim_width=?, dim_height=?,
         updated_at=datetime('now')
       WHERE id=? AND tenant_id=?
     `, [v.designation||'', v.vehicleType||'', v.driver||'', v.licensePlate||'', v.dimensions||'',
         v.powerConnection||'', v.hasTrailer?1:0, v.trailerDimensions||'', v.trailerLicensePlate||'',
         v.seats||'', v.sleepingPlaces||'', v.notes||'',
         v.rentalPrice||'', v.includedKm||'', v.priceExtraKm||'', v.fuelConsumption||'', v.fuelPrice||'',
+        v.dimLength||'', v.dimWidth||'', v.dimHeight||'',
         id, req.tenant.id]);
     const row = await db.get('SELECT * FROM vehicles WHERE id = ?', [id]);
     res.json({ vehicle: vehicleFromRow(row) });

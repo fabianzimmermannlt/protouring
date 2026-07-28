@@ -26,6 +26,9 @@ const EMPTY_FORM: VehicleFormData = {
   seats: '',
   sleepingPlaces: '',
   notes: '',
+  dimLength: '',
+  dimWidth: '',
+  dimHeight: '',
   rentalPrice: '',
   includedKm: '',
   priceExtraKm: '',
@@ -58,6 +61,9 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
           seats: vehicle.seats,
           sleepingPlaces: vehicle.sleepingPlaces,
           notes: vehicle.notes,
+          dimLength: vehicle.dimLength ?? '',
+          dimWidth: vehicle.dimWidth ?? '',
+          dimHeight: vehicle.dimHeight ?? '',
           rentalPrice: vehicle.rentalPrice ?? '',
           includedKm: vehicle.includedKm ?? '',
           priceExtraKm: vehicle.priceExtraKm ?? '',
@@ -82,12 +88,15 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
 
   const handleSave = async () => {
     if (!formData.designation.trim()) { alert(t('vehicles.designationRequired2')); return }
+    // Abmessungen aus L/B/H zusammensetzen (für Anzeige/Altbestand); Altwert behalten, wenn L/B/H leer
+    const composed = [formData.dimLength, formData.dimWidth, formData.dimHeight].map(x => (x ?? '').trim()).filter(Boolean).join(' × ')
+    const payload: VehicleFormData = { ...formData, dimensions: composed || formData.dimensions }
     try {
       if (vehicle) {
-        const updated = await updateVehicle(vehicle.id, formData)
+        const updated = await updateVehicle(vehicle.id, payload)
         onSaved(updated)
       } else {
-        const created = await createVehicle(formData)
+        const created = await createVehicle(payload)
         onSaved(created)
       }
       onClose()
@@ -165,14 +174,12 @@ export default function VehicleFormModal({ vehicle, onClose, onSaved, onDeleted 
               </div>
 
               <div>
-                <label className="form-label">{t('vehicles.dimensionsShort')}</label>
-                <input
-                  type="text"
-                  value={formData.dimensions}
-                  onChange={e => set({ dimensions: e.target.value })}
-                  className="form-input"
-                  placeholder={t('vehicles.dimensionsPlaceholder')}
-                />
+                <label className="form-label">Abmessungen (L × B × H)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input type="text" inputMode="decimal" value={formData.dimLength ?? ''} onChange={e => set({ dimLength: e.target.value })} className="form-input" placeholder="Länge" />
+                  <input type="text" inputMode="decimal" value={formData.dimWidth ?? ''} onChange={e => set({ dimWidth: e.target.value })} className="form-input" placeholder="Breite" />
+                  <input type="text" inputMode="decimal" value={formData.dimHeight ?? ''} onChange={e => set({ dimHeight: e.target.value })} className="form-input" placeholder="Höhe" />
+                </div>
               </div>
             </div>
 
