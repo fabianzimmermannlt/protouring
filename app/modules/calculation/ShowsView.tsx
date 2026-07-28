@@ -34,8 +34,14 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
 
   const detailShow = detailId ? dataset.shows.find(s => s.id === detailId) : null
   if (detailId && detailShow) {
-    const back = () => setDetailId(null)
-    return <ShowDetailView show={detailShow} dataset={dataset} onChanged={onChanged} onBack={() => (guardNav ? guardNav(back) : back())} />
+    const go = (fn: () => void) => (guardNav ? guardNav(fn) : fn())
+    const idx = shows.findIndex(s => s.id === detailId)
+    const prev = idx > 0 ? shows[idx - 1] : null
+    const next = idx >= 0 && idx < shows.length - 1 ? shows[idx + 1] : null
+    return <ShowDetailView show={detailShow} dataset={dataset} onChanged={onChanged}
+      onBack={() => go(() => setDetailId(null))}
+      onPrev={prev ? () => go(() => setDetailId(prev.id)) : undefined}
+      onNext={next ? () => go(() => setDetailId(next.id)) : undefined} />
   }
 
   const handleDelete = async (show: CalcShow) => {

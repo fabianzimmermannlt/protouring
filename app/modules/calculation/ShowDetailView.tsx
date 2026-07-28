@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
-import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
   createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
   getVehicles, createVehicle, type Vehicle, type CalcEntryInput,
@@ -54,8 +54,9 @@ function withTimeout<T>(p: Promise<T>, ms = 15000): Promise<T> {
 
 interface Variant { id: string; name: string }
 
-export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
+export default function ShowDetailView({ show, dataset, onChanged, onBack, onPrev, onNext }: {
   show: CalcShow; dataset: CalcDataset; onChanged: () => void; onBack: () => void
+  onPrev?: () => void; onNext?: () => void
 }) {
   const [editParams, setEditParams] = useState(false)
   const project = dataset.project
@@ -105,6 +106,16 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
         </button>
+        <div className="flex items-center gap-1">
+          <button onClick={onPrev} disabled={!onPrev} className="btn btn-ghost" title="Vorherige Show"
+            style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem', opacity: onPrev ? 1 : 0.35, cursor: onPrev ? 'pointer' : 'not-allowed' }}>
+            <ChevronLeftIcon className="w-4 h-4" />
+          </button>
+          <button onClick={onNext} disabled={!onNext} className="btn btn-ghost" title="Nächste Show"
+            style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem', opacity: onNext ? 1 : 0.35, cursor: onNext ? 'pointer' : 'not-allowed' }}>
+            <ChevronRightIcon className="w-4 h-4" />
+          </button>
+        </div>
         <h3 className="text-base font-semibold" style={{ color: '#e0e0e0' }}>
           {show.city || '(ohne Stadt)'}{show.show_date ? ` · ${formatDate(show.show_date)}` : ''}{show.venue ? ` · ${show.venue}` : ''}
         </h3>
@@ -1006,23 +1017,27 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, isTransport, c
   vehicles: Vehicle[]; reloadVehicles: () => void
   onDone: () => void
 }) {
+  // Im Transport-Bereich getrennt: Fahrzeug (aus Fuhrpark) ODER Sonstiges (frei: Sprit, Maut, Vignette …)
+  const [tMode, setTMode] = useState<'vehicle' | 'other'>('vehicle')
+  const asVehicle = isTransport && tMode === 'vehicle'
+
   const items = useMemo<PItem[]>(() => {
     if (isPersonal) return functions.flatMap(g => g.names.map(n => ({ id: `${g.group}::${n}`, name: n, group: g.group, kind: 'function' as const })))
-    if (isTransport) return vehicles.map(v => ({ id: `veh:${v.id}`, name: v.designation, group: v.vehicleType || undefined, kind: 'vehicle' as const }))
+    if (asVehicle) return vehicles.map(v => ({ id: `veh:${v.id}`, name: v.designation, group: v.vehicleType || undefined, kind: 'vehicle' as const }))
     const seen = new Set<string>()
     const names: PItem[] = []
-    catPositions.filter(p => !p.is_overhead).forEach(p => {
+    catPositions.filter(p => !p.is_overhead && p.pos_type !== 'vehicle').forEach(p => {
       const key = p.name.toLowerCase()
       if (!seen.has(key)) { seen.add(key); names.push({ id: p.name, name: p.name, kind: p.pos_type === 'hotel' ? 'hotel' : 'name' }) }
     })
     if (isUnterkunft && !seen.has('hotel')) names.unshift({ id: '__hotel__', name: 'Hotel', kind: 'hotel' })
     return names
-  }, [isPersonal, isUnterkunft, isTransport, functions, vehicles, catPositions])
+  }, [isPersonal, isUnterkunft, asVehicle, functions, vehicles, catPositions])
 
   const commit = async (data: { name: string; spec?: string | null; kind: PItem['kind'] | 'new' }) => {
     const name = data.name.trim()
     if (!name) return
-    if (isTransport) {
+    if (asVehicle) {
       // Neu getipptes Fahrzeug → in den App-Fuhrpark schreiben (bidirektional)
       let snap: { rental?: string; included?: string; extra?: string; consumption?: string; price?: string } | undefined
       if (data.kind === 'new') {
@@ -1045,24 +1060,34 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, isTransport, c
   }
 
   return (
-    <SearchableDropdown<PItem>
-      value={null}
-      placeholder={isPersonal ? 'Funktion wählen oder neu…' : (isTransport ? 'Fahrzeug wählen oder neu…' : (isUnterkunft ? 'Position wählen (z.B. Hotel) oder neu…' : 'Position wählen oder neu…'))}
-      items={items}
-      filterFn={(it, q) => it.name.toLowerCase().includes(q.toLowerCase())}
-      renderValue={it => it.name}
-      renderItem={it => (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: '0.82rem', color: '#e0e0e0' }}>{it.name}</span>
-          {it.group && <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>{it.group}</span>}
+    <div>
+      {isTransport && (
+        <div className="flex gap-1 text-[11px]" style={{ marginBottom: 5 }}>
+          <button onClick={() => setTMode('vehicle')} style={{ color: tMode === 'vehicle' ? '#60a5fa' : '#8b8b8b', fontWeight: tMode === 'vehicle' ? 600 : 400 }}>Fahrzeug</button>
+          <span style={{ color: '#555' }}>·</span>
+          <button onClick={() => setTMode('other')} style={{ color: tMode === 'other' ? '#60a5fa' : '#8b8b8b', fontWeight: tMode === 'other' ? 600 : 400 }}>Sonstiges (Sprit, Maut …)</button>
         </div>
       )}
-      onSelect={it => { if (it) commit({ name: it.name, kind: it.kind }) }}
-      createLabel={isPersonal ? 'Neue Funktion anlegen' : (isTransport ? 'Neues Fahrzeug anlegen' : 'Neue Position anlegen')}
-      renderCreateForm={(_onCreated, onCancel) => (
-        <InlineNewForm isPersonal={isPersonal} namePlaceholder={isTransport ? 'Neues Fahrzeug…' : (isPersonal ? 'Neue Funktion…' : 'Neue Position…')} onCreate={(name, spec) => commit({ name, spec, kind: 'new' })} onCancel={onCancel} />
-      )}
-    />
+      <SearchableDropdown<PItem>
+        key={isTransport ? tMode : 'std'}
+        value={null}
+        placeholder={isPersonal ? 'Funktion wählen oder neu…' : (asVehicle ? 'Fahrzeug wählen oder neu…' : (isUnterkunft ? 'Position wählen (z.B. Hotel) oder neu…' : 'Position wählen oder neu…'))}
+        items={items}
+        filterFn={(it, q) => it.name.toLowerCase().includes(q.toLowerCase())}
+        renderValue={it => it.name}
+        renderItem={it => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: '0.82rem', color: '#e0e0e0' }}>{it.name}</span>
+            {it.group && <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>{it.group}</span>}
+          </div>
+        )}
+        onSelect={it => { if (it) commit({ name: it.name, kind: it.kind }) }}
+        createLabel={isPersonal ? 'Neue Funktion anlegen' : (asVehicle ? 'Neues Fahrzeug anlegen' : 'Neue Position anlegen')}
+        renderCreateForm={(_onCreated, onCancel) => (
+          <InlineNewForm isPersonal={isPersonal} namePlaceholder={asVehicle ? 'Neues Fahrzeug…' : (isPersonal ? 'Neue Funktion…' : (isTransport ? 'z.B. Sprit, Maut, Vignette…' : 'Neue Position…'))} onCreate={(name, spec) => commit({ name, spec, kind: 'new' })} onCancel={onCancel} />
+        )}
+      />
+    </div>
   )
 }
 
