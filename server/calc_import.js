@@ -44,7 +44,10 @@ CREATE TABLE IF NOT EXISTS calc_shows (
   commission TEXT NOT NULL DEFAULT '0',
   deal_type TEXT NOT NULL DEFAULT 'vs',
   is_active INTEGER NOT NULL DEFAULT 1,
-  note TEXT
+  note TEXT,
+  locked INTEGER NOT NULL DEFAULT 0,   -- Show gesperrt/abgerechnet
+  locked_at TEXT,
+  snapshot TEXT                        -- eingefrorene Abrechnung (self-contained JSON)
 );
 CREATE TABLE IF NOT EXISTS calc_categories (
   id TEXT PRIMARY KEY,
@@ -190,7 +193,7 @@ function rowsToDataset(rows) {
   return {
     project: rows.project,
     variants: rows.variants,
-    shows: rows.shows.map(x => ({ ...x, is_active: x.is_active === 1 || x.is_active === true })),
+    shows: rows.shows.map(x => ({ ...x, is_active: x.is_active === 1 || x.is_active === true, locked: x.locked === 1 || x.locked === true })),
     categories: rows.categories,
     positions: rows.positions.map(x => ({ ...x, is_overhead: x.is_overhead === 1 || x.is_overhead === true })),
     entries: rows.entries,

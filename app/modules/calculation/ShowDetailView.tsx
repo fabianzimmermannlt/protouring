@@ -10,8 +10,10 @@ import Decimal from 'decimal.js'
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
   createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
-  getVehicles, createVehicle, type Vehicle, type CalcEntryInput,
+  getVehicles, createVehicle, lockCalcShow, unlockCalcShow, type Vehicle, type CalcEntryInput,
 } from '@/lib/api-client'
+import { buildAbrechnung, type AbrechnungSnapshot } from '@/lib/calculation/abrechnung'
+import AbrechnungView from './AbrechnungView'
 
 interface FuncGroup { group: string; names: string[] }
 import type { CalcDataset, CalcShow, CalcProject, CalcEntry } from '@/lib/calculation/types'
@@ -100,6 +102,29 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     return ov.shows.find(s => s.showId === show.id)
   }, [dataset, show.id, project.default_variant_id, variants])
 
+  // ── Sperren / Abrechnung ──
+  const chosenVariant = (resultVar && resultVar !== 'ist') ? resultVar : (project.default_variant_id ?? variants[0]?.id ?? null)
+  const [busyLock, setBusyLock] = useState(false)
+  const [unlockOpen, setUnlockOpen] = useState(false)
+  const [pin, setPin] = useState('')
+  const [pinErr, setPinErr] = useState('')
+  const lockedSnap = useMemo<AbrechnungSnapshot | null>(() => {
+    if (!show.locked || !show.snapshot) return null
+    try { const s = JSON.parse(show.snapshot) as AbrechnungSnapshot; return { ...s, lockedAt: show.locked_at ?? null } } catch { return null }
+  }, [show.locked, show.snapshot, show.locked_at])
+
+  const doLock = async () => {
+    const snap = buildAbrechnung(dataset, show, chosenVariant)
+    if (!confirm(`Show mit Variante „${snap.variantName}" sperren und abrechnen?\n\nDanach ist die Show schreibgeschützt (Abrechnung eingefroren). Entsperren nur mit PIN.`)) return
+    setBusyLock(true)
+    try { await lockCalcShow(show.id, snap); onChanged() } catch (e: any) { alert(e?.message ?? 'Fehler beim Sperren'); setBusyLock(false) }
+  }
+  const doUnlock = async () => {
+    setPinErr('')
+    try { await unlockCalcShow(show.id, pin); setUnlockOpen(false); setPin(''); onChanged() }
+    catch (e: any) { setPinErr(e?.message ?? 'Entsperren fehlgeschlagen') }
+  }
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -119,40 +144,83 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
         <h3 className="text-base font-semibold" style={{ color: '#e0e0e0' }}>
           {show.city || '(ohne Stadt)'}{show.show_date ? ` · ${formatDate(show.show_date)}` : ''}{show.venue ? ` · ${show.venue}` : ''}
         </h3>
-        <button onClick={() => setEditParams(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
-          <PencilIcon className="w-3.5 h-3.5" /> Parameter
-        </button>
-        <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
-          Ergebnis-Spalte:
-          <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
-            {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-            <option value="ist">Ist</option>
-          </select>
-        </label>
-        {summary && (
-          <div className="ml-auto text-xs flex gap-4" style={{ color: '#9ca3af' }}>
-            <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
-            <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
-            <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
-          </div>
+        {!show.locked && (
+          <>
+            <button onClick={() => setEditParams(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+              <PencilIcon className="w-3.5 h-3.5" /> Parameter
+            </button>
+            <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
+              Ergebnis-Spalte:
+              <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
+                {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                <option value="ist">Ist</option>
+              </select>
+            </label>
+          </>
         )}
+        <div className="ml-auto flex items-center gap-3">
+          {show.locked ? (
+            <>
+              <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#3a2f22', color: '#e0b877' }}>🔒 Abgerechnet</span>
+              <button onClick={() => window.print()} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Drucken</button>
+              <button onClick={() => setUnlockOpen(true)} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Entsperren</button>
+            </>
+          ) : (
+            <>
+              {summary && (
+                <div className="text-xs flex gap-4" style={{ color: '#9ca3af' }}>
+                  <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
+                  <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
+                  <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
+                </div>
+              )}
+              <button onClick={doLock} disabled={busyLock} className="btn btn-primary" style={{ fontSize: '0.78rem' }}>{busyLock ? '…' : '🔒 Sperren & abrechnen'}</button>
+            </>
+          )}
+        </div>
       </div>
-      <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
-        🔗 = ein gemeinsamer Soll-Wert für alle Varianten (Standard). Zum Auflösen aufs 🔗 klicken → je Variante ein eigenes Feld (der Wert bleibt erhalten, u.a. bei Var 1). „Ist" = tatsächliche Rechnung (für die Abrechnung).
-      </p>
-
-      <div className="space-y-4">
-        {categories.map(cat => (
-          <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
-            category={cat} variants={variants} onChanged={onChanged}
-            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions}
-            vehicles={vehicles} reloadVehicles={loadVehicles} resultVar={resultVar} />
-        ))}
-      </div>
+      {show.locked && lockedSnap ? (
+        <AbrechnungView snap={lockedSnap} />
+      ) : (
+        <>
+          <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+            🔗 = ein gemeinsamer Soll-Wert für alle Varianten (Standard). Zum Auflösen aufs 🔗 klicken → je Variante ein eigenes Feld (der Wert bleibt erhalten, u.a. bei Var 1). „Ist" = tatsächliche Rechnung (für die Abrechnung).
+          </p>
+          <div className="space-y-4">
+            {categories.map(cat => (
+              <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
+                category={cat} variants={variants} onChanged={onChanged}
+                functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions}
+                vehicles={vehicles} reloadVehicles={loadVehicles} resultVar={resultVar} />
+            ))}
+          </div>
+        </>
+      )}
 
       {editParams && (
         <ShowFormModal projectId={project.id} show={show}
           onClose={() => setEditParams(false)} onSaved={() => { setEditParams(false); onChanged() }} />
+      )}
+
+      {unlockOpen && (
+        <div className="modal-overlay">
+          <div className="modal-container" style={{ maxWidth: 400 }}>
+            <div className="modal-header"><h3 className="modal-title">Show entsperren</h3><button onClick={() => { setUnlockOpen(false); setPin(''); setPinErr('') }} className="text-gray-400 hover:text-white">✕</button></div>
+            <div className="modal-body space-y-3">
+              <div className="text-xs" style={{ color: '#facc15', background: '#332', border: '1px solid #5a4', borderRadius: 6, padding: '8px 10px' }}>
+                ⚠️ Superadmin: Entsperren verwirft den eingefrorenen Abrechnungs-Snapshot. Die Show wird wieder editierbar. Nur für Korrekturen/Tests.
+              </div>
+              <label className="form-label">PIN</label>
+              <input type="password" inputMode="numeric" className="form-input" value={pin} autoFocus
+                onChange={e => setPin(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') doUnlock() }} placeholder="••••" />
+              {pinErr && <p className="text-xs" style={{ color: '#fca5a5' }}>{pinErr}</p>}
+            </div>
+            <div className="modal-footer flex justify-end gap-2">
+              <button onClick={() => { setUnlockOpen(false); setPin(''); setPinErr('') }} className="btn btn-ghost">Abbrechen</button>
+              <button onClick={doUnlock} className="btn btn-primary">Entsperren</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

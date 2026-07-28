@@ -1952,6 +1952,9 @@ async function initDatabase() {
   }
   try { await db.exec('ALTER TABLE calc_entries ADD COLUMN nights TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN vvk INTEGER'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_shows ADD COLUMN locked INTEGER NOT NULL DEFAULT 0'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_shows ADD COLUMN locked_at TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_shows ADD COLUMN snapshot TEXT'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8066,10 +8069,13 @@ const calcText = (v) => (v == null || v === '') ? null : String(v);
 // Tenant-Besitz einer Show prüfen (via Projekt)
 async function calcShowTenant(showId) {
   const row = await db.get(
-    'SELECT p.tenant_id AS tenant_id, s.project_id AS project_id FROM calc_shows s JOIN calc_projects p ON p.id = s.project_id WHERE s.id = ?',
+    'SELECT p.tenant_id AS tenant_id, s.project_id AS project_id, s.locked AS locked FROM calc_shows s JOIN calc_projects p ON p.id = s.project_id WHERE s.id = ?',
     [showId]);
   return row || null;
 }
+
+// Entsperr-PIN (Demo/Tests). Zentrale Konstante – leicht änderbar.
+const CALC_UNLOCK_PIN = '4321';
 
 // Show anlegen
 app.post('/api/calc/projects/:id/shows', authenticateToken, requireTenant, requireEditor, async (req, res) => {
@@ -8304,6 +8310,7 @@ app.put('/api/calc/shows/:showId/positions/:positionId/entries', authenticateTok
   try {
     const owner = await calcShowTenant(req.params.showId);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    if (owner.locked) return res.status(409).json({ error: 'Show ist gesperrt (abgerechnet) – erst entsperren.' });
     const list = Array.isArray(req.body?.entries) ? req.body.entries : [];
     await db.run('DELETE FROM calc_entries WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
     for (const e of list) {
@@ -8326,6 +8333,7 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
   try {
     const owner = await calcShowTenant(req.params.showId);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    if (owner.locked) return res.status(409).json({ error: 'Show ist gesperrt (abgerechnet) – erst entsperren.' });
     const amount = calcText(req.body?.amount);
     const travelKm = calcText(req.body?.travel_km);
     const travelRate = calcText(req.body?.travel_rate);
@@ -8374,6 +8382,34 @@ app.post('/api/calc/shows/:showId/copy-positions', authenticateToken, requireTen
   } catch (e) {
     console.error('[calc] copy positions:', e);
     res.status(500).json({ error: 'Fehler beim Übernehmen der Positionen' });
+  }
+});
+
+// Show sperren + Abrechnungs-Snapshot (self-contained JSON, vom Client berechnet) einfrieren
+app.post('/api/calc/shows/:showId/lock', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    const snap = req.body?.snapshot != null ? JSON.stringify(req.body.snapshot) : null;
+    await db.run("UPDATE calc_shows SET locked=1, locked_at=datetime('now'), snapshot=? WHERE id=?", [snap, req.params.showId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] lock show:', e);
+    res.status(500).json({ error: 'Fehler beim Sperren der Show' });
+  }
+});
+
+// Show entsperren – nur mit PIN (Demo/Tests); verwirft den Snapshot
+app.post('/api/calc/shows/:showId/unlock', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    if (String(req.body?.pin ?? '') !== CALC_UNLOCK_PIN) return res.status(403).json({ error: 'Falscher PIN' });
+    await db.run('UPDATE calc_shows SET locked=0, locked_at=NULL, snapshot=NULL WHERE id=?', [req.params.showId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] unlock show:', e);
+    res.status(500).json({ error: 'Fehler beim Entsperren der Show' });
   }
 });
 

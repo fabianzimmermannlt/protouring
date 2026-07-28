@@ -870,6 +870,15 @@ export async function deleteCalcPosition(positionId: string): Promise<void> {
   await request(`/api/calc/positions/${positionId}`, { method: 'DELETE' })
 }
 
+/** Show sperren + Abrechnungs-Snapshot (self-contained) einfrieren. */
+export async function lockCalcShow(showId: string, snapshot: unknown): Promise<void> {
+  await request(`/api/calc/shows/${showId}/lock`, { method: 'POST', body: { snapshot } })
+}
+/** Show entsperren – nur mit PIN (Demo/Tests). Wirft bei falschem PIN. */
+export async function unlockCalcShow(showId: string, pin: string): Promise<void> {
+  await request(`/api/calc/shows/${showId}/unlock`, { method: 'POST', body: { pin } })
+}
+
 /** Ersetzt alle Buchungen einer (Show, Position) durch die übergebene Liste. */
 export async function replaceCalcEntries(showId: string, positionId: string, entries: CalcEntryInput[]): Promise<void> {
   await request(`/api/calc/shows/${showId}/positions/${positionId}/entries`, { method: 'PUT', body: { entries } })

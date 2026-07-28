@@ -44,6 +44,11 @@ export interface CalcShow {
   deal_type?: DealType      // Default 'vs' (= heutige Paket-Regel 2)
   is_active: boolean
   note?: string | null
+  /** Show gesperrt/abgerechnet (Snapshot eingefroren). */
+  locked?: boolean
+  locked_at?: string | null
+  /** Eingefrorene Abrechnung (JSON-String) – nur bei gesperrten Shows. */
+  snapshot?: string | null
   /** nur in den Migrationsdaten: S01…S09 */
   legacy_key?: string | null
 }
