@@ -23,11 +23,13 @@ export function D(v: Money | Decimal): Decimal {
 export function entryAmount(entry: CalcEntry, project: CalcProject): Decimal {
   // Hotel: Zimmer × Nächte × €/Nacht.
   if (entry.kind === 'hotel') return D(entry.quantity).times(D(entry.nights)).times(D(entry.unit_price))
-  // Fahrzeug: Miete + Mehr-km × Preis (Sprit läuft als eigene Zeile, nicht hier).
+  // Fahrzeug: Miete + Mehr-km × Preis (Sprit separat als kind='fuel').
   if (entry.kind === 'vehicle') {
     const mehrKm = Decimal.max(0, D(entry.distance_km).minus(D(entry.included_km)))
     return D(entry.rental_price).plus(mehrKm.times(D(entry.price_extra_km)))
   }
+  // Sprit: Strecke/100 × Verbrauch (L/100 km) × Preis (€/L).
+  if (entry.kind === 'fuel') return D(entry.distance_km).div(100).times(D(entry.quantity)).times(D(entry.unit_price))
   // Direktbetrag hat Vorrang (Tabellen-Eingabe); sonst Menge×Preis / Fahrzeug.
   if (entry.amount != null && entry.amount !== '') return D(entry.amount)
   const dist = D(entry.distance_km)

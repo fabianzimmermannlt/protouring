@@ -829,11 +829,11 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
   )
 }
 
-// ── Fahrzeug-Zeile: Miete + Mehr-km × Preis (Sprit separat), pro Variante (mit 🔗) ─────
-interface VVals { rental: string; km: string; included: string; extra: string }
-interface VModel { shared: boolean; s: VVals; perVar: Record<string, VVals>; ist: string }
-const emptyV = (): VVals => ({ rental: '', km: '', included: '', extra: '' })
-const vSnapKey = (m: VModel) => JSON.stringify({ shared: m.shared, s: m.s, perVar: m.perVar })
+// ── Fahrzeug-Zeile: Miete + Mehr-km × Preis, optional Sprit-Zeile (Strecke/100×Verbrauch×€/L) ──
+interface VVals { rental: string; km: string; included: string; extra: string; cons: string; price: string }
+interface VModel { shared: boolean; s: VVals; perVar: Record<string, VVals>; ist: string; fuelOn: boolean }
+const emptyV = (): VVals => ({ rental: '', km: '', included: '', extra: '', cons: '', price: '' })
+const vSnapKey = (m: VModel) => JSON.stringify({ shared: m.shared, s: m.s, perVar: m.perVar, fuelOn: m.fuelOn })
 const vAmount = (v: VVals): Decimal => {
   const rental = new Decimal(norm(v.rental) ?? '0')
   const km = new Decimal(norm(v.km) ?? '0')
@@ -841,26 +841,38 @@ const vAmount = (v: VVals): Decimal => {
   const ex = new Decimal(norm(v.extra) ?? '0')
   try { return rental.plus(Decimal.max(0, km.minus(inc)).times(ex)) } catch { return new Decimal(0) }
 }
+const fuelAmount = (v: VVals): Decimal => {
+  const km = new Decimal(norm(v.km) ?? '0')
+  const cons = new Decimal(norm(v.cons) ?? '0')
+  const price = new Decimal(norm(v.price) ?? '0')
+  try { return km.div(100).times(cons).times(price) } catch { return new Decimal(0) }
+}
+const vFilled = (v: VVals) => !!(v.rental || v.km || v.included || v.extra || v.cons || v.price)
 
 function buildVehicleModel(dataset: CalcDataset, showId: string, positionId: string, variants: Variant[]): VModel {
-  const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId && e.kind === 'vehicle')
-  const nullE = es.filter(e => e.variant_id == null)
-  const varE = es.filter(e => e.variant_id != null)
-  const toVals = (e?: CalcEntry): VVals => ({
-    rental: e?.rental_price != null ? String(e.rental_price) : '',
-    km: e?.distance_km != null ? String(e.distance_km) : '',
-    included: e?.included_km != null ? String(e.included_km) : '',
-    extra: e?.price_extra_km != null ? String(e.price_extra_km) : '',
+  const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId && (e.kind === 'vehicle' || e.kind === 'fuel'))
+  const veNull = es.find(e => e.kind === 'vehicle' && e.variant_id == null)
+  const fuNull = es.find(e => e.kind === 'fuel' && e.variant_id == null)
+  const veVar = es.filter(e => e.kind === 'vehicle' && e.variant_id != null)
+  const fuVar = es.filter(e => e.kind === 'fuel' && e.variant_id != null)
+  const mk = (ve?: CalcEntry, fu?: CalcEntry): VVals => ({
+    rental: ve?.rental_price != null ? String(ve.rental_price) : '',
+    km: ve?.distance_km != null ? String(ve.distance_km) : (fu?.distance_km != null ? String(fu.distance_km) : ''),
+    included: ve?.included_km != null ? String(ve.included_km) : '',
+    extra: ve?.price_extra_km != null ? String(ve.price_extra_km) : '',
+    cons: fu?.quantity != null ? String(fu.quantity) : '',
+    price: fu?.unit_price != null ? String(fu.unit_price) : '',
   })
-  const s = nullE.length ? toVals(nullE[0]) : emptyV()
+  const s = (veNull || fuNull) ? mk(veNull, fuNull) : emptyV()
   const perVar: Record<string, VVals> = {}
-  variants.forEach(v => { perVar[v.id] = nullE.length ? { ...s } : emptyV() })
-  varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = toVals(e) })
+  variants.forEach(v => { perVar[v.id] = (veNull || fuNull) ? { ...s } : emptyV() })
+  veVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), rental: e.rental_price != null ? String(e.rental_price) : '', km: e.distance_km != null ? String(e.distance_km) : '', included: e.included_km != null ? String(e.included_km) : '', extra: e.price_extra_km != null ? String(e.price_extra_km) : '' } })
+  fuVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), cons: e.quantity != null ? String(e.quantity) : '', price: e.unit_price != null ? String(e.unit_price) : '', km: perVar[e.variant_id]?.km || (e.distance_km != null ? String(e.distance_km) : '') } })
   const ist = (() => {
     const a = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
     return a?.amount != null ? String(a.amount) : ''
   })()
-  return { shared: varE.length === 0, s, perVar, ist }
+  return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelOn: !!(fuNull || fuVar.length) }
 }
 
 function VehicleRow({ show, dataset, positionId, positionName, snapshot, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
@@ -892,10 +904,10 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
   const toggleLink = () => setM(p => {
     if (p.shared) {
       const perVar = { ...p.perVar }
-      variants.forEach(v => { const cur = perVar[v.id] ?? emptyV(); if (!cur.rental && !cur.km && !cur.included && !cur.extra) perVar[v.id] = { ...p.s } })
+      variants.forEach(v => { const cur = perVar[v.id] ?? emptyV(); if (!vFilled(cur)) perVar[v.id] = { ...p.s } })
       return { ...p, shared: false, perVar }
     }
-    const first = variants.map(v => p.perVar[v.id]).find(x => x && (x.rental || x.km || x.included || x.extra)) ?? p.s
+    const first = variants.map(v => p.perVar[v.id]).find(x => x && vFilled(x)) ?? p.s
     return { ...p, shared: true, s: { ...first } }
   })
   const applyDefaults = () => setM(p => {
@@ -904,18 +916,40 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
     const perVar = { ...p.perVar }; variants.forEach(v => { perVar[v.id] = { ...(perVar[v.id] ?? emptyV()), ...patch } })
     return { ...p, perVar }
   })
+  const toggleFuel = () => setM(p => {
+    if (p.fuelOn) return { ...p, fuelOn: false }
+    // beim Aktivieren Verbrauch/Preis aus den Fahrzeugdaten vorbefüllen, falls leer
+    const c = snapStr(snapshot.veh_consumption), pr = snapStr(snapshot.veh_price)
+    const fill = (v: VVals): VVals => ({ ...v, cons: v.cons || c, price: v.price || pr })
+    if (p.shared) return { ...p, fuelOn: true, s: fill(p.s) }
+    const perVar = { ...p.perVar }; variants.forEach(v => { perVar[v.id] = fill(perVar[v.id] ?? emptyV()) })
+    return { ...p, fuelOn: true, perVar }
+  })
 
   const valsFor = (vid: string): VVals => (m.shared ? m.s : (m.perVar[vid] ?? emptyV()))
+  const cellTotal = (v: VVals): Decimal => vAmount(v).plus(m.fuelOn ? fuelAmount(v) : new Decimal(0))
   const rowResult = (): Decimal => {
     if (defaultVar === 'ist') { const b = norm(m.ist); if (b != null) { try { return new Decimal(b) } catch { /* */ } } return new Decimal(0) }
-    return vAmount(valsFor(defaultVar))
+    return cellTotal(valsFor(defaultVar))
   }
 
   const payload = (): CalcEntryInput[] => {
-    const any = (v: VVals) => norm(v.rental) != null || norm(v.km) != null || norm(v.included) != null || norm(v.extra) != null
-    const mk = (variant_id: string | null, v: VVals): CalcEntryInput => ({ kind: 'vehicle', variant_id, rental_price: norm(v.rental), distance_km: norm(v.km), included_km: norm(v.included), price_extra_km: norm(v.extra) })
-    if (m.shared) return any(m.s) ? [mk(null, m.s)] : []
-    return variants.map(v => ({ v, val: m.perVar[v.id] ?? emptyV() })).filter(x => any(x.val)).map(x => mk(x.v.id, x.val))
+    const out: CalcEntryInput[] = []
+    const anyVe = (v: VVals) => norm(v.rental) != null || norm(v.km) != null || norm(v.included) != null || norm(v.extra) != null
+    const anyFu = (v: VVals) => m.fuelOn && norm(v.km) != null && norm(v.cons) != null && norm(v.price) != null
+    const mkVe = (variant_id: string | null, v: VVals): CalcEntryInput => ({ kind: 'vehicle', variant_id, rental_price: norm(v.rental), distance_km: norm(v.km), included_km: norm(v.included), price_extra_km: norm(v.extra) })
+    const mkFu = (variant_id: string | null, v: VVals): CalcEntryInput => ({ kind: 'fuel', variant_id, distance_km: norm(v.km), quantity: norm(v.cons), unit_price: norm(v.price) })
+    if (m.shared) {
+      if (anyVe(m.s)) out.push(mkVe(null, m.s))
+      if (anyFu(m.s)) out.push(mkFu(null, m.s))
+    } else {
+      variants.forEach(v => {
+        const val = m.perVar[v.id] ?? emptyV()
+        if (anyVe(val)) out.push(mkVe(v.id, val))
+        if (anyFu(val)) out.push(mkFu(v.id, val))
+      })
+    }
+    return out
   }
 
   const saveSoll = async () => {
@@ -938,6 +972,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
   const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'right' as const } }
 
   return (
+    <>
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
       style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#1a2420'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
@@ -961,10 +996,17 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
             </div>
-            {hasDefaults && (
-              <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
-                className="text-xs" style={{ color: '#60a5fa', marginTop: 2 }}>Fahrzeugwerte übernehmen</button>
-            )}
+            <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 3 }}>
+              {hasDefaults && (
+                <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
+                  className="text-xs" style={{ color: '#60a5fa' }}>Fahrzeugwerte übernehmen</button>
+              )}
+              <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
+                className="shrink-0 inline-flex items-center gap-1 rounded"
+                style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? '#facc15' : 'transparent', border: `1px solid ${m.fuelOn ? '#facc15' : '#4a4a4a'}` }}>
+                ⛽ Sprit
+              </button>
+            </div>
           </div>
         </div>
       </td>
@@ -979,7 +1021,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
               <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
               <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
             </div>
-            <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(vAmount(val))}</div>
+            <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
           </td>
         )
       })}
@@ -1003,6 +1045,31 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
         {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
       </td>
     </tr>
+
+    {m.fuelOn && (
+      <tr style={{ background: '#211f17' }}>
+        <td style={{ verticalAlign: 'top' }}>
+          <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22 }}>
+            ⛽ Sprit <span style={{ color: '#6b7280', fontSize: 10 }}>(Strecke/100 × Verbrauch × €/L)</span>
+          </div>
+        </td>
+        {variants.map(v => {
+          const val = valsFor(v.id)
+          return (
+            <td key={v.id} style={{ padding: '2px 8px', verticalAlign: 'top' }}>
+              <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <input {...vCell} style={{ ...vCell.style, flex: 1, color: m.shared ? '#93c5fd' : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
+                <span style={{ color: '#555', fontSize: 10 }}>×</span>
+                <input {...vCell} style={{ ...vCell.style, flex: 1, color: m.shared ? '#93c5fd' : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+              </div>
+              <div className="text-right" style={{ fontSize: 11, color: '#facc15', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(fuelAmount(val))}</div>
+            </td>
+          )
+        })}
+        <td /><td /><td />
+      </tr>
+    )}
+    </>
   )
 }
 
