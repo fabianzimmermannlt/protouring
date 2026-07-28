@@ -847,7 +847,7 @@ export async function deleteCalcEntry(entryId: string): Promise<void> {
   await request(`/api/calc/entries/${entryId}`, { method: 'DELETE' })
 }
 
-export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean, posType?: 'standard' | 'hotel'): Promise<{ id: string }> {
+export async function createCalcPosition(categoryId: string, name: string, spec?: string | null, isOverhead?: boolean, posType?: 'standard' | 'hotel' | 'vehicle'): Promise<{ id: string }> {
   return request<{ id: string }>(`/api/calc/categories/${categoryId}/positions`, { method: 'POST', body: { name, spec, is_overhead: isOverhead === true, pos_type: posType ?? 'standard' } })
 }
 

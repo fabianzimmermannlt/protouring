@@ -9,7 +9,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog, type CalcEntryInput,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
+  getVehicles, createVehicle, type Vehicle, type CalcEntryInput,
 } from '@/lib/api-client'
 
 interface FuncGroup { group: string; names: string[] }
@@ -73,7 +74,10 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
       setActiveNames(active.map(f => f.name))
     }).catch(() => {})
   }
-  useEffect(() => { loadFunctions() }, [])
+  // Fahrzeuge (App-Fuhrpark) für den Transport-Bereich; neu angelegte werden zurückgeschrieben.
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const loadVehicles = () => { getVehicles().then(setVehicles).catch(() => {}) }
+  useEffect(() => { loadFunctions(); loadVehicles() }, [])
   // Vor Reload/Schließen warnen, solange ungespeicherte Zeilen offen sind;
   // beim Verlassen der Show-Ansicht das Dirty-Flag sicher zurücksetzen.
   useEffect(() => {
@@ -130,7 +134,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
         {categories.map(cat => (
           <CategoryTable key={cat.id} show={show} dataset={dataset} project={project}
             category={cat} variants={variants} onChanged={onChanged}
-            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions} resultVar={resultVar} />
+            functions={functions} activeNames={activeNames} reloadFunctions={loadFunctions}
+            vehicles={vehicles} reloadVehicles={loadVehicles} resultVar={resultVar} />
         ))}
       </div>
 
@@ -144,10 +149,11 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
 // ── Bereichs-Tabelle ─────────────────────────────────────────────────────────
 
-function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, resultVar }: {
+function CategoryTable({ show, dataset, project, category, variants, onChanged, functions, activeNames, reloadFunctions, vehicles, reloadVehicles, resultVar }: {
   show: CalcShow; dataset: CalcDataset; project: CalcProject
   category: { id: string; name: string; kind: string }; variants: Variant[]; onChanged: () => void
-  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void; resultVar: string
+  functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void
+  vehicles: Vehicle[]; reloadVehicles: () => void; resultVar: string
 }) {
   const catPositions = useMemo(
     () => dataset.positions.filter(p => p.category_id === category.id).sort((a, b) => a.sort_order - b.sort_order),
@@ -157,6 +163,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const rowPositions = catPositions.filter(p => !p.is_overhead)
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
   const isUnterkunft = /unterkunft|verpflegung/i.test(category.name)   // nur hier: Hotel-Option
+  const isTransport = /transport|logistik|fahrzeug/i.test(category.name) // hier: App-Fahrzeuge
   const hasHotel = catPositions.some(p => p.pos_type === 'hotel')      // Spezifikation-Häkchen auch bei Hotel
   // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile),
   // projektweit gemerkt (alle Shows, auch nach Verlassen der Kalkulation)
@@ -278,8 +285,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
       {adding ? (
         <div className="flex items-center gap-2" style={{ maxWidth: 440 }}>
           <div style={{ flex: 1 }}>
-            <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft}
+            <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft} isTransport={isTransport}
               catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
+              vehicles={vehicles} reloadVehicles={reloadVehicles}
               onDone={() => { setAdding(false); onChanged() }} />
           </div>
           <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Abbrechen</button>
@@ -804,17 +812,19 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
 }
 
 // ── Position anlegen: Dropdown mit Vorschlägen (bisherige Einträge) + „Neu anlegen" ──
-interface PItem { id: string; name: string; group?: string; kind: 'function' | 'name' | 'hotel' }
+interface PItem { id: string; name: string; group?: string; kind: 'function' | 'name' | 'hotel' | 'vehicle' }
 
-function AddPositionControl({ category, isPersonal, isUnterkunft, catPositions, functions, activeNames, reloadFunctions, onDone }: {
+function AddPositionControl({ category, isPersonal, isUnterkunft, isTransport, catPositions, functions, activeNames, reloadFunctions, vehicles, reloadVehicles, onDone }: {
   category: { id: string; name: string }
-  isPersonal: boolean; isUnterkunft: boolean
+  isPersonal: boolean; isUnterkunft: boolean; isTransport: boolean
   catPositions: CalcDataset['positions']
   functions: FuncGroup[]; activeNames: string[]; reloadFunctions: () => void
+  vehicles: Vehicle[]; reloadVehicles: () => void
   onDone: () => void
 }) {
   const items = useMemo<PItem[]>(() => {
     if (isPersonal) return functions.flatMap(g => g.names.map(n => ({ id: `${g.group}::${n}`, name: n, group: g.group, kind: 'function' as const })))
+    if (isTransport) return vehicles.map(v => ({ id: `veh:${v.id}`, name: v.designation, group: v.vehicleType || undefined, kind: 'vehicle' as const }))
     const seen = new Set<string>()
     const names: PItem[] = []
     catPositions.filter(p => !p.is_overhead).forEach(p => {
@@ -823,12 +833,19 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, catPositions, 
     })
     if (isUnterkunft && !seen.has('hotel')) names.unshift({ id: '__hotel__', name: 'Hotel', kind: 'hotel' })
     return names
-  }, [isPersonal, isUnterkunft, functions, catPositions])
+  }, [isPersonal, isUnterkunft, isTransport, functions, vehicles, catPositions])
 
-  const commit = async (data: { name: string; spec?: string | null; kind: 'function' | 'name' | 'hotel' | 'new' }) => {
+  const commit = async (data: { name: string; spec?: string | null; kind: PItem['kind'] | 'new' }) => {
     const name = data.name.trim()
     if (!name) return
-    if (data.kind === 'hotel' || (isUnterkunft && name.toLowerCase() === 'hotel')) {
+    if (isTransport) {
+      // Neu getipptes Fahrzeug → in den App-Fuhrpark schreiben (bidirektional)
+      if (data.kind === 'new') {
+        await createVehicle({ designation: name, vehicleType: '', driver: '', licensePlate: '', dimensions: '', powerConnection: '', hasTrailer: false, trailerDimensions: '', trailerLicensePlate: '', seats: '', sleepingPlaces: '', notes: '' })
+        reloadVehicles()
+      }
+      await createCalcPosition(category.id, name, null, false, 'vehicle')
+    } else if (data.kind === 'hotel' || (isUnterkunft && name.toLowerCase() === 'hotel')) {
       await createCalcPosition(category.id, 'Hotel', null, false, 'hotel')
     } else if (isPersonal) {
       if (data.kind === 'new' && !activeNames.includes(name)) { await saveFunctionCatalog([...activeNames, name]); reloadFunctions() }
@@ -842,7 +859,7 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, catPositions, 
   return (
     <SearchableDropdown<PItem>
       value={null}
-      placeholder={isPersonal ? 'Funktion wählen oder neu…' : (isUnterkunft ? 'Position wählen (z.B. Hotel) oder neu…' : 'Position wählen oder neu…')}
+      placeholder={isPersonal ? 'Funktion wählen oder neu…' : (isTransport ? 'Fahrzeug wählen oder neu…' : (isUnterkunft ? 'Position wählen (z.B. Hotel) oder neu…' : 'Position wählen oder neu…'))}
       items={items}
       filterFn={(it, q) => it.name.toLowerCase().includes(q.toLowerCase())}
       renderValue={it => it.name}
@@ -853,15 +870,15 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, catPositions, 
         </div>
       )}
       onSelect={it => { if (it) commit({ name: it.name, kind: it.kind }) }}
-      createLabel={isPersonal ? 'Neue Funktion anlegen' : 'Neue Position anlegen'}
+      createLabel={isPersonal ? 'Neue Funktion anlegen' : (isTransport ? 'Neues Fahrzeug anlegen' : 'Neue Position anlegen')}
       renderCreateForm={(_onCreated, onCancel) => (
-        <InlineNewForm isPersonal={isPersonal} onCreate={(name, spec) => commit({ name, spec, kind: 'new' })} onCancel={onCancel} />
+        <InlineNewForm isPersonal={isPersonal} namePlaceholder={isTransport ? 'Neues Fahrzeug…' : (isPersonal ? 'Neue Funktion…' : 'Neue Position…')} onCreate={(name, spec) => commit({ name, spec, kind: 'new' })} onCancel={onCancel} />
       )}
     />
   )
 }
 
-function InlineNewForm({ isPersonal, onCreate, onCancel }: { isPersonal: boolean; onCreate: (name: string, spec: string | null) => Promise<void>; onCancel: () => void }) {
+function InlineNewForm({ isPersonal, namePlaceholder, onCreate, onCancel }: { isPersonal: boolean; namePlaceholder?: string; onCreate: (name: string, spec: string | null) => Promise<void>; onCancel: () => void }) {
   const [name, setName] = useState('')
   const [spec, setSpec] = useState('')
   const [busy, setBusy] = useState(false)
@@ -875,7 +892,7 @@ function InlineNewForm({ isPersonal, onCreate, onCancel }: { isPersonal: boolean
     <div className="space-y-2">
       <input className="form-input" style={{ fontSize: '0.8rem', padding: '4px 8px', width: '100%' }} value={name}
         onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }}
-        placeholder={isPersonal ? 'Neue Funktion…' : 'Neue Position…'} autoFocus />
+        placeholder={namePlaceholder ?? (isPersonal ? 'Neue Funktion…' : 'Neue Position…')} autoFocus />
       {isPersonal && (
         <input className="form-input" style={{ fontSize: '0.8rem', padding: '4px 8px', width: '100%' }} value={spec}
           onChange={e => setSpec(e.target.value)} placeholder="Spezifikation (optional)" />

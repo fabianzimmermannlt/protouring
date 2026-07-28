@@ -8181,7 +8181,7 @@ app.post('/api/calc/categories/:catId/positions', authenticateToken, requireTena
     if (!name) return res.status(400).json({ error: 'Name fehlt' });
     const spec = req.body?.spec ? String(req.body.spec).trim() || null : null;
     const isOverhead = req.body?.is_overhead === true || req.body?.is_overhead === 1 ? 1 : 0;
-    const posType = req.body?.pos_type === 'hotel' ? 'hotel' : 'standard';
+    const posType = ['hotel', 'vehicle'].includes(req.body?.pos_type) ? req.body.pos_type : 'standard';
     const id = crypto.randomUUID();
     const maxRow = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM calc_positions WHERE category_id = ?', [req.params.catId]);
     await db.run('INSERT INTO calc_positions (id,category_id,name,spec,is_overhead,pos_type,sort_order) VALUES (?,?,?,?,?,?,?)',
