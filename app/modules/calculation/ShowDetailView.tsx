@@ -290,6 +290,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const [adding, setAdding] = useState(false)
 
   const colCount = 2 + variants.length + 2
+  // Festes Spaltenraster → alle Bereichs-Tabellen richten die Felder bündig untereinander aus.
+  const COLW = { pos: 310, variant: 150, ist: 140, erg: 120, act: 104 }
+  const tableWidth = COLW.pos + variants.length * COLW.variant + COLW.ist + COLW.erg + COLW.act
   // Übergeordnete Kosten dieses Bereichs → read-only Umlage-Zeile in der Show
   const activeShowsList = useMemo(() => dataset.shows.filter(s => s.is_active), [dataset])
   const overheadItems = useMemo(
@@ -323,14 +326,14 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
         </div>
       </div>
       <div className="pt-card-body" style={{ overflowX: 'auto' }}>
-        <table className="data-table" style={{ minWidth: 620 }}>
+        <table className="data-table" style={{ tableLayout: 'fixed', width: tableWidth, minWidth: tableWidth }}>
           <thead>
             <tr>
-              <th style={{ minWidth: 200 }}>Position</th>
-              {variants.map(v => <th key={v.id} className="text-right" style={{ minWidth: 130 }}>{v.name}</th>)}
-              <th className="text-right" style={{ minWidth: 130, color: '#facc15' }}>Ist</th>
-              <th className="text-right" style={{ minWidth: 110 }}>Ergebnis{defaultVarName && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}> ({defaultVarName})</span>}</th>
-              <th style={{ minWidth: 96 }} />
+              <th style={{ width: COLW.pos }}>Position</th>
+              {variants.map(v => <th key={v.id} className="text-right" style={{ width: COLW.variant }}>{v.name}</th>)}
+              <th className="text-right" style={{ width: COLW.ist, color: '#facc15' }}>Ist</th>
+              <th className="text-right" style={{ width: COLW.erg }}>Ergebnis{defaultVarName && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}> ({defaultVarName})</span>}</th>
+              <th style={{ width: COLW.act }} />
             </tr>
           </thead>
           <tbody>
