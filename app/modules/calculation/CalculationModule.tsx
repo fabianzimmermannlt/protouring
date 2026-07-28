@@ -9,7 +9,7 @@ import Decimal from 'decimal.js'
 import { TrashIcon } from '@heroicons/react/24/outline'
 import {
   getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject,
-  createCalcVariant, updateCalcVariant, deleteCalcVariant, type CalcProjectSummary,
+  createCalcVariant, updateCalcVariant, deleteCalcVariant, getArtistMembers, type CalcProjectSummary,
 } from '@/lib/api-client'
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
 import type { CalcDataset, CalcVariant } from '@/lib/calculation/types'
@@ -49,6 +49,10 @@ export default function CalculationModule() {
 
   useEffect(() => { loadProjects() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Bandgröße aus den Artist-Mitgliedern (Settings/Artist) – Teiler für „je Bandmitglied".
+  const [bandSize, setBandSize] = useState(0)
+  useEffect(() => { getArtistMembers().then(m => setBandSize(m.length)).catch(() => {}) }, [])
+
   useEffect(() => {
     if (!selectedId) { setDataset(null); return }
     let cancelled = false
@@ -65,6 +69,11 @@ export default function CalculationModule() {
     try { setDataset(await getCalcProject(selectedId)) }
     catch (e: any) { setError(e?.message ?? 'Fehler beim Laden des Projekts') }
   }
+
+  // „je Bandmitglied" über die tatsächliche Bandgröße (Artist-Mitglieder) teilen.
+  const effDataset = useMemo<CalcDataset | null>(
+    () => (dataset && bandSize > 0 ? { ...dataset, project: { ...dataset.project, member_count: bandSize } } : dataset),
+    [dataset, bandSize])
 
   const handleCreateProject = async (name: string) => {
     const created = await createCalcProject(name)
@@ -130,9 +139,9 @@ export default function CalculationModule() {
             <button onClick={() => guardNav(() => setView('shows'))} className={`pt-detail-tab${view === 'shows' ? ' active' : ''}`}>Shows</button>
             <button onClick={() => guardNav(() => setView('overhead'))} className={`pt-detail-tab${view === 'overhead' ? ' active' : ''}`}>Übergeordnet</button>
           </div>
-          {view === 'overview' && <OverviewMatrix key={selectedId} dataset={dataset} />}
-          {view === 'shows' && <ShowsView dataset={dataset} projectId={selectedId} onChanged={reloadDataset} guardNav={guardNav} />}
-          {view === 'overhead' && <OverheadView key={selectedId} dataset={dataset} projectId={selectedId} onChanged={reloadDataset} />}
+          {view === 'overview' && <OverviewMatrix key={selectedId} dataset={effDataset!} />}
+          {view === 'shows' && <ShowsView dataset={effDataset!} projectId={selectedId} onChanged={reloadDataset} guardNav={guardNav} />}
+          {view === 'overhead' && <OverheadView key={selectedId} dataset={effDataset!} projectId={selectedId} onChanged={reloadDataset} />}
         </>
       )}
 
