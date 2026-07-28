@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
@@ -47,21 +48,54 @@ export default function SearchableDropdown<T extends { id: string | number }>({
   const [query, setQuery] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Menü liegt als Portal am Body (position: fixed) → keine Overflow-/Nachbar-Überlagerung,
+  // und klappt nach oben, wenn unten kein Platz ist.
+  const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number; up: boolean } | null>(null)
+
+  const MENU_MAX = 320
+  const computePos = useCallback(() => {
+    const el = triggerRef.current
+    if (!el || typeof window === 'undefined') return
+    const r = el.getBoundingClientRect()
+    const below = window.innerHeight - r.bottom
+    const above = r.top
+    const up = below < MENU_MAX && above > below
+    setPos({
+      left: r.left, width: r.width, up,
+      top: up ? undefined : r.bottom + 2,
+      bottom: up ? window.innerHeight - r.top + 2 : undefined,
+    })
+  }, [])
 
   const close = useCallback(() => {
     setOpen(false)
     setQuery('')
     setShowCreate(false)
+    setPos(null)
   }, [])
 
   useEffect(() => {
+    if (!open) return
+    computePos()
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close()
+      const t = e.target as Node
+      if (ref.current && ref.current.contains(t)) return
+      if (menuRef.current && menuRef.current.contains(t)) return
+      close()
     }
-    if (open) document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open, close])
+    const reflow = () => computePos()
+    document.addEventListener('mousedown', handler)
+    window.addEventListener('resize', reflow)
+    window.addEventListener('scroll', reflow, true)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      window.removeEventListener('resize', reflow)
+      window.removeEventListener('scroll', reflow, true)
+    }
+  }, [open, close, computePos])
 
   useEffect(() => {
     if (open && !showCreate) inputRef.current?.focus()
@@ -85,6 +119,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
     <div ref={ref} style={{ position: 'relative' }}>
       {/* Trigger */}
       <button
+        ref={triggerRef}
         type="button"
         className="form-input"
         style={{
@@ -117,10 +152,11 @@ export default function SearchableDropdown<T extends { id: string | number }>({
         </div>
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 100,
+      {/* Dropdown – als Portal am Body (fixed), klappt nach oben wenn unten kein Platz ist */}
+      {open && pos && typeof document !== 'undefined' && createPortal(
+        <div ref={menuRef} style={{
+          position: 'fixed', left: pos.left, width: pos.width, zIndex: 1000,
+          ...(pos.up ? { bottom: pos.bottom } : { top: pos.top }),
           background: dark ? '#1e1e1e' : '#fff',
           border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
           borderRadius: 0,
@@ -236,7 +272,8 @@ export default function SearchableDropdown<T extends { id: string | number }>({
               </div>
             </>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
