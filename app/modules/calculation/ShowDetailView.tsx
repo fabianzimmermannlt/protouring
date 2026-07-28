@@ -139,11 +139,11 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+      <div className="flex items-start gap-3 mb-4">
+        <button onClick={onBack} className="btn btn-ghost shrink-0" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
         </button>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button onClick={onPrev} disabled={!onPrev} className="btn btn-ghost" title="Vorherige Show"
             style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem', opacity: onPrev ? 1 : 0.35, cursor: onPrev ? 'pointer' : 'not-allowed' }}>
             <ChevronLeftIcon className="w-4 h-4" />
@@ -153,42 +153,46 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
             <ChevronRightIcon className="w-4 h-4" />
           </button>
         </div>
-        <h3 className="text-base font-semibold" style={{ color: '#e0e0e0' }}>
-          {show.city || '(ohne Stadt)'}{show.show_date ? ` · ${formatDate(show.show_date)}` : ''}{show.venue ? ` · ${show.venue}` : ''}
-        </h3>
-        {!show.locked && (
-          <>
-            <button onClick={() => setEditParams(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
-              <PencilIcon className="w-3.5 h-3.5" /> Parameter
-            </button>
-            <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
-              Ergebnis-Spalte:
-              <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
-                {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                <option value="ist">Ist</option>
-              </select>
-            </label>
-          </>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          {show.locked ? (
-            <>
-              <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#3a2f22', color: '#e0b877' }}>🔒 Abgerechnet</span>
-              <button onClick={() => window.print()} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Drucken</button>
-              <button onClick={() => setUnlockOpen(true)} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Entsperren</button>
-            </>
-          ) : (
-            <button onClick={doLock} disabled={busyLock} className="btn btn-primary" style={{ fontSize: '0.78rem' }}>{busyLock ? '…' : '🔒 Sperren & abrechnen'}</button>
+        <div className="flex-1" style={{ minWidth: 0 }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className="text-base font-semibold" style={{ color: '#e0e0e0' }}>
+              {show.city || '(ohne Stadt)'}{show.show_date ? ` · ${formatDate(show.show_date)}` : ''}{show.venue ? ` · ${show.venue}` : ''}
+            </h3>
+            {!show.locked && (
+              <>
+                <button onClick={() => setEditParams(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+                  <PencilIcon className="w-3.5 h-3.5" /> Parameter
+                </button>
+                <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
+                  Ergebnis-Spalte:
+                  <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
+                    {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    <option value="ist">Ist</option>
+                  </select>
+                </label>
+              </>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              {show.locked ? (
+                <>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#3a2f22', color: '#e0b877' }}>🔒 Abgerechnet</span>
+                  <button onClick={() => window.print()} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Drucken</button>
+                  <button onClick={() => setUnlockOpen(true)} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Entsperren</button>
+                </>
+              ) : (
+                <button onClick={doLock} disabled={busyLock} className="btn btn-primary" style={{ fontSize: '0.78rem' }}>{busyLock ? '…' : '🔒 Sperren & abrechnen'}</button>
+              )}
+            </div>
+          </div>
+          {!show.locked && summary && (
+            <div className="text-xs flex gap-4 mt-1" style={{ color: '#9ca3af' }}>
+              <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
+              <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
+              <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
+            </div>
           )}
         </div>
       </div>
-      {!show.locked && summary && (
-        <div className="text-xs flex gap-4 mb-4" style={{ color: '#9ca3af' }}>
-          <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
-          <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
-          <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
-        </div>
-      )}
       {show.locked && lockedSnap ? (
         <AbrechnungView snap={lockedSnap} />
       ) : (
