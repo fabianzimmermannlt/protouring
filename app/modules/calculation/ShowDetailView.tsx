@@ -291,7 +291,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
 
   const colCount = 2 + variants.length + 2
   // Festes Spaltenraster → alle Bereichs-Tabellen richten die Felder bündig untereinander aus.
-  const COLW = { pos: 400, variant: 172, ist: 160, erg: 120, act: 104 }
+  const COLW = { pos: 480, variant: 205, ist: 190, erg: 145, act: 120 }
   const tableWidth = COLW.pos + variants.length * COLW.variant + COLW.ist + COLW.erg + COLW.act
   // Übergeordnete Kosten dieses Bereichs → read-only Umlage-Zeile in der Show
   const activeShowsList = useMemo(() => dataset.shows.filter(s => s.is_active), [dataset])
