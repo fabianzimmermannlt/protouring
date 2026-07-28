@@ -97,9 +97,6 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack }: {
 
   return (
     <div>
-      <datalist id="hotel-who-list">
-        {['Band', 'Crew', '1', '2', '3'].map(w => <option key={w} value={w} />)}
-      </datalist>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
@@ -204,6 +201,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const defaultVarName = defaultVar === 'ist' ? 'Ist' : (variants.find(v => v.id === defaultVar)?.name ?? '')
 
   return (
+    <div>
     <div className="pt-card">
       <div className="pt-card-header flex items-center justify-between"
         style={{ background: category.kind === 'income' ? '#173a28' : '#26313f', borderLeft: `4px solid ${category.kind === 'income' ? '#4ade80' : '#60a5fa'}` }}>
@@ -273,23 +271,21 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                   soll={soll} share={share} onChanged={onChanged} />
               )
             })}
-            {adding && (
-              <tr>
-                <td colSpan={colCount}>
-                  <div className="flex items-center gap-2 py-1" style={{ maxWidth: 420 }}>
-                    <div style={{ flex: 1 }}>
-                      <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft}
-                        catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
-                        onDone={() => { setAdding(false); onChanged() }} />
-                    </div>
-                    <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
-                  </div>
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
+    </div>
+    {/* Anlege-Dropdown AUSSERHALB der .pt-card (overflow:hidden!), damit es nicht abgeschnitten/überlagert wird */}
+    {adding && (
+      <div className="flex items-center gap-2" style={{ padding: '8px 2px 2px', maxWidth: 440, position: 'relative', zIndex: 30 }}>
+        <div style={{ flex: 1 }}>
+          <AddPositionControl category={category} isPersonal={isPersonal} isUnterkunft={isUnterkunft}
+            catPositions={catPositions} functions={functions} activeNames={activeNames} reloadFunctions={reloadFunctions}
+            onDone={() => { setAdding(false); onChanged() }} />
+        </div>
+        <button onClick={() => setAdding(false)} className="btn btn-ghost shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
+      </div>
+    )}
     </div>
   )
 }
@@ -747,14 +743,14 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
           </button>
           <div style={{ minWidth: 0 }}>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ background: '#3a2f22', color: '#e0b877' }}>🏨 Hotel</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ background: '#3a2f22', color: '#e0b877' }}>Hotel</span>
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
                 style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
                 onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
             </div>
             {showSpec ? (
-              <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho} list="hotel-who-list"
+              <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho}
                 className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190, marginTop: 3 }} />
             ) : (whoVal ? <div className="text-xs" style={{ color: '#9ca3af', marginTop: 2 }}>· {whoVal}</div> : null)}
           </div>
@@ -848,7 +844,7 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, catPositions, 
       renderValue={it => it.name}
       renderItem={it => (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: '0.82rem', color: '#e0e0e0' }}>{it.kind === 'hotel' ? '🏨 ' : ''}{it.name}</span>
+          <span style={{ fontSize: '0.82rem', color: '#e0e0e0' }}>{it.name}</span>
           {it.group && <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>{it.group}</span>}
         </div>
       )}
