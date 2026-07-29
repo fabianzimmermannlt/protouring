@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Decimal from 'decimal.js'
 import { TrashIcon } from '@heroicons/react/24/outline'
 import {
-  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject,
+  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject, duplicateCalcProject,
   createCalcVariant, updateCalcVariant, deleteCalcVariant, getArtistMembers, type CalcProjectSummary,
 } from '@/lib/api-client'
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
@@ -75,6 +75,19 @@ export default function CalculationModule() {
     () => (dataset && bandSize > 0 ? { ...dataset, project: { ...dataset.project, member_count: bandSize } } : dataset),
     [dataset, bandSize])
 
+  const [duplicating, setDuplicating] = useState(false)
+  const handleDuplicate = async () => {
+    if (!selectedId) return
+    if (!confirm('Diese Kalkulation komplett duplizieren (alle Shows, Werte, Ist)? Die Kopie ist entsperrt und zum Ausprobieren gedacht.')) return
+    setDuplicating(true); setError('')
+    try {
+      const created = await duplicateCalcProject(selectedId)
+      await loadProjects(false)
+      setSelectedId(created.id)
+      setView('overview')
+    } catch (e: any) { setError(e?.message ?? 'Fehler beim Duplizieren') } finally { setDuplicating(false) }
+  }
+
   const handleCreateProject = async (name: string) => {
     const created = await createCalcProject(name)
     await loadProjects(false)
@@ -110,6 +123,9 @@ export default function CalculationModule() {
         <div className="ml-auto flex flex-wrap gap-2">
           {dataset && (
             <button onClick={() => setShowVariants(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>Varianten</button>
+          )}
+          {dataset && (
+            <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>{duplicating ? 'Dupliziere…' : 'Duplizieren'}</button>
           )}
           <button onClick={() => setShowNewProject(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>+ Neues Projekt</button>
           <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>

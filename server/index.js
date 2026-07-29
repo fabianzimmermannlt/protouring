@@ -8450,6 +8450,67 @@ app.post('/api/calc/shows/:showId/unlock', authenticateToken, requireTenant, req
   }
 });
 
+// Ganze Kalkulation duplizieren (tiefe Kopie mit frischen IDs; Kopie ist entsperrt)
+app.post('/api/calc/projects/:id/duplicate', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT * FROM calc_projects WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!proj) return res.status(404).json({ error: 'Kalkulation nicht gefunden' });
+    const oldPid = proj.id, newPid = crypto.randomUUID();
+    const newName = (proj.name || 'Kalkulation') + ' (Kopie)';
+    const uuid = () => crypto.randomUUID();
+
+    await db.run('INSERT INTO calc_projects (id,tenant_id,name,year,currency,fuel_consumption,fuel_price,scenario_factor,member_count,default_variant_id) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [newPid, req.tenant.id, newName, proj.year, proj.currency, proj.fuel_consumption, proj.fuel_price, proj.scenario_factor, proj.member_count, null]);
+
+    const varMap = {};
+    for (const v of await db.all('SELECT * FROM calc_variants WHERE project_id = ?', [oldPid])) {
+      const nid = uuid(); varMap[v.id] = nid;
+      await db.run('INSERT INTO calc_variants (id,project_id,name,sort_order) VALUES (?,?,?,?)', [nid, newPid, v.name, v.sort_order]);
+    }
+    if (proj.default_variant_id && varMap[proj.default_variant_id]) await db.run('UPDATE calc_projects SET default_variant_id = ? WHERE id = ?', [varMap[proj.default_variant_id], newPid]);
+
+    const showMap = {};
+    for (const s of await db.all('SELECT * FROM calc_shows WHERE project_id = ?', [oldPid])) {
+      const nid = uuid(); showMap[s.id] = nid;
+      await db.run('INSERT INTO calc_shows (id,project_id,sort_order,show_date,city,venue,capacity,vvk,ticket_price,guarantee,deal_share,break_even,commission,deal_type,is_active,note,locked,locked_at,snapshot) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,NULL,NULL)',
+        [nid, newPid, s.sort_order, s.show_date, s.city, s.venue, s.capacity, s.vvk, s.ticket_price, s.guarantee, s.deal_share, s.break_even, s.commission, s.deal_type, s.is_active, s.note]);
+    }
+
+    const catMap = {};
+    for (const c of await db.all('SELECT * FROM calc_categories WHERE project_id = ?', [oldPid])) {
+      const nid = uuid(); catMap[c.id] = nid;
+      await db.run('INSERT INTO calc_categories (id,project_id,name,kind,sort_order) VALUES (?,?,?,?,?)', [nid, newPid, c.name, c.kind, c.sort_order]);
+    }
+
+    const posMap = {};
+    for (const p of await db.all('SELECT p.* FROM calc_positions p JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id = ?', [oldPid])) {
+      const nid = uuid(); posMap[p.id] = nid;
+      await db.run('INSERT INTO calc_positions (id,category_id,name,spec,person,is_overhead,pos_type,allocation_pct,veh_rental,veh_included,veh_extra,veh_consumption,veh_price,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [nid, catMap[p.category_id], p.name, p.spec, p.person, p.is_overhead, p.pos_type, p.allocation_pct, p.veh_rental, p.veh_included, p.veh_extra, p.veh_consumption, p.veh_price, p.sort_order]);
+    }
+
+    for (const e of await db.all('SELECT * FROM calc_entries WHERE project_id = ?', [oldPid])) {
+      await db.run('INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,nights,amount,kind,ist_amount,note) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [uuid(), newPid, e.show_id ? showMap[e.show_id] : null, posMap[e.position_id], e.variant_id ? varMap[e.variant_id] : null,
+         e.quantity, e.unit_price, e.distance_km, e.rental_price, e.included_km, e.price_extra_km, e.nights, e.amount, e.kind, e.ist_amount, e.note]);
+    }
+
+    for (const a of await db.all('SELECT a.* FROM calc_actuals a JOIN calc_shows s ON s.id = a.show_id WHERE s.project_id = ?', [oldPid])) {
+      await db.run('INSERT INTO calc_actuals (id,show_id,position_id,amount,travel_km,travel_rate,travel_fix,spec,person,note) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        [uuid(), showMap[a.show_id], posMap[a.position_id], a.amount, a.travel_km, a.travel_rate, a.travel_fix, a.spec, a.person, a.note]);
+    }
+
+    for (const oe of await db.all('SELECT oe.* FROM calc_overhead_exclude oe JOIN calc_positions p ON p.id = oe.position_id JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id = ?', [oldPid])) {
+      if (posMap[oe.position_id] && showMap[oe.show_id]) await db.run('INSERT OR IGNORE INTO calc_overhead_exclude (position_id,show_id) VALUES (?,?)', [posMap[oe.position_id], showMap[oe.show_id]]);
+    }
+
+    res.json({ id: newPid, name: newName });
+  } catch (e) {
+    console.error('[calc] duplicate project:', e);
+    res.status(500).json({ error: 'Fehler beim Duplizieren der Kalkulation' });
+  }
+});
+
 // Neues (leeres) Projekt: Standard-Bereiche + Variante 1/2
 app.post('/api/calc/projects', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
