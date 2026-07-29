@@ -150,7 +150,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
 
   return (
     <div>
-      <div className="flex items-start gap-3 mb-4">
+      <div className="flex items-start gap-3"
+        style={{ position: 'sticky', top: 0, zIndex: 30, background: '#141414', paddingTop: 10, paddingBottom: 10, marginBottom: 12, borderBottom: '1px solid #2a2a2a', boxShadow: '0 6px 10px -8px rgba(0,0,0,0.7)' }}>
         <button onClick={onBack} className="btn btn-ghost shrink-0" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
         </button>
@@ -423,6 +424,30 @@ interface RowModel { shared: boolean; sharedVal: string; perVar: Record<string, 
 
 const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: x.sharedVal, perVar: x.perVar, travelKm: x.travelKm, travelRate: x.travelRate, travelFix: x.travelFix })
 
+// Hintergrund-Tönung für Eingabefelder, deren Wert für ALLE Varianten gilt (verknüpft)
+const linkedCellBg = 'rgba(96,165,250,0.14)'
+
+// Deutlich sichtbares Verknüpft/Getrennt-Abzeichen (statt nur blauer Text) – in allen Zeilentypen gleich
+function LinkBadge({ shared, onClick }: { shared: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick}
+      title={shared
+        ? 'VERKNÜPFT: derselbe Wert gilt für ALLE Varianten – eine Änderung wirkt in jeder Variante. Klicken, um pro Variante zu trennen.'
+        : 'Pro Variante getrennt: jede Variante hat eigene Werte. Klicken, um alle Varianten zu verknüpfen.'}
+      className="shrink-0 inline-flex items-center gap-1 rounded"
+      style={{
+        marginTop: 1, fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.25, padding: '1px 5px',
+        whiteSpace: 'nowrap', letterSpacing: '0.02em',
+        color: shared ? '#0b1220' : '#9ca3af',
+        background: shared ? '#60a5fa' : 'transparent',
+        border: `1px solid ${shared ? '#60a5fa' : '#4a4a4a'}`,
+      }}>
+      <LinkIcon className="w-3 h-3" />
+      {shared ? 'alle Varianten' : 'pro Variante'}
+    </button>
+  )
+}
+
 function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: string, positionId: string, variants: Variant[]): RowModel {
   const es = dataset.entries.filter(e => e.show_id === showId && e.position_id === positionId)
   const baseE = es.filter(e => (e.kind ?? 'base') !== 'travel')
@@ -614,11 +639,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 <circle cx="2.2" cy="12" r="1.25" /><circle cx="6.8" cy="12" r="1.25" />
               </svg>
             </span>
-            <button onClick={toggleLink}
-              title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
-              className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
-              <LinkIcon className="w-3.5 h-3.5" />
-            </button>
+            <LinkBadge shared={m.shared} onClick={toggleLink} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="flex items-center gap-1.5">
                 <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
@@ -667,7 +688,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
               }}
               placeholder="0"
               title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten' : undefined}
-              style={{ ...cell.style, color: m.shared ? '#93c5fd' : undefined }} />
+              style={{ ...cell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
           </td>
         ))}
 
@@ -893,10 +914,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
               <circle cx="2.2" cy="12" r="1.25" /><circle cx="6.8" cy="12" r="1.25" />
             </svg>
           </span>
-          <button onClick={toggleLink} title={m.shared ? 'Verknüpft (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
-            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
-            <LinkIcon className="w-3.5 h-3.5" />
-          </button>
+          <LinkBadge shared={m.shared} onClick={toggleLink} />
           <div style={{ minWidth: 0 }}>
             <div className="flex items-center gap-1.5">
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
@@ -919,13 +937,13 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
             <div style={{ display: 'flex', gap: 3 }}>
               <input {...hCell} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
-                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined }} />
+                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
               <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
               <input {...hCell} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
-                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined }} />
+                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
               <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
               <input {...hCell} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
-                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined }} />
+                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
             </div>
             <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
           </td>
@@ -1116,10 +1134,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
               <circle cx="2.2" cy="12" r="1.25" /><circle cx="6.8" cy="12" r="1.25" />
             </svg>
           </span>
-          <button onClick={toggleLink} title={m.shared ? 'Verknüpft (klicken zum Auflösen)' : 'Pro Variante (klicken zum Verknüpfen)'}
-            className="shrink-0" style={{ color: m.shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
-            <LinkIcon className="w-3.5 h-3.5" />
-          </button>
+          <LinkBadge shared={m.shared} onClick={toggleLink} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="flex items-center gap-1.5">
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
@@ -1150,10 +1165,10 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
         return (
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
+              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
             </div>
             <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
           </td>
@@ -1194,8 +1209,8 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
           return (
             <td key={v.id} style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
-                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
+                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
                 <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatMoney(fuelAmount(val))}</span>
               </div>
             </td>
