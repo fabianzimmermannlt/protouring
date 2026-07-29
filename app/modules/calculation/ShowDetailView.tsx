@@ -151,7 +151,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   return (
     <div>
       <div className="flex items-start gap-3"
-        style={{ position: 'sticky', top: 0, zIndex: 30, background: '#141414', paddingTop: 10, paddingBottom: 10, marginBottom: 12, borderBottom: '1px solid #2a2a2a', boxShadow: '0 6px 10px -8px rgba(0,0,0,0.7)' }}>
+        style={{ position: 'sticky', top: 0, zIndex: 40, background: '#141414', width: '100%', paddingTop: 13, paddingBottom: 13, marginBottom: 12, borderBottom: '1px solid #2a2a2a', boxShadow: '0 8px 12px -8px rgba(0,0,0,0.8)' }}>
         <button onClick={onBack} className="btn btn-ghost shrink-0" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
         </button>
