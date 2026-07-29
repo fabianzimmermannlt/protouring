@@ -2142,6 +2142,10 @@ const NOTIFICATION_CATEGORIES = {
   guestlist_wish_pending: { label: 'Gästeliste: neuer Wunsch (zur Freigabe)', defInApp: true, defEmail: false, defPush: true },
   guestlist_wish:         { label: 'Gästeliste: Wunsch freigegeben/abgelehnt', defInApp: true, defEmail: true, defPush: true },
   todo_assigned:          { label: 'ToDo zugewiesen', defInApp: true, defEmail: false, defPush: true },
+  event_created:          { label: 'Neues Event', defInApp: true, defEmail: false, defPush: true },
+  schedule_changed:       { label: 'Änderung im Schedule', defInApp: true, defEmail: false, defPush: true },
+  chat_general:           { label: 'Nachricht im allgemeinen Chat', defInApp: true, defEmail: false, defPush: true },
+  chat_event:             { label: 'Nachricht in einem Event-Chat', defInApp: true, defEmail: false, defPush: true },
 }
 
 function notifPrefFor(prefsJson, category) {
@@ -2214,6 +2218,41 @@ async function notifyTenantEditors({ tenantId, exceptUserId, type, title, body, 
 }
 
 // ToDo-Zuweisung → den verknüpften User-Account des Kontakts benachrichtigen.
+// Alle aktiven Mitglieder eines Tenants benachrichtigen (außer der auslösenden Person).
+async function notifyTenantMembers({ tenantId, exceptUserId, type, title, body, link }) {
+  try {
+    const members = await db.all(
+      `SELECT DISTINCT user_id AS id FROM user_tenants WHERE tenant_id = ? AND status = 'active'`,
+      [tenantId]
+    )
+    for (const m of members) {
+      if (!m.id || m.id === exceptUserId) continue
+      await notify({ tenantId, userId: m.id, type, title, body, link })
+    }
+  } catch (e) { console.error('notifyTenantMembers Fehler:', e.message) }
+}
+
+// Schedule-Änderungen bei zeilenweiser Bearbeitung drosseln: pro Termin höchstens
+// alle 5 Minuten eine Benachrichtigung (In-Memory, reicht als Flut-Schutz).
+const scheduleNotifyThrottle = new Map()
+async function notifyScheduleChanged({ tenantId, terminId, actingUserId }) {
+  try {
+    if (!terminId) return
+    const key = `${tenantId}:${terminId}`
+    const now = Date.now()
+    if (now - (scheduleNotifyThrottle.get(key) || 0) < 5 * 60 * 1000) return
+    scheduleNotifyThrottle.set(key, now)
+    const t = await db.get('SELECT city, title FROM termine WHERE id = ?', [terminId])
+    const label = t?.city || t?.title || 'Event'
+    await notifyTenantMembers({
+      tenantId, exceptUserId: actingUserId, type: 'schedule_changed',
+      title: `Schedule geändert – ${label}`,
+      body: 'Der Ablaufplan wurde aktualisiert.',
+      link: `/?tab=events&id=${terminId}`,
+    })
+  } catch (e) { console.error('notifyScheduleChanged Fehler:', e.message) }
+}
+
 async function notifyTodoAssigned({ tenantId, terminId, assignedContactId, title, actingUserId }) {
   try {
     if (!assignedContactId) return
@@ -4473,6 +4512,25 @@ app.post('/api/chat/:entityType/:entityId', authenticateToken, requireTenant, as
       id: row.id, userId: row.user_id, userName: row.user_name,
       text: row.text, createdAt: row.created_at,
     }});
+    // Team benachrichtigen (nach der Antwort). Nur Haupt-Chats: 'desk' = allgemein,
+    // 'termin' = Event-Chat. Andere Chat-Typen bewusst ohne Benachrichtigung.
+    const snippet = text.trim().slice(0, 120);
+    if (entityType === 'desk') {
+      notifyTenantMembers({
+        tenantId: req.tenant.id, exceptUserId: req.user.id, type: 'chat_general',
+        title: 'Neue Nachricht (Allgemein)', body: `${userName}: ${snippet}`, link: `/?tab=desk`,
+      });
+    } else if (entityType === 'termin') {
+      (async () => {
+        const t = await db.get('SELECT city, title FROM termine WHERE id = ?', [entityId]).catch(() => null);
+        const label = t?.city || t?.title || 'Event';
+        notifyTenantMembers({
+          tenantId: req.tenant.id, exceptUserId: req.user.id, type: 'chat_event',
+          title: `Neue Nachricht – ${label}`, body: `${userName}: ${snippet}`,
+          link: `/?tab=events&id=${entityId}`,
+        });
+      })();
+    }
   } catch (err) {
     console.error('POST /api/chat error:', err);
     res.status(500).json({ error: 'Failed' });
@@ -4837,6 +4895,13 @@ app.post('/api/termine', authenticateToken, requireTenant, requireEditor, async 
       WHERE t.id = ?
     `, [result.lastID]);
     res.status(201).json({ termin });
+    // Team benachrichtigen (nach der Antwort, blockiert nicht)
+    const evLabel = [city, title].filter(Boolean).join(' · ') || title;
+    notifyTenantMembers({
+      tenantId: req.tenant.id, exceptUserId: req.user.id, type: 'event_created',
+      title: 'Neues Event', body: `${evLabel}${date ? ` (${date})` : ''}`,
+      link: `/?tab=events&id=${result.lastID}`,
+    });
   } catch (err) {
     console.error('POST termine error:', err);
     res.status(500).json({ error: 'Failed to create termin' });
@@ -5881,6 +5946,7 @@ app.post('/api/termine/:terminId/schedules', authenticateToken, requireTenant, r
     );
     const schedule = await db.get('SELECT * FROM termin_schedules WHERE id = ?', [result.lastID]);
     res.json({ schedule });
+    notifyScheduleChanged({ tenantId: req.tenant.id, terminId: req.params.terminId, actingUserId: req.user.id });
   } catch (err) {
     res.status(500).json({ error: 'Failed to create schedule' });
   }
@@ -5895,6 +5961,7 @@ app.put('/api/termine/:terminId/schedules/:id', authenticateToken, requireTenant
     );
     const schedule = await db.get('SELECT * FROM termin_schedules WHERE id = ?', [req.params.id]);
     res.json({ schedule });
+    notifyScheduleChanged({ tenantId: req.tenant.id, terminId: req.params.terminId, actingUserId: req.user.id });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update schedule' });
   }
