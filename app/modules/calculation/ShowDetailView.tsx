@@ -7,9 +7,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
-import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
   getVehicles, createVehicle, lockCalcShow, unlockCalcShow, type Vehicle, type CalcEntryInput,
 } from '@/lib/api-client'
 import { buildAbrechnung, type AbrechnungSnapshot } from '@/lib/calculation/abrechnung'
@@ -45,6 +45,17 @@ function markRowDirty(key: string, dirty: boolean) {
 }
 const hv = (v: unknown) => v != null && v !== ''
 const entryHasValue = (e: CalcEntry): boolean => hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price)
+
+// Werte einer Position in ALLE aktiven, nicht gesperrten Shows kopieren (mit Warnung).
+async function copyRowToAllShows(dataset: CalcDataset, showId: string, positionId: string, entries: CalcEntryInput[], onDone: () => void): Promise<boolean> {
+  if (entries.length === 0) { alert('Keine Werte in dieser Zeile zum Kopieren.'); return false }
+  const hasVals = (sid: string) => dataset.entries.some(e => e.show_id === sid && e.position_id === positionId && (hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price) || hv(e.nights)))
+  const others = dataset.shows.filter(s => s.is_active && !s.locked && s.id !== showId && hasVals(s.id))
+  if (others.length && !confirm(`${others.length} weitere Show(s) haben in dieser Position bereits Werte.\n\nMit den Werten dieser Show überschreiben?`)) return false
+  await copyCalcEntriesToShows(positionId, entries)
+  onDone()
+  return true
+}
 
 // Tab springt spaltenweise nach unten: Inputs mit gleichem data-calc-col in DOM-
 // Reihenfolge; Tab → nächstes Feld unten, Shift+Tab → oben. Erleichtert die Eingabe.
@@ -674,6 +685,10 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 {busy ? '…' : 'Speichern'}
               </button>
             )}
+            <button onClick={async () => { setBusy(true); try { const ok = await copyRowToAllShows(dataset, show.id, positionId, entriesPayload(), onChanged); if (ok) setSavedSnap(sollSnap(m)) } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) } }}
+              disabled={busy} className="p-1 text-gray-400 hover:text-blue-400" title="Werte auf alle Termine kopieren">
+              <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+            </button>
             <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Entfernen">
               <TrashIcon className="w-3.5 h-3.5" />
             </button>
@@ -848,6 +863,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
     catch (e: any) { setErr(e?.message ?? 'Fehler beim Speichern') }
     finally { setBusy(false) }
   }
+  const copyAll = async () => { setBusy(true); try { const ok = await copyRowToAllShows(dataset, show.id, positionId, payload(), onChanged); if (ok) setSavedSnap(hSnap(m)) } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) } }
   const saveIst = async () => {
     try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })) }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
@@ -927,6 +943,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
           {dirty && (
             <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>{busy ? '…' : 'Speichern'}</button>
           )}
+          <button onClick={copyAll} disabled={busy} className="p-1 text-gray-400 hover:text-blue-400" title="Werte auf alle Termine kopieren"><DocumentDuplicateIcon className="w-3.5 h-3.5" /></button>
           <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Löschen"><TrashIcon className="w-3.5 h-3.5" /></button>
         </div>
         {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}
@@ -1064,6 +1081,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
     catch (e: any) { setErr(e?.message ?? 'Fehler beim Speichern') }
     finally { setBusy(false) }
   }
+  const copyAll = async () => { setBusy(true); try { const ok = await copyRowToAllShows(dataset, show.id, positionId, payload(), onChanged); if (ok) setSavedSnap(vSnapKey(m)) } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) } }
   const saveIst = async () => {
     try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })) }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
@@ -1147,6 +1165,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
           {dirty && (
             <button onClick={saveSoll} disabled={busy} className="btn btn-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.45rem' }}>{busy ? '…' : 'Speichern'}</button>
           )}
+          <button onClick={copyAll} disabled={busy} className="p-1 text-gray-400 hover:text-blue-400" title="Werte auf alle Termine kopieren"><DocumentDuplicateIcon className="w-3.5 h-3.5" /></button>
           <button onClick={removeRow} disabled={busy} className="p-1 text-gray-400 hover:text-red-500" title="Löschen"><TrashIcon className="w-3.5 h-3.5" /></button>
         </div>
         {err && <p className="text-[10px] mt-0.5" style={{ color: '#fca5a5' }}>{err}</p>}

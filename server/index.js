@@ -8255,6 +8255,33 @@ app.delete('/api/calc/positions/:id', authenticateToken, requireTenant, requireE
   }
 });
 
+// Werte einer Position in ALLE aktiven, nicht gesperrten Shows des Projekts kopieren
+app.post('/api/calc/positions/:id/copy-to-shows', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await db.get(
+      'SELECT p.id AS project_id, p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
+      [req.params.id]);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    const list = Array.isArray(req.body?.entries) ? req.body.entries : [];
+    const shows = await db.all('SELECT id FROM calc_shows WHERE project_id = ? AND is_active = 1 AND (locked IS NULL OR locked = 0)', [owner.project_id]);
+    for (const s of shows) {
+      await db.run('DELETE FROM calc_entries WHERE show_id = ? AND position_id = ?', [s.id, req.params.id]);
+      for (const e of list) {
+        await db.run(
+          `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,quantity,unit_price,distance_km,rental_price,included_km,price_extra_km,nights,amount,kind,ist_amount,note)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [crypto.randomUUID(), owner.project_id, s.id, req.params.id, e.variant_id ?? null,
+           calcText(e.quantity), calcText(e.unit_price), calcText(e.distance_km), calcText(e.rental_price),
+           calcText(e.included_km), calcText(e.price_extra_km), calcText(e.nights), calcText(e.amount), e.kind || 'base', null, e.note ?? null]);
+      }
+    }
+    res.json({ ok: true, count: shows.length });
+  } catch (e) {
+    console.error('[calc] copy to shows:', e);
+    res.status(500).json({ error: 'Fehler beim Kopieren auf alle Shows' });
+  }
+});
+
 // Übergeordneter Posten: Soll-/Ist-Betrag setzen (eine Buchung show_id NULL, variant_id NULL)
 app.put('/api/calc/positions/:id/overhead', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
