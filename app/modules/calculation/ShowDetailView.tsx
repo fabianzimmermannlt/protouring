@@ -427,23 +427,16 @@ const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: 
 // Hintergrund-Tönung für Eingabefelder, deren Wert für ALLE Varianten gilt (verknüpft)
 const linkedCellBg = 'rgba(96,165,250,0.14)'
 
-// Deutlich sichtbares Verknüpft/Getrennt-Abzeichen (statt nur blauer Text) – in allen Zeilentypen gleich
+// Kompaktes 🔗-Symbol: verknüpft (blau) = ein gemeinsames Feld für alle Varianten;
+// Klick löst auf → je Variante ein eigenes Eingabefeld erscheint.
 function LinkBadge({ shared, onClick }: { shared: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick}
       title={shared
-        ? 'VERKNÜPFT: derselbe Wert gilt für ALLE Varianten – eine Änderung wirkt in jeder Variante. Klicken, um pro Variante zu trennen.'
-        : 'Pro Variante getrennt: jede Variante hat eigene Werte. Klicken, um alle Varianten zu verknüpfen.'}
-      className="shrink-0 inline-flex items-center gap-1 rounded"
-      style={{
-        marginTop: 1, fontSize: '0.6rem', fontWeight: 700, lineHeight: 1.25, padding: '1px 5px',
-        whiteSpace: 'nowrap', letterSpacing: '0.02em',
-        color: shared ? '#0b1220' : '#9ca3af',
-        background: shared ? '#60a5fa' : 'transparent',
-        border: `1px solid ${shared ? '#60a5fa' : '#4a4a4a'}`,
-      }}>
-      <LinkIcon className="w-3 h-3" />
-      {shared ? 'alle Varianten' : 'pro Variante'}
+        ? 'Verknüpft: ein gemeinsamer Wert für ALLE Varianten. Klicken → je Variante ein eigenes Feld.'
+        : 'Pro Variante getrennt: jede Variante hat ein eigenes Feld. Klicken → wieder ein gemeinsamer Wert für alle.'}
+      className="shrink-0" style={{ color: shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
+      <LinkIcon className="w-4 h-4" />
     </button>
   )
 }
@@ -673,22 +666,34 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           </div>
         </td>
 
-        {variants.map(v => (
+        {variants.map((v, idx) => (
           <td key={v.id} className="text-right" style={{ padding: '4px 8px' }}>
-            <input inputMode="decimal" {...cell} data-calc-col={v.id} onKeyDown={e => gridTabDown(e, v.id)}
-              value={m.shared ? m.sharedVal : (m.perVar[v.id] ?? '')}
-              onChange={e => {
-                const val = e.target.value
-                setM(p => {
-                  if (!p.shared) return { ...p, perVar: { ...p.perVar, [v.id]: val } }
-                  const perVar: Record<string, string> = {}
-                  variants.forEach(vv => { perVar[vv.id] = val })
-                  return { ...p, sharedVal: val, perVar }
-                })
-              }}
-              placeholder="0"
-              title={m.shared ? 'Verknüpft: gleicher Wert in allen Varianten' : undefined}
-              style={{ ...cell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+            {m.shared ? (
+              idx === 0 ? (
+                <input inputMode="decimal" {...cell} data-calc-col={v.id} onKeyDown={e => gridTabDown(e, v.id)}
+                  value={m.sharedVal}
+                  onChange={e => {
+                    const val = e.target.value
+                    setM(p => {
+                      const perVar: Record<string, string> = {}
+                      variants.forEach(vv => { perVar[vv.id] = val })
+                      return { ...p, sharedVal: val, perVar }
+                    })
+                  }}
+                  placeholder="0" title="Verknüpft: ein Wert für alle Varianten (🔗 klicken zum Auflösen)"
+                  style={{ ...cell.style, color: '#93c5fd', background: linkedCellBg }} />
+              ) : (
+                <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
+                  style={{ ...cell.style, color: '#6b7280', minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                  <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} />{norm(m.sharedVal) != null ? m.sharedVal : '–'}
+                </div>
+              )
+            ) : (
+              <input inputMode="decimal" {...cell} data-calc-col={v.id} onKeyDown={e => gridTabDown(e, v.id)}
+                value={m.perVar[v.id] ?? ''}
+                onChange={e => { const val = e.target.value; setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: val } })) }}
+                placeholder="0" style={{ ...cell.style }} />
+            )}
           </td>
         ))}
 
@@ -930,21 +935,30 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
         </div>
       </td>
 
-      {variants.map(v => {
+      {variants.map((v, idx) => {
         const val = valsFor(v.id)
         const prod = hProd(val)
+        const mirror = m.shared && idx > 0
         return (
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-            <div style={{ display: 'flex', gap: 3 }}>
-              <input {...hCell} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
-                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
-              <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
-              <input {...hCell} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
-                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
-              <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
-              <input {...hCell} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
-                style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
-            </div>
+            {mirror ? (
+              <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: '#6b7280', fontSize: 12 }}>
+                <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} />
+                <span>{val.rooms || '–'}×{val.nights || '–'}×{val.price || '–'}</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 3 }}>
+                <input {...hCell} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
+                  style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+                <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
+                <input {...hCell} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
+                  style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+                <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
+                <input {...hCell} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
+                  style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+              </div>
+            )}
             <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
           </td>
         )
@@ -1160,16 +1174,24 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
         </div>
       </td>
 
-      {variants.map(v => {
+      {variants.map((v, idx) => {
         const val = valsFor(v.id)
+        const mirror = m.shared && idx > 0
         return (
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
-              <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
-            </div>
+            {mirror ? (
+              <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: '#6b7280', fontSize: 12 }}>
+                <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} /><span>verknüpft</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
+                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
+                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
+                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
+              </div>
+            )}
             <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
           </td>
         )
@@ -1204,13 +1226,22 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
             ⛽ Sprit <span style={{ color: '#6b7280', fontSize: 10 }}>L/100 × €/L</span>
           </div>
         </td>
-        {variants.map(v => {
+        {variants.map((v, idx) => {
           const val = valsFor(v.id)
+          const mirror = m.shared && idx > 0
           return (
             <td key={v.id} style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
-                <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+                {mirror ? (
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4, color: '#6b7280', fontSize: 11 }}>
+                    <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} />verknüpft
+                  </span>
+                ) : (
+                  <>
+                    <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
+                    <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+                  </>
+                )}
                 <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatMoney(fuelAmount(val))}</span>
               </div>
             </td>
