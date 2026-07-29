@@ -44,7 +44,7 @@ const SHORT_LABEL: Record<string, string> = {
   profil: 'Profil',
   permissions: 'Rechte',
   appearance: 'Style',
-  notifications: 'Alerts',
+  notifications: 'Meldungen',
   contacts: 'Kontakte',
   guestlist: 'Gäste',
   daysheet: 'Daysheet',

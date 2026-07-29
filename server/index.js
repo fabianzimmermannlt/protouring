@@ -2217,12 +2217,21 @@ async function notifyTenantEditors({ tenantId, exceptUserId, type, title, body, 
 async function notifyTodoAssigned({ tenantId, terminId, assignedContactId, title, actingUserId }) {
   try {
     if (!assignedContactId) return
-    const contact = await db.get('SELECT user_id FROM contacts WHERE id = ? AND tenant_id = ?', [assignedContactId, tenantId])
-    if (!contact?.user_id || contact.user_id === actingUserId) return
+    const contact = await db.get('SELECT user_id, email FROM contacts WHERE id = ? AND tenant_id = ?', [assignedContactId, tenantId])
+    if (!contact) return
+    let targetUserId = contact.user_id
+    // Fallback: Kontakt ist nicht mit einem Nutzer verknüpft, aber seine E-Mail
+    // gehört zu einem existierenden Nutzer → diesen benachrichtigen. (users.email
+    // ist eindeutig, daher unmissverständlich.)
+    if (!targetUserId && contact.email) {
+      const u = await db.get('SELECT id FROM users WHERE lower(email) = lower(?)', [String(contact.email).trim()])
+      if (u) targetUserId = u.id
+    }
+    if (!targetUserId || targetUserId === actingUserId) return
     const t = terminId ? await db.get('SELECT city FROM termine WHERE id = ?', [terminId]) : null
     await notify({
       tenantId,
-      userId: contact.user_id,
+      userId: targetUserId,
       type: 'todo_assigned',
       title: 'Neues ToDo für dich',
       body: `${title}${t?.city ? ` – ${t.city}` : ''}`,

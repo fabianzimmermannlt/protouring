@@ -40,6 +40,26 @@ function ProTouringAppInner() {
   const activeTabRef = useRef('desk') // Ref für stale-closure-sichere Tab-Zugriffe
   const { layout } = useLayout() // Hook muss vor jedem bedingten Return stehen
 
+  // Mobile-Höhe exakt an window.innerHeight koppeln. iOS-PWAs berechnen 100dvh
+  // beim Zurückkehren aus einer anderen App nicht neu → der Container wird zu
+  // hoch und die untere Navigation rutscht aus dem sichtbaren Bereich.
+  const [appHeight, setAppHeight] = useState<string>('100dvh')
+  useEffect(() => {
+    const update = () => setAppHeight(`${window.innerHeight}px`)
+    update()
+    const onVis = () => { if (!document.hidden) update() }
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    window.addEventListener('pageshow', update)
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+      window.removeEventListener('pageshow', update)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [])
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace('/login')
@@ -185,7 +205,7 @@ function ProTouringAppInner() {
       />
 
       {/* ── MOBILE: Flex-Column mit 100dvh, kein fixed positioning ── */}
-      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: '100dvh' }}>
+      <div className="md:hidden flex flex-col bg-gray-100" style={{ height: appHeight }}>
         {/* Slim Header + Sub-Nav */}
         <Navigation
           activeTab={activeTab}
