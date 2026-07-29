@@ -18,7 +18,8 @@
     "nodemailer": "^6.9.14",
     "pg": "^8.20.0",
     "sqlite": "^4.2.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

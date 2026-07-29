@@ -2042,6 +2042,69 @@ async function sendMail({ to, subject, html, text, replyTo }) {
 // Basis-URL der App (für Links in Mails). Auf Hetzner via FRONTEND_URL, sonst Default.
 const APP_BASE_URL = (process.env.FRONTEND_URL || 'https://protouring.de').replace(/\/$/, '')
 
+// ── Web-Push (VAPID) ─────────────────────────────────────────
+// web-push wird lazy geladen. VAPID-Schlüssel werden einmalig erzeugt und in
+// app_push_config (DB) gespeichert – kein manuelles ENV-Setup nötig.
+let webpush = null
+let vapidPublicKey = null
+
+async function initPush() {
+  try {
+    try { webpush = require('web-push') } catch { console.warn('[push] web-push nicht installiert – Push deaktiviert (npm install web-push im server-Ordner)'); return }
+    await db.exec(`CREATE TABLE IF NOT EXISTS app_push_config (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      public_key TEXT NOT NULL,
+      private_key TEXT NOT NULL,
+      subject TEXT NOT NULL
+    )`)
+    await db.exec(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tenant_id INTEGER,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      user_agent TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`)
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_push_sub_user ON push_subscriptions(user_id)`)
+    let cfg = await db.get('SELECT public_key, private_key, subject FROM app_push_config WHERE id = 1')
+    if (!cfg) {
+      const keys = webpush.generateVAPIDKeys()
+      const subject = `mailto:admin@${APP_BASE_URL.replace(/^https?:\/\//, '')}`
+      await db.run('INSERT INTO app_push_config (id, public_key, private_key, subject) VALUES (1, ?, ?, ?)', [keys.publicKey, keys.privateKey, subject])
+      cfg = { public_key: keys.publicKey, private_key: keys.privateKey, subject }
+      console.log('[push] VAPID-Schlüssel erzeugt und gespeichert')
+    }
+    webpush.setVapidDetails(cfg.subject, cfg.public_key, cfg.private_key)
+    vapidPublicKey = cfg.public_key
+    console.log('[push] Web-Push aktiv')
+  } catch (e) {
+    console.error('[push] Init-Fehler:', e.message)
+  }
+}
+
+// Sendet an alle registrierten Geräte eines Nutzers. Tote Abos (404/410) werden entfernt.
+async function sendPushToUser(userId, { title, body, link }) {
+  if (!webpush || !vapidPublicKey || !userId) return
+  let subs = []
+  try { subs = await db.all('SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?', [userId]) } catch { return }
+  if (!subs.length) return
+  const payload = JSON.stringify({ title, body: body || '', url: link ? `${APP_BASE_URL}${link}` : APP_BASE_URL })
+  await Promise.all(subs.map(async (s) => {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
+    } catch (err) {
+      const code = err?.statusCode
+      if (code === 404 || code === 410) {
+        try { await db.run('DELETE FROM push_subscriptions WHERE id = ?', [s.id]) } catch {}
+      } else {
+        console.error('[push] sendNotification Fehler:', code || err?.message)
+      }
+    }
+  }))
+}
+
 // Deutsche Rollen-Labels für Mails
 const ROLE_LABELS_DE = {
   admin: 'Admin', agency: 'Agentur', tourmanagement: 'Tourmanagement',
@@ -2076,19 +2139,20 @@ function mailLayout({ title, intro, ctaText, ctaUrl, footnote }) {
 // ── Benachrichtigungen: Kategorien + Helper ──────────────────
 // defInApp/defEmail = Standard-Kanäle, falls Nutzer nichts eingestellt hat.
 const NOTIFICATION_CATEGORIES = {
-  guestlist_wish_pending: { label: 'Gästeliste: neuer Wunsch (zur Freigabe)', defInApp: true, defEmail: false },
-  guestlist_wish:         { label: 'Gästeliste: Wunsch freigegeben/abgelehnt', defInApp: true, defEmail: true },
-  todo_assigned:          { label: 'ToDo zugewiesen', defInApp: true, defEmail: false },
+  guestlist_wish_pending: { label: 'Gästeliste: neuer Wunsch (zur Freigabe)', defInApp: true, defEmail: false, defPush: true },
+  guestlist_wish:         { label: 'Gästeliste: Wunsch freigegeben/abgelehnt', defInApp: true, defEmail: true, defPush: true },
+  todo_assigned:          { label: 'ToDo zugewiesen', defInApp: true, defEmail: false, defPush: true },
 }
 
 function notifPrefFor(prefsJson, category) {
   let prefs = {}
   try { prefs = JSON.parse(prefsJson || '{}') } catch {}
-  const cat = NOTIFICATION_CATEGORIES[category] || { defInApp: true, defEmail: false }
+  const cat = NOTIFICATION_CATEGORIES[category] || { defInApp: true, defEmail: false, defPush: true }
   const p = prefs[category] || {}
   return {
     inApp: p.inApp !== undefined ? !!p.inApp : cat.defInApp,
     email: p.email !== undefined ? !!p.email : cat.defEmail,
+    push:  p.push  !== undefined ? !!p.push  : cat.defPush,
   }
 }
 
@@ -2118,6 +2182,9 @@ async function notify({ tenantId, userId, type, title, body, link }) {
           ctaUrl: url || undefined,
         }),
       })
+    }
+    if (pref.push) {
+      await sendPushToUser(userId, { title, body, link })
     }
   } catch (e) {
     console.error('notify() Fehler:', e.message)
@@ -2625,6 +2692,7 @@ app.get('/api/notifications-prefs', authenticateToken, async (req, res) => {
         label: cat.label,
         inApp: p.inApp !== undefined ? !!p.inApp : cat.defInApp,
         email: p.email !== undefined ? !!p.email : cat.defEmail,
+        push:  p.push  !== undefined ? !!p.push  : cat.defPush,
       }
     }
     res.json({ prefs: out })
@@ -2637,9 +2705,43 @@ app.put('/api/notifications-prefs', authenticateToken, async (req, res) => {
     const incoming = req.body?.prefs || {}
     const clean = {}
     for (const key of Object.keys(NOTIFICATION_CATEGORIES)) {
-      if (incoming[key]) clean[key] = { inApp: !!incoming[key].inApp, email: !!incoming[key].email }
+      if (incoming[key]) clean[key] = { inApp: !!incoming[key].inApp, email: !!incoming[key].email, push: !!incoming[key].push }
     }
     await db.run('UPDATE users SET notification_prefs = ? WHERE id = ?', [JSON.stringify(clean), req.user.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Web-Push: Abo verwalten ──────────────────────────────────
+// Öffentlicher VAPID-Key (nicht geheim) – der Client braucht ihn zum Abonnieren.
+app.get('/api/push/vapid-public-key', authenticateToken, async (req, res) => {
+  res.json({ key: vapidPublicKey, enabled: !!vapidPublicKey })
+})
+
+// Gerät/Browser für den aktuellen Nutzer registrieren.
+app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
+  try {
+    if (!vapidPublicKey) return res.status(503).json({ error: 'Push ist serverseitig nicht aktiv' })
+    const sub = req.body?.subscription || req.body
+    const endpoint = sub?.endpoint
+    const p256dh = sub?.keys?.p256dh
+    const auth = sub?.keys?.auth
+    if (!endpoint || !p256dh || !auth) return res.status(400).json({ error: 'Ungültige Subscription' })
+    await db.run(
+      `INSERT INTO push_subscriptions (user_id, tenant_id, endpoint, p256dh, auth, user_agent)
+       VALUES (?,?,?,?,?,?)
+       ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, tenant_id=excluded.tenant_id, p256dh=excluded.p256dh, auth=excluded.auth`,
+      [req.user.id, req.tenant?.id || null, endpoint, p256dh, auth, (req.headers['user-agent'] || '').slice(0, 255)]
+    )
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Gerät abmelden.
+app.post('/api/push/unsubscribe', authenticateToken, async (req, res) => {
+  try {
+    const endpoint = req.body?.endpoint
+    if (endpoint) await db.run('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?', [endpoint, req.user.id])
     res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -10892,6 +10994,7 @@ app.delete('/api/termine/:terminId/partners/:linkId', authenticateToken, require
 // ============================================
 
 initDatabase()
+  .then(() => initPush())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🎸 ProTouring Server running on port ${PORT}`);

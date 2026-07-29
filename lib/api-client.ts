@@ -234,7 +234,7 @@ export interface AppNotification {
   created_at: string
 }
 
-export interface NotificationPref { label: string; inApp: boolean; email: boolean }
+export interface NotificationPref { label: string; inApp: boolean; email: boolean; push: boolean }
 export type NotificationPrefs = Record<string, NotificationPref>
 
 export async function getNotifications(limit = 30): Promise<{ notifications: AppNotification[] }> {
@@ -265,8 +265,21 @@ export async function getNotificationPrefs(): Promise<{ prefs: NotificationPrefs
   return request('/api/notifications-prefs', { skipTenant: true })
 }
 
-export async function saveNotificationPrefs(prefs: Record<string, { inApp: boolean; email: boolean }>): Promise<{ ok: boolean }> {
+export async function saveNotificationPrefs(prefs: Record<string, { inApp: boolean; email: boolean; push: boolean }>): Promise<{ ok: boolean }> {
   return request('/api/notifications-prefs', { method: 'PUT', body: { prefs }, skipTenant: true })
+}
+
+// ── Web-Push ──────────────────────────────────────────────
+export async function getVapidPublicKey(): Promise<{ key: string | null; enabled: boolean }> {
+  return request('/api/push/vapid-public-key', { skipTenant: true })
+}
+
+export async function savePushSubscription(subscription: unknown): Promise<{ ok: boolean }> {
+  return request('/api/push/subscribe', { method: 'POST', body: { subscription }, skipTenant: true })
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<{ ok: boolean }> {
+  return request('/api/push/unsubscribe', { method: 'POST', body: { endpoint }, skipTenant: true })
 }
 
 export async function getMyTenants(): Promise<{ tenants: Array<{ id: number; name: string; slug: string; status: string; trial_ends_at: string | null; role: string }> }> {
