@@ -49,9 +49,10 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
   const detailShow = detailId ? dataset.shows.find(s => s.id === detailId) : null
   if (detailId && detailShow) {
     const go = (fn: () => void) => (guardNav ? guardNav(fn) : fn())
-    const idx = shows.findIndex(s => s.id === detailId)
-    const prev = idx > 0 ? shows[idx - 1] : null
-    const next = idx >= 0 && idx < shows.length - 1 ? shows[idx + 1] : null
+    // Prev/Next folgt der aktuellen Tabellen-Sortierung (Standard: Datum)
+    const idx = sorted.findIndex(r => r.show.id === detailId)
+    const prev = idx > 0 ? sorted[idx - 1].show : null
+    const next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1].show : null
     // WICHTIG: key={detailShow.id} → beim Wechsel (Prev/Next) wird die Detailansicht
     // inkl. aller Zeilen-States neu gemountet; sonst zeigt/speichert sie Werte der
     // vorherigen Show (useState wird bei Prop-Wechsel nicht neu initialisiert).
