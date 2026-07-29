@@ -28,6 +28,7 @@ import { MobileBottomNav } from './MobileBottomNav'
 import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTenants, logout, CURRENT_TENANT_KEY, getTenantArtistSettings, NAV_VISIBLE, canDo, can, getEffectiveRole, isTenantModuleEnabled } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
+import NotificationBell from '@/app/components/shared/NotificationBell'
 import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
 import { SubNavigation } from './SubNavigation'
 import { ContactsSubNavigation } from './ContactsSubNavigation'
@@ -487,8 +488,9 @@ export function Navigation({
             {artistName && <p className="text-[10px] text-gray-400 mt-0.5">{artistName}</p>}
           </div>
 
-          {/* Rechts: PreviewBanner */}
-          <div className="flex items-center">
+          {/* Rechts: Glocke + PreviewBanner */}
+          <div className="flex items-center gap-2">
+            <NotificationBell />
             <PreviewBanner />
           </div>
         </div>

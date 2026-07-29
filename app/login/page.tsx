@@ -37,7 +37,13 @@ export default function LoginPage() {
         router.push('/')
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login fehlgeschlagen')
+      const raw = err instanceof Error ? err.message : ''
+      const msg = /invalid credentials/i.test(raw)
+        ? 'E-Mail oder Passwort falsch.'
+        : /no active tenant/i.test(raw)
+          ? 'Für diesen Account ist kein aktiver Zugang hinterlegt.'
+          : (raw || 'Login fehlgeschlagen')
+      setError(msg)
     } finally {
       setLoading(false)
     }

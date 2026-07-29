@@ -160,12 +160,14 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: `Server-Fehler ${res.status} (keine JSON-Antwort)` }));
-    // 401: Token abgelaufen oder ungültig → Session löschen + zur Login-Seite
-    if (res.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('protouring_token')
-      localStorage.removeItem('protouring_current_tenant')
-      localStorage.removeItem('protouring_current_user')
-      localStorage.removeItem('protouring_all_tenants')
+    // 401 NUR als „Session abgelaufen" behandeln, wenn vorher ein Token da war.
+    // Ohne Token (z.B. Login mit falschem Passwort) ist 401 ein normaler
+    // Auth-Fehler → Fehlermeldung zeigen, NICHT die Seite hart neu laden.
+    if (res.status === 401 && typeof window !== 'undefined' && token) {
+      localStorage.removeItem(AUTH_TOKEN_KEY)
+      localStorage.removeItem(CURRENT_TENANT_KEY)
+      localStorage.removeItem(CURRENT_USER_KEY)
+      localStorage.removeItem(ALL_TENANTS_KEY)
       window.location.href = '/login'
       return new Promise(() => {}) // blockiert weitere Fehlerbehandlung
     }
