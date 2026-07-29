@@ -132,7 +132,7 @@ export default function CalculationModule() {
         {projects.length > 0 && (
           <select className="form-select" value={selectedId} onChange={e => setSelectedId(e.target.value)}
             title="Kalkulation auswählen"
-            style={{ flex: '0 1 auto', minWidth: 90, maxWidth: 220, textOverflow: 'ellipsis' }}>
+            style={{ flex: '1 1 auto', minWidth: 90, textOverflow: 'ellipsis' }}>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.year ? ` (${p.year})` : ''}</option>)}
           </select>
         )}
