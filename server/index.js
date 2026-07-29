@@ -1956,6 +1956,8 @@ async function initDatabase() {
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN locked_at TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_shows ADD COLUMN snapshot TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN travel_fix TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN spec TEXT'); } catch (e) { /* Spalte existiert bereits */ }
+  try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN person TEXT'); } catch (e) { /* Spalte existiert bereits */ }
 
   console.log('✅ Database initialized');
 }
@@ -8362,19 +8364,25 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
     const owner = await calcShowTenant(req.params.showId);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
     if (owner.locked) return res.status(409).json({ error: 'Show ist gesperrt (abgerechnet) – erst entsperren.' });
-    const amount = calcText(req.body?.amount);
-    const travelKm = calcText(req.body?.travel_km);
-    const travelRate = calcText(req.body?.travel_rate);
-    const travelFix = calcText(req.body?.travel_fix);
-    const note = req.body?.note ?? null;
-    const existing = await db.get('SELECT id FROM calc_actuals WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
-    if (amount == null && travelKm == null && travelRate == null && travelFix == null && (note == null || note === '')) {
+    // Nur übergebene Felder ändern (Merge) – so kann man Ist ODER Spez./Name einzeln speichern.
+    const existing = await db.get('SELECT * FROM calc_actuals WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
+    const num = (key, col) => req.body?.[key] !== undefined ? calcText(req.body[key]) : (existing ? existing[col] : null);
+    const txt = (key, col) => req.body?.[key] !== undefined ? (req.body[key] ? String(req.body[key]).trim() || null : null) : (existing ? existing[col] : null);
+    const amount = num('amount', 'amount');
+    const travelKm = num('travel_km', 'travel_km');
+    const travelRate = num('travel_rate', 'travel_rate');
+    const travelFix = num('travel_fix', 'travel_fix');
+    const spec = txt('spec', 'spec');
+    const person = txt('person', 'person');
+    const note = req.body?.note !== undefined ? (req.body.note ?? null) : (existing ? existing.note : null);
+    const allEmpty = amount == null && travelKm == null && travelRate == null && travelFix == null && !spec && !person && (note == null || note === '');
+    if (allEmpty) {
       if (existing) await db.run('DELETE FROM calc_actuals WHERE id = ?', [existing.id]);
       return res.json({ ok: true });
     }
-    if (existing) await db.run('UPDATE calc_actuals SET amount=?, travel_km=?, travel_rate=?, travel_fix=?, note=? WHERE id=?', [amount, travelKm, travelRate, travelFix, note, existing.id]);
-    else await db.run('INSERT INTO calc_actuals (id,show_id,position_id,amount,travel_km,travel_rate,travel_fix,note) VALUES (?,?,?,?,?,?,?,?)',
-      [crypto.randomUUID(), req.params.showId, req.params.positionId, amount, travelKm, travelRate, travelFix, note]);
+    if (existing) await db.run('UPDATE calc_actuals SET amount=?, travel_km=?, travel_rate=?, travel_fix=?, spec=?, person=?, note=? WHERE id=?', [amount, travelKm, travelRate, travelFix, spec, person, note, existing.id]);
+    else await db.run('INSERT INTO calc_actuals (id,show_id,position_id,amount,travel_km,travel_rate,travel_fix,spec,person,note) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [crypto.randomUUID(), req.params.showId, req.params.positionId, amount, travelKm, travelRate, travelFix, spec, person, note]);
     res.json({ ok: true });
   } catch (e) {
     console.error('[calc] set actual:', e);

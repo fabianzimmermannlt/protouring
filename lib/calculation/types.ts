@@ -122,6 +122,9 @@ export interface CalcActual {
   travel_rate?: Money
   /** Ist-Reisekosten: optionaler Fixpreis (z.B. Zugticket), addiert sich. */
   travel_fix?: Money
+  /** Pro Show: Spezifikation + Name/Person (bzw. Fahrzeug-Info). */
+  spec?: string | null
+  person?: string | null
   note?: string | null
 }
 

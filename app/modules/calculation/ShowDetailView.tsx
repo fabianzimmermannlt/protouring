@@ -478,10 +478,12 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== '' || (initial.travelFix[v.id] ?? '') !== ''))
-  const [spec, setSpec] = useState(positionSpec ?? '')
-  const saveSpec = async () => { try { await updateCalcPosition(positionId, { spec: spec.trim() || null }) } catch { /* still */ } }
-  const [person, setPerson] = useState(positionPerson ?? '')
-  const savePerson = async () => { try { await updateCalcPosition(positionId, { person: person.trim() || null }); onChanged() } catch { /* still */ } }
+  // Spezifikation + Name werden PRO SHOW gespeichert (calc_actuals); Positionswert nur als Fallback.
+  const actMeta = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
+  const [spec, setSpec] = useState(actMeta?.spec ?? positionSpec ?? '')
+  const saveSpec = async () => { try { await setCalcActual(show.id, positionId, { spec: spec.trim() || null }); onChanged() } catch { /* still */ } }
+  const [person, setPerson] = useState(actMeta?.person ?? positionPerson ?? '')
+  const savePerson = async () => { try { await setCalcActual(show.id, positionId, { person: person.trim() || null }); onChanged() } catch { /* still */ } }
   const [nameVal, setNameVal] = useState(positionName)
   const saveName = async () => {
     const nn = nameVal.trim()
@@ -818,11 +820,12 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
   const [m, setM] = useState<HModel>(initial)
   const [savedSnap, setSavedSnap] = useState(() => hSnap(initial))
   const [nameVal, setNameVal] = useState(positionName)
-  const [whoVal, setWhoVal] = useState(who ?? '')
+  const hotelAct = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
+  const [whoVal, setWhoVal] = useState(hotelAct?.spec ?? who ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = hSnap(m) !== savedSnap
-  const saveWho = async () => { try { await updateCalcPosition(positionId, { spec: whoVal.trim() || null }); onChanged() } catch { /* still */ } }
+  const saveWho = async () => { try { await setCalcActual(show.id, positionId, { spec: whoVal.trim() || null }); onChanged() } catch { /* still */ } }
 
   useEffect(() => {
     const key = `${show.id}:${positionId}`
@@ -1008,8 +1011,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
   const [m, setM] = useState<VModel>(initial)
   const [savedSnap, setSavedSnap] = useState(() => vSnapKey(initial))
   const [nameVal, setNameVal] = useState(positionName)
-  const [info, setInfo] = useState(snapshot.person ?? '')
-  const saveInfo = async () => { try { await updateCalcPosition(positionId, { person: info.trim() || null }); onChanged() } catch { /* still */ } }
+  const vehAct = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
+  const [info, setInfo] = useState(vehAct?.person ?? snapshot.person ?? '')
+  const saveInfo = async () => { try { await setCalcActual(show.id, positionId, { person: info.trim() || null }); onChanged() } catch { /* still */ } }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = vSnapKey(m) !== savedSnap

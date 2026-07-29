@@ -889,7 +889,7 @@ export async function copyCalcEntriesToShows(positionId: string, entries: CalcEn
   return request<{ count: number }>(`/api/calc/positions/${positionId}/copy-to-shows`, { method: 'POST', body: { entries } })
 }
 
-export interface CalcActualInput { amount?: Num; travel_km?: Num; travel_rate?: Num; travel_fix?: Num; note?: string | null }
+export interface CalcActualInput { amount?: Num; travel_km?: Num; travel_rate?: Num; travel_fix?: Num; spec?: string | null; person?: string | null; note?: string | null }
 export async function setCalcActual(showId: string, positionId: string, data: CalcActualInput): Promise<void> {
   await request(`/api/calc/shows/${showId}/actuals/${positionId}`, { method: 'PUT', body: data })
 }

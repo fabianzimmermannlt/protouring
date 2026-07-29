@@ -58,8 +58,13 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
       const ist = actualOf(p.id)
       if (ist) istSum = istSum.plus(D(ist))
       const sollStr = soll ? soll.toString() : ''
+      // Spezifikation/Name pro Show (calc_actuals), Fallback auf Positionswert.
+      const a = (dataset.actuals ?? []).find(x => x.show_id === show.id && x.position_id === p.id)
+      const spec = (a?.spec ?? p.spec) || ''
+      const person = (a?.person ?? p.person) || ''
+      const suffix = [spec, person].filter(Boolean).join(' · ')
       if ((sollStr && soll && !soll.isZero()) || ist) {
-        positions.push({ name: p.name + (p.spec ? ' · ' + p.spec : ''), soll: sollStr || '0', ist: ist || '' })
+        positions.push({ name: p.name + (suffix ? ' · ' + suffix : ''), soll: sollStr || '0', ist: ist || '' })
       }
     })
     const total = sr?.categoryAmount.get(cat.id)
