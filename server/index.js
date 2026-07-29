@@ -8533,6 +8533,20 @@ app.post('/api/calc/projects', authenticateToken, requireTenant, requireEditor, 
   }
 });
 
+app.patch('/api/calc/projects/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT * FROM calc_projects WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!proj) return res.status(404).json({ error: 'Kalkulation nicht gefunden' });
+    const name = (req.body?.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Name darf nicht leer sein' });
+    await db.run('UPDATE calc_projects SET name = ? WHERE id = ?', [name, req.params.id]);
+    res.json({ id: req.params.id, name });
+  } catch (e) {
+    console.error('[calc] rename project:', e);
+    res.status(500).json({ error: 'Fehler beim Umbenennen der Kalkulation' });
+  }
+});
+
 async function calcVariantTenant(vid) {
   return db.get('SELECT p.tenant_id AS tenant_id, v.project_id AS project_id FROM calc_variants v JOIN calc_projects p ON p.id = v.project_id WHERE v.id = ?', [vid]);
 }

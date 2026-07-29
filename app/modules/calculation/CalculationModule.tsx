@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Decimal from 'decimal.js'
 import { TrashIcon } from '@heroicons/react/24/outline'
 import {
-  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject, duplicateCalcProject,
+  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject, duplicateCalcProject, renameCalcProject,
   createCalcVariant, updateCalcVariant, deleteCalcVariant, getArtistMembers, type CalcProjectSummary,
 } from '@/lib/api-client'
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
@@ -88,6 +88,18 @@ export default function CalculationModule() {
     } catch (e: any) { setError(e?.message ?? 'Fehler beim Duplizieren') } finally { setDuplicating(false) }
   }
 
+  const handleRename = async () => {
+    if (!selectedId || !dataset) return
+    const next = window.prompt('Neuer Name der Kalkulation:', dataset.project.name)?.trim()
+    if (!next || next === dataset.project.name) return
+    setError('')
+    try {
+      await renameCalcProject(selectedId, next)
+      await loadProjects(false)
+      await reloadDataset()
+    } catch (e: any) { setError(e?.message ?? 'Fehler beim Umbenennen') }
+  }
+
   const handleCreateProject = async (name: string) => {
     const created = await createCalcProject(name)
     await loadProjects(false)
@@ -123,6 +135,9 @@ export default function CalculationModule() {
         <div className="ml-auto flex flex-wrap gap-2">
           {dataset && (
             <button onClick={() => setShowVariants(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>Varianten</button>
+          )}
+          {dataset && (
+            <button onClick={handleRename} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>Umbenennen</button>
           )}
           {dataset && (
             <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>{duplicating ? 'Dupliziere…' : 'Duplizieren'}</button>

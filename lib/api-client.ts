@@ -783,6 +783,10 @@ export async function duplicateCalcProject(id: string): Promise<{ id: string; na
   return request<{ id: string; name: string }>(`/api/calc/projects/${id}/duplicate`, { method: 'POST' })
 }
 
+export async function renameCalcProject(id: string, name: string): Promise<{ id: string; name: string }> {
+  return request<{ id: string; name: string }>(`/api/calc/projects/${id}`, { method: 'PATCH', body: { name } })
+}
+
 export async function createCalcVariant(projectId: string, name: string): Promise<{ id: string }> {
   return request<{ id: string }>(`/api/calc/projects/${projectId}/variants`, { method: 'POST', body: { name } })
 }
