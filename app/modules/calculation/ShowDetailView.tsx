@@ -1008,6 +1008,8 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
   const [m, setM] = useState<VModel>(initial)
   const [savedSnap, setSavedSnap] = useState(() => vSnapKey(initial))
   const [nameVal, setNameVal] = useState(positionName)
+  const [info, setInfo] = useState(snapshot.person ?? '')
+  const saveInfo = async () => { try { await updateCalcPosition(positionId, { person: info.trim() || null }); onChanged() } catch { /* still */ } }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = vSnapKey(m) !== savedSnap
@@ -1128,6 +1130,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
                 </button>
               </div>
             </div>
+            <input value={info} onChange={e => setInfo(e.target.value)} onBlur={saveInfo}
+              className="form-input" placeholder="Route / Vermieter / Info"
+              style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, width: '100%', maxWidth: 280 }} />
             {hasDefaults && (
               <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
                 className="text-xs" style={{ color: '#60a5fa', marginTop: 2, display: 'inline-block' }}>Fahrzeugwerte übernehmen</button>
