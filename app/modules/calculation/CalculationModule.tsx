@@ -123,27 +123,31 @@ export default function CalculationModule() {
     return <div className="py-10 text-center text-sm" style={{ color: '#9ca3af' }}>Lädt…</div>
   }
 
+  const btnBar: CSSProperties = { fontSize: '0.8rem', padding: '0.28rem 0.6rem', whiteSpace: 'nowrap' }
+
   return (
     <div className="pb-10">
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <h2 className="text-lg font-semibold" style={{ color: '#e0e0e0' }}>Kalkulation</h2>
+      <div className="flex items-center gap-3 mb-4" style={{ flexWrap: 'nowrap' }}>
+        <h2 className="text-lg font-semibold shrink-0" style={{ color: '#e0e0e0' }}>Kalkulation</h2>
         {projects.length > 0 && (
-          <select className="form-select" value={selectedId} onChange={e => setSelectedId(e.target.value)} style={{ minWidth: 200 }}>
+          <select className="form-select" value={selectedId} onChange={e => setSelectedId(e.target.value)}
+            title="Kalkulation auswählen"
+            style={{ flex: '0 1 auto', minWidth: 90, maxWidth: 220, textOverflow: 'ellipsis' }}>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.year ? ` (${p.year})` : ''}</option>)}
           </select>
         )}
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className="ml-auto flex gap-2 shrink-0" style={{ flexWrap: 'nowrap' }}>
           {dataset && (
-            <button onClick={() => setShowVariants(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>Varianten</button>
+            <button onClick={() => setShowVariants(true)} className="btn btn-ghost shrink-0" style={btnBar}>Varianten</button>
           )}
           {dataset && (
-            <button onClick={handleRename} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>Umbenennen</button>
+            <button onClick={handleRename} className="btn btn-ghost shrink-0" style={btnBar}>Umbenennen</button>
           )}
           {dataset && (
-            <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>{duplicating ? 'Dupliziere…' : 'Duplizieren'}</button>
+            <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-ghost shrink-0" style={btnBar}>{duplicating ? 'Dupliziere…' : 'Duplizieren'}</button>
           )}
-          <button onClick={() => setShowNewProject(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>+ Neues Projekt</button>
-          <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
+          <button onClick={() => setShowNewProject(true)} className="btn btn-ghost shrink-0" style={btnBar}>+ Neues Projekt</button>
+          <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost shrink-0" style={btnBar}>
             {importing ? 'Importiere…' : '+ Demo'}
           </button>
         </div>
