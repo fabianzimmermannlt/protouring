@@ -2495,13 +2495,13 @@ app.post('/api/auth/login', async (req, res) => {
     let tenants;
     if (user.is_superadmin) {
       // Superadmin sieht alle Tenants mit virtueller Admin-Rolle
-      tenants = await db.all(`SELECT id, name, slug, status, 'admin' as role FROM tenants ORDER BY name`);
+      tenants = await db.all(`SELECT id, name, slug, status, modules_enabled, 'admin' as role FROM tenants ORDER BY name`);
     } else {
       const tenantQuery = tenantSlug
-        ? `SELECT t.id, t.name, t.slug, t.status, ut.role FROM user_tenants ut
+        ? `SELECT t.id, t.name, t.slug, t.status, t.modules_enabled, ut.role FROM user_tenants ut
            JOIN tenants t ON ut.tenant_id = t.id
            WHERE ut.user_id = ? AND t.slug = ? AND ut.status = 'active'`
-        : `SELECT t.id, t.name, t.slug, t.status, ut.role FROM user_tenants ut
+        : `SELECT t.id, t.name, t.slug, t.status, t.modules_enabled, ut.role FROM user_tenants ut
            JOIN tenants t ON ut.tenant_id = t.id
            WHERE ut.user_id = ? AND ut.status = 'active'`;
 
@@ -2514,6 +2514,10 @@ app.post('/api/auth/login', async (req, res) => {
       // Update last_login_at
       await db.run('UPDATE user_tenants SET last_login_at = datetime("now") WHERE user_id = ?', [user.id]);
     }
+
+    // modules_enabled (JSON-Spalte) → Array, damit Add-ons direkt nach dem Login
+    // sichtbar sind (sonst erst nach Artist-Wechsel).
+    tenants = tenants.map(t => ({ ...t, modules_enabled: JSON.parse(t.modules_enabled || '[]') }));
 
     const token = jwt.sign(
       { id: user.id, email: user.email, isSuperadmin: !!user.is_superadmin },
