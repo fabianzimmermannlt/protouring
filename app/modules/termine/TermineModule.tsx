@@ -1523,8 +1523,19 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
   // ── Inline-Detail-State (SPA-Navigation ohne Route-Wechsel) ──────────────
   const [selectedTerminId, setSelectedTerminId] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null
-    const id = new URLSearchParams(window.location.search).get('id')
-    return id ? parseInt(id, 10) : null
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('id')
+    if (!id) return null
+    // Installierte App (PWA): beim Öffnen/Fortsetzen NICHT automatisch in ein
+    // Termin-Detail springen – es soll die Terminliste kommen. Ausnahme: echter
+    // Push-Deeplink (?from=push). Im normalen Browser-Tab bleibt es wie gehabt
+    // (Reload/geteilter Link öffnet das Detail).
+    const isStandalone =
+      (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true
+    const fromPush = params.get('from') === 'push'
+    if (isStandalone && !fromPush) return null
+    return parseInt(id, 10)
   })
   const [selectedView, setSelectedView] = useState<string>(() => {
     if (typeof window === 'undefined') return 'details'

@@ -74,7 +74,10 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  let url = (event.notification.data && event.notification.data.url) || '/'
+  // Marker, damit die App diesen Deeplink direkt als Termin-Detail öffnet
+  // (im installierten Modus wird sonst bewusst die Liste gezeigt).
+  url += (url.indexOf('?') === -1 ? '?' : '&') + 'from=push'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const client of list) {
