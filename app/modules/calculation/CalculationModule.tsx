@@ -419,7 +419,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
-              <th style={{ position: 'sticky', left: 0, zIndex: 1, background: '#252526', minWidth: 220 }}>Bereich / Position</th>
+              <th style={{ position: 'sticky', left: 0, zIndex: 1, background: 'inherit', minWidth: 220 }}>Bereich / Position</th>
               {shows.map(s => {
                 const meta = dataset.shows.find(sh => sh.id === s.showId)
                 return (
@@ -447,9 +447,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               if (r.type === 'section') {
                 return (
                   <tr key={i}>
-                    <td colSpan={shows.length + 3} style={{ fontWeight: 700, letterSpacing: '0.03em', background: '#383838', color: '#e0e0e0' }}>
-                      <span style={{ position: 'sticky', left: 0, display: 'inline-block' }}>{r.label}</span>
-                    </td>
+                    <td style={{ position: 'sticky', left: 0, zIndex: 1, fontWeight: 700, letterSpacing: '0.03em', background: '#383838', color: '#e0e0e0' }}>{r.label}</td>
+                    <td colSpan={shows.length + 2} style={{ background: '#383838' }} />
                   </tr>
                 )
               }
