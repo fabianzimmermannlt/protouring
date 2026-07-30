@@ -379,10 +379,10 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     if (t === 'catsum') return '#2a2a2a'                    // Gesamt <Bereich> – subtil
     return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
   }
-  // Die Tabelle hat einen eigenen Scrollbereich (Wrapper unten). Kopfzeile klebt oben,
-  // linke Spalte klebt links – beide am Box-Rand (Box hat kein Padding → keine Lücke).
-  // Steuerung liegt AUSSERHALB der Box → bleibt beim Scrollen garantiert stehen.
-  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526' }
+  // Wie ursprünglich: nur die linke Positions-Spalte klebt (sticky left). Keine
+  // sticky Kopfzeile, KEIN Inline-Scroll-Rahmen. Horizontaler Scroll bleibt im
+  // Wrapper → die Steuerung darüber wandert nicht mit.
+  const thBase: CSSProperties = { position: 'sticky', left: 0, zIndex: 3, background: '#252526' }
 
   return (
     <div>
@@ -419,19 +419,17 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
-      {/* Eigener Scrollbereich der Tabelle (wie Excel/Airtable): Kopfzeile klebt oben,
-          linke Spalte links (beide am Box-Rand, keine Lücke). Steuerung/Notiz liegen
-          AUSSERHALB → bleiben beim Scrollen stehen. maxHeight so, dass i.d.R. nur die
-          Box scrollt (kein Doppel-Scroll). Per Browser-Repro mit Messwerten belegt. */}
-      <div className="data-table-wrapper" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
+      {/* Wie ursprünglich: nur horizontaler Scroll im Wrapper (kein Inline-Rahmen,
+          keine maxHeight). Die Seite scrollt vertikal normal. */}
+      <div className="data-table-wrapper" style={{ overflowX: 'auto' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
-              <th style={{ ...thBase, left: 0, zIndex: 3, minWidth: 220 }}>Bereich / Position</th>
+              <th style={{ ...thBase, minWidth: 220 }}>Bereich / Position</th>
               {shows.map(s => {
                 const meta = dataset.shows.find(sh => sh.id === s.showId)
                 return (
-                  <th key={s.showId} className="text-right" style={{ ...thBase, minWidth: 110 }}>
+                  <th key={s.showId} className="text-right" style={{ minWidth: 110 }}>
                     <div style={{ fontWeight: 600 }}>{meta?.city ?? s.legacyKey}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.7 }}>{formatDate(meta?.show_date)}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.55 }}>{meta?.venue}</div>
@@ -446,8 +444,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                   </th>
                 )
               })}
-              <th className="text-right" style={{ ...thBase, minWidth: 110 }}>Gesamt</th>
-              <th className="text-right" style={{ ...thBase, minWidth: 72, whiteSpace: 'nowrap' }}>%</th>
+              <th className="text-right" style={{ minWidth: 110 }}>Gesamt</th>
+              <th className="text-right" style={{ minWidth: 72, whiteSpace: 'nowrap' }}>%</th>
             </tr>
           </thead>
           <tbody>
