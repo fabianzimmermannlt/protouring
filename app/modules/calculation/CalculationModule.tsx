@@ -386,6 +386,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
 
   return (
     <div>
+      {/* Steuerung + Notiz links angeheftet → bleiben beim Horizontal-Scroll stehen */}
+      <div style={{ position: 'sticky', left: 0, zIndex: 5, width: 'max-content', maxWidth: '100%', background: '#1c1c1c' }}>
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
@@ -418,10 +420,12 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
+      </div>
 
-      {/* Wie ursprünglich: nur horizontaler Scroll im Wrapper (kein Inline-Rahmen,
-          keine maxHeight). Die Seite scrollt vertikal normal. */}
-      <div className="data-table-wrapper" style={{ overflowX: 'auto' }}>
+      {/* Kein Inline-Scroll: Wrapper overflow:visible → die SEITE scrollt horizontal.
+          Positions-Spalte, Bereich-Titel (EINNAHMEN/AUSGABEN) und Steuerung bleiben
+          via sticky-left stehen. Per Browser-Messung belegt. */}
+      <div className="data-table-wrapper" style={{ overflow: 'visible', border: 'none', boxShadow: 'none', background: 'transparent' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
@@ -454,7 +458,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                 return (
                   <tr key={i}>
                     <td colSpan={shows.length + 3} style={{ fontWeight: 700, letterSpacing: '0.03em', background: '#383838', color: '#e0e0e0' }}>
-                      {r.label}
+                      <span style={{ position: 'sticky', left: 0, display: 'inline-block' }}>{r.label}</span>
                     </td>
                   </tr>
                 )
