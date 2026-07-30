@@ -380,7 +380,10 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
   }
   // Sticky Kopfzeile (Spaltenbeschriftung bleibt beim Scrollen sichtbar).
-  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526' }
+  // top: -20 (= L2-Panel-Padding p-5) → klebt am echten Scroll-Rand, ohne dass
+  // Zeilen im Padding-Streifen darüber durchscheinen. Analog left: -20 links.
+  const STICK = -20
+  const thBase: CSSProperties = { position: 'sticky', top: STICK, zIndex: 2, background: '#252526' }
 
   return (
     <div>
@@ -423,7 +426,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
-              <th style={{ ...thBase, left: 0, zIndex: 3, minWidth: 220 }}>Bereich / Position</th>
+              <th style={{ ...thBase, left: STICK, zIndex: 3, minWidth: 220 }}>Bereich / Position</th>
               {shows.map(s => {
                 const meta = dataset.shows.find(sh => sh.id === s.showId)
                 return (
@@ -463,7 +466,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               const rowStyle: CSSProperties = { fontWeight: isTotal ? 600 : 400, background: bg }
               return (
                 <tr key={i} style={rowStyle}>
-                  <td style={{ position: 'sticky', left: 0, zIndex: 1, background: bg, paddingLeft: r.type === 'line' ? 24 : 12 }}>
+                  <td style={{ position: 'sticky', left: STICK, zIndex: 1, background: bg, paddingLeft: r.type === 'line' ? 24 : 12 }}>
                     <div>{r.label}</div>
                     {r.note && <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467', marginTop: 1 }}>{r.note}</div>}
                   </td>
