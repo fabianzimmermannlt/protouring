@@ -379,14 +379,15 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     if (t === 'catsum') return '#2a2a2a'                    // Gesamt <Bereich> – subtil
     return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
   }
-  // Sticky Kopf/linke Spalte kleben an den Kanten des Tabellen-Rahmens (der eigene
-  // Scroll-Container unten). Der Rahmen hat kein Padding → top/left 0 = keine Lücke.
-  // Der horizontale Scroll bleibt IM Rahmen, die Steuerung darüber bleibt fix.
-  const STICK = 0
+  // Nur das Panel scrollt (ein Scroll). Kopf/linke Spalte kleben am Panel-Rand;
+  // top/left -20 versetzt um das L2-Panel-Padding (p-5) → keine Lücke oben/links.
+  const STICK = -20
   const thBase: CSSProperties = { position: 'sticky', top: STICK, zIndex: 2, background: '#252526' }
 
   return (
     <div>
+      {/* Steuerung + Notiz links angeheftet → bleiben beim Horizontal-Scroll stehen */}
+      <div style={{ position: 'sticky', left: 0, zIndex: 1, width: 'max-content', background: '#1c1c1c' }}>
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
@@ -419,12 +420,12 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
+      </div>
 
-      {/* Eigener Scroll-Rahmen: horizontaler (und vertikaler) Scroll bleibt HIER,
-          damit die Steuerung darüber fix bleibt. Kopf/linke Spalte kleben an den
-          Rahmen-Kanten (kein Padding → keine Lücke). maxHeight so, dass i. d. R.
-          nur der Rahmen scrollt (kein Doppel-Scroll). */}
-      <div className="data-table-wrapper" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 210px)' }}>
+      {/* Kein eigener Scroll-Rahmen (overflow visible) → nur das Panel scrollt
+          (ein Scroll, kein Inline-Scroll). Kopf/linke Spalte kleben am Panel-Rand
+          (top/left -20 = L2-Padding). Steuerung oben bleibt via sticky-left stehen. */}
+      <div className="data-table-wrapper" style={{ overflow: 'visible', border: 'none', boxShadow: 'none', background: 'transparent' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
