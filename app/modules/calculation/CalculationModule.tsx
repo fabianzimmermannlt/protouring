@@ -417,7 +417,9 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
-      <div className="data-table-wrapper" style={{ overflow: 'auto', maxHeight: 'calc(100dvh - 230px)' }}>
+      {/* overflow:visible → KEIN eigener Scroll-Container; die Seite/das Panel scrollt
+          (ein Scroll). Sticky Kopfzeile + linke Spalte kleben relativ zum Panel. */}
+      <div className="data-table-wrapper" style={{ overflow: 'visible', border: 'none', boxShadow: 'none', background: 'transparent' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
@@ -466,14 +468,14 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                     {r.note && <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467', marginTop: 1 }}>{r.note}</div>}
                   </td>
                   {r.perShow!.map((v, j) => (
-                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontSize: numSize, ...neg(v) }}>
+                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: bg, ...neg(v) }}>
                       {money(v, r.type === 'line')}
                     </td>
                   ))}
-                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, ...neg(r.total!) }}>
+                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, background: bg, ...neg(r.total!) }}>
                     {money(r.total!)}
                   </td>
-                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af', whiteSpace: 'nowrap', background: bg }}>
                     {formatPercent(r.percent ?? null)}
                   </td>
                 </tr>
