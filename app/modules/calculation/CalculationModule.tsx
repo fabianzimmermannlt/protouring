@@ -379,15 +379,12 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     if (t === 'catsum') return '#2a2a2a'                    // Gesamt <Bereich> – subtil
     return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
   }
-  // Nur das Panel scrollt (ein Scroll). Kopf/linke Spalte kleben am Panel-Rand;
-  // top/left -20 versetzt um das L2-Panel-Padding (p-5) → keine Lücke oben/links.
-  const STICK = -20
-  const thBase: CSSProperties = { position: 'sticky', top: STICK, zIndex: 2, background: '#252526' }
+  // Nur die linke Positions-Spalte klebt (horizontaler Scroll bleibt im Wrapper,
+  // wie in den Show-Details). Keine sticky Kopfzeile (das bräuchte einen Inline-Scroll).
+  const stickyHead: CSSProperties = { position: 'sticky', left: 0, zIndex: 3, background: '#252526' }
 
   return (
     <div>
-      {/* Steuerung + Notiz links angeheftet → bleiben beim Horizontal-Scroll stehen */}
-      <div style={{ position: 'sticky', left: 0, zIndex: 1, width: 'max-content', background: '#1c1c1c' }}>
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
@@ -420,20 +417,19 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
-      </div>
 
-      {/* Kein eigener Scroll-Rahmen (overflow visible) → nur das Panel scrollt
-          (ein Scroll, kein Inline-Scroll). Kopf/linke Spalte kleben am Panel-Rand
-          (top/left -20 = L2-Padding). Steuerung oben bleibt via sticky-left stehen. */}
-      <div className="data-table-wrapper" style={{ overflow: 'visible', border: 'none', boxShadow: 'none', background: 'transparent' }}>
+      {/* Wie in den Show-Details: horizontaler Scroll bleibt IM Wrapper → alles
+          darüber (Steuerung/Notiz) bleibt garantiert stehen. Linke Positions-Spalte
+          klebt (sticky left). Keine sticky Kopfzeile (bräuchte einen Inline-Scroll). */}
+      <div className="data-table-wrapper" style={{ overflowX: 'auto' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
-              <th style={{ ...thBase, left: STICK, zIndex: 3, minWidth: 220 }}>Bereich / Position</th>
+              <th style={{ ...stickyHead, minWidth: 220 }}>Bereich / Position</th>
               {shows.map(s => {
                 const meta = dataset.shows.find(sh => sh.id === s.showId)
                 return (
-                  <th key={s.showId} className="text-right" style={{ ...thBase, minWidth: 110 }}>
+                  <th key={s.showId} className="text-right" style={{ minWidth: 110 }}>
                     <div style={{ fontWeight: 600 }}>{meta?.city ?? s.legacyKey}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.7 }}>{formatDate(meta?.show_date)}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.55 }}>{meta?.venue}</div>
@@ -448,8 +444,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                   </th>
                 )
               })}
-              <th className="text-right" style={{ ...thBase, minWidth: 110 }}>Gesamt</th>
-              <th className="text-right" style={{ ...thBase, minWidth: 72, whiteSpace: 'nowrap' }}>%</th>
+              <th className="text-right" style={{ minWidth: 110 }}>Gesamt</th>
+              <th className="text-right" style={{ minWidth: 72, whiteSpace: 'nowrap' }}>%</th>
             </tr>
           </thead>
           <tbody>
@@ -469,7 +465,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               const rowStyle: CSSProperties = { fontWeight: isTotal ? 600 : 400, background: bg }
               return (
                 <tr key={i} style={rowStyle}>
-                  <td style={{ position: 'sticky', left: STICK, zIndex: 1, background: bg, paddingLeft: r.type === 'line' ? 24 : 12 }}>
+                  <td style={{ position: 'sticky', left: 0, zIndex: 1, background: bg, paddingLeft: r.type === 'line' ? 24 : 12 }}>
                     <div>{r.label}</div>
                     {r.note && <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467', marginTop: 1 }}>{r.note}</div>}
                   </td>
