@@ -379,10 +379,10 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     if (t === 'catsum') return '#2a2a2a'                    // Gesamt <Bereich> – subtil
     return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
   }
-  // Sticky Kopfzeile (Spaltenbeschriftung bleibt beim Scrollen sichtbar).
-  // top: -20 (= L2-Panel-Padding p-5) → klebt am echten Scroll-Rand, ohne dass
-  // Zeilen im Padding-Streifen darüber durchscheinen. Analog left: -20 links.
-  const STICK = -20
+  // Sticky Kopf/linke Spalte kleben an den Kanten des Tabellen-Rahmens (der eigene
+  // Scroll-Container unten). Der Rahmen hat kein Padding → top/left 0 = keine Lücke.
+  // Der horizontale Scroll bleibt IM Rahmen, die Steuerung darüber bleibt fix.
+  const STICK = 0
   const thBase: CSSProperties = { position: 'sticky', top: STICK, zIndex: 2, background: '#252526' }
 
   return (
@@ -420,9 +420,11 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
-      {/* overflow:visible → KEIN eigener Scroll-Container; die Seite/das Panel scrollt
-          (ein Scroll). Sticky Kopfzeile + linke Spalte kleben relativ zum Panel. */}
-      <div className="data-table-wrapper" style={{ overflow: 'visible', border: 'none', boxShadow: 'none', background: 'transparent' }}>
+      {/* Eigener Scroll-Rahmen: horizontaler (und vertikaler) Scroll bleibt HIER,
+          damit die Steuerung darüber fix bleibt. Kopf/linke Spalte kleben an den
+          Rahmen-Kanten (kein Padding → keine Lücke). maxHeight so, dass i. d. R.
+          nur der Rahmen scrollt (kein Doppel-Scroll). */}
+      <div className="data-table-wrapper" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 210px)' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
