@@ -373,6 +373,15 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   const money = (v: Decimal, dashZero = false) => (dashZero && v.isZero() ? '–' : formatMoney(v))
   const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: '#f87171' } : undefined)
 
+  // Hintergrund je Zeilentyp: Gesamt-/Ergebnis-Zeilen heben sich farblich ab.
+  const rowBgFor = (t: Row['type']): string => {
+    if (t === 'grand' || t === 'member') return '#38414d'  // SUMME / ERGEBNIS / je Mitglied – prominent
+    if (t === 'catsum') return '#2a2a2a'                    // Gesamt <Bereich> – subtil
+    return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
+  }
+  // Sticky Kopfzeile (Spaltenbeschriftung bleibt beim Scrollen sichtbar)
+  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526' }
+
   return (
     <div>
       <div className="flex flex-wrap items-end gap-4 mb-4">
@@ -408,15 +417,15 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
-      <div className="data-table-wrapper" style={{ overflowX: 'auto' }}>
+      <div className="data-table-wrapper" style={{ overflow: 'auto', maxHeight: 'calc(100dvh - 230px)' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
-              <th style={{ position: 'sticky', left: 0, minWidth: 220 }}>Bereich / Position</th>
+              <th style={{ ...thBase, left: 0, zIndex: 3, minWidth: 220 }}>Bereich / Position</th>
               {shows.map(s => {
                 const meta = dataset.shows.find(sh => sh.id === s.showId)
                 return (
-                  <th key={s.showId} className="text-right" style={{ minWidth: 110 }}>
+                  <th key={s.showId} className="text-right" style={{ ...thBase, minWidth: 110 }}>
                     <div style={{ fontWeight: 600 }}>{meta?.city ?? s.legacyKey}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.7 }}>{formatDate(meta?.show_date)}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.55 }}>{meta?.venue}</div>
@@ -431,8 +440,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                   </th>
                 )
               })}
-              <th className="text-right" style={{ minWidth: 110 }}>Gesamt</th>
-              <th className="text-right" style={{ minWidth: 64 }}>%</th>
+              <th className="text-right" style={{ ...thBase, minWidth: 110 }}>Gesamt</th>
+              <th className="text-right" style={{ ...thBase, minWidth: 72, whiteSpace: 'nowrap' }}>%</th>
             </tr>
           </thead>
           <tbody>
@@ -446,24 +455,25 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                   </tr>
                 )
               }
-              const bold = r.type === 'catsum' || r.type === 'grand'
-              const strong = r.type === 'grand'
-              const rowStyle: CSSProperties = { fontWeight: bold ? 600 : 400, background: strong ? '#2f2f2f' : undefined }
+              const isTotal = r.type === 'catsum' || r.type === 'grand' || r.type === 'member'
+              const bg = rowBgFor(r.type)
+              const numSize = r.type === 'line' ? '0.8rem' : undefined  // Detailzeilen etwas kleiner
+              const rowStyle: CSSProperties = { fontWeight: isTotal ? 600 : 400, background: bg }
               return (
                 <tr key={i} style={rowStyle}>
-                  <td style={{ position: 'sticky', left: 0, background: strong ? '#2f2f2f' : 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>
-                    {r.label}
-                    {r.note && <span style={{ marginLeft: 6, fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467' }}>· {r.note}</span>}
+                  <td style={{ position: 'sticky', left: 0, zIndex: 1, background: bg, paddingLeft: r.type === 'line' ? 24 : 12 }}>
+                    <div>{r.label}</div>
+                    {r.note && <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467', marginTop: 1 }}>{r.note}</div>}
                   </td>
                   {r.perShow!.map((v, j) => (
-                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', ...neg(v) }}>
+                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontSize: numSize, ...neg(v) }}>
                       {money(v, r.type === 'line')}
                     </td>
                   ))}
                   <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, ...neg(r.total!) }}>
                     {money(r.total!)}
                   </td>
-                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af' }}>
+                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af', whiteSpace: 'nowrap' }}>
                     {formatPercent(r.percent ?? null)}
                   </td>
                 </tr>
