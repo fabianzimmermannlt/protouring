@@ -380,9 +380,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     return '#1e1e1e'                                        // Detailzeile = Wrapper-Farbe (deckt sticky-Spalte)
   }
   // Sticky Kopfzeile (Spaltenbeschriftung bleibt beim Scrollen sichtbar).
-  // Der box-shadow deckt den Streifen ÜBER der klebenden Kopfzeile ab (Panel-Innen-
-  // padding), damit dort keine Zeilen durchscrollen. Farbe = Panel-Hintergrund (#1c1c1c).
-  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526', boxShadow: '0 -24px 0 0 #1c1c1c' }
+  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526' }
 
   return (
     <div>
@@ -415,7 +413,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         </label>
       </div>
 
-      <p className="text-xs" style={{ color: '#6b7280', marginBottom: 24 }}>
+      <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
