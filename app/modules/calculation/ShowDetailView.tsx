@@ -151,12 +151,12 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   return (
     <div>
       <div className="flex items-start gap-3"
-        style={{ position: 'sticky', top: 0, zIndex: 40, background: '#141414',
+        style={{ position: 'sticky', top: 0, zIndex: 40, background: '#1c1c1c',
           marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20,
           paddingTop: 13, paddingBottom: 13, marginBottom: 12, borderBottom: '1px solid #2a2a2a',
           // oberes Padding-Band des Scroll-Containers (p-5 = 20px) mit Vollfarbe abdecken,
           // damit beim Scrollen keine Tabellenzeilen darüber durchscheinen; + weicher Schlagschatten unten
-          boxShadow: '0 -22px 0 0 #141414, 0 8px 12px -8px rgba(0,0,0,0.8)' }}>
+          boxShadow: '0 -22px 0 0 #1c1c1c, 0 8px 12px -8px rgba(0,0,0,0.8)' }}>
         <button onClick={onBack} className="btn btn-ghost shrink-0" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
         </button>

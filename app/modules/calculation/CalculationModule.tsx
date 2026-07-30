@@ -381,8 +381,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   }
   // Sticky Kopfzeile (Spaltenbeschriftung bleibt beim Scrollen sichtbar).
   // Der box-shadow deckt den Streifen ÜBER der klebenden Kopfzeile ab (Panel-Innen-
-  // padding), damit dort keine Zeilen durchscrollen. Farbe = Panel-Hintergrund (#141414).
-  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526', boxShadow: '0 -24px 0 0 #141414' }
+  // padding), damit dort keine Zeilen durchscrollen. Farbe = Panel-Hintergrund (#1c1c1c).
+  const thBase: CSSProperties = { position: 'sticky', top: 0, zIndex: 2, background: '#252526', boxShadow: '0 -24px 0 0 #1c1c1c' }
 
   return (
     <div>
