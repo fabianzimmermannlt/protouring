@@ -373,6 +373,13 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   const money = (v: Decimal, dashZero = false) => (dashZero && v.isZero() ? '–' : formatMoney(v))
   const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: '#f87171' } : undefined)
 
+  // Hintergrund je Zeilentyp: Gesamt-/Ergebnis-Zeilen heben sich farblich ab.
+  const rowBgFor = (t: Row['type']): string | undefined => {
+    if (t === 'grand' || t === 'member') return '#38414d'  // SUMME / ERGEBNIS / je Mitglied
+    if (t === 'catsum') return '#2a2a2a'                    // Gesamt <Bereich>
+    return undefined                                        // Detailzeile
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end gap-4 mb-4">
@@ -432,7 +439,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                 )
               })}
               <th className="text-right" style={{ minWidth: 110 }}>Gesamt</th>
-              <th className="text-right" style={{ minWidth: 64 }}>%</th>
+              <th className="text-right" style={{ minWidth: 72, whiteSpace: 'nowrap' }}>%</th>
             </tr>
           </thead>
           <tbody>
@@ -446,24 +453,25 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                   </tr>
                 )
               }
-              const bold = r.type === 'catsum' || r.type === 'grand'
-              const strong = r.type === 'grand'
-              const rowStyle: CSSProperties = { fontWeight: bold ? 600 : 400, background: strong ? '#2f2f2f' : undefined }
+              const isTotal = r.type === 'catsum' || r.type === 'grand' || r.type === 'member'
+              const bg = rowBgFor(r.type)
+              const numSize = r.type === 'line' ? '0.8rem' : undefined  // Detailzeilen etwas kleiner
+              const rowStyle: CSSProperties = { fontWeight: isTotal ? 600 : 400, background: bg }
               return (
                 <tr key={i} style={rowStyle}>
-                  <td style={{ position: 'sticky', left: 0, background: strong ? '#2f2f2f' : 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>
-                    {r.label}
-                    {r.note && <span style={{ marginLeft: 6, fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467' }}>· {r.note}</span>}
+                  <td style={{ position: 'sticky', left: 0, background: bg ?? 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>
+                    <div>{r.label}</div>
+                    {r.note && <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467', marginTop: 1 }}>{r.note}</div>}
                   </td>
                   {r.perShow!.map((v, j) => (
-                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', ...neg(v) }}>
+                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: bg, ...neg(v) }}>
                       {money(v, r.type === 'line')}
                     </td>
                   ))}
-                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, ...neg(r.total!) }}>
+                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, background: bg, ...neg(r.total!) }}>
                     {money(r.total!)}
                   </td>
-                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af' }}>
+                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af', whiteSpace: 'nowrap', background: bg }}>
                     {formatPercent(r.percent ?? null)}
                   </td>
                 </tr>
