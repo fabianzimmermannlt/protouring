@@ -537,6 +537,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               const ergExtremes = (r.type === 'grand' && r.label === 'ERGEBNIS' && r.perShow && r.perShow.length > 1)
                 ? (() => { let mx = r.perShow[0], mn = r.perShow[0]; for (const v of r.perShow!) { if (v.gt(mx)) mx = v; if (v.lt(mn)) mn = v } return mx.eq(mn) ? null : { mx, mn } })()
                 : null
+              const isFixRow = r.label === 'Fixgage (Garantie)'
               return (
                 <tr key={i} style={rowStyle}>
                   <td style={{ position: 'sticky', left: 0, background: bg ?? 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>
@@ -550,9 +551,17 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                     const cellStyle: CSSProperties = (isMax || isMin)
                       ? { fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: cellBg, color: '#fff' }
                       : { fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: bg, ...neg(v) }
+                    // Fixgage-Zeile: Garantie vorhanden, aber Deal ist höher (vs) → „(Deal)" statt „–"
+                    const fixDealWon = isFixRow && v.isZero() && (() => {
+                      const m = dataset.shows.find(sh => sh.id === shows[j]?.showId)
+                      return !!m && (m.deal_type ?? 'vs') === 'vs' && parseFloat(String(m.guarantee ?? '0')) > 0
+                    })()
                     return (
-                      <td key={j} className="text-right" style={cellStyle} title={isMax ? 'Höchstes Ergebnis' : isMin ? 'Niedrigstes Ergebnis' : undefined}>
-                        {money(v, r.type === 'line')}
+                      <td key={j} className="text-right" style={cellStyle}
+                        title={isMax ? 'Höchstes Ergebnis' : isMin ? 'Niedrigstes Ergebnis' : (fixDealWon ? 'Garantie vorhanden – Deal ist höher und zählt' : undefined)}>
+                        {fixDealWon
+                          ? <span style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.72rem' }}>(Deal)</span>
+                          : money(v, r.type === 'line')}
                       </td>
                     )
                   })}
