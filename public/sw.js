@@ -4,7 +4,7 @@
    - Seiten (HTML) → network-first, bei Netzausfall Offline-Fallback
    - /api/* wird NIE gecacht (keine veralteten oder fremden Daten)
    Dadurch bleiben Updates sofort live (jeder Deploy zieht neue gehashte Assets). */
-const CACHE = 'pt-shell-v12'
+const CACHE = 'pt-shell-v13'
 const PRECACHE = ['/offline.html', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png']
 
 self.addEventListener('install', (event) => {

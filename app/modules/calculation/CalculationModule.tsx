@@ -533,17 +533,29 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               const bg = rowBgFor(r.type)
               const numSize = r.type === 'line' ? '0.8rem' : undefined  // Detailzeilen etwas kleiner
               const rowStyle: CSSProperties = { fontWeight: isTotal ? 600 : 400, background: bg }
+              // In der ERGEBNIS-Zeile beste (höchste) + schlechteste (niedrigste) Show markieren
+              const ergExtremes = (r.type === 'grand' && r.label === 'ERGEBNIS' && r.perShow && r.perShow.length > 1)
+                ? (() => { let mx = r.perShow[0], mn = r.perShow[0]; for (const v of r.perShow!) { if (v.gt(mx)) mx = v; if (v.lt(mn)) mn = v } return mx.eq(mn) ? null : { mx, mn } })()
+                : null
               return (
                 <tr key={i} style={rowStyle}>
                   <td style={{ position: 'sticky', left: 0, background: bg ?? 'inherit', paddingLeft: r.type === 'line' ? 24 : 12 }}>
                     <div>{r.label}</div>
                     {r.note && <div style={{ fontSize: '0.7rem', fontStyle: 'italic', color: '#8b9467', marginTop: 1 }}>{r.note}</div>}
                   </td>
-                  {r.perShow!.map((v, j) => (
-                    <td key={j} className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: bg, ...neg(v) }}>
-                      {money(v, r.type === 'line')}
-                    </td>
-                  ))}
+                  {r.perShow!.map((v, j) => {
+                    const isMax = ergExtremes ? v.eq(ergExtremes.mx) : false
+                    const isMin = ergExtremes ? v.eq(ergExtremes.mn) : false
+                    const cellBg = isMax ? '#166534' : isMin ? '#7f1d1d' : bg
+                    const cellStyle: CSSProperties = (isMax || isMin)
+                      ? { fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: cellBg, color: '#fff' }
+                      : { fontVariantNumeric: 'tabular-nums', fontSize: numSize, background: bg, ...neg(v) }
+                    return (
+                      <td key={j} className="text-right" style={cellStyle} title={isMax ? 'Höchstes Ergebnis' : isMin ? 'Niedrigstes Ergebnis' : undefined}>
+                        {money(v, r.type === 'line')}
+                      </td>
+                    )
+                  })}
                   <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, background: bg, ...neg(r.total!) }}>
                     {money(r.total!)}
                   </td>
