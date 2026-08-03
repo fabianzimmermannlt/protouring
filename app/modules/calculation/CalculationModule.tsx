@@ -380,6 +380,70 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     return undefined                                        // Detailzeile
   }
 
+  // ── Export (Übersicht) ──────────────────────────────────────────────────────
+  const showLabel = (showId: string) => {
+    const m = dataset.shows.find(sh => sh.id === showId)
+    return [m?.city, m?.show_date ? formatDate(m.show_date) : ''].filter(Boolean).join(' · ')
+  }
+  const escHtml = (s: string | undefined) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+  const fileBase = `${dataset.project.name} – Übersicht`
+
+  const exportCsv = () => {
+    const sep = ';'
+    const esc = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`
+    const num = (v: Decimal) => v.toFixed(2).replace('.', ',')   // deutsch, ohne Tausenderpunkt
+    const out: string[] = [
+      [dataset.project.name, `Beträge in ${dataset.project.currency}`, `Aktive Shows: ${overview.activeShowCount}`].map(esc).join(sep),
+      '',
+      ['Bereich / Position', ...shows.map(s => showLabel(s.showId)), 'Gesamt', '%'].map(esc).join(sep),
+    ]
+    for (const r of rows) {
+      if (r.type === 'section') { out.push(esc(r.label)); continue }
+      const label = r.note ? `${r.label} (${r.note})` : r.label
+      out.push([label, ...r.perShow!.map(num), num(r.total!), r.percent != null ? formatPercent(r.percent) : ''].map(esc).join(sep))
+    }
+    const blob = new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `${fileBase}.csv`; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  const exportPdf = () => {
+    const head = `<th class="pos">Bereich / Position</th>${shows.map(s => `<th class="num">${escHtml(showLabel(s.showId))}</th>`).join('')}<th class="num">Gesamt</th><th class="num">%</th>`
+    const body = rows.map(r => {
+      if (r.type === 'section') return `<tr class="sec"><td colspan="${shows.length + 3}">${escHtml(r.label)}</td></tr>`
+      const cls = (r.type === 'grand' || r.type === 'member') ? 'grand' : (r.type === 'catsum' ? 'catsum' : '')
+      const cells = r.perShow!.map(v => `<td class="num">${escHtml(money(v, r.type === 'line'))}</td>`).join('')
+      const label = escHtml(r.label) + (r.note ? ` <span class="note">${escHtml(r.note)}</span>` : '')
+      return `<tr class="${cls}"><td class="pos">${label}</td>${cells}<td class="num">${escHtml(money(r.total!))}</td><td class="num">${r.percent != null ? escHtml(formatPercent(r.percent)) : ''}</td></tr>`
+    }).join('')
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${escHtml(fileBase)}</title><style>
+      @page{size:A4 landscape;margin:12mm}
+      *{box-sizing:border-box}
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10px;margin:0}
+      h1{font-size:15px;margin:0 0 2px}
+      .meta{color:#555;margin:0 0 10px}
+      table{border-collapse:collapse;width:100%}
+      th,td{border:1px solid #cfcfcf;padding:3px 6px;white-space:nowrap}
+      th{background:#ececec;text-align:right}
+      th.pos,td.pos{text-align:left}
+      td.num{text-align:right;font-variant-numeric:tabular-nums}
+      tr.sec td{background:#333;color:#fff;font-weight:bold;letter-spacing:.04em}
+      tr.catsum td{background:#f1f1f1;font-weight:bold}
+      tr.grand td{background:#dde6f0;font-weight:bold}
+      .note{color:#777;font-style:italic;font-size:9px}
+    </style></head><body>
+      <h1>${escHtml(dataset.project.name)} – Übersicht</h1>
+      <div class="meta">Beträge in ${escHtml(dataset.project.currency)} · Aktive Shows: ${overview.activeShowCount} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
+      <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
+    </body></html>`
+    const w = window.open('', '_blank')
+    if (!w) { alert('Bitte Pop-ups für diese Seite erlauben, damit das PDF erzeugt werden kann.'); return }
+    w.document.write(html); w.document.close(); w.focus()
+    setTimeout(() => w.print(), 350)
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end gap-4 mb-4">
@@ -405,7 +469,11 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
         <div className="text-xs" style={{ color: '#9ca3af' }}>
           Aktive Shows: <span style={{ color: '#e0e0e0' }}>{overview.activeShowCount}</span>
         </div>
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none ml-auto" style={{ color: '#9ca3af' }}>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={exportCsv} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} title="Übersicht als CSV (Excel) herunterladen">CSV</button>
+          <button onClick={exportPdf} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} title="Übersicht als PDF drucken/speichern">PDF</button>
+        </div>
+        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#9ca3af' }}>
           <input type="checkbox" checked={hideZero} onChange={e => setHideZero(e.target.checked)} />
           Nullzeilen ausblenden
         </label>
