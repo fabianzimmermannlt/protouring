@@ -76,6 +76,30 @@ export function showGage(show: CalcShow, project: CalcProject, scenarioFactor?: 
   }
 }
 
+// Gage-Aufschlüsselung: Bruttogage (vor Provision), Provisionsbetrag, Nettogage.
+// In allen Deal-Typen gilt netto = brutto × (1 − Provision); net entspricht showGage().
+export function showGageBreakdown(
+  show: CalcShow, project: CalcProject, scenarioFactor?: Money | Decimal, useVVK?: boolean
+): { gross: Decimal; provision: Decimal; net: Decimal } {
+  const factor = scenarioFactor != null ? D(scenarioFactor) : D(project.scenario_factor)
+  const commission = D(show.commission)
+  const netFactor = new Decimal(1).minus(commission)
+  const share = D(show.deal_share)
+  const attendance = (useVVK && show.vvk != null && String(show.vvk) !== '') ? D(show.vvk) : D(show.capacity).times(factor)
+  const ueberschuss = attendance.times(D(show.ticket_price)).minus(D(show.break_even))
+  const dealType: DealType = show.deal_type ?? 'vs'
+  let gross: Decimal
+  switch (dealType) {
+    case 'guarantee': gross = D(show.guarantee); break
+    case 'vs':        gross = Decimal.max(D(show.guarantee), ueberschuss.times(share)); break
+    case 'plus':      gross = D(show.guarantee).plus(Decimal.max(0, ueberschuss).times(share)); break
+    case 'door':      gross = Decimal.max(0, ueberschuss).times(share); break
+    default:          gross = D(show.guarantee)
+  }
+  const net = gross.times(netFactor)
+  return { gross, provision: gross.minus(net), net }
+}
+
 // ── Regel 3 – Variantenfilter ────────────────────────────────────────────────
 export function variantMatches(entry: CalcEntry, variantId: string | null | undefined): boolean {
   return entry.variant_id == null || entry.variant_id === variantId
@@ -88,6 +112,8 @@ export interface ShowResult {
   legacyKey?: string | null
   city?: string | null
   gageNet: Decimal
+  gageGross: Decimal      // Bruttogage (vor Provision)
+  gageProvision: Decimal  // Provisionsbetrag (brutto − netto)
   einnahmen: Decimal      // gageNet + income-Bereiche
   ausgaben: Decimal       // expense-Bereiche
   ergebnis: Decimal
@@ -229,6 +255,7 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
     })
 
     const gageNet = showGage(show, project, scenarioFactor, useVVK)
+    const gageBd = showGageBreakdown(show, project, scenarioFactor, useVVK)  // Brutto + Provision (net identisch zu gageNet)
     const einnahmen = gageNet.plus(einnahmenBereiche)
     const ausgaben = ausgabenBereiche
     const ergebnis = einnahmen.minus(ausgaben)
@@ -239,7 +266,8 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
 
     showResults.push({
       showId: show.id, legacyKey: show.legacy_key, city: show.city,
-      gageNet, einnahmen, ausgaben, ergebnis, categoryAmount, positionAmount,
+      gageNet, gageGross: gageBd.gross, gageProvision: gageBd.provision,
+      einnahmen, ausgaben, ergebnis, categoryAmount, positionAmount,
     })
   }
 

@@ -121,9 +121,12 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   const [resultVar, setResultVar] = useState<string>(project.default_variant_id ?? variants[0]?.id ?? '')
 
   const summary = useMemo(() => {
-    const ov = buildOverview(dataset, { variantId: project.default_variant_id ?? variants[0]?.id ?? null })
+    // Zusammenfassung (Gage netto / Ausgaben / Ergebnis) folgt der gewählten
+    // Ergebnis-Variante; bei „Ist" auf die Standardvariante zurückfallen.
+    const vid = (resultVar && resultVar !== 'ist') ? resultVar : (project.default_variant_id ?? variants[0]?.id ?? null)
+    const ov = buildOverview(dataset, { variantId: vid })
     return ov.shows.find(s => s.showId === show.id)
-  }, [dataset, show.id, project.default_variant_id, variants])
+  }, [dataset, show.id, resultVar, project.default_variant_id, variants])
 
   // ── Sperren / Abrechnung ──
   const chosenVariant = (resultVar && resultVar !== 'ist') ? resultVar : (project.default_variant_id ?? variants[0]?.id ?? null)

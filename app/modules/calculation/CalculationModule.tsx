@@ -355,8 +355,13 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     }
 
     out.push({ type: 'section', label: 'EINNAHMEN' })
-    out.push({ type: 'line', label: 'Gage (abzgl. Provision)', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: null })
-    out.push({ type: 'catsum', label: 'Gesamt GAGEN', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: percentOf(overview.gageTotal, sumE) })
+    const gageGrossPer = shows.map(s => s.gageGross)
+    const provisionPer = shows.map(s => s.gageProvision)
+    const gageGrossTotal = gageGrossPer.reduce((a, b) => a.plus(b), ZERO)
+    const provisionTotal = provisionPer.reduce((a, b) => a.plus(b), ZERO)
+    out.push({ type: 'line', label: 'Bruttogage', perShow: gageGrossPer, total: gageGrossTotal, percent: null })
+    out.push({ type: 'line', label: 'Provision (Booking)', perShow: provisionPer.map(p => p.negated()), total: provisionTotal.negated(), percent: null })
+    out.push({ type: 'catsum', label: 'Gesamt GAGEN (netto)', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: percentOf(overview.gageTotal, sumE) })
     overview.categories.filter(c => c.kind === 'income').forEach(c => pushCategory(c.categoryId, 'income', c.name))
     out.push({ type: 'grand', label: 'SUMME EINNAHMEN', perShow: shows.map(s => s.einnahmen), total: sumE, percent: percentOf(sumE, sumE) })
 
