@@ -76,28 +76,41 @@ export function showGage(show: CalcShow, project: CalcProject, scenarioFactor?: 
   }
 }
 
-// Gage-Aufschlüsselung: Bruttogage (vor Provision), Provisionsbetrag, Nettogage.
-// In allen Deal-Typen gilt netto = brutto × (1 − Provision); net entspricht showGage().
+// Gage-Aufschlüsselung: Fixgage (Garantie) + Deal (Beteiligung) = Bruttogage,
+// dann Provisionsabzug → Nettogage. fix + deal ergibt immer gross; bei „vs" zählt
+// die höhere Komponente (die andere = 0). net entspricht showGage() (41 Tests).
 export function showGageBreakdown(
   show: CalcShow, project: CalcProject, scenarioFactor?: Money | Decimal, useVVK?: boolean
-): { gross: Decimal; provision: Decimal; net: Decimal } {
+): { gross: Decimal; fix: Decimal; deal: Decimal; provision: Decimal; net: Decimal } {
   const factor = scenarioFactor != null ? D(scenarioFactor) : D(project.scenario_factor)
   const commission = D(show.commission)
   const netFactor = new Decimal(1).minus(commission)
   const share = D(show.deal_share)
+  const guarantee = D(show.guarantee)
   const attendance = (useVVK && show.vvk != null && String(show.vvk) !== '') ? D(show.vvk) : D(show.capacity).times(factor)
   const ueberschuss = attendance.times(D(show.ticket_price)).minus(D(show.break_even))
   const dealType: DealType = show.deal_type ?? 'vs'
-  let gross: Decimal
+  let fix: Decimal, deal: Decimal
   switch (dealType) {
-    case 'guarantee': gross = D(show.guarantee); break
-    case 'vs':        gross = Decimal.max(D(show.guarantee), ueberschuss.times(share)); break
-    case 'plus':      gross = D(show.guarantee).plus(Decimal.max(0, ueberschuss).times(share)); break
-    case 'door':      gross = Decimal.max(0, ueberschuss).times(share); break
-    default:          gross = D(show.guarantee)
+    case 'guarantee':
+      fix = guarantee; deal = new Decimal(0); break
+    case 'vs': {
+      // Garantie ODER Deal – die höhere Komponente zählt, die andere = 0.
+      const dealAmt = ueberschuss.times(share)
+      if (guarantee.gte(dealAmt)) { fix = guarantee; deal = new Decimal(0) }
+      else { fix = new Decimal(0); deal = dealAmt }
+      break
+    }
+    case 'plus':
+      fix = guarantee; deal = Decimal.max(0, ueberschuss).times(share); break
+    case 'door':
+      fix = new Decimal(0); deal = Decimal.max(0, ueberschuss).times(share); break
+    default:
+      fix = guarantee; deal = new Decimal(0)
   }
+  const gross = fix.plus(deal)
   const net = gross.times(netFactor)
-  return { gross, provision: gross.minus(net), net }
+  return { gross, fix, deal, provision: gross.minus(net), net }
 }
 
 // ── Regel 3 – Variantenfilter ────────────────────────────────────────────────
@@ -112,7 +125,9 @@ export interface ShowResult {
   legacyKey?: string | null
   city?: string | null
   gageNet: Decimal
-  gageGross: Decimal      // Bruttogage (vor Provision)
+  gageGross: Decimal      // Bruttogage (vor Provision) = fix + deal
+  gageFix: Decimal        // Fixgage (Garantie-Anteil)
+  gageDeal: Decimal       // Deal-/Beteiligungs-Anteil
   gageProvision: Decimal  // Provisionsbetrag (brutto − netto)
   einnahmen: Decimal      // gageNet + income-Bereiche
   ausgaben: Decimal       // expense-Bereiche
@@ -266,7 +281,7 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
 
     showResults.push({
       showId: show.id, legacyKey: show.legacy_key, city: show.city,
-      gageNet, gageGross: gageBd.gross, gageProvision: gageBd.provision,
+      gageNet, gageGross: gageBd.gross, gageFix: gageBd.fix, gageDeal: gageBd.deal, gageProvision: gageBd.provision,
       einnahmen, ausgaben, ergebnis, categoryAmount, positionAmount,
     })
   }

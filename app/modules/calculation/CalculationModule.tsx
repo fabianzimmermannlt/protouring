@@ -355,12 +355,16 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     }
 
     out.push({ type: 'section', label: 'EINNAHMEN' })
-    const gageGrossPer = shows.map(s => s.gageGross)
-    const provisionPer = shows.map(s => s.gageProvision)
-    const gageGrossTotal = gageGrossPer.reduce((a, b) => a.plus(b), ZERO)
-    const provisionTotal = provisionPer.reduce((a, b) => a.plus(b), ZERO)
-    out.push({ type: 'line', label: 'Bruttogage', perShow: gageGrossPer, total: gageGrossTotal, percent: null })
-    out.push({ type: 'line', label: 'Provision (Booking)', perShow: provisionPer.map(p => p.negated()), total: provisionTotal.negated(), percent: null })
+    const sumPer = (pick: (s: typeof shows[number]) => typeof ZERO) => {
+      const per = shows.map(pick)
+      return { per, total: per.reduce((a, b) => a.plus(b), ZERO) }
+    }
+    const fix = sumPer(s => s.gageFix)
+    const deal = sumPer(s => s.gageDeal)
+    const prov = sumPer(s => s.gageProvision)
+    out.push({ type: 'line', label: 'Fixgage (Garantie)', perShow: fix.per, total: fix.total, percent: null })
+    out.push({ type: 'line', label: 'Deal (Beteiligung)', perShow: deal.per, total: deal.total, percent: null })
+    out.push({ type: 'line', label: 'Provision (Booking)', perShow: prov.per.map(p => p.negated()), total: prov.total.negated(), percent: null })
     out.push({ type: 'catsum', label: 'Gesamt GAGEN (netto)', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: percentOf(overview.gageTotal, sumE) })
     overview.categories.filter(c => c.kind === 'income').forEach(c => pushCategory(c.categoryId, 'income', c.name))
     out.push({ type: 'grand', label: 'SUMME EINNAHMEN', perShow: shows.map(s => s.einnahmen), total: sumE, percent: percentOf(sumE, sumE) })
