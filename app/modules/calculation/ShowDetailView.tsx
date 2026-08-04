@@ -277,8 +277,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const isPersonal = /personal/i.test(category.name)   // Personal: Funktionen statt Positionsliste
   const isUnterkunft = /unterkunft|verpflegung/i.test(category.name)   // nur hier: Hotel-Option
   const isTransport = /transport|logistik|fahrzeug/i.test(category.name) // hier: App-Fahrzeuge
-  const hasHotel = catPositions.some(p => p.pos_type === 'hotel')      // Spezifikation-Häkchen auch bei Hotel
-  // Name/Spezifikation nur beim Personal (Häkchen in der Bereichs-Titelzeile),
+  // Name/Spezifikation jetzt in ALLEN Bereichen (Häkchen in der Bereichs-Titelzeile),
   // projektweit gemerkt (alle Shows, auch nach Verlassen der Kalkulation)
   const [showSpec, setShowSpec] = useState(() => readPref('pt_calc_show_spec', true))
   const [showName, setShowName] = useState(() => readPref('pt_calc_show_name', false))
@@ -333,16 +332,12 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
         </span>
         <div className="flex items-center gap-3">
-          {(isPersonal || hasHotel) && (
-            <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
-              <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
-            </label>
-          )}
-          {isPersonal && (
-            <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
-              <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
-            </label>
-          )}
+          <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+            <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
+          </label>
+          <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+            <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
+          </label>
         </div>
       </div>
       <div className="pt-card-body" style={{ overflowX: 'auto' }}>
@@ -377,7 +372,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
                   onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
               ) : (
                 <PositionRow key={p.id} show={show} dataset={dataset} project={project}
-                  positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={isPersonal && showSpec} showName={isPersonal && showName}
+                  positionId={p.id} positionName={p.name} positionSpec={p.spec ?? null} positionPerson={p.person ?? null} showSpec={showSpec} showName={showName}
                   variants={variants} onChanged={onChanged}
                   showTravel={showTravel} defaultVar={defaultVar}
                   dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
