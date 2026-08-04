@@ -3134,10 +3134,17 @@ export function setRolePermsOverrides(obj: Record<string, string[]>) {
   try { localStorage.setItem(ROLE_PERMS_KEY, JSON.stringify(obj || {})) } catch { /* ignore */ }
 }
 
+/** Bereiche mit eigenem „Bearbeiten"-Recht (Sehen/Bearbeiten-Trennung in der Matrix) */
+export const EDIT_AREAS = ['events', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'templates', 'equipment', 'calculation'] as const
+
+/** Standard-Bearbeiten-Rollen (wenn <bereich>.edit nicht konfiguriert ist) */
+const EDIT_DEFAULT: TenantRole[] = ['admin', 'agency', 'tourmanagement']
+
 /** Effektive Rollen für ein Recht: gespeicherte Matrix ?? Standard; Admin ist IMMER berechtigt (kein Aussperren) */
 export function permRoles(permKey: string): string[] {
   const ov = getRolePermsOverrides()
-  const base = Array.isArray(ov[permKey]) ? ov[permKey] : (PERM_DEFAULTS[permKey] ?? [])
+  const fallback = PERM_DEFAULTS[permKey] ?? (permKey.endsWith('.edit') ? EDIT_DEFAULT : [])
+  const base = Array.isArray(ov[permKey]) ? ov[permKey] : fallback
   return base.includes('admin') ? base : ['admin', ...base]
 }
 
@@ -3146,6 +3153,13 @@ export function can(permKey: string, role?: string | null): boolean {
   const r = (role ?? getEffectiveRole()) || ''
   if (!r) return false
   return permRoles(permKey).includes(r)
+}
+
+/** Darf die (effektive) Rolle in diesem Bereich BEARBEITEN? (bereichsspezifisch, Fallback = Standard-Editoren) */
+export function canEdit(area: string, role?: string | null): boolean {
+  const r = (role ?? getEffectiveRole()) || ''
+  if (!r) return false
+  return permRoles(`${area}.edit`).includes(r)
 }
 
 export async function getRolePermissions(): Promise<Record<string, string[]>> {

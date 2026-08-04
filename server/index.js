@@ -2375,31 +2375,50 @@ const requireTenant = async (req, res, next) => {
 
 // ── Rollen-Rechte-Matrix: konfigurierbares Schreibrecht pro Tenant ──
 const CAN_EDIT_DEFAULT = ['admin', 'agency', 'tourmanagement']
-const _permCache = new Map() // tenantId -> string[] (Editor-Rollen)
+const _permCache = new Map() // tenantId -> perms-Objekt (role_permissions)
 function invalidatePermCache(tenantId) { _permCache.delete(tenantId) }
-async function getEditRoles(tenantId) {
+async function getPerms(tenantId) {
   const cached = _permCache.get(tenantId)
   if (cached) return cached
-  let editRoles = CAN_EDIT_DEFAULT
+  let perms = {}
   try {
     const row = await db.get('SELECT value FROM tenant_settings WHERE tenant_id=? AND key=?', [tenantId, 'role_permissions'])
-    if (row?.value) {
-      const parsed = JSON.parse(row.value)
-      if (Array.isArray(parsed?.CAN_EDIT)) editRoles = parsed.CAN_EDIT
-    }
-  } catch { /* Default */ }
-  if (!editRoles.includes('admin')) editRoles = ['admin', ...editRoles] // nie aussperren
-  _permCache.set(tenantId, editRoles)
-  return editRoles
+    if (row?.value) perms = JSON.parse(row.value) || {}
+  } catch { perms = {} }
+  _permCache.set(tenantId, perms)
+  return perms
+}
+// Rollenliste für ein Recht: gespeicherte Matrix ?? Fallback; Admin ist IMMER dabei (nie aussperren).
+function permRolesFor(perms, key, fallback) {
+  const arr = Array.isArray(perms?.[key]) ? perms[key] : (fallback || [])
+  return arr.includes('admin') ? arr : ['admin', ...arr]
+}
+// URL-Pfad → Bereich (für bereichsspezifisches Bearbeiten-Recht). Unbekannt = null (nur globaler Check).
+function areaFromPath(p0) {
+  const p = String(p0 || '').split('?')[0]
+  if (p.startsWith('/api/termine') || p.startsWith('/api/events')) return 'events'
+  if (p.startsWith('/api/contacts')) return 'contacts'
+  if (p.startsWith('/api/venues')) return 'venues'
+  if (p.startsWith('/api/partners')) return 'partners'
+  if (p.startsWith('/api/hotels')) return 'hotels'
+  if (p.startsWith('/api/vehicles') || p.startsWith('/api/vehicle-types')) return 'vehicles'
+  if (p.startsWith('/api/templates')) return 'templates'
+  if (p.startsWith('/api/equipment') || p.startsWith('/api/carnets') || p.startsWith('/api/material') || p.startsWith('/api/cases')) return 'equipment'
+  if (p.startsWith('/api/calc')) return 'calculation'
+  return null
 }
 
-// Schreibrechte: aus der Rollen-Rechte-Matrix (Default: admin, agency, tourmanagement)
+// Schreibrechte: bekannter Bereich → <bereich>.edit; sonst globaler CAN_EDIT.
+// Defaults = CAN_EDIT_DEFAULT, damit ohne Konfiguration nichts blockiert wird (backward-kompatibel).
 const requireEditor = async (req, res, next) => {
   try {
     if (req.user?.isSuperadmin) return next()
-    const editRoles = await getEditRoles(req.tenant.id)
-    if (!editRoles.includes(req.tenant.role)) {
-      return res.status(403).json({ error: 'Keine Schreibberechtigung' })
+    const perms = await getPerms(req.tenant.id)
+    const area = areaFromPath(req.originalUrl || req.path)
+    const key = area ? `${area}.edit` : 'CAN_EDIT'
+    const roles = permRolesFor(perms, key, CAN_EDIT_DEFAULT)
+    if (!roles.includes(req.tenant.role)) {
+      return res.status(403).json({ error: area ? 'Keine Bearbeiten-Berechtigung für diesen Bereich' : 'Keine Schreibberechtigung' })
     }
     next()
   } catch (e) {
