@@ -3087,6 +3087,7 @@ export const PERMISSION_CATALOG: PermDef[] = [
   { key: 'vehicles',  label: 'Fahrzeuge', group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency'], configurable: true },
   { key: 'templates', label: 'Vorlagen',  group: 'Bereiche', default: [..._ALL_ROLES], configurable: true },
   { key: 'equipment', label: 'Equipment', group: 'Bereiche', default: ['admin'], configurable: true },
+  { key: 'calculation', label: 'Kalkulation', group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency'], configurable: true },
   // fixe Bereiche (nicht in der Matrix konfigurierbar)
   { key: 'desk',      label: 'Schreibtisch',   group: 'Bereiche', default: [..._ALL_ROLES] },
   { key: 'settings',  label: 'Einstellungen',  group: 'Bereiche', default: [..._ALL_ROLES] },

@@ -591,7 +591,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
     finally { setBusy(false) }
   }
   const saveIst = async () => {
-    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate), travel_fix: norm(m.istTravelFix) })) }
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist), travel_km: norm(m.istTravelKm), travel_rate: norm(m.istTravelRate), travel_fix: norm(m.istTravelFix) })); onChanged() }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const removeRow = async () => {
@@ -897,7 +897,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
   }
   const copyAll = async () => { setBusy(true); try { const ok = await copyRowToAllShows(dataset, show.id, positionId, payload(), onChanged); if (ok) setSavedSnap(hSnap(m)) } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) } }
   const saveIst = async () => {
-    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })) }
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })); onChanged() }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const saveName = async () => { const nn = nameVal.trim(); if (!nn || nn === positionName) { setNameVal(positionName); return } try { await updateCalcPosition(positionId, { name: nn }); onChanged() } catch { setNameVal(positionName) } }
@@ -1124,7 +1124,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
   }
   const copyAll = async () => { setBusy(true); try { const ok = await copyRowToAllShows(dataset, show.id, positionId, payload(), onChanged); if (ok) setSavedSnap(vSnapKey(m)) } catch (e: any) { setErr(e?.message ?? 'Fehler') } finally { setBusy(false) } }
   const saveIst = async () => {
-    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })) }
+    try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })); onChanged() }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
   }
   const saveName = async () => { const nn = nameVal.trim(); if (!nn || nn === positionName) { setNameVal(positionName); return } try { await updateCalcPosition(positionId, { name: nn }); onChanged() } catch { setNameVal(positionName) } }
