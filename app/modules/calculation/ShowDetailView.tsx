@@ -5,11 +5,11 @@
 // (+ „gleich in allen Varianten"), dazu ein Ist-Wert pro Position/Show.
 // Ist in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
 
-import { useEffect, useMemo, useState, type FocusEvent as RFocusEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcFormula, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
   getVehicles, createVehicle, lockCalcShow, unlockCalcShow, type Vehicle, type CalcEntryInput,
 } from '@/lib/api-client'
 import { buildAbrechnung, type AbrechnungSnapshot } from '@/lib/calculation/abrechnung'
@@ -88,27 +88,9 @@ function setInputValue(el: HTMLInputElement, value: string) {
   setter?.call(el, value)
   el.dispatchEvent(new Event('input', { bubbles: true }))   // damit Reacts onChange feuert
 }
-function resolveFormulaBlur(e: RFocusEvent) {
-  const el = e.target as HTMLElement
-  if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
-  const formula = el.value
-  const r = evalFormula(formula)
-  if (r == null || r === formula) return
-  el.dataset.formula = formula        // Formel merken – beim erneuten Fokus wieder zeigen
-  el.dataset.formulaResult = r
-  setInputValue(el, r)
-}
-// Beim Hineinklicken in ein Betragsfeld die zuletzt eingegebene Formel wieder
-// einblenden (spreadsheet-artig), damit man sie nachvollziehen/erweitern kann.
-// Nur wenn der Wert noch dem Ergebnis entspricht (also nicht manuell geändert).
-function restoreFormulaFocus(e: RFocusEvent) {
-  const el = e.target as HTMLElement
-  if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
-  const f = el.dataset.formula
-  if (!f || el.value !== el.dataset.formulaResult) return
-  setInputValue(el, f)
-  requestAnimationFrame(() => { try { el.setSelectionRange(f.length, f.length) } catch { /* egal */ } })
-}
+// Formel-Map je Betragsfeld (fkey → {formula,result}). Handler siehe ShowDetailView:
+// blur → Formel auflösen + dauerhaft speichern; focus → Formel wieder einblenden.
+type FormulaMap = Map<string, { formula: string; result: string }>
 
 // UI-Präferenz (Name/Spezifikation-Häkchen) projektweit merken – gilt für alle
 // Shows und übersteht das Verlassen/Wiederkommen (localStorage).
@@ -172,6 +154,56 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   const project = dataset.project
   const variants: Variant[] = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
   const categories = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
+
+  // Gemerkte Formeln je Betragsfeld (fkey → {formula,result}). Einmal pro Projekt
+  // aus dem Dataset initialisiert; danach imperativ gepflegt, damit zwischenzeitliche
+  // Reloads (z.B. nach Ist-Speichern) eine frisch eingegebene Formel nicht verwerfen.
+  const formulasRef = useRef<FormulaMap>(new Map())
+  const formulasProjectRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (formulasProjectRef.current === project.id) return
+    formulasProjectRef.current = project.id
+    const m: FormulaMap = new Map()
+    for (const f of dataset.formulas ?? []) m.set(f.fkey, { formula: f.formula, result: f.result })
+    formulasRef.current = m
+  }, [project.id, dataset.formulas])
+
+  // blur: Formel → Ergebnis einsetzen und dauerhaft speichern (bzw. verworfene
+  // Formel löschen). focus: gespeicherte Formel wieder einblenden (spreadsheet-artig).
+  const onFormulaBlur = (e: RFocusEvent) => {
+    const el = e.target as HTMLElement
+    if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
+    const fkey = el.dataset.fkey
+    const raw = el.value
+    const r = evalFormula(raw)
+    if (r != null && r !== raw) {
+      if (fkey) {
+        formulasRef.current.set(fkey, { formula: raw, result: r })
+        setCalcFormula(project.id, fkey, raw, r).catch(() => {})
+      }
+      setInputValue(el, r)          // Anzeige/State → Ergebnis (Reacts onChange feuert)
+      return
+    }
+    // Keine (gültige) Formel mehr: war hier eine gemerkt und weicht der Wert jetzt
+    // ab, wurde manuell überschrieben → Formel verwerfen.
+    if (fkey) {
+      const stored = formulasRef.current.get(fkey)
+      if (stored && stored.result !== raw) {
+        formulasRef.current.delete(fkey)
+        setCalcFormula(project.id, fkey, null, '').catch(() => {})
+      }
+    }
+  }
+  const onFormulaFocus = (e: RFocusEvent) => {
+    const el = e.target as HTMLElement
+    if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
+    const fkey = el.dataset.fkey
+    const stored = fkey ? formulasRef.current.get(fkey) : undefined
+    if (!stored || el.value !== stored.result) return   // nur wenn Wert noch = Ergebnis
+    setInputValue(el, stored.formula)
+    const f = stored.formula
+    requestAnimationFrame(() => { try { el.setSelectionRange(f.length, f.length) } catch { /* egal */ } })
+  }
 
   // Funktionskatalog (Settings/Kontakte) – aktive Funktionen inkl. custom. Neu angelegte
   // Funktionen werden zurück in den Katalog geschrieben → konsistent mit Settings/Kontakte.
@@ -237,7 +269,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   }
 
   return (
-    <div onBlurCapture={resolveFormulaBlur} onFocusCapture={restoreFormulaFocus}>
+    <div onBlurCapture={onFormulaBlur} onFocusCapture={onFormulaFocus}>
       <div className="flex items-start gap-3"
         style={{ position: 'sticky', top: 0, zIndex: 40, background: '#1c1c1c',
           marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20,
@@ -761,7 +793,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           <td key={v.id} className="text-right" style={{ padding: '4px 8px' }}>
             {m.shared ? (
               idx === 0 ? (
-                <input inputMode="decimal" {...cell} data-calc-col={v.id} onKeyDown={e => gridTabDown(e, v.id)}
+                <input inputMode="decimal" {...cell} data-calc-col={v.id} data-fkey={`s|${positionId}|base|shared`} onKeyDown={e => gridTabDown(e, v.id)}
                   value={m.sharedVal}
                   onChange={e => {
                     const val = e.target.value
@@ -780,7 +812,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 </div>
               )
             ) : (
-              <input inputMode="decimal" {...cell} data-calc-col={v.id} onKeyDown={e => gridTabDown(e, v.id)}
+              <input inputMode="decimal" {...cell} data-calc-col={v.id} data-fkey={`s|${positionId}|base|${v.id}`} onKeyDown={e => gridTabDown(e, v.id)}
                 value={m.perVar[v.id] ?? ''}
                 onChange={e => { const val = e.target.value; setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: val } })) }}
                 placeholder="0" style={{ ...cell.style }} />
@@ -789,7 +821,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
         ))}
 
         <td className="text-right" style={{ padding: '4px 8px' }}>
-          <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+          <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
             value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         </td>
 
@@ -831,11 +863,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
             return (
               <td key={v.id} style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelKm[v.id] ?? ''} placeholder="km"
+                  <input {...tvCell} data-fkey={`s|${positionId}|tkm|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelKm[v.id] ?? ''} placeholder="km"
                     onChange={e => setM(p => ({ ...p, travelKm: { ...p.travelKm, [v.id]: e.target.value } }))} />
-                  <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelRate[v.id] ?? ''} placeholder="€/km"
+                  <input {...tvCell} data-fkey={`s|${positionId}|trate|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelRate[v.id] ?? ''} placeholder="€/km"
                     onChange={e => setM(p => ({ ...p, travelRate: { ...p.travelRate, [v.id]: e.target.value } }))} />
-                  <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelFix[v.id] ?? ''} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
+                  <input {...tvCell} data-fkey={`s|${positionId}|tfix|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelFix[v.id] ?? ''} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                     onChange={e => setM(p => ({ ...p, travelFix: { ...p.travelFix, [v.id]: e.target.value } }))} />
                   <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
                 </div>
@@ -844,11 +876,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           })}
           <td style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelKm} placeholder="km"
+              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tkm`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelKm} placeholder="km"
                 onChange={e => setM(p => ({ ...p, istTravelKm: e.target.value }))} onBlur={saveIst} />
-              <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelRate} placeholder="€/km"
+              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|trate`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelRate} placeholder="€/km"
                 onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
-              <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
+              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tfix`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                 onChange={e => setM(p => ({ ...p, istTravelFix: e.target.value }))} onBlur={saveIst} />
               <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
             </div>
@@ -1047,13 +1079,13 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 3 }}>
-                <input {...hCell} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
+                <input {...hCell} data-fkey={`s|${positionId}|hrooms|${v.id}`} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
                   style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
                 <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
-                <input {...hCell} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
+                <input {...hCell} data-fkey={`s|${positionId}|hnights|${v.id}`} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
                   style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
                 <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
-                <input {...hCell} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
+                <input {...hCell} data-fkey={`s|${positionId}|hprice|${v.id}`} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
                   style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
               </div>
             )}
@@ -1063,7 +1095,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
       })}
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
       </td>
 
@@ -1298,10 +1330,10 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
               </div>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
-                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
-                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
-                <input {...vCell} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vrental|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vkm|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vincl|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vextra|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
               </div>
             )}
             <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
@@ -1310,9 +1342,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       })}
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
-        <input inputMode="decimal" className="form-input text-right" title="Ist-Spritkosten (fixer Betrag) – wird zum Ist addiert"
+        <input inputMode="decimal" className="form-input text-right" title="Ist-Spritkosten (fixer Betrag) – wird zum Ist addiert" data-fkey={`i|${show.id}|${positionId}|fuel`}
           style={{ fontSize: '0.72rem', padding: '2px 8px', width: '100%', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}
           value={m.fuelIst} onChange={e => setM(p => ({ ...p, fuelIst: e.target.value }))} onBlur={saveIstFuel} placeholder="⛽ Sprit" />
       </td>
@@ -1353,8 +1385,8 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
                   </span>
                 ) : (
                   <>
-                    <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
-                    <input {...tvCell} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+                    <input {...tvCell} data-fkey={`s|${positionId}|vcons|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
+                    <input {...tvCell} data-fkey={`s|${positionId}|vfprice|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
                   </>
                 )}
                 <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatMoney(fuelAmount(val))}</span>

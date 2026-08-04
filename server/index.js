@@ -8279,6 +8279,30 @@ async function calcShowTenant(showId) {
   return row || null;
 }
 
+// Formel eines Betragsfeldes dauerhaft merken (oder löschen). Der Wert selbst liegt
+// weiterhin in calc_actuals/calc_entries; hier nur die Formel zur Wiederanzeige.
+app.put('/api/calc/projects/:projectId/formulas/:fkey', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT tenant_id FROM calc_projects WHERE id = ?', [req.params.projectId]);
+    if (!proj || proj.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Projekt nicht gefunden' });
+    const fkey = String(req.params.fkey || '').slice(0, 200);
+    if (!fkey) return res.status(400).json({ error: 'fkey fehlt' });
+    const formula = req.body?.formula != null && req.body.formula !== '' ? String(req.body.formula) : null;
+    const result = req.body?.result != null ? String(req.body.result) : '';
+    if (!formula) {
+      await db.run('DELETE FROM calc_formulas WHERE project_id=? AND fkey=?', [req.params.projectId, fkey]);
+      return res.json({ ok: true });
+    }
+    const existing = await db.get('SELECT id FROM calc_formulas WHERE project_id=? AND fkey=?', [req.params.projectId, fkey]);
+    if (existing) await db.run('UPDATE calc_formulas SET formula=?, result=? WHERE id=?', [formula, result, existing.id]);
+    else await db.run('INSERT INTO calc_formulas (id, project_id, fkey, formula, result) VALUES (?,?,?,?,?)', [crypto.randomUUID(), req.params.projectId, fkey, formula, result]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] set formula:', e);
+    res.status(500).json({ error: 'Fehler beim Speichern der Formel' });
+  }
+});
+
 // Entsperr-PIN (Demo/Tests). Zentrale Konstante – leicht änderbar.
 const CALC_UNLOCK_PIN = '4321';
 

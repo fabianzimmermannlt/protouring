@@ -922,6 +922,11 @@ export async function copyCalcPositions(showId: string, fromShowId: string, with
   await request(`/api/calc/shows/${showId}/copy-positions`, { method: 'POST', body: { from_show_id: fromShowId, with_values: withValues } })
 }
 
+// Formel eines Betragsfeldes dauerhaft merken (formula=null löscht sie wieder).
+export async function setCalcFormula(projectId: string, fkey: string, formula: string | null, result: string): Promise<void> {
+  await request(`/api/calc/projects/${projectId}/formulas/${encodeURIComponent(fkey)}`, { method: 'PUT', body: { formula, result } })
+}
+
 export async function getEquipmentItems(): Promise<EquipmentItem[]> {
   const res = await request<{ items: EquipmentItem[] }>('/api/equipment/items');
   return res.items;

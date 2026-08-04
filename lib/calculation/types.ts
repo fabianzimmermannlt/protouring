@@ -142,6 +142,15 @@ export interface CalcDataset {
   actuals?: CalcActual[]
   /** Show-Ausnahmen für übergeordnete Posten (optional; leer = jeder Posten gilt für alle aktiven Shows). */
   overheadExclude?: CalcOverheadExclude[]
+  /** Gemerkte Formeln je Betragsfeld (optional). Nur zur Wiederanzeige/Bearbeitung; der Wert selbst liegt in entries/actuals. */
+  formulas?: CalcFormula[]
+}
+
+/** Eine gemerkte Formel-Eingabe eines Betragsfeldes (z.B. "=236+44" → "280"). */
+export interface CalcFormula {
+  fkey: string
+  formula: string
+  result: string
 }
 
 export interface OverviewOptions {
