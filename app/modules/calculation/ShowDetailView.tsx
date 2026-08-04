@@ -358,14 +358,14 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             {rowPositions.map(p => (
               p.pos_type === 'hotel' ? (
                 <HotelRow key={p.id} show={show} dataset={dataset}
-                  positionId={p.id} positionName={p.name} who={p.spec ?? null} showSpec={showSpec}
+                  positionId={p.id} positionName={p.name} who={p.spec ?? null} showSpec={showSpec} showName={showName}
                   variants={variants} onChanged={onChanged} defaultVar={defaultVar}
                   dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
                   onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
                   onDragEndRow={endDrag} onDropRow={() => reorderTo(p.id)} />
               ) : p.pos_type === 'vehicle' ? (
                 <VehicleRow key={p.id} show={show} dataset={dataset}
-                  positionId={p.id} positionName={p.name} snapshot={p}
+                  positionId={p.id} positionName={p.name} snapshot={p} showSpec={showSpec}
                   variants={variants} onChanged={onChanged} defaultVar={defaultVar}
                   dragging={dragId === p.id} dropTarget={dragOverId === p.id && dragId != null && dragId !== p.id}
                   onDragStartRow={() => setDragId(p.id)} onDragEnterRow={() => { if (dragId && dragId !== p.id) setDragOverId(p.id) }}
@@ -839,8 +839,8 @@ function buildHotelModel(dataset: CalcDataset, showId: string, positionId: strin
   return { shared: varE.length === 0, s, perVar, ist }
 }
 
-function HotelRow({ show, dataset, positionId, positionName, who, showSpec, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
-  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; who: string | null; showSpec: boolean
+function HotelRow({ show, dataset, positionId, positionName, who, showSpec, showName, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; who: string | null; showSpec: boolean; showName: boolean
   variants: Variant[]; onChanged: () => void; defaultVar: string
   dragging: boolean; dropTarget: boolean
   onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
@@ -851,10 +851,12 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
   const [nameVal, setNameVal] = useState(positionName)
   const hotelAct = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
   const [whoVal, setWhoVal] = useState(hotelAct?.spec ?? who ?? '')
+  const [personVal, setPersonVal] = useState(hotelAct?.person ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = hSnap(m) !== savedSnap
   const saveWho = async () => { try { await setCalcActual(show.id, positionId, { spec: whoVal.trim() || null }); onChanged() } catch { /* still */ } }
+  const savePerson = async () => { try { await setCalcActual(show.id, positionId, { person: personVal.trim() || null }); onChanged() } catch { /* still */ } }
 
   useEffect(() => {
     const key = `${show.id}:${positionId}`
@@ -934,6 +936,11 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, vari
                   className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190 }} />
               )}
             </div>
+            {showName && (
+              <input value={personVal} onChange={e => setPersonVal(e.target.value)} onBlur={savePerson}
+                className="form-input" placeholder="Name (Person)"
+                style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, width: '100%', maxWidth: 200 }} />
+            )}
           </div>
         </div>
       </td>
@@ -1036,8 +1043,8 @@ function buildVehicleModel(dataset: CalcDataset, showId: string, positionId: str
   return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelOn: !!(fuNull || fuVar.length) }
 }
 
-function VehicleRow({ show, dataset, positionId, positionName, snapshot, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
-  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; snapshot: CalcDataset['positions'][number]
+function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpec, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+  show: CalcShow; dataset: CalcDataset; positionId: string; positionName: string; snapshot: CalcDataset['positions'][number]; showSpec: boolean
   variants: Variant[]; onChanged: () => void; defaultVar: string
   dragging: boolean; dropTarget: boolean
   onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
@@ -1049,6 +1056,8 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
   const vehAct = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
   const [info, setInfo] = useState(vehAct?.person ?? snapshot.person ?? '')
   const saveInfo = async () => { try { await setCalcActual(show.id, positionId, { person: info.trim() || null }); onChanged() } catch { /* still */ } }
+  const [specVal, setSpecVal] = useState(vehAct?.spec ?? '')
+  const saveSpec = async () => { try { await setCalcActual(show.id, positionId, { spec: specVal.trim() || null }); onChanged() } catch { /* still */ } }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = vSnapKey(m) !== savedSnap
@@ -1169,6 +1178,10 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, variant
             <input value={info} onChange={e => setInfo(e.target.value)} onBlur={saveInfo}
               className="form-input" placeholder="Route / Vermieter / Info"
               style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, width: '100%', maxWidth: 280 }} />
+            {showSpec && (
+              <input value={specVal} onChange={e => setSpecVal(e.target.value)} onBlur={saveSpec}
+                className="form-input" placeholder="Spezifikation" style={{ fontSize: '0.72rem', padding: '1px 6px', marginTop: 3, width: '100%', maxWidth: 200 }} />
+            )}
             {hasDefaults && (
               <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
                 className="text-xs" style={{ color: '#60a5fa', marginTop: 2, display: 'inline-block' }}>Fahrzeugwerte übernehmen</button>
