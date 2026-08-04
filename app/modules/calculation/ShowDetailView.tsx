@@ -83,14 +83,31 @@ const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
 // zum Ergebnis). Gilt nur für Betragsfelder (inputMode="decimal"); ungültige oder
 // Nicht-Formeln bleiben unverändert. Ein einziger Handler am Container deckt alle
 // Betragsfelder ab.
+function setInputValue(el: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(el, value)
+  el.dispatchEvent(new Event('input', { bubbles: true }))   // damit Reacts onChange feuert
+}
 function resolveFormulaBlur(e: RFocusEvent) {
   const el = e.target as HTMLElement
   if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
-  const r = evalFormula(el.value)
-  if (r == null || r === el.value) return
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-  setter?.call(el, r)
-  el.dispatchEvent(new Event('input', { bubbles: true }))
+  const formula = el.value
+  const r = evalFormula(formula)
+  if (r == null || r === formula) return
+  el.dataset.formula = formula        // Formel merken – beim erneuten Fokus wieder zeigen
+  el.dataset.formulaResult = r
+  setInputValue(el, r)
+}
+// Beim Hineinklicken in ein Betragsfeld die zuletzt eingegebene Formel wieder
+// einblenden (spreadsheet-artig), damit man sie nachvollziehen/erweitern kann.
+// Nur wenn der Wert noch dem Ergebnis entspricht (also nicht manuell geändert).
+function restoreFormulaFocus(e: RFocusEvent) {
+  const el = e.target as HTMLElement
+  if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
+  const f = el.dataset.formula
+  if (!f || el.value !== el.dataset.formulaResult) return
+  setInputValue(el, f)
+  requestAnimationFrame(() => { try { el.setSelectionRange(f.length, f.length) } catch { /* egal */ } })
 }
 
 // UI-Präferenz (Name/Spezifikation-Häkchen) projektweit merken – gilt für alle
@@ -220,7 +237,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   }
 
   return (
-    <div onBlurCapture={resolveFormulaBlur}>
+    <div onBlurCapture={resolveFormulaBlur} onFocusCapture={restoreFormulaFocus}>
       <div className="flex items-start gap-3"
         style={{ position: 'sticky', top: 0, zIndex: 40, background: '#1c1c1c',
           marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20,
