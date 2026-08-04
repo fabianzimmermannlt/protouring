@@ -5,11 +5,11 @@
 // (+ „gleich in allen Varianten"), dazu ein Ist-Wert pro Position/Show.
 // Ist in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
 
-import { useEffect, useMemo, useRef, useState, type FocusEvent as RFocusEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcFormula, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
   getVehicles, createVehicle, lockCalcShow, unlockCalcShow, type Vehicle, type CalcEntryInput,
 } from '@/lib/api-client'
 import { buildAbrechnung, type AbrechnungSnapshot } from '@/lib/calculation/abrechnung'
@@ -18,79 +18,15 @@ import AbrechnungView from './AbrechnungView'
 interface FuncGroup { group: string; names: string[] }
 import type { CalcDataset, CalcShow, CalcProject, CalcEntry } from '@/lib/calculation/types'
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
+import { formulaNorm, useFormulaFields } from '@/lib/calculation/formula'
 import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
 import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 
-// Sichere Formel-Eingabe in Betragsfeldern: "=236+44" → "280", "=(10+2)*3" → "36".
-// Kein eval – eigener Mini-Parser (rekursiver Abstieg), centgenau via decimal.js.
-// Erlaubt sind nur Ziffern, . , + - * / ( ) sowie ×/x als Malzeichen.
-// Rückgabe: Ergebnis als String, oder null wenn keine (gültige) Formel.
-function evalFormula(raw: string): string | null {
-  let s = raw.trim()
-  if (!s.startsWith('=')) return null
-  s = s.slice(1).replace(/[×x·∙]/gi, '*').replace(/[–—]/g, '-').replace(/\s+/g, '').replace(/,/g, '.')
-  if (s === '' || !/^[0-9.+\-*/()]+$/.test(s)) return null
-  let i = 0
-  const cur = () => s[i]
-  function factor(): Decimal | null {
-    if (cur() === '+') { i++; return factor() }
-    if (cur() === '-') { i++; const f = factor(); return f == null ? null : f.neg() }
-    if (cur() === '(') {
-      i++; const e = expr()
-      if (e == null || cur() !== ')') return null
-      i++; return e
-    }
-    let j = i
-    while (j < s.length && /[0-9.]/.test(s[j])) j++
-    const tok = s.slice(i, j)
-    if (tok === '' || tok === '.' || (tok.match(/\./g) || []).length > 1) return null
-    i = j
-    try { return new Decimal(tok) } catch { return null }
-  }
-  function term(): Decimal | null {
-    let left = factor(); if (left == null) return null
-    while (cur() === '*' || cur() === '/') {
-      const op = s[i++]; const r = factor(); if (r == null) return null
-      if (op === '/' && r.isZero()) return null
-      left = op === '*' ? left.times(r) : left.div(r)
-    }
-    return left
-  }
-  function expr(): Decimal | null {
-    let left = term(); if (left == null) return null
-    while (cur() === '+' || cur() === '-') {
-      const op = s[i++]; const r = term(); if (r == null) return null
-      left = op === '+' ? left.plus(r) : left.minus(r)
-    }
-    return left
-  }
-  const out = expr()
-  if (out == null || i !== s.length) return null
-  return out.toDecimalPlaces(4).toString()
-}
-
-const norm = (v: string): string | null => {
-  const t = v.trim()
-  if (t.startsWith('=')) return evalFormula(t)        // Formel → Ergebnis (null wenn ungültig)
-  const n = t.replace(',', '.')
-  return n === '' ? null : n
-}
+// Betragsfelder akzeptieren Formeln ("=236+44"). Auswertung + Persistenz zentral
+// in lib/calculation/formula.ts (auch von OverheadView genutzt).
+const norm = (v: string): string | null => formulaNorm(v)
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
-
-// Löst eine Formel-Eingabe in einem React-kontrollierten <input> beim Verlassen auf:
-// setzt den Ergebniswert so, dass Reacts onChange feuert (Anzeige + State werden
-// zum Ergebnis). Gilt nur für Betragsfelder (inputMode="decimal"); ungültige oder
-// Nicht-Formeln bleiben unverändert. Ein einziger Handler am Container deckt alle
-// Betragsfelder ab.
-function setInputValue(el: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
-  setter?.call(el, value)
-  el.dispatchEvent(new Event('input', { bubbles: true }))   // damit Reacts onChange feuert
-}
-// Formel-Map je Betragsfeld (fkey → {formula,result}). Handler siehe ShowDetailView:
-// blur → Formel auflösen + dauerhaft speichern; focus → Formel wieder einblenden.
-type FormulaMap = Map<string, { formula: string; result: string }>
 
 // UI-Präferenz (Name/Spezifikation-Häkchen) projektweit merken – gilt für alle
 // Shows und übersteht das Verlassen/Wiederkommen (localStorage).
@@ -155,55 +91,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   const variants: Variant[] = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
   const categories = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
 
-  // Gemerkte Formeln je Betragsfeld (fkey → {formula,result}). Einmal pro Projekt
-  // aus dem Dataset initialisiert; danach imperativ gepflegt, damit zwischenzeitliche
-  // Reloads (z.B. nach Ist-Speichern) eine frisch eingegebene Formel nicht verwerfen.
-  const formulasRef = useRef<FormulaMap>(new Map())
-  const formulasProjectRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (formulasProjectRef.current === project.id) return
-    formulasProjectRef.current = project.id
-    const m: FormulaMap = new Map()
-    for (const f of dataset.formulas ?? []) m.set(f.fkey, { formula: f.formula, result: f.result })
-    formulasRef.current = m
-  }, [project.id, dataset.formulas])
-
-  // blur: Formel → Ergebnis einsetzen und dauerhaft speichern (bzw. verworfene
-  // Formel löschen). focus: gespeicherte Formel wieder einblenden (spreadsheet-artig).
-  const onFormulaBlur = (e: RFocusEvent) => {
-    const el = e.target as HTMLElement
-    if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
-    const fkey = el.dataset.fkey
-    const raw = el.value
-    const r = evalFormula(raw)
-    if (r != null && r !== raw) {
-      if (fkey) {
-        formulasRef.current.set(fkey, { formula: raw, result: r })
-        setCalcFormula(project.id, fkey, raw, r).catch(() => {})
-      }
-      setInputValue(el, r)          // Anzeige/State → Ergebnis (Reacts onChange feuert)
-      return
-    }
-    // Keine (gültige) Formel mehr: war hier eine gemerkt und weicht der Wert jetzt
-    // ab, wurde manuell überschrieben → Formel verwerfen.
-    if (fkey) {
-      const stored = formulasRef.current.get(fkey)
-      if (stored && stored.result !== raw) {
-        formulasRef.current.delete(fkey)
-        setCalcFormula(project.id, fkey, null, '').catch(() => {})
-      }
-    }
-  }
-  const onFormulaFocus = (e: RFocusEvent) => {
-    const el = e.target as HTMLElement
-    if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
-    const fkey = el.dataset.fkey
-    const stored = fkey ? formulasRef.current.get(fkey) : undefined
-    if (!stored || el.value !== stored.result) return   // nur wenn Wert noch = Ergebnis
-    setInputValue(el, stored.formula)
-    const f = stored.formula
-    requestAnimationFrame(() => { try { el.setSelectionRange(f.length, f.length) } catch { /* egal */ } })
-  }
+  // Formeln in Betragsfeldern (data-fkey) – Auswerten/Speichern/Wiederanzeigen zentral.
+  const { onFormulaBlur, onFormulaFocus } = useFormulaFields(project.id, dataset.formulas)
 
   // Funktionskatalog (Settings/Kontakte) – aktive Funktionen inkl. custom. Neu angelegte
   // Funktionen werden zurück in den Katalog geschrieben → konsistent mit Settings/Kontakte.

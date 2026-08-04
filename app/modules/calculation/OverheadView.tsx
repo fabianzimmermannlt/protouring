@@ -13,12 +13,14 @@ import {
   setCalcOverhead, setCalcOverheadShow,
 } from '@/lib/api-client'
 import type { CalcDataset } from '@/lib/calculation/types'
+import { formulaNorm, useFormulaFields } from '@/lib/calculation/formula'
 import { formatMoney, formatDate } from '@/lib/calculation/format'
 
-const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
+const norm = (v: string): string | null => formulaNorm(v)   // Betragsfelder: "=236+44" → "280"
 const D = (v: unknown): Decimal => { try { return new Decimal(v == null || v === '' ? 0 : (v as string)) } catch { return new Decimal(0) } }
 
-export default function OverheadView({ dataset, onChanged }: { dataset: CalcDataset; projectId: string; onChanged: () => void }) {
+export default function OverheadView({ dataset, projectId, onChanged }: { dataset: CalcDataset; projectId: string; onChanged: () => void }) {
+  const { onFormulaBlur, onFormulaFocus } = useFormulaFields(projectId, dataset.formulas)
   const activeShows = useMemo(
     () => dataset.shows.filter(s => s.is_active).slice().sort((a, b) => a.sort_order - b.sort_order),
     [dataset])
@@ -37,7 +39,7 @@ export default function OverheadView({ dataset, onChanged }: { dataset: CalcData
   const catName = (id: string) => categories.find(c => c.id === id)?.name ?? '—'
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onBlurCapture={onFormulaBlur} onFocusCapture={onFormulaFocus}>
       <div className="text-xs" style={{ color: '#9ca3af', lineHeight: 1.5 }}>
         Übergeordnete Kosten verteilen sich automatisch gleichmäßig auf die angehakten Shows
         (<span style={{ color: '#e0e0e0' }}>Umlage = Soll ÷ Anzahl angehakter Shows</span>).
@@ -107,17 +109,17 @@ function OverheadRow({ item, catName, soll, ist, pct, shareLabel, activeShows, i
         <input className="form-input" style={{ fontSize: '0.85rem', padding: '3px 8px', flex: '1 1 160px', minWidth: 120 }}
           value={name} onChange={e => setName(e.target.value)} onBlur={saveName} placeholder="Bezeichnung" />
         <label className="text-xs" style={{ color: '#9ca3af' }}>Soll
-          <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
+          <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|soll`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
             value={sollV} onChange={e => setSollV(e.target.value)} onBlur={saveAmount} placeholder="0" />
         </label>
         <label className="text-xs" style={{ color: '#9ca3af' }}>Ist
-          <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: '#facc15' }}
+          <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|ist`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: '#facc15' }}
             value={istV} onChange={e => setIstV(e.target.value)} onBlur={saveAmount} placeholder="0" />
         </label>
         <label className="text-xs" style={{ color: '#9ca3af' }} title="Anteil, der auf DIESE Kalkulation entfällt (z.B. 50 %, wenn die Anschaffung auch für andere Touren/Saisons genutzt wird). Gilt für Soll und Ist.">
           Anteil
           <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6 }}>
-            <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 60 }}
+            <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|pct`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 60 }}
               value={pctV} onChange={e => setPctV(e.target.value)} onBlur={saveAmount} placeholder="100" />
             <span style={{ marginLeft: 3 }}>%</span>
           </span>
