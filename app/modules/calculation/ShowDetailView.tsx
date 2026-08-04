@@ -5,7 +5,7 @@
 // (+ „gleich in allen Varianten"), dazu ein Ist-Wert pro Position/Show.
 // Ist in calc_actuals (pro Position/Show), Soll in calc_entries (je Variante).
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FocusEvent as RFocusEvent } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import {
@@ -22,8 +22,76 @@ import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
 import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 
-const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
+// Sichere Formel-Eingabe in Betragsfeldern: "=236+44" → "280", "=(10+2)*3" → "36".
+// Kein eval – eigener Mini-Parser (rekursiver Abstieg), centgenau via decimal.js.
+// Erlaubt sind nur Ziffern, . , + - * / ( ) sowie ×/x als Malzeichen.
+// Rückgabe: Ergebnis als String, oder null wenn keine (gültige) Formel.
+function evalFormula(raw: string): string | null {
+  let s = raw.trim()
+  if (!s.startsWith('=')) return null
+  s = s.slice(1).replace(/[×x·∙]/gi, '*').replace(/[–—]/g, '-').replace(/\s+/g, '').replace(/,/g, '.')
+  if (s === '' || !/^[0-9.+\-*/()]+$/.test(s)) return null
+  let i = 0
+  const cur = () => s[i]
+  function factor(): Decimal | null {
+    if (cur() === '+') { i++; return factor() }
+    if (cur() === '-') { i++; const f = factor(); return f == null ? null : f.neg() }
+    if (cur() === '(') {
+      i++; const e = expr()
+      if (e == null || cur() !== ')') return null
+      i++; return e
+    }
+    let j = i
+    while (j < s.length && /[0-9.]/.test(s[j])) j++
+    const tok = s.slice(i, j)
+    if (tok === '' || tok === '.' || (tok.match(/\./g) || []).length > 1) return null
+    i = j
+    try { return new Decimal(tok) } catch { return null }
+  }
+  function term(): Decimal | null {
+    let left = factor(); if (left == null) return null
+    while (cur() === '*' || cur() === '/') {
+      const op = s[i++]; const r = factor(); if (r == null) return null
+      if (op === '/' && r.isZero()) return null
+      left = op === '*' ? left.times(r) : left.div(r)
+    }
+    return left
+  }
+  function expr(): Decimal | null {
+    let left = term(); if (left == null) return null
+    while (cur() === '+' || cur() === '-') {
+      const op = s[i++]; const r = term(); if (r == null) return null
+      left = op === '+' ? left.plus(r) : left.minus(r)
+    }
+    return left
+  }
+  const out = expr()
+  if (out == null || i !== s.length) return null
+  return out.toDecimalPlaces(4).toString()
+}
+
+const norm = (v: string): string | null => {
+  const t = v.trim()
+  if (t.startsWith('=')) return evalFormula(t)        // Formel → Ergebnis (null wenn ungültig)
+  const n = t.replace(',', '.')
+  return n === '' ? null : n
+}
 const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
+
+// Löst eine Formel-Eingabe in einem React-kontrollierten <input> beim Verlassen auf:
+// setzt den Ergebniswert so, dass Reacts onChange feuert (Anzeige + State werden
+// zum Ergebnis). Gilt nur für Betragsfelder (inputMode="decimal"); ungültige oder
+// Nicht-Formeln bleiben unverändert. Ein einziger Handler am Container deckt alle
+// Betragsfelder ab.
+function resolveFormulaBlur(e: RFocusEvent) {
+  const el = e.target as HTMLElement
+  if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return
+  const r = evalFormula(el.value)
+  if (r == null || r === el.value) return
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  setter?.call(el, r)
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+}
 
 // UI-Präferenz (Name/Spezifikation-Häkchen) projektweit merken – gilt für alle
 // Shows und übersteht das Verlassen/Wiederkommen (localStorage).
@@ -152,7 +220,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   }
 
   return (
-    <div>
+    <div onBlurCapture={resolveFormulaBlur}>
       <div className="flex items-start gap-3"
         style={{ position: 'sticky', top: 0, zIndex: 40, background: '#1c1c1c',
           marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20,
