@@ -46,6 +46,7 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
     if (nz(a.amount)) { r = r.plus(D(a.amount)); has = true }
     if (nz(a.travel_km) && nz(a.travel_rate)) { r = r.plus(D(a.travel_km).times(D(a.travel_rate))); has = true }
     if (nz(a.travel_fix)) { r = r.plus(D(a.travel_fix)); has = true }
+    if (nz(a.fuel_amount)) { r = r.plus(D(a.fuel_amount)); has = true }
     return has ? r.toString() : ''
   }
 

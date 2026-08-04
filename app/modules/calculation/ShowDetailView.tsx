@@ -999,7 +999,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
 
 // ── Fahrzeug-Zeile: Miete + Mehr-km × Preis, optional Sprit-Zeile (Strecke/100×Verbrauch×€/L) ──
 interface VVals { rental: string; km: string; included: string; extra: string; cons: string; price: string }
-interface VModel { shared: boolean; s: VVals; perVar: Record<string, VVals>; ist: string; fuelOn: boolean }
+interface VModel { shared: boolean; s: VVals; perVar: Record<string, VVals>; ist: string; fuelIst: string; fuelOn: boolean }
 const emptyV = (): VVals => ({ rental: '', km: '', included: '', extra: '', cons: '', price: '' })
 const vSnapKey = (m: VModel) => JSON.stringify({ shared: m.shared, s: m.s, perVar: m.perVar, fuelOn: m.fuelOn })
 const vAmount = (v: VVals): Decimal => {
@@ -1036,11 +1036,10 @@ function buildVehicleModel(dataset: CalcDataset, showId: string, positionId: str
   variants.forEach(v => { perVar[v.id] = (veNull || fuNull) ? { ...s } : emptyV() })
   veVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), rental: e.rental_price != null ? String(e.rental_price) : '', km: e.distance_km != null ? String(e.distance_km) : '', included: e.included_km != null ? String(e.included_km) : '', extra: e.price_extra_km != null ? String(e.price_extra_km) : '' } })
   fuVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), cons: e.quantity != null ? String(e.quantity) : '', price: e.unit_price != null ? String(e.unit_price) : '', km: perVar[e.variant_id]?.km || (e.distance_km != null ? String(e.distance_km) : '') } })
-  const ist = (() => {
-    const a = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
-    return a?.amount != null ? String(a.amount) : ''
-  })()
-  return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelOn: !!(fuNull || fuVar.length) }
+  const actIst = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
+  const ist = actIst?.amount != null ? String(actIst.amount) : ''
+  const fuelIst = actIst?.fuel_amount != null ? String(actIst.fuel_amount) : ''
+  return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelIst, fuelOn: !!(fuNull || fuVar.length) }
 }
 
 function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpec, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
@@ -1102,7 +1101,12 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   const valsFor = (vid: string): VVals => (m.shared ? m.s : (m.perVar[vid] ?? emptyV()))
   const cellTotal = (v: VVals): Decimal => vAmount(v).plus(m.fuelOn ? fuelAmount(v) : new Decimal(0))
   const rowResult = (): Decimal => {
-    if (defaultVar === 'ist') { const b = norm(m.ist); if (b != null) { try { return new Decimal(b) } catch { /* */ } } return new Decimal(0) }
+    if (defaultVar === 'ist') {
+      let r = new Decimal(0)
+      const b = norm(m.ist); if (b != null) { try { r = r.plus(b) } catch { /* */ } }
+      const f = norm(m.fuelIst); if (f != null) { try { r = r.plus(f) } catch { /* */ } }
+      return r
+    }
     return cellTotal(valsFor(defaultVar))
   }
 
@@ -1135,6 +1139,10 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   const saveIst = async () => {
     try { await withTimeout(setCalcActual(show.id, positionId, { amount: norm(m.ist) })); onChanged() }
     catch (e: any) { setErr(e?.message ?? 'Ist konnte nicht gespeichert werden') }
+  }
+  const saveIstFuel = async () => {
+    try { await withTimeout(setCalcActual(show.id, positionId, { fuel_amount: norm(m.fuelIst) })); onChanged() }
+    catch (e: any) { setErr(e?.message ?? 'Ist-Sprit konnte nicht gespeichert werden') }
   }
   const saveName = async () => { const nn = nameVal.trim(); if (!nn || nn === positionName) { setNameVal(positionName); return } try { await updateCalcPosition(positionId, { name: nn }); onChanged() } catch { setNameVal(positionName) } }
   const removeRow = async () => {
@@ -1216,6 +1224,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
         <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
+        <input inputMode="decimal" className="form-input text-right" title="Ist-Spritkosten (fixer Betrag) – wird zum Ist addiert"
+          style={{ fontSize: '0.72rem', padding: '2px 8px', width: '100%', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}
+          value={m.fuelIst} onChange={e => setM(p => ({ ...p, fuelIst: e.target.value }))} onBlur={saveIstFuel} placeholder="⛽ Sprit" />
       </td>
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>

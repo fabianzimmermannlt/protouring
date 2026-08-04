@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS calc_actuals (
   travel_fix TEXT,
   spec TEXT,        -- Spezifikation pro Show
   person TEXT,      -- Name/Person bzw. Fahrzeug-Info pro Show
+  fuel_amount TEXT, -- Ist-Spritkosten (Fahrzeuge), fixer Betrag pro Show
   note TEXT,
   UNIQUE (show_id, position_id)
 );
