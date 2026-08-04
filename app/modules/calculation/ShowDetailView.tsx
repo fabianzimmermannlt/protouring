@@ -346,11 +346,14 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
   const isUnterkunft = /unterkunft|verpflegung/i.test(category.name)   // nur hier: Hotel-Option
   const isTransport = /transport|logistik|fahrzeug/i.test(category.name) // hier: App-Fahrzeuge
   // Name/Spezifikation jetzt in ALLEN Bereichen (Häkchen in der Bereichs-Titelzeile),
-  // projektweit gemerkt (alle Shows, auch nach Verlassen der Kalkulation)
-  const [showSpec, setShowSpec] = useState(() => readPref('pt_calc_show_spec', true))
-  const [showName, setShowName] = useState(() => readPref('pt_calc_show_name', false))
-  useEffect(() => { writePref('pt_calc_show_spec', showSpec) }, [showSpec])
-  useEffect(() => { writePref('pt_calc_show_name', showName) }, [showName])
+  // gemerkt PRO BEREICH (nicht global!) und über alle Shows/Events hinweg – sonst
+  // überschreibt ein Bereich (z.B. Hotel) den Haken eines anderen (Personal).
+  const specKey = `pt_calc_show_spec_${category.id}`
+  const nameKey = `pt_calc_show_name_${category.id}`
+  const [showSpec, setShowSpec] = useState(() => readPref(specKey, true))
+  const [showName, setShowName] = useState(() => readPref(nameKey, false))
+  useEffect(() => { writePref(specKey, showSpec) }, [specKey, showSpec])
+  useEffect(() => { writePref(nameKey, showName) }, [nameKey, showName])
 
   // Sortierung per 6-Punkte-Griff (Drag & Drop) innerhalb des Bereichs
   const [dragId, setDragId] = useState<string | null>(null)
