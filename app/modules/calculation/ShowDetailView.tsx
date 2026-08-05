@@ -39,6 +39,16 @@ const writePref = (key: string, val: boolean) => {
   if (typeof window !== 'undefined') window.localStorage.setItem(key, val ? '1' : '0')
 }
 
+// iOS-artiger Schieberegler (statt Häkchen) für An/Aus-Einstellungen.
+function Toggle({ on, onChange, title }: { on: boolean; onChange: (v: boolean) => void; title?: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} title={title}
+      style={{ width: 34, height: 20, borderRadius: 10, background: on ? '#3b82f6' : '#4a4a4a', position: 'relative', transition: 'background .15s', flexShrink: 0, border: 'none', padding: 0, cursor: 'pointer' }}>
+      <span style={{ position: 'absolute', top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.4)' }} />
+    </button>
+  )
+}
+
 // Registry offener (ungespeicherter) Zeilen → globales window.__pt_isDirty,
 // dasselbe Flag, das der L2-Nav-Guard (Popup) und beforeunload auswerten.
 const dirtyRows = new Set<string>()
@@ -153,14 +163,21 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
 
   // ── Druck-/Export-Einstellungen (Zahnrad), projektübergreifend gemerkt ──────
   const [printOpen, setPrintOpen] = useState(false)
-  const [cfgSpec, setCfgSpec] = useState(() => readPref('pt_calc_print_spec', true))
-  const [cfgName, setCfgName] = useState(() => readPref('pt_calc_print_name', true))
   const [cfgMember, setCfgMember] = useState(() => readPref('pt_calc_print_member', true))
   const [cfgMode, setCfgMode] = useState<string>(() => (typeof window !== 'undefined' ? (window.localStorage.getItem('pt_calc_print_mode') ?? '') : ''))
-  useEffect(() => { writePref('pt_calc_print_spec', cfgSpec) }, [cfgSpec])
-  useEffect(() => { writePref('pt_calc_print_name', cfgName) }, [cfgName])
   useEffect(() => { writePref('pt_calc_print_member', cfgMember) }, [cfgMember])
   useEffect(() => { if (typeof window !== 'undefined') window.localStorage.setItem('pt_calc_print_mode', cfgMode) }, [cfgMode])
+  // Spezifikation/Name je Bereich (Kategorie-Name als Schlüssel) – für den Export.
+  const catPrefKey = (name: string, kind: 'spec' | 'name') => `pt_calc_print_${kind}_${name}`
+  const [catPrefs, setCatPrefs] = useState<Record<string, { spec: boolean; name: boolean }>>(() => {
+    const m: Record<string, { spec: boolean; name: boolean }> = {}
+    for (const c of dataset.categories) m[c.name] = { spec: readPref(catPrefKey(c.name, 'spec'), true), name: readPref(catPrefKey(c.name, 'name'), true) }
+    return m
+  })
+  const setCatPref = (name: string, kind: 'spec' | 'name', v: boolean) => {
+    writePref(catPrefKey(name, kind), v)
+    setCatPrefs(prev => ({ ...prev, [name]: { spec: prev[name]?.spec ?? true, name: prev[name]?.name ?? true, [kind]: v } }))
+  }
 
   // ── Export (CSV/PDF) pro Show – auch VOR dem Abschließen ──────────────────
   // Gesperrt → eingefrorener Snapshot; sonst live (Soll = gewählte Variante,
@@ -176,13 +193,16 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const n = di.div(s.abs()).times(100).toDecimalPlaces(1, Decimal.ROUND_HALF_UP).toNumber()
     return (n > 0 ? '+' : '') + n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'
   }
-  type AbRow = { name: string; spec?: string; person?: string; soll: string; ist: string; kind: 'section' | 'cat' | 'pos' | 'sum' | 'result' | 'member' }
-  // Anzeige-Label: Positionsname + (optional) Spezifikation/Name – je nach Einstellung.
+  type AbRow = { name: string; spec?: string; person?: string; catName?: string; soll: string; ist: string; kind: 'section' | 'cat' | 'pos' | 'sum' | 'result' | 'member' }
+  // Anzeige-Label: Positionsname + (optional) Spezifikation/Name – je Bereich einstellbar.
   const rowLabel = (r: AbRow): string => {
     if (r.kind !== 'pos') return r.name
+    const pref = r.catName ? catPrefs[r.catName] : undefined
+    const showSpec = pref ? pref.spec : true
+    const showName = pref ? pref.name : true
     const parts = [r.name]
-    if (cfgSpec && r.spec) parts.push(r.spec)
-    if (cfgName && r.person) parts.push(r.person)
+    if (showSpec && r.spec) parts.push(r.spec)
+    if (showName && r.person) parts.push(r.person)
     return parts.join(' · ')
   }
   // Aktiver Ausgabe-Modus: 'ist' (nur Ist) oder eine Varianten-ID (Variante ↔ Ist).
@@ -199,10 +219,10 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const rows: AbRow[] = []
     rows.push({ name: 'EINNAHMEN', soll: '', ist: '', kind: 'section' })
     rows.push({ name: 'Gage (abzgl. Provision)', soll: snap.gageNet, ist: snap.gageNet, kind: 'pos' })
-    income.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, soll: p.soll, ist: p.ist, kind: 'pos' })) })
+    income.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, catName: c.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
     rows.push({ name: 'Summe Einnahmen', soll: snap.sumEinnahmen, ist: snap.sumEinnahmenIst, kind: 'sum' })
     rows.push({ name: 'AUSGABEN', soll: '', ist: '', kind: 'section' })
-    expense.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, soll: p.soll, ist: p.ist, kind: 'pos' })) })
+    expense.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, catName: c.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
     rows.push({ name: 'Summe Ausgaben', soll: snap.sumAusgaben, ist: snap.sumAusgabenIst, kind: 'sum' })
     rows.push({ name: 'ERGEBNIS', soll: snap.ergebnis, ist: snap.ergebnisIst, kind: 'result' })
     if (cfgMember) rows.push({ name: `je Bandmitglied (${snap.memberCount})`, soll: snap.jeBandmitglied, ist: snap.jeBandmitgliedIst, kind: 'member' })
@@ -340,11 +360,11 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
             )}
             <div className="ml-auto flex items-center gap-2">
               <div style={{ position: 'relative' }}>
-                <button onClick={() => setPrintOpen(o => !o)} className="btn btn-ghost" style={{ fontSize: '0.9rem', padding: '0.2rem 0.4rem' }} title="Druck-/Export-Einstellungen" aria-label="Druck-/Export-Einstellungen">⚙️</button>
+                <button onClick={() => setPrintOpen(o => !o)} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Druck-/Export-Einstellungen" aria-label="Druck-/Export-Einstellungen">⚙️</button>
                 {printOpen && (
                   <>
                     <div onClick={() => setPrintOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 278, background: '#232323', border: '1px solid #3c3c3c', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
+                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 300, background: '#232323', border: '1px solid #3c3c3c', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
                       <div className="text-xs font-semibold mb-2" style={{ color: '#e0e0e0' }}>Druck / Export</div>
                       <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Vergleich</label>
                       <select className="form-input" style={{ width: '100%', fontSize: '0.78rem', marginBottom: 10 }} value={selMode} onChange={e => setCfgMode(e.target.value)}>
@@ -353,15 +373,29 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                           : variants.map(v => <option key={v.id} value={v.id}>Variante „{v.name}" ↔ Ist</option>)}
                         <option value="ist">Nur Ist (ohne Variante/Differenz)</option>
                       </select>
-                      <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer select-none" style={{ color: '#cbd5e1' }}>
-                        <input type="checkbox" checked={cfgSpec} onChange={e => setCfgSpec(e.target.checked)} /> Spezifikation ausgeben
-                      </label>
-                      <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer select-none" style={{ color: '#cbd5e1' }}>
-                        <input type="checkbox" checked={cfgName} onChange={e => setCfgName(e.target.checked)} /> Name ausgeben
-                      </label>
-                      <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#cbd5e1' }}>
-                        <input type="checkbox" checked={cfgMember} onChange={e => setCfgMember(e.target.checked)} /> „je Bandmitglied"-Zeile
-                      </label>
+                      <div className="flex items-center justify-between text-xs mb-2" style={{ color: '#cbd5e1' }}>
+                        <span>„je Bandmitglied"-Zeile</span>
+                        <Toggle on={cfgMember} onChange={setCfgMember} title="je-Bandmitglied-Zeile ausgeben" />
+                      </div>
+                      <div className="text-xs mb-1" style={{ color: '#9ca3af', borderTop: '1px solid #3a3a3a', paddingTop: 8 }}>Zusatzfelder je Bereich</div>
+                      <div className="flex items-center" style={{ fontSize: 10, color: '#6b7280', paddingBottom: 2 }}>
+                        <span style={{ flex: 1 }} />
+                        <span style={{ width: 46, textAlign: 'center' }}>Spez.</span>
+                        <span style={{ width: 46, textAlign: 'center' }}>Name</span>
+                      </div>
+                      <div style={{ maxHeight: 190, overflowY: 'auto' }}>
+                        {categories.map(c => (
+                          <div key={c.id} className="flex items-center" style={{ padding: '3px 0' }}>
+                            <span className="text-xs" style={{ flex: 1, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</span>
+                            <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>
+                              <Toggle on={catPrefs[c.name]?.spec ?? true} onChange={v => setCatPref(c.name, 'spec', v)} title={`Spezifikation in „${c.name}"`} />
+                            </span>
+                            <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>
+                              <Toggle on={catPrefs[c.name]?.name ?? true} onChange={v => setCatPref(c.name, 'name', v)} title={`Name in „${c.name}"`} />
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}
