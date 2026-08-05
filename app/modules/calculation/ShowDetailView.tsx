@@ -156,6 +156,15 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   // Ist = tatsächliche Werte) → Soll/Ist direkt vergleichbar.
   const dsafe = (s: string) => { try { return new Decimal(s || '0') } catch { return new Decimal(0) } }
   const diffOf = (soll: string, ist: string): string => { const di = dsafe(ist); return (ist === '' || di.isZero()) ? '' : di.minus(dsafe(soll)).toString() }
+  // Differenz relativ zum Soll, mit Vorzeichen ("+12,5 %"). Leer, wenn keine Differenz
+  // oder Soll = 0 (kein Bezugswert).
+  const diffPctStr = (soll: string, ist: string): string => {
+    if (ist === '') return ''
+    const s = dsafe(soll), di = dsafe(ist).minus(s)
+    if (di.isZero() || s.isZero()) return ''
+    const n = di.div(s.abs()).times(100).toDecimalPlaces(1, Decimal.ROUND_HALF_UP).toNumber()
+    return (n > 0 ? '+' : '') + n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'
+  }
   type AbRow = { label: string; soll: string; ist: string; kind: 'section' | 'cat' | 'pos' | 'sum' | 'result' | 'member' }
   const buildExport = (): { snap: AbrechnungSnapshot; rows: AbRow[] } => {
     const snap = (show.locked && lockedSnap) ? lockedSnap : buildAbrechnung(dataset, show, chosenVariant)
@@ -184,11 +193,11 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const out: string[] = [
       [snap.showLabel, `Variante: ${snap.variantName}`, `Beträge in ${dataset.project.currency}`, show.locked ? 'abgerechnet' : 'Vorschau (nicht abgeschlossen)'].map(esc).join(sep),
       '',
-      ['Position', 'Soll', 'Ist', 'Differenz'].map(esc).join(sep),
+      ['Position', 'Soll', 'Ist', 'Differenz', 'Differenz %'].map(esc).join(sep),
     ]
     rows.forEach(r => {
       if (r.kind === 'section') { out.push(esc(r.label)); return }
-      out.push([r.label, n(r.soll), n(r.ist), n(diffOf(r.soll, r.ist))].map(esc).join(sep))
+      out.push([r.label, n(r.soll), n(r.ist), n(diffOf(r.soll, r.ist)), diffPctStr(r.soll, r.ist)].map(esc).join(sep))
     })
     const blob = new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -202,11 +211,12 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
     const M = (s: string) => s === '' ? '' : formatMoney(dsafe(s))
     const diffTxt = (soll: string, ist: string) => { const d = diffOf(soll, ist); if (d === '') return ''; const dv = dsafe(d); return `<span style="color:${dv.isNegative() ? '#b91c1c' : '#15803d'}">${(dv.isNegative() ? '' : '+') + esc(formatMoney(dv))}</span>` }
+    const diffPctTxt = (soll: string, ist: string) => { const p = diffPctStr(soll, ist); if (p === '') return ''; return `<span style="color:${p.startsWith('-') ? '#b91c1c' : '#15803d'}">${esc(p)}</span>` }
     const body = rows.map(r => {
-      if (r.kind === 'section') return `<tr class="sec"><td colspan="4">${esc(r.label)}</td></tr>`
+      if (r.kind === 'section') return `<tr class="sec"><td colspan="5">${esc(r.label)}</td></tr>`
       const cls = r.kind === 'cat' ? 'cat' : r.kind === 'sum' ? 'sum' : r.kind === 'result' ? 'res' : r.kind === 'member' ? 'mem' : ''
       const lab = r.kind === 'pos' ? `<span class="ind">${esc(r.label)}</span>` : esc(r.label)
-      return `<tr class="${cls}"><td class="pos">${lab}</td><td class="num">${esc(M(r.soll))}</td><td class="num">${esc(M(r.ist))}</td><td class="num">${diffTxt(r.soll, r.ist)}</td></tr>`
+      return `<tr class="${cls}"><td class="pos">${lab}</td><td class="num">${esc(M(r.soll))}</td><td class="num">${esc(M(r.ist))}</td><td class="num">${diffTxt(r.soll, r.ist)}</td><td class="num">${diffPctTxt(r.soll, r.ist)}</td></tr>`
     }).join('')
     const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${esc(showFileBase(snap))}</title><style>
       @page{size:A4 portrait;margin:16mm}
@@ -222,14 +232,14 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
       td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       td .ind{padding-left:14px;color:#444}
       tr.sec td{background:#333;color:#fff;font-weight:bold;letter-spacing:.04em}
-      tr.cat td{font-weight:bold}
-      tr.sum td{background:#f1f1f1;font-weight:bold}
-      tr.res td{border-top:2px solid #000;font-weight:bold;font-size:12px}
+      tr.cat td{background:#f1f1f1;font-weight:bold}
+      tr.sum td{background:#dde6f0;font-weight:bold}
+      tr.res td{background:#dde6f0;border-top:2px solid #000;font-weight:bold;font-size:12px}
       tr.mem td{color:#666}
     </style></head><body>
       <h1>Abrechnung – ${esc(snap.showLabel)}</h1>
       <div class="meta">Variante: ${esc(snap.variantName)} · ${snap.memberCount} Bandmitglieder · Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
-      <table><thead><tr><th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th></tr></thead><tbody>${body}</tbody></table>
+      <table><thead><tr><th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th><th>Diff&nbsp;%</th></tr></thead><tbody>${body}</tbody></table>
     </body></html>`
     const w = window.open('', '_blank')
     if (!w) { alert('Bitte Pop-ups für diese Seite erlauben, damit das PDF erzeugt werden kann.'); return }
