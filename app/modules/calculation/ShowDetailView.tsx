@@ -208,6 +208,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
 
   const exportShowPdf = () => {
     const { snap, rows } = buildExport()
+    const now = new Date()
+    const stand = formatDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`)
     const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
     const M = (s: string) => s === '' ? '' : formatMoney(dsafe(s))
     const diffTxt = (soll: string, ist: string) => { const d = diffOf(soll, ist); if (d === '') return ''; const dv = dsafe(d); return `<span style="color:${dv.isNegative() ? '#b91c1c' : '#15803d'}">${(dv.isNegative() ? '' : '+') + esc(formatMoney(dv))}</span>` }
@@ -238,7 +240,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
       tr.mem td{color:#666}
     </style></head><body>
       <h1>Abrechnung – ${esc(snap.showLabel)}</h1>
-      <div class="meta">Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
+      <div class="meta">Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${stand}</div>
       <table><thead><tr><th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th><th>Diff&nbsp;%</th></tr></thead><tbody>${body}</tbody></table>
     </body></html>`
     const w = window.open('', '_blank')

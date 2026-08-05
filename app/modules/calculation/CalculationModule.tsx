@@ -467,6 +467,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   }
 
   const exportPdf = () => {
+    const now = new Date()
+    const stand = formatDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`)
     const head = `<th class="pos">Bereich / Position</th>${shows.map(s => `<th class="num">${escHtml(showLabel(s.showId))}</th>`).join('')}<th class="num">Gesamt</th><th class="num">%</th>`
     const body = rows.map(r => {
       if (r.type === 'section') return `<tr class="sec"><td colspan="${shows.length + 3}">${escHtml(r.label)}</td></tr>`
@@ -492,7 +494,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       .note{color:#777;font-style:italic;font-size:9px}
     </style></head><body>
       <h1>${escHtml(dataset.project.name)} – Übersicht (${viewLabel})</h1>
-      <div class="meta">Beträge in ${escHtml(dataset.project.currency)} · Aktive Shows: ${overview.activeShowCount} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
+      <div class="meta">Beträge in ${escHtml(dataset.project.currency)} · Aktive Shows: ${overview.activeShowCount} · Stand: ${stand}</div>
       <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
     </body></html>`
     const w = window.open('', '_blank')
