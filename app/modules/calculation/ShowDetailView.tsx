@@ -151,6 +151,92 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     try { const s = JSON.parse(show.snapshot) as AbrechnungSnapshot; return { ...s, lockedAt: show.locked_at ?? null } } catch { return null }
   }, [show.locked, show.snapshot, show.locked_at])
 
+  // ── Export (CSV/PDF) pro Show – auch VOR dem Abschließen ──────────────────
+  // Gesperrt → eingefrorener Snapshot; sonst live (Soll = gewählte Variante,
+  // Ist = tatsächliche Werte) → Soll/Ist direkt vergleichbar.
+  const dsafe = (s: string) => { try { return new Decimal(s || '0') } catch { return new Decimal(0) } }
+  const diffOf = (soll: string, ist: string): string => { const di = dsafe(ist); return (ist === '' || di.isZero()) ? '' : di.minus(dsafe(soll)).toString() }
+  type AbRow = { label: string; soll: string; ist: string; kind: 'section' | 'cat' | 'pos' | 'sum' | 'result' | 'member' }
+  const buildExport = (): { snap: AbrechnungSnapshot; rows: AbRow[] } => {
+    const snap = (show.locked && lockedSnap) ? lockedSnap : buildAbrechnung(dataset, show, chosenVariant)
+    const income = snap.categories.filter(c => c.kind === 'income')
+    const expense = snap.categories.filter(c => c.kind === 'expense')
+    const rows: AbRow[] = []
+    rows.push({ label: 'EINNAHMEN', soll: '', ist: '', kind: 'section' })
+    rows.push({ label: 'Gage (abzgl. Provision)', soll: snap.gageNet, ist: snap.gageNet, kind: 'pos' })
+    income.forEach(c => { rows.push({ label: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ label: p.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
+    rows.push({ label: 'Summe Einnahmen', soll: snap.sumEinnahmen, ist: snap.sumEinnahmenIst, kind: 'sum' })
+    rows.push({ label: 'AUSGABEN', soll: '', ist: '', kind: 'section' })
+    expense.forEach(c => { rows.push({ label: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ label: p.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
+    rows.push({ label: 'Summe Ausgaben', soll: snap.sumAusgaben, ist: snap.sumAusgabenIst, kind: 'sum' })
+    rows.push({ label: 'ERGEBNIS', soll: snap.ergebnis, ist: snap.ergebnisIst, kind: 'result' })
+    rows.push({ label: `je Bandmitglied (${snap.memberCount})`, soll: snap.jeBandmitglied, ist: snap.jeBandmitgliedIst, kind: 'member' })
+    return { snap, rows }
+  }
+  const showFileBase = (snap: AbrechnungSnapshot) =>
+    `${dataset.project.name} – ${[show.city || 'Show', show.show_date ? formatDate(show.show_date) : ''].filter(Boolean).join(' ')}`.trim() + (show.locked ? '' : ` (${snap.variantName})`)
+
+  const exportShowCsv = () => {
+    const { snap, rows } = buildExport()
+    const sep = ';'
+    const esc = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`
+    const n = (s: string) => s === '' ? '' : dsafe(s).toFixed(2).replace('.', ',')
+    const out: string[] = [
+      [snap.showLabel, `Variante: ${snap.variantName}`, `Beträge in ${dataset.project.currency}`, show.locked ? 'abgerechnet' : 'Vorschau (nicht abgeschlossen)'].map(esc).join(sep),
+      '',
+      ['Position', 'Soll', 'Ist', 'Differenz'].map(esc).join(sep),
+    ]
+    rows.forEach(r => {
+      if (r.kind === 'section') { out.push(esc(r.label)); return }
+      out.push([r.label, n(r.soll), n(r.ist), n(diffOf(r.soll, r.ist))].map(esc).join(sep))
+    })
+    const blob = new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `${showFileBase(snap)}.csv`; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  const exportShowPdf = () => {
+    const { snap, rows } = buildExport()
+    const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+    const M = (s: string) => s === '' ? '' : formatMoney(dsafe(s))
+    const diffTxt = (soll: string, ist: string) => { const d = diffOf(soll, ist); if (d === '') return ''; const dv = dsafe(d); return `<span style="color:${dv.isNegative() ? '#b91c1c' : '#15803d'}">${(dv.isNegative() ? '' : '+') + esc(formatMoney(dv))}</span>` }
+    const body = rows.map(r => {
+      if (r.kind === 'section') return `<tr class="sec"><td colspan="4">${esc(r.label)}</td></tr>`
+      const cls = r.kind === 'cat' ? 'cat' : r.kind === 'sum' ? 'sum' : r.kind === 'result' ? 'res' : r.kind === 'member' ? 'mem' : ''
+      const lab = r.kind === 'pos' ? `<span class="ind">${esc(r.label)}</span>` : esc(r.label)
+      return `<tr class="${cls}"><td class="pos">${lab}</td><td class="num">${esc(M(r.soll))}</td><td class="num">${esc(M(r.ist))}</td><td class="num">${diffTxt(r.soll, r.ist)}</td></tr>`
+    }).join('')
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${esc(showFileBase(snap))}</title><style>
+      @page{size:A4 portrait;margin:16mm}
+      *{box-sizing:border-box}
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;margin:0}
+      h1{font-size:16px;margin:0 0 2px}
+      .meta{color:#555;margin:0 0 12px;font-size:10px}
+      table{border-collapse:collapse;width:100%}
+      th,td{border-bottom:1px solid #cfcfcf;padding:4px 8px}
+      th{background:#ececec;text-align:right}
+      th.pos{text-align:left}
+      td.pos{text-align:left}
+      td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+      td .ind{padding-left:14px;color:#444}
+      tr.sec td{background:#333;color:#fff;font-weight:bold;letter-spacing:.04em}
+      tr.cat td{font-weight:bold}
+      tr.sum td{background:#f1f1f1;font-weight:bold}
+      tr.res td{border-top:2px solid #000;font-weight:bold;font-size:12px}
+      tr.mem td{color:#666}
+    </style></head><body>
+      <h1>Abrechnung – ${esc(snap.showLabel)}</h1>
+      <div class="meta">Variante: ${esc(snap.variantName)} · ${snap.memberCount} Bandmitglieder · Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
+      <table><thead><tr><th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th></tr></thead><tbody>${body}</tbody></table>
+    </body></html>`
+    const w = window.open('', '_blank')
+    if (!w) { alert('Bitte Pop-ups für diese Seite erlauben, damit das PDF erzeugt werden kann.'); return }
+    w.document.write(html); w.document.close(); w.focus()
+    setTimeout(() => w.print(), 350)
+  }
+
   const doLock = async () => {
     const snap = buildAbrechnung(dataset, show, chosenVariant)
     if (!confirm(`Show mit Variante „${snap.variantName}" sperren und abrechnen?\n\nDanach ist die Show schreibgeschützt (Abrechnung eingefroren). Entsperren nur mit PIN.`)) return
@@ -205,10 +291,11 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
               </>
             )}
             <div className="ml-auto flex items-center gap-2">
+              <button onClick={exportShowCsv} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Diese Show als CSV (Excel) – Soll/Ist/Differenz">CSV</button>
+              <button onClick={exportShowPdf} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Diese Show als PDF (drucken/speichern) – Soll/Ist/Differenz">PDF</button>
               {show.locked ? (
                 <>
                   <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#3a2f22', color: '#e0b877' }}>🔒 Abgerechnet</span>
-                  <button onClick={() => window.print()} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Drucken</button>
                   <button onClick={() => setUnlockOpen(true)} className="btn btn-ghost" style={{ fontSize: '0.78rem' }}>Entsperren</button>
                 </>
               ) : (

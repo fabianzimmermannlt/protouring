@@ -330,19 +330,64 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     const dateOf = (id: string) => dataset.shows.find(s => s.id === id)?.show_date ?? ''
     return [...overview.shows].sort((a, b) => dateOf(a.showId).localeCompare(dateOf(b.showId)))
   }, [overview, dataset])
+
+  // Ist-Ansicht: tatsächliche Werte (calc_actuals) statt Soll – analog zur Abrechnung.
+  const [istMode, setIstMode] = useState(false)
+  const nz = (v: unknown) => v != null && String(v) !== ''
+  const DA = (v: unknown) => { try { return new Decimal((v as string) || 0) } catch { return ZERO } }
+  const actualOf = (showId: string, posId: string): Decimal => {
+    const a = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === posId)
+    if (!a) return ZERO
+    let r = ZERO
+    if (nz(a.amount)) r = r.plus(DA(a.amount))
+    if (nz(a.travel_km) && nz(a.travel_rate)) r = r.plus(DA(a.travel_km).times(DA(a.travel_rate)))
+    if (nz(a.travel_fix)) r = r.plus(DA(a.travel_fix))
+    if (nz(a.fuel_amount)) r = r.plus(DA(a.fuel_amount))
+    return r
+  }
+  // Ansicht je Show: Soll (ShowResult) oder Ist (aus Actuals). Gage-Ist = Gage-Soll.
+  type VShow = { showId: string; positionAmount: Map<string, Decimal>; categoryAmount: Map<string, Decimal>; gageNet: Decimal; gageFix: Decimal; gageDeal: Decimal; gageProvision: Decimal; einnahmen: Decimal; ausgaben: Decimal; ergebnis: Decimal }
+  const viewShows = useMemo<VShow[]>(() => {
+    if (!istMode) return shows as unknown as VShow[]
+    return shows.map(s => {
+      const positionAmount = new Map<string, Decimal>()
+      const categoryAmount = new Map<string, Decimal>()
+      let income = ZERO, expense = ZERO
+      for (const p of dataset.positions) {
+        const v = actualOf(s.showId, p.id)
+        if (v.isZero()) continue
+        positionAmount.set(p.id, v)
+        const cat = dataset.categories.find(c => c.id === p.category_id)
+        if (!cat) continue
+        categoryAmount.set(cat.id, (categoryAmount.get(cat.id) ?? ZERO).plus(v))
+        if (cat.kind === 'income') income = income.plus(v); else expense = expense.plus(v)
+      }
+      const einnahmen = s.gageNet.plus(income)
+      return { showId: s.showId, positionAmount, categoryAmount, gageNet: s.gageNet, gageFix: s.gageFix, gageDeal: s.gageDeal, gageProvision: s.gageProvision, einnahmen, ausgaben: expense, ergebnis: einnahmen.minus(expense) }
+    })
+  }, [istMode, shows, dataset])
+  const totals = useMemo(() => {
+    if (!istMode) return { sumE: overview.sumEinnahmen, sumA: overview.sumAusgaben, gageTotal: overview.gageTotal, ergebnis: overview.ergebnis, jeBandmitglied: overview.jeBandmitglied }
+    const sumE = viewShows.reduce((a, s) => a.plus(s.einnahmen), ZERO)
+    const sumA = viewShows.reduce((a, s) => a.plus(s.ausgaben), ZERO)
+    const gageTotal = viewShows.reduce((a, s) => a.plus(s.gageNet), ZERO)
+    const ergebnis = sumE.minus(sumA)
+    const mc = dataset.project.member_count || 1
+    return { sumE, sumA, gageTotal, ergebnis, jeBandmitglied: ergebnis.div(mc) }
+  }, [istMode, viewShows, overview, dataset])
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = []
-    const sumE = overview.sumEinnahmen
-    const sumA = overview.sumAusgaben
+    const sumE = totals.sumE
+    const sumA = totals.sumA
     const posByCat = (catId: string) =>
       dataset.positions.filter(p => p.category_id === catId).sort((a, b) => a.sort_order - b.sort_order)
-    const catTotal = (catId: string) => overview.categories.find(c => c.categoryId === catId)?.total ?? ZERO
+    const catTotal = (catId: string) => viewShows.reduce((a, s) => a.plus(s.categoryAmount.get(catId) ?? ZERO), ZERO)
 
     const pushCategory = (catId: string, kind: 'income' | 'expense', name: string) => {
       const basis = kind === 'income' ? sumE : sumA
       const personal = /personal/i.test(name || '')
       for (const pos of posByCat(catId)) {
-        const perShow = shows.map(s => s.positionAmount.get(pos.id) ?? ZERO)
+        const perShow = viewShows.map(s => s.positionAmount.get(pos.id) ?? ZERO)
         const total = perShow.reduce((a, b) => a.plus(b), ZERO)
         if (hideZero && total.isZero()) continue
         // Beim Personal Hinweis, wenn für die Position in einer aktiven Show Reisekosten hinterlegt sind
@@ -350,13 +395,13 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
           e.position_id === pos.id && e.kind === 'travel' && e.show_id != null && activeShowIds.includes(e.show_id))
         out.push({ type: 'line', label: pos.name, note: hasTravel ? 'inkl. Reisekosten' : undefined, perShow, total, percent: percentOf(total, basis) })
       }
-      const perShow = shows.map(s => s.categoryAmount.get(catId) ?? ZERO)
+      const perShow = viewShows.map(s => s.categoryAmount.get(catId) ?? ZERO)
       out.push({ type: 'catsum', label: `Gesamt ${name}`, perShow, total: catTotal(catId), percent: percentOf(catTotal(catId), basis) })
     }
 
     out.push({ type: 'section', label: 'EINNAHMEN' })
-    const sumPer = (pick: (s: typeof shows[number]) => typeof ZERO) => {
-      const per = shows.map(pick)
+    const sumPer = (pick: (s: VShow) => Decimal) => {
+      const per = viewShows.map(pick)
       return { per, total: per.reduce((a, b) => a.plus(b), ZERO) }
     }
     const fix = sumPer(s => s.gageFix)
@@ -365,19 +410,19 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     out.push({ type: 'line', label: 'Fixgage (Garantie)', perShow: fix.per, total: fix.total, percent: null })
     out.push({ type: 'line', label: 'Deal (Beteiligung)', perShow: deal.per, total: deal.total, percent: null })
     out.push({ type: 'line', label: 'Provision (Booking)', perShow: prov.per.map(p => p.negated()), total: prov.total.negated(), percent: null })
-    out.push({ type: 'catsum', label: 'Gesamt GAGEN (netto)', perShow: shows.map(s => s.gageNet), total: overview.gageTotal, percent: percentOf(overview.gageTotal, sumE) })
+    out.push({ type: 'catsum', label: 'Gesamt GAGEN (netto)', perShow: viewShows.map(s => s.gageNet), total: totals.gageTotal, percent: percentOf(totals.gageTotal, sumE) })
     overview.categories.filter(c => c.kind === 'income').forEach(c => pushCategory(c.categoryId, 'income', c.name))
-    out.push({ type: 'grand', label: 'SUMME EINNAHMEN', perShow: shows.map(s => s.einnahmen), total: sumE, percent: percentOf(sumE, sumE) })
+    out.push({ type: 'grand', label: 'SUMME EINNAHMEN', perShow: viewShows.map(s => s.einnahmen), total: sumE, percent: percentOf(sumE, sumE) })
 
     out.push({ type: 'section', label: 'AUSGABEN' })
     overview.categories.filter(c => c.kind === 'expense').forEach(c => pushCategory(c.categoryId, 'expense', c.name))
-    out.push({ type: 'grand', label: 'SUMME AUSGABEN', perShow: shows.map(s => s.ausgaben), total: sumA, percent: percentOf(sumA, sumA) })
+    out.push({ type: 'grand', label: 'SUMME AUSGABEN', perShow: viewShows.map(s => s.ausgaben), total: sumA, percent: percentOf(sumA, sumA) })
 
-    out.push({ type: 'grand', label: 'ERGEBNIS', perShow: shows.map(s => s.ergebnis), total: overview.ergebnis })
+    out.push({ type: 'grand', label: 'ERGEBNIS', perShow: viewShows.map(s => s.ergebnis), total: totals.ergebnis })
     const mc = dataset.project.member_count || 1
-    out.push({ type: 'member', label: `Ergebnis je Bandmitglied (${mc})`, perShow: shows.map(s => s.ergebnis.div(mc)), total: overview.jeBandmitglied })
+    out.push({ type: 'member', label: `Ergebnis je Bandmitglied (${mc})`, perShow: viewShows.map(s => s.ergebnis.div(mc)), total: totals.jeBandmitglied })
     return out
-  }, [overview, shows, hideZero, dataset])
+  }, [overview, viewShows, totals, hideZero, dataset])
 
   const money = (v: Decimal, dashZero = false) => (dashZero && v.isZero() ? '–' : formatMoney(v))
   const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: '#f87171' } : undefined)
@@ -395,14 +440,15 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     return [m?.city, m?.show_date ? formatDate(m.show_date) : ''].filter(Boolean).join(' · ')
   }
   const escHtml = (s: string | undefined) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
-  const fileBase = `${dataset.project.name} – Übersicht`
+  const viewLabel = istMode ? 'Ist' : 'Soll'
+  const fileBase = `${dataset.project.name} – Übersicht (${viewLabel})`
 
   const exportCsv = () => {
     const sep = ';'
     const esc = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`
     const num = (v: Decimal) => v.toFixed(2).replace('.', ',')   // deutsch, ohne Tausenderpunkt
     const out: string[] = [
-      [dataset.project.name, `Beträge in ${dataset.project.currency}`, `Aktive Shows: ${overview.activeShowCount}`].map(esc).join(sep),
+      [dataset.project.name, `Ansicht: ${viewLabel}`, `Beträge in ${dataset.project.currency}`, `Aktive Shows: ${overview.activeShowCount}`].map(esc).join(sep),
       '',
       ['Bereich / Position', ...shows.map(s => showLabel(s.showId)), 'Gesamt', '%'].map(esc).join(sep),
     ]
@@ -443,7 +489,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       tr.grand td{background:#dde6f0;font-weight:bold}
       .note{color:#777;font-style:italic;font-size:9px}
     </style></head><body>
-      <h1>${escHtml(dataset.project.name)} – Übersicht</h1>
+      <h1>${escHtml(dataset.project.name)} – Übersicht (${viewLabel})</h1>
       <div class="meta">Beträge in ${escHtml(dataset.project.currency)} · Aktive Shows: ${overview.activeShowCount} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
       <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
     </body></html>`
@@ -457,22 +503,31 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     <div>
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
+          <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Ansicht</label>
+          <div className="inline-flex" style={{ border: '1px solid #3c3c3c', borderRadius: 6, overflow: 'hidden' }}>
+            <button onClick={() => setIstMode(false)} className="btn" title="Soll (geplant, je Variante)"
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: !istMode ? '#2b3a4d' : 'transparent', color: !istMode ? '#dbeafe' : '#9ca3af', fontWeight: !istMode ? 600 : 400 }}>Soll</button>
+            <button onClick={() => setIstMode(true)} className="btn" title="Ist (tatsächliche Werte aus den Shows)"
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: istMode ? '#3a3222' : 'transparent', color: istMode ? '#facc15' : '#9ca3af', fontWeight: istMode ? 600 : 400 }}>Ist</button>
+          </div>
+        </div>
+        <div style={{ opacity: istMode ? 0.4 : 1 }}>
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
-          <select className="form-select" value="" style={{ minWidth: 160 }}
+          <select className="form-select" value="" style={{ minWidth: 160 }} disabled={istMode}
             onChange={e => { if (e.target.value) setVariantByShow(mkVariants(e.target.value)) }}>
             <option value="">– wählen –</option>
             {variantsSorted.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
         </div>
-        <div>
+        <div style={{ opacity: istMode ? 0.4 : 1 }}>
           <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>
             Szenario-Faktor: <span style={{ color: '#e0e0e0' }}>{(scenario * 100).toFixed(0)} %</span>
           </label>
-          <input type="range" min={0} max={1.5} step={0.05} value={scenario} disabled={useVVK}
-            onChange={e => setScenario(Number(e.target.value))} style={{ width: 180, opacity: useVVK ? 0.4 : 1 }} />
+          <input type="range" min={0} max={1.5} step={0.05} value={scenario} disabled={useVVK || istMode}
+            onChange={e => setScenario(Number(e.target.value))} style={{ width: 180, opacity: (useVVK || istMode) ? 0.4 : 1 }} />
         </div>
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK ? '#facc15' : '#9ca3af' }}>
-          <input type="checkbox" checked={useVVK} onChange={e => setUseVVK(e.target.checked)} />
+        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK && !istMode ? '#facc15' : '#9ca3af', opacity: istMode ? 0.4 : 1 }}>
+          <input type="checkbox" checked={useVVK} disabled={istMode} onChange={e => setUseVVK(e.target.checked)} />
           Ist-VVK verwenden
         </label>
         <div className="text-xs" style={{ color: '#9ca3af' }}>
@@ -504,14 +559,18 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                     <div style={{ fontWeight: 600 }}>{meta?.city ?? s.legacyKey}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.7 }}>{formatDate(meta?.show_date)}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.55 }}>{meta?.venue}</div>
-                    <select
-                      value={variantByShow[s.showId] ?? defaultVariant}
-                      onChange={e => setVariantByShow(prev => ({ ...prev, [s.showId]: e.target.value }))}
-                      className="form-select" title="Variante dieser Show"
-                      style={{ marginTop: 4, fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'left', fontWeight: 400 }}
-                    >
-                      {variantsSorted.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                    </select>
+                    {istMode ? (
+                      <div style={{ marginTop: 4, fontSize: '0.7rem', fontWeight: 600, color: '#facc15' }} title="Ist – tatsächliche Werte">Ist</div>
+                    ) : (
+                      <select
+                        value={variantByShow[s.showId] ?? defaultVariant}
+                        onChange={e => setVariantByShow(prev => ({ ...prev, [s.showId]: e.target.value }))}
+                        className="form-select" title="Variante dieser Show"
+                        style={{ marginTop: 4, fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'left', fontWeight: 400 }}
+                      >
+                        {variantsSorted.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      </select>
+                    )}
                   </th>
                 )
               })}
