@@ -126,13 +126,19 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
 
   const [resultVar, setResultVar] = useState<string>(project.default_variant_id ?? variants[0]?.id ?? '')
 
-  const summary = useMemo(() => {
+  const summary = useMemo<{ gageNet: Decimal; ausgaben: Decimal; ergebnis: Decimal } | null>(() => {
     // Zusammenfassung (Gage netto / Ausgaben / Ergebnis) folgt der gewählten
-    // Ergebnis-Variante; bei „Ist" auf die Standardvariante zurückfallen.
-    const vid = (resultVar && resultVar !== 'ist') ? resultVar : (project.default_variant_id ?? variants[0]?.id ?? null)
-    const ov = buildOverview(dataset, { variantId: vid })
-    return ov.shows.find(s => s.showId === show.id)
-  }, [dataset, show.id, resultVar, project.default_variant_id, variants])
+    // Ergebnis-Spalte: bei „Ist" die tatsächlichen Werte (Actuals) wie in der
+    // Abrechnung, sonst die Soll-Werte der gewählten Variante.
+    if (resultVar === 'ist') {
+      const baseVar = project.default_variant_id ?? variants[0]?.id ?? null
+      const ab = buildAbrechnung(dataset, show, baseVar)
+      return { gageNet: new Decimal(ab.gageNet), ausgaben: new Decimal(ab.sumAusgabenIst), ergebnis: new Decimal(ab.ergebnisIst) }
+    }
+    const vid = resultVar || project.default_variant_id || variants[0]?.id || null
+    const sr = buildOverview(dataset, { variantId: vid }).shows.find(s => s.showId === show.id)
+    return sr ? { gageNet: sr.gageNet, ausgaben: sr.ausgaben, ergebnis: sr.ergebnis } : null
+  }, [dataset, show, resultVar, project.default_variant_id, variants])
 
   // ── Sperren / Abrechnung ──
   const chosenVariant = (resultVar && resultVar !== 'ist') ? resultVar : (project.default_variant_id ?? variants[0]?.id ?? null)
