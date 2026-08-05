@@ -369,7 +369,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                       <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Vergleich</label>
                       <select className="form-input" style={{ width: '100%', fontSize: '0.78rem', marginBottom: 10 }} value={selMode} onChange={e => setCfgMode(e.target.value)}>
                         {show.locked
-                          ? <option value="soll">Abrechnung (Soll ↔ Ist)</option>
+                          ? <option value="soll">Variante „{lockedSnap?.variantName ?? '—'}" ↔ Ist</option>
                           : variants.map(v => <option key={v.id} value={v.id}>Variante „{v.name}" ↔ Ist</option>)}
                         <option value="ist">Nur Ist (ohne Variante/Differenz)</option>
                       </select>
