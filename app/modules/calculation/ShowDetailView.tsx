@@ -238,7 +238,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
       tr.mem td{color:#666}
     </style></head><body>
       <h1>Abrechnung – ${esc(snap.showLabel)}</h1>
-      <div class="meta">Variante: ${esc(snap.variantName)} · ${snap.memberCount} Bandmitglieder · Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
+      <div class="meta">Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${new Date().toLocaleDateString('de-DE')}</div>
       <table><thead><tr><th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th><th>Diff&nbsp;%</th></tr></thead><tbody>${body}</tbody></table>
     </body></html>`
     const w = window.open('', '_blank')

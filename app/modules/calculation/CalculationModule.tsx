@@ -354,7 +354,9 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       const categoryAmount = new Map<string, Decimal>()
       let income = ZERO, expense = ZERO
       for (const p of dataset.positions) {
-        const v = actualOf(s.showId, p.id)
+        // Übergeordnete Posten: pro Show nicht erfassbar → kalkulierter (umgelegter)
+        // Soll-Wert gilt als Ist. Sonstige Positionen: tatsächliche Actuals.
+        const v = p.is_overhead ? (s.positionAmount.get(p.id) ?? ZERO) : actualOf(s.showId, p.id)
         if (v.isZero()) continue
         positionAmount.set(p.id, v)
         const cat = dataset.categories.find(c => c.id === p.category_id)

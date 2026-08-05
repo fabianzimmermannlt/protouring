@@ -56,7 +56,9 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
     let istSum = D(0)
     posInCat.forEach(p => {
       const soll = sr?.positionAmount.get(p.id)
-      const ist = actualOf(p.id)
+      // Übergeordnete Posten können pro Show nicht erfasst werden → ihr kalkulierter
+      // (umgelegter) Wert gilt zugleich als Ist, damit das Ist-Ergebnis stimmt.
+      const ist = p.is_overhead ? (soll && !soll.isZero() ? soll.toString() : '') : actualOf(p.id)
       if (ist) istSum = istSum.plus(D(ist))
       const sollStr = soll ? soll.toString() : ''
       // Spezifikation/Name pro Show (calc_actuals), Fallback auf Positionswert.
