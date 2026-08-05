@@ -1250,7 +1250,8 @@ function buildVehicleModel(dataset: CalcDataset, showId: string, positionId: str
   const actIst = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
   const ist = actIst?.amount != null ? String(actIst.amount) : ''
   const fuelIst = actIst?.fuel_amount != null ? String(actIst.fuel_amount) : ''
-  return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelIst, fuelOn: !!(fuNull || fuVar.length) }
+  // Sprit-Zeile auch aktiv, wenn (nur) ein Ist-Spritwert vorliegt – sonst wäre er unsichtbar.
+  return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelIst, fuelOn: !!(fuNull || fuVar.length || fuelIst) }
 }
 
 function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpec, variants, onChanged, defaultVar, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
@@ -1435,9 +1436,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
         <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
-        <input inputMode="decimal" className="form-input text-right" title="Ist-Spritkosten (fixer Betrag) – wird zum Ist addiert" data-fkey={`i|${show.id}|${positionId}|fuel`}
-          style={{ fontSize: '0.72rem', padding: '2px 8px', width: '100%', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}
-          value={m.fuelIst} onChange={e => setM(p => ({ ...p, fuelIst: e.target.value }))} onBlur={saveIstFuel} placeholder="⛽ Sprit" />
+        {/* Ist-Sprit steht ausschließlich in der Sprit-Zeile darunter (⛽ aktiv schalten). */}
       </td>
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
@@ -1485,7 +1484,12 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
             </td>
           )
         })}
-        <td /><td /><td />
+        <td className="text-right" style={{ padding: '2px 8px', verticalAlign: 'middle' }}>
+          <input inputMode="decimal" className="form-input text-right" title="Ist-Spritkosten (fixer Betrag) – tatsächlich getankt; wird zum Ist addiert" data-fkey={`i|${show.id}|${positionId}|fuel`}
+            style={{ fontSize: '0.72rem', padding: '2px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+            value={m.fuelIst} onChange={e => setM(p => ({ ...p, fuelIst: e.target.value }))} onBlur={saveIstFuel} placeholder="Ist €" />
+        </td>
+        <td /><td />
       </tr>
     )}
     </>
