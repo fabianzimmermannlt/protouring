@@ -151,6 +151,17 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     try { const s = JSON.parse(show.snapshot) as AbrechnungSnapshot; return { ...s, lockedAt: show.locked_at ?? null } } catch { return null }
   }, [show.locked, show.snapshot, show.locked_at])
 
+  // ── Druck-/Export-Einstellungen (Zahnrad), projektübergreifend gemerkt ──────
+  const [printOpen, setPrintOpen] = useState(false)
+  const [cfgSpec, setCfgSpec] = useState(() => readPref('pt_calc_print_spec', true))
+  const [cfgName, setCfgName] = useState(() => readPref('pt_calc_print_name', true))
+  const [cfgMember, setCfgMember] = useState(() => readPref('pt_calc_print_member', true))
+  const [cfgMode, setCfgMode] = useState<string>(() => (typeof window !== 'undefined' ? (window.localStorage.getItem('pt_calc_print_mode') ?? '') : ''))
+  useEffect(() => { writePref('pt_calc_print_spec', cfgSpec) }, [cfgSpec])
+  useEffect(() => { writePref('pt_calc_print_name', cfgName) }, [cfgName])
+  useEffect(() => { writePref('pt_calc_print_member', cfgMember) }, [cfgMember])
+  useEffect(() => { if (typeof window !== 'undefined') window.localStorage.setItem('pt_calc_print_mode', cfgMode) }, [cfgMode])
+
   // ── Export (CSV/PDF) pro Show – auch VOR dem Abschließen ──────────────────
   // Gesperrt → eingefrorener Snapshot; sonst live (Soll = gewählte Variante,
   // Ist = tatsächliche Werte) → Soll/Ist direkt vergleichbar.
@@ -165,62 +176,87 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const n = di.div(s.abs()).times(100).toDecimalPlaces(1, Decimal.ROUND_HALF_UP).toNumber()
     return (n > 0 ? '+' : '') + n.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %'
   }
-  type AbRow = { label: string; soll: string; ist: string; kind: 'section' | 'cat' | 'pos' | 'sum' | 'result' | 'member' }
-  const buildExport = (): { snap: AbrechnungSnapshot; rows: AbRow[] } => {
-    const snap = (show.locked && lockedSnap) ? lockedSnap : buildAbrechnung(dataset, show, chosenVariant)
+  type AbRow = { name: string; spec?: string; person?: string; soll: string; ist: string; kind: 'section' | 'cat' | 'pos' | 'sum' | 'result' | 'member' }
+  // Anzeige-Label: Positionsname + (optional) Spezifikation/Name – je nach Einstellung.
+  const rowLabel = (r: AbRow): string => {
+    if (r.kind !== 'pos') return r.name
+    const parts = [r.name]
+    if (cfgSpec && r.spec) parts.push(r.spec)
+    if (cfgName && r.person) parts.push(r.person)
+    return parts.join(' · ')
+  }
+  // Aktiver Ausgabe-Modus: 'ist' (nur Ist) oder eine Varianten-ID (Variante ↔ Ist).
+  const selMode: string = show.locked
+    ? (cfgMode === 'ist' ? 'ist' : 'soll')
+    : ((cfgMode === 'ist' || variants.some(v => v.id === cfgMode)) ? cfgMode : (chosenVariant ?? variants[0]?.id ?? 'ist'))
+
+  const buildExport = (mode: string): { snap: AbrechnungSnapshot; rows: AbRow[]; istOnly: boolean } => {
+    const istOnly = mode === 'ist'
+    const varForSnap = istOnly ? (project.default_variant_id ?? variants[0]?.id ?? null) : (mode === 'soll' ? chosenVariant : mode)
+    const snap = (show.locked && lockedSnap) ? lockedSnap : buildAbrechnung(dataset, show, varForSnap)
     const income = snap.categories.filter(c => c.kind === 'income')
     const expense = snap.categories.filter(c => c.kind === 'expense')
     const rows: AbRow[] = []
-    rows.push({ label: 'EINNAHMEN', soll: '', ist: '', kind: 'section' })
-    rows.push({ label: 'Gage (abzgl. Provision)', soll: snap.gageNet, ist: snap.gageNet, kind: 'pos' })
-    income.forEach(c => { rows.push({ label: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ label: p.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
-    rows.push({ label: 'Summe Einnahmen', soll: snap.sumEinnahmen, ist: snap.sumEinnahmenIst, kind: 'sum' })
-    rows.push({ label: 'AUSGABEN', soll: '', ist: '', kind: 'section' })
-    expense.forEach(c => { rows.push({ label: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ label: p.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
-    rows.push({ label: 'Summe Ausgaben', soll: snap.sumAusgaben, ist: snap.sumAusgabenIst, kind: 'sum' })
-    rows.push({ label: 'ERGEBNIS', soll: snap.ergebnis, ist: snap.ergebnisIst, kind: 'result' })
-    rows.push({ label: `je Bandmitglied (${snap.memberCount})`, soll: snap.jeBandmitglied, ist: snap.jeBandmitgliedIst, kind: 'member' })
-    return { snap, rows }
+    rows.push({ name: 'EINNAHMEN', soll: '', ist: '', kind: 'section' })
+    rows.push({ name: 'Gage (abzgl. Provision)', soll: snap.gageNet, ist: snap.gageNet, kind: 'pos' })
+    income.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, soll: p.soll, ist: p.ist, kind: 'pos' })) })
+    rows.push({ name: 'Summe Einnahmen', soll: snap.sumEinnahmen, ist: snap.sumEinnahmenIst, kind: 'sum' })
+    rows.push({ name: 'AUSGABEN', soll: '', ist: '', kind: 'section' })
+    expense.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, soll: p.soll, ist: p.ist, kind: 'pos' })) })
+    rows.push({ name: 'Summe Ausgaben', soll: snap.sumAusgaben, ist: snap.sumAusgabenIst, kind: 'sum' })
+    rows.push({ name: 'ERGEBNIS', soll: snap.ergebnis, ist: snap.ergebnisIst, kind: 'result' })
+    if (cfgMember) rows.push({ name: `je Bandmitglied (${snap.memberCount})`, soll: snap.jeBandmitglied, ist: snap.jeBandmitgliedIst, kind: 'member' })
+    return { snap, rows, istOnly }
   }
-  const showFileBase = (snap: AbrechnungSnapshot) =>
-    `${dataset.project.name} – ${[show.city || 'Show', show.show_date ? formatDate(show.show_date) : ''].filter(Boolean).join(' ')}`.trim() + (show.locked ? '' : ` (${snap.variantName})`)
+  const showFileBase = (snap: AbrechnungSnapshot, istOnly: boolean) =>
+    `${dataset.project.name} – ${[show.city || 'Show', show.show_date ? formatDate(show.show_date) : ''].filter(Boolean).join(' ')}`.trim() + ` (${istOnly ? 'Ist' : snap.variantName})`
 
   const exportShowCsv = () => {
-    const { snap, rows } = buildExport()
+    const { snap, rows, istOnly } = buildExport(selMode)
     const sep = ';'
     const esc = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`
     const n = (s: string) => s === '' ? '' : dsafe(s).toFixed(2).replace('.', ',')
+    const header = istOnly ? ['Position', 'Ist'] : ['Position', 'Soll', 'Ist', 'Differenz', 'Differenz %']
     const out: string[] = [
-      [snap.showLabel, `Variante: ${snap.variantName}`, `Beträge in ${dataset.project.currency}`, show.locked ? 'abgerechnet' : 'Vorschau (nicht abgeschlossen)'].map(esc).join(sep),
+      [snap.showLabel, istOnly ? 'Nur Ist' : `Variante: ${snap.variantName}`, `Beträge in ${dataset.project.currency}`, show.locked ? 'abgerechnet' : 'Vorschau (nicht abgeschlossen)'].map(esc).join(sep),
       '',
-      ['Position', 'Soll', 'Ist', 'Differenz', 'Differenz %'].map(esc).join(sep),
+      header.map(esc).join(sep),
     ]
     rows.forEach(r => {
-      if (r.kind === 'section') { out.push(esc(r.label)); return }
-      out.push([r.label, n(r.soll), n(r.ist), n(diffOf(r.soll, r.ist)), diffPctStr(r.soll, r.ist)].map(esc).join(sep))
+      if (r.kind === 'section') { out.push(esc(rowLabel(r))); return }
+      const cells = istOnly ? [rowLabel(r), n(r.ist)] : [rowLabel(r), n(r.soll), n(r.ist), n(diffOf(r.soll, r.ist)), diffPctStr(r.soll, r.ist)]
+      out.push(cells.map(esc).join(sep))
     })
     const blob = new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = `${showFileBase(snap)}.csv`; a.click()
+    a.href = url; a.download = `${showFileBase(snap, istOnly)}.csv`; a.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   const exportShowPdf = () => {
-    const { snap, rows } = buildExport()
+    const { snap, rows, istOnly } = buildExport(selMode)
     const now = new Date()
     const stand = formatDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`)
     const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
     const M = (s: string) => s === '' ? '' : formatMoney(dsafe(s))
     const diffTxt = (soll: string, ist: string) => { const d = diffOf(soll, ist); if (d === '') return ''; const dv = dsafe(d); return `<span style="color:${dv.isNegative() ? '#b91c1c' : '#15803d'}">${(dv.isNegative() ? '' : '+') + esc(formatMoney(dv))}</span>` }
     const diffPctTxt = (soll: string, ist: string) => { const p = diffPctStr(soll, ist); if (p === '') return ''; return `<span style="color:${p.startsWith('-') ? '#b91c1c' : '#15803d'}">${esc(p)}</span>` }
+    const nCols = istOnly ? 2 : 5
+    const head = istOnly
+      ? `<th class="pos">Position</th><th>Ist</th>`
+      : `<th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th><th>Diff&nbsp;%</th>`
     const body = rows.map(r => {
-      if (r.kind === 'section') return `<tr class="sec"><td colspan="5">${esc(r.label)}</td></tr>`
+      if (r.kind === 'section') return `<tr class="sec"><td colspan="${nCols}">${esc(rowLabel(r))}</td></tr>`
       const cls = r.kind === 'cat' ? 'cat' : r.kind === 'sum' ? 'sum' : r.kind === 'result' ? 'res' : r.kind === 'member' ? 'mem' : ''
-      const lab = r.kind === 'pos' ? `<span class="ind">${esc(r.label)}</span>` : esc(r.label)
-      return `<tr class="${cls}"><td class="pos">${lab}</td><td class="num">${esc(M(r.soll))}</td><td class="num">${esc(M(r.ist))}</td><td class="num">${diffTxt(r.soll, r.ist)}</td><td class="num">${diffPctTxt(r.soll, r.ist)}</td></tr>`
+      const lab = r.kind === 'pos' ? `<span class="ind">${esc(rowLabel(r))}</span>` : esc(rowLabel(r))
+      const cells = istOnly
+        ? `<td class="num">${esc(M(r.ist))}</td>`
+        : `<td class="num">${esc(M(r.soll))}</td><td class="num">${esc(M(r.ist))}</td><td class="num">${diffTxt(r.soll, r.ist)}</td><td class="num">${diffPctTxt(r.soll, r.ist)}</td>`
+      return `<tr class="${cls}"><td class="pos">${lab}</td>${cells}</tr>`
     }).join('')
-    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${esc(showFileBase(snap))}</title><style>
+    const statusTxt = show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${esc(showFileBase(snap, istOnly))}</title><style>
       @page{size:A4 portrait;margin:16mm}
       *{box-sizing:border-box}
       body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;margin:0}
@@ -240,8 +276,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
       tr.mem td{color:#666}
     </style></head><body>
       <h1>Abrechnung – ${esc(snap.showLabel)}</h1>
-      <div class="meta">Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'} · Stand: ${stand}</div>
-      <table><thead><tr><th class="pos">Position</th><th>Soll</th><th>Ist</th><th>Differenz</th><th>Diff&nbsp;%</th></tr></thead><tbody>${body}</tbody></table>
+      <div class="meta">${istOnly ? 'Nur Ist-Werte · ' : ''}Beträge in ${esc(dataset.project.currency ?? 'EUR')} · ${statusTxt} · Stand: ${stand}</div>
+      <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
     </body></html>`
     const w = window.open('', '_blank')
     if (!w) { alert('Bitte Pop-ups für diese Seite erlauben, damit das PDF erzeugt werden kann.'); return }
@@ -303,8 +339,35 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
               </>
             )}
             <div className="ml-auto flex items-center gap-2">
-              <button onClick={exportShowCsv} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Diese Show als CSV (Excel) – Soll/Ist/Differenz">CSV</button>
-              <button onClick={exportShowPdf} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Diese Show als PDF (drucken/speichern) – Soll/Ist/Differenz">PDF</button>
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setPrintOpen(o => !o)} className="btn btn-ghost" style={{ fontSize: '0.9rem', padding: '0.2rem 0.4rem' }} title="Druck-/Export-Einstellungen" aria-label="Druck-/Export-Einstellungen">⚙️</button>
+                {printOpen && (
+                  <>
+                    <div onClick={() => setPrintOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 278, background: '#232323', border: '1px solid #3c3c3c', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
+                      <div className="text-xs font-semibold mb-2" style={{ color: '#e0e0e0' }}>Druck / Export</div>
+                      <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Vergleich</label>
+                      <select className="form-input" style={{ width: '100%', fontSize: '0.78rem', marginBottom: 10 }} value={selMode} onChange={e => setCfgMode(e.target.value)}>
+                        {show.locked
+                          ? <option value="soll">Abrechnung (Soll ↔ Ist)</option>
+                          : variants.map(v => <option key={v.id} value={v.id}>Variante „{v.name}" ↔ Ist</option>)}
+                        <option value="ist">Nur Ist (ohne Variante/Differenz)</option>
+                      </select>
+                      <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer select-none" style={{ color: '#cbd5e1' }}>
+                        <input type="checkbox" checked={cfgSpec} onChange={e => setCfgSpec(e.target.checked)} /> Spezifikation ausgeben
+                      </label>
+                      <label className="flex items-center gap-2 text-xs mb-1.5 cursor-pointer select-none" style={{ color: '#cbd5e1' }}>
+                        <input type="checkbox" checked={cfgName} onChange={e => setCfgName(e.target.checked)} /> Name ausgeben
+                      </label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#cbd5e1' }}>
+                        <input type="checkbox" checked={cfgMember} onChange={e => setCfgMember(e.target.checked)} /> „je Bandmitglied"-Zeile
+                      </label>
+                    </div>
+                  </>
+                )}
+              </div>
+              <button onClick={exportShowCsv} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Diese Show als CSV (Excel)">CSV</button>
+              <button onClick={exportShowPdf} className="btn btn-ghost" style={{ fontSize: '0.78rem' }} title="Diese Show als PDF (drucken/speichern)">PDF</button>
               {show.locked ? (
                 <>
                   <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#3a2f22', color: '#e0b877' }}>🔒 Abgerechnet</span>

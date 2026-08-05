@@ -25,11 +25,17 @@ function Row({ label, soll, ist, indent, bold, headBg }: { label: string; soll: 
   )
 }
 
+// Spezifikation/Person an den Namen hängen (Alt-Snapshots haben sie noch im Namen → leer).
+const posLabel = (p: AbrechnungCategory['positions'][number]): string => {
+  const suffix = [p.spec, p.person].filter(Boolean).join(' · ')
+  return p.name + (suffix ? ' · ' + suffix : '')
+}
+
 function CatBlock({ c }: { c: AbrechnungCategory }) {
   return (
     <>
       <Row label={c.name} soll={c.total} ist={c.totalIst} bold />
-      {c.positions.map((p, i) => <Row key={i} label={p.name} soll={p.soll} ist={p.ist} indent />)}
+      {c.positions.map((p, i) => <Row key={i} label={posLabel(p)} soll={p.soll} ist={p.ist} indent />)}
     </>
   )
 }

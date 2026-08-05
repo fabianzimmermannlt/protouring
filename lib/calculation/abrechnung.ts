@@ -5,7 +5,7 @@
 import { buildOverview, D } from './engine'
 import type { CalcDataset, CalcShow } from './types'
 
-export interface AbrechnungPosition { name: string; soll: string; ist: string }
+export interface AbrechnungPosition { name: string; soll: string; ist: string; spec?: string; person?: string }
 export interface AbrechnungCategory { name: string; kind: 'income' | 'expense'; total: string; totalIst: string; positions: AbrechnungPosition[] }
 export interface AbrechnungSnapshot {
   version: 1
@@ -65,9 +65,9 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
       const a = (dataset.actuals ?? []).find(x => x.show_id === show.id && x.position_id === p.id)
       const spec = (a?.spec ?? p.spec) || ''
       const person = (a?.person ?? p.person) || ''
-      const suffix = [spec, person].filter(Boolean).join(' · ')
       if ((sollStr && soll && !soll.isZero()) || ist) {
-        positions.push({ name: p.name + (suffix ? ' · ' + suffix : ''), soll: sollStr || '0', ist: ist || '' })
+        // Name schlicht + Spezifikation/Person getrennt → Ausgabe kann sie ein-/ausblenden.
+        positions.push({ name: p.name, soll: sollStr || '0', ist: ist || '', spec: spec || undefined, person: person || undefined })
       }
     })
     const total = sr?.categoryAmount.get(cat.id)
