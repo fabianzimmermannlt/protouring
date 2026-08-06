@@ -65,8 +65,12 @@ export default function NotificationBell() {
       setItems(prev => prev.map(x => x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x))
       setCount(c => Math.max(0, c - 1))
     }
-    if (n.link) { window.location.href = n.link }
-    else setOpen(false)
+    if (n.link) {
+      // Deeplink-Marker anhängen, damit auch die installierte App (standalone)
+      // direkt an die Quelle springt statt nur die Terminliste zu zeigen.
+      const url = /[?&]from=/.test(n.link) ? n.link : n.link + (n.link.includes('?') ? '&' : '?') + 'from=push'
+      window.location.href = url
+    } else setOpen(false)
   }
 
   const markAll = async () => {
