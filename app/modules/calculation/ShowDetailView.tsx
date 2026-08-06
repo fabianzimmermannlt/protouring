@@ -218,7 +218,16 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const expense = snap.categories.filter(c => c.kind === 'expense')
     const rows: AbRow[] = []
     rows.push({ name: 'EINNAHMEN', soll: '', ist: '', kind: 'section' })
-    rows.push({ name: 'Gage (abzgl. Provision)', soll: snap.gageNet, ist: snap.gageNet, kind: 'pos' })
+    if (snap.gageFix != null) {
+      // Gage aufgeschlüsselt (Fixgage/Deal/Provision → Netto), damit nachvollziehbar.
+      const provNeg = dsafe(snap.gageProvision ?? '0').negated().toString()
+      rows.push({ name: 'Fixgage (Garantie)', soll: snap.gageFix, ist: snap.gageFix, kind: 'pos' })
+      rows.push({ name: 'Deal (Beteiligung)', soll: snap.gageDeal ?? '0', ist: snap.gageDeal ?? '0', kind: 'pos' })
+      rows.push({ name: 'Provision (Agentur)', soll: provNeg, ist: provNeg, kind: 'pos' })
+      rows.push({ name: 'Gage netto', soll: snap.gageNet, ist: snap.gageNet, kind: 'cat' })
+    } else {
+      rows.push({ name: 'Gage (abzgl. Provision)', soll: snap.gageNet, ist: snap.gageNet, kind: 'pos' })
+    }
     income.forEach(c => { rows.push({ name: c.name, soll: c.total, ist: c.totalIst, kind: 'cat' }); c.positions.forEach(p => rows.push({ name: p.name, spec: p.spec, person: p.person, catName: c.name, soll: p.soll, ist: p.ist, kind: 'pos' })) })
     rows.push({ name: 'Summe Einnahmen', soll: snap.sumEinnahmen, ist: snap.sumEinnahmenIst, kind: 'sum' })
     rows.push({ name: 'AUSGABEN', soll: '', ist: '', kind: 'section' })

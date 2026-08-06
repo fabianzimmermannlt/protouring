@@ -13,6 +13,11 @@ export interface AbrechnungSnapshot {
   variantName: string
   memberCount: number
   gageNet: string
+  // Gage-Aufschlüsselung (optional; fehlt bei alten Snapshots → nur Netto zeigen)
+  gageFix?: string
+  gageDeal?: string
+  gageProvision?: string
+  gageGross?: string
   categories: AbrechnungCategory[]
   sumEinnahmen: string
   sumAusgaben: string
@@ -87,6 +92,10 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
     variantName,
     memberCount,
     gageNet: gage.toString(),
+    gageFix: sr ? sr.gageFix.toString() : '0',
+    gageDeal: sr ? sr.gageDeal.toString() : '0',
+    gageProvision: sr ? sr.gageProvision.toString() : '0',
+    gageGross: sr ? sr.gageGross.toString() : '0',
     categories,
     sumEinnahmen: sr ? sr.einnahmen.toString() : '0',
     sumAusgaben: sr ? sr.ausgaben.toString() : '0',

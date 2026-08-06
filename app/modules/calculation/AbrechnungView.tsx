@@ -81,7 +81,16 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
             </thead>
             <tbody>
               <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: '#173a28', color: '#e5e7eb' }}>EINNAHMEN</td></tr>
-              <Row label="Gage (abzgl. Provision)" soll={snap.gageNet} ist={snap.gageNet} />
+              {snap.gageFix != null ? (
+                <>
+                  <Row label="Fixgage (Garantie)" soll={snap.gageFix} ist={snap.gageFix} indent />
+                  <Row label="Deal (Beteiligung)" soll={snap.gageDeal ?? '0'} ist={snap.gageDeal ?? '0'} indent />
+                  <Row label="Provision (Agentur)" soll={D(snap.gageProvision ?? '0').negated().toString()} ist={D(snap.gageProvision ?? '0').negated().toString()} indent />
+                  <Row label="Gage netto" soll={snap.gageNet} ist={snap.gageNet} bold />
+                </>
+              ) : (
+                <Row label="Gage (abzgl. Provision)" soll={snap.gageNet} ist={snap.gageNet} />
+              )}
               {income.map((c, i) => <CatBlock key={'i' + i} c={c} />)}
               <Row label="Summe Einnahmen" soll={snap.sumEinnahmen} ist={snap.sumEinnahmenIst} bold headBg="#1a1a1a" />
 
