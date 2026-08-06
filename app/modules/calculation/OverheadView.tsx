@@ -161,7 +161,12 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
 
   return (
     <div onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: '#242424', border: `1px solid ${dropTarget ? '#60a5fa' : '#3c3c3c'}`, borderRadius: 8, padding: '10px 12px', opacity: dragging ? 0.5 : 1 }}>
+      style={{
+        background: dragging ? '#243044' : '#242424', border: '1px solid #3c3c3c', borderRadius: 8, padding: '10px 12px',
+        opacity: dragging ? 0.35 : 1,
+        boxShadow: dropTarget ? 'inset 0 3px 0 0 #60a5fa' : undefined,
+        transition: 'background 120ms ease, opacity 120ms ease, box-shadow 120ms ease',
+      }}>
       <div className="flex items-center gap-2 flex-wrap">
         <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} style={{ marginRight: 2 }}><Grip dragging={dragging} /></span>
         <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#33312a', color: '#d6c98a', whiteSpace: 'nowrap' }}>{catName}</span>
@@ -265,7 +270,12 @@ function LineRow({ line, onChanged, dragging, dropTarget, onDragStartLine, onDra
   return (
     <div onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterLine} onDrop={onDropLine}
       className="flex items-center gap-2"
-      style={{ background: dropTarget ? '#2a3340' : '#1f1f1f', border: '1px solid #333', borderRadius: 6, padding: '3px 6px', opacity: dragging ? 0.5 : 1 }}>
+      style={{
+        background: dragging ? '#2a3340' : '#1f1f1f', border: '1px solid #333', borderRadius: 6, padding: '3px 6px',
+        opacity: dragging ? 0.35 : 1,
+        boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined,
+        transition: 'background 120ms ease, opacity 120ms ease, box-shadow 120ms ease',
+      }}>
       <span draggable onDragStart={onDragStartLine} onDragEnd={onDragEndLine}><Grip dragging={dragging} /></span>
       <input className="form-input" style={{ fontSize: '0.78rem', padding: '2px 6px', flex: 1, minWidth: 80 }}
         value={label} onChange={e => setLabel(e.target.value)} onBlur={saveLabel} placeholder="z.B. Rechnung Zubehör" />
