@@ -8561,6 +8561,79 @@ app.put('/api/calc/positions/:id/overhead-shows/:showId', authenticateToken, req
   }
 });
 
+// ── Übergeordnete Posten: Unterzeilen (Sammelposten) ─────────────────────────
+const CalcDec = require('decimal.js');
+async function calcPosOwner(positionId) {
+  return db.get(
+    'SELECT p.id AS project_id, p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
+    [positionId]);
+}
+// Postensumme (calc_entries, show_id NULL) = Σ der Unterzeilen. Nur wenn Zeilen existieren
+// (sonst bleibt der Direktbetrag erhalten).
+async function recomputeOverheadTotal(projectId, positionId) {
+  const lines = await db.all('SELECT amount, ist_amount FROM calc_overhead_lines WHERE position_id = ?', [positionId]);
+  if (lines.length === 0) return;
+  const sum = (key) => {
+    let acc = new CalcDec(0); let any = false;
+    for (const l of lines) { const v = l[key]; if (v != null && String(v) !== '') { try { acc = acc.plus(new CalcDec(v)); any = true; } catch { /* skip */ } } }
+    return any ? acc.toString() : null;
+  };
+  await db.run('DELETE FROM calc_entries WHERE position_id = ? AND show_id IS NULL', [positionId]);
+  await db.run(
+    `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount) VALUES (?,?,?,?,?,?,?,?)`,
+    [crypto.randomUUID(), projectId, null, positionId, null, sum('amount'), 'base', sum('ist_amount')]);
+}
+
+app.post('/api/calc/overhead/:positionId/lines', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcPosOwner(req.params.positionId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    const row = await db.get('SELECT COALESCE(MAX(sort_order),-1)+1 AS next FROM calc_overhead_lines WHERE position_id = ?', [req.params.positionId]);
+    const id = crypto.randomUUID();
+    await db.run('INSERT INTO calc_overhead_lines (id,position_id,label,amount,ist_amount,sort_order) VALUES (?,?,?,?,?,?)',
+      [id, req.params.positionId, (req.body?.label ?? null), calcText(req.body?.amount), calcText(req.body?.ist_amount), row.next]);
+    await recomputeOverheadTotal(owner.project_id, req.params.positionId);
+    res.json({ id });
+  } catch (e) { console.error('[calc] add overhead line:', e); res.status(500).json({ error: 'Fehler beim Anlegen der Zeile' }); }
+});
+
+app.put('/api/calc/overhead/lines/:lineId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const existing = await db.get('SELECT * FROM calc_overhead_lines WHERE id = ?', [req.params.lineId]);
+    if (!existing) return res.status(404).json({ error: 'Zeile nicht gefunden' });
+    const owner = await calcPosOwner(existing.position_id);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Zeile nicht gefunden' });
+    const label = req.body?.label !== undefined ? (req.body.label ?? null) : existing.label;
+    const amount = req.body?.amount !== undefined ? calcText(req.body.amount) : existing.amount;
+    const ist = req.body?.ist_amount !== undefined ? calcText(req.body.ist_amount) : existing.ist_amount;
+    await db.run('UPDATE calc_overhead_lines SET label=?, amount=?, ist_amount=? WHERE id=?', [label, amount, ist, req.params.lineId]);
+    await recomputeOverheadTotal(owner.project_id, existing.position_id);
+    res.json({ ok: true });
+  } catch (e) { console.error('[calc] update overhead line:', e); res.status(500).json({ error: 'Fehler beim Speichern der Zeile' }); }
+});
+
+app.delete('/api/calc/overhead/lines/:lineId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const existing = await db.get('SELECT position_id FROM calc_overhead_lines WHERE id = ?', [req.params.lineId]);
+    if (!existing) return res.json({ ok: true });
+    const owner = await calcPosOwner(existing.position_id);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Zeile nicht gefunden' });
+    await db.run('DELETE FROM calc_overhead_lines WHERE id = ?', [req.params.lineId]);
+    await recomputeOverheadTotal(owner.project_id, existing.position_id);
+    res.json({ ok: true });
+  } catch (e) { console.error('[calc] delete overhead line:', e); res.status(500).json({ error: 'Fehler beim Löschen der Zeile' }); }
+});
+
+app.post('/api/calc/overhead/:positionId/lines/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcPosOwner(req.params.positionId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    for (let i = 0; i < ids.length; i++) await db.run('UPDATE calc_overhead_lines SET sort_order = ? WHERE id = ? AND position_id = ?', [i, ids[i], req.params.positionId]);
+    res.json({ ok: true });
+  } catch (e) { console.error('[calc] reorder overhead lines:', e); res.status(500).json({ error: 'Fehler beim Sortieren' }); }
+});
+
 // Alle Buchungen einer (Show, Position) ersetzen – für die Bereichs-Tabelle
 app.put('/api/calc/shows/:showId/positions/:positionId/entries', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {

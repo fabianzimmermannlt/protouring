@@ -144,6 +144,18 @@ export interface CalcDataset {
   overheadExclude?: CalcOverheadExclude[]
   /** Gemerkte Formeln je Betragsfeld (optional). Nur zur Wiederanzeige/Bearbeitung; der Wert selbst liegt in entries/actuals. */
   formulas?: CalcFormula[]
+  /** Unterzeilen übergeordneter Sammelposten (optional). Postensumme = Σ dieser Zeilen. */
+  overheadLines?: CalcOverheadLine[]
+}
+
+/** Eine Unterzeile eines übergeordneten Sammelpostens (z.B. einzelne Rechnung). */
+export interface CalcOverheadLine {
+  id: string
+  position_id: string
+  label?: string | null
+  amount?: Money | null
+  ist_amount?: Money | null
+  sort_order: number
 }
 
 /** Eine gemerkte Formel-Eingabe eines Betragsfeldes (z.B. "=236+44" → "280"). */

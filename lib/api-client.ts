@@ -886,6 +886,20 @@ export async function setCalcOverheadShow(positionId: string, showId: string, in
   await request(`/api/calc/positions/${positionId}/overhead-shows/${showId}`, { method: 'PUT', body: { included } })
 }
 
+// Übergeordnete Sammelposten: Unterzeilen (Postensumme = Σ dieser Zeilen).
+export async function createOverheadLine(positionId: string, data: { label?: string | null; amount?: Num; ist_amount?: Num }): Promise<{ id: string }> {
+  return request(`/api/calc/overhead/${positionId}/lines`, { method: 'POST', body: data })
+}
+export async function updateOverheadLine(lineId: string, data: { label?: string | null; amount?: Num; ist_amount?: Num }): Promise<void> {
+  await request(`/api/calc/overhead/lines/${lineId}`, { method: 'PUT', body: data })
+}
+export async function deleteOverheadLine(lineId: string): Promise<void> {
+  await request(`/api/calc/overhead/lines/${lineId}`, { method: 'DELETE' })
+}
+export async function reorderOverheadLines(positionId: string, ids: string[]): Promise<void> {
+  await request(`/api/calc/overhead/${positionId}/lines/reorder`, { method: 'POST', body: { ids } })
+}
+
 export async function updateCalcPosition(positionId: string, data: { name?: string; spec?: string | null; person?: string | null; sort_order?: number }): Promise<void> {
   await request(`/api/calc/positions/${positionId}`, { method: 'PUT', body: data })
 }

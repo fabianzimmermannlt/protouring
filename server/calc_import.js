@@ -118,6 +118,15 @@ CREATE TABLE IF NOT EXISTS calc_formulas (
   UNIQUE (project_id, fkey)
 );
 CREATE INDEX IF NOT EXISTS calc_formulas_project_idx ON calc_formulas (project_id);
+CREATE TABLE IF NOT EXISTS calc_overhead_lines (
+  id TEXT PRIMARY KEY,
+  position_id TEXT NOT NULL REFERENCES calc_positions(id) ON DELETE CASCADE,
+  label TEXT,                 -- Bezeichnung der Unterzeile (z.B. Rechnung/Zubehör)
+  amount TEXT,                -- Soll
+  ist_amount TEXT,            -- Ist
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS calc_overhead_lines_pos_idx ON calc_overhead_lines (position_id);
 CREATE INDEX IF NOT EXISTS calc_entries_project_idx ON calc_entries (project_id);
 CREATE INDEX IF NOT EXISTS calc_entries_show_idx ON calc_entries (show_id);
 CREATE INDEX IF NOT EXISTS calc_projects_tenant_idx ON calc_projects (tenant_id);
@@ -213,6 +222,7 @@ function rowsToDataset(rows) {
     actuals: rows.actuals || [],
     overheadExclude: rows.overheadExclude || [],
     formulas: rows.formulas || [],
+    overheadLines: rows.overheadLines || [],
   }
 }
 
@@ -233,7 +243,10 @@ async function loadDataset(db, projectId) {
        JOIN calc_positions p ON p.id = oe.position_id
        JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id=?`, [projectId])
   const formulas = await db.all(`SELECT fkey, formula, result FROM calc_formulas WHERE project_id=?`, [projectId])
-  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals, overheadExclude, formulas })
+  const overheadLines = await db.all(
+    `SELECT ol.* FROM calc_overhead_lines ol JOIN calc_positions p ON p.id = ol.position_id
+       JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id=? ORDER BY ol.sort_order`, [projectId])
+  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals, overheadExclude, formulas, overheadLines })
 }
 
 /** Projektliste eines Tenants (Kurzform). */
