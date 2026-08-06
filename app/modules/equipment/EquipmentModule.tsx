@@ -95,16 +95,19 @@ const ITEMS_COLUMNS = [
   { id: 'name',         label: 'Bezeichnung',     defaultVisible: true,  alwaysVisible: true },
   { id: 'gruppe',       label: 'Gruppe',          defaultVisible: true  },
   { id: 'typ',          label: 'Typ',             defaultVisible: true  },
+  { id: 'kategorie',    label: 'Kategorie',       defaultVisible: false },
   { id: 'position',     label: 'Position',        defaultVisible: true  },
+  { id: 'load_order',   label: 'Ladereihenfolge', defaultVisible: false },
   { id: 'status',       label: 'Status',          defaultVisible: true  },
   { id: 'masse',        label: 'Maße H×B×T',      defaultVisible: true  },
   { id: 'leer_kg',      label: 'Leer kg',         defaultVisible: true  },
   { id: 'farbe',        label: 'Labelfarbe',      defaultVisible: true  },
   { id: 'material',     label: 'Material',        defaultVisible: true  },
   { id: 'gesamt_kg',    label: 'Gesamt kg',       defaultVisible: true  },
+  { id: 'notiz',        label: 'Notiz',           defaultVisible: false },
 ]
 
-type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'standort_status' | 'masse' | 'label_color' | 'gesamt_kg'
+type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'standort_status' | 'masse' | 'label_color' | 'gesamt_kg' | 'notiz'
 
 const CARNET_COLUMNS = [
   { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
@@ -2144,13 +2147,16 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 {isVisible('name')      && <th className="sortable" onClick={() => toggleItemSort('bezeichnung')}>Bezeichnung <SortIndicator active={itemSortKey === 'bezeichnung'} dir={itemSortDir} /></th>}
                 {isVisible('gruppe')    && <th className="sortable" onClick={() => toggleItemSort('gruppe_name')}>Gruppe <SortIndicator active={itemSortKey === 'gruppe_name'} dir={itemSortDir} /></th>}
                 {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
+                {isVisible('kategorie') && <th className="sortable" onClick={() => toggleItemSort('category_name')}>Kategorie <SortIndicator active={itemSortKey === 'category_name'} dir={itemSortDir} /></th>}
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
+                {isVisible('load_order') && <th className="sortable text-right" onClick={() => toggleItemSort('load_order')}>Ladereihenfolge <SortIndicator active={itemSortKey === 'load_order'} dir={itemSortDir} /></th>}
                 {isVisible('status')    && <th className="sortable" onClick={() => toggleItemSort('standort_status')}>Status <SortIndicator active={itemSortKey === 'standort_status'} dir={itemSortDir} /></th>}
                 {isVisible('masse')     && <th className="sortable text-right" onClick={() => toggleItemSort('masse')}>Maße H×B×T cm <SortIndicator active={itemSortKey === 'masse'} dir={itemSortDir} /></th>}
                 {isVisible('leer_kg')   && <th className="sortable text-right" onClick={() => toggleItemSort('weight_empty_kg')}>Leer kg <SortIndicator active={itemSortKey === 'weight_empty_kg'} dir={itemSortDir} /></th>}
                 {isVisible('farbe')     && <th className="sortable" onClick={() => toggleItemSort('label_color')}>Farbe <SortIndicator active={itemSortKey === 'label_color'} dir={itemSortDir} /></th>}
                 {isVisible('material')  && <th className="sortable text-right" onClick={() => toggleItemSort('material_count')}>Material <SortIndicator active={itemSortKey === 'material_count'} dir={itemSortDir} /></th>}
                 {isVisible('gesamt_kg') && <th className="sortable text-right" onClick={() => toggleItemSort('gesamt_kg')}>Gesamt kg <SortIndicator active={itemSortKey === 'gesamt_kg'} dir={itemSortDir} /></th>}
+                {isVisible('notiz')     && <th className="sortable" onClick={() => toggleItemSort('notiz')}>Notiz <SortIndicator active={itemSortKey === 'notiz'} dir={itemSortDir} /></th>}
                 <th style={{ width: 72 }}>
                   <ColumnToggle columns={itemColumns} isVisible={isVisible} toggle={toggle} />
                 </th>
@@ -2167,7 +2173,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {isVisible('name')      && <td className="font-medium">{item.bezeichnung}</td>}
                       {isVisible('gruppe')    && <td>{(() => { const g = getGruppeInfo(item); return g ? <span className="badge badge-blue">{g}</span> : '—' })()}</td>}
                       {isVisible('typ')       && <td><span className="badge">{item.typ === 'sonstiges' ? (item.typ_custom || 'Sonstiges') : (TYP_LABELS[item.typ] ?? item.typ)}</span></td>}
+                      {isVisible('kategorie') && <td className="text-xs text-gray-600">{item.category_name || '—'}</td>}
                       {isVisible('position')  && <td className="text-xs text-gray-600">{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
+                      {isVisible('load_order') && <td className="text-right text-xs text-gray-600">{item.load_order != null ? item.load_order : '—'}</td>}
                       {isVisible('status')    && <td>{item.standort_status
                         ? <span className="badge">{STANDORT_STATUS_LABELS[item.standort_status] ?? item.standort_status}</span>
                         : '—'}</td>}
@@ -2184,6 +2192,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       </td>}
                       {isVisible('material')  && <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>}
                       {isVisible('gesamt_kg') && <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>}
+                      {isVisible('notiz')     && <td className="text-xs text-gray-500" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.notiz || ''}>{item.notiz || '—'}</td>}
                       <td>
                         <div className="flex gap-1 justify-end items-center">
                           {canEdit && (
