@@ -180,11 +180,11 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
         ) : (
           <>
             <label className="text-xs" style={{ color: '#9ca3af' }}>Soll
-              <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
+              <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|soll`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
                 value={sollV} onChange={e => setSollV(e.target.value)} onBlur={saveAmount} placeholder="0" />
             </label>
             <label className="text-xs" style={{ color: '#9ca3af' }}>Ist
-              <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: '#facc15' }}
+              <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|ist`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: '#facc15' }}
                 value={istV} onChange={e => setIstV(e.target.value)} onBlur={saveAmount} placeholder="0" />
             </label>
           </>
@@ -192,7 +192,7 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
         <label className="text-xs" style={{ color: '#9ca3af' }} title="Anteil, der auf DIESE Kalkulation entfällt (z.B. 50 %, wenn die Anschaffung auch für andere Touren/Saisons genutzt wird). Gilt für Soll und Ist.">
           Anteil
           <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6 }}>
-            <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 60 }}
+            <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|pct`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 60 }}
               value={pctV} onChange={e => setPctV(e.target.value)} onBlur={savePct} placeholder="100" />
             <span style={{ marginLeft: 3 }}>%</span>
           </span>
@@ -279,9 +279,9 @@ function LineRow({ line, onChanged, dragging, dropTarget, onDragStartLine, onDra
       <span draggable onDragStart={onDragStartLine} onDragEnd={onDragEndLine}><Grip dragging={dragging} /></span>
       <input className="form-input" style={{ fontSize: '0.78rem', padding: '2px 6px', flex: 1, minWidth: 80 }}
         value={label} onChange={e => setLabel(e.target.value)} onBlur={saveLabel} placeholder="z.B. Rechnung Zubehör" />
-      <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, fontVariantNumeric: 'tabular-nums' }}
+      <input inputMode="decimal" className="form-input text-right" data-fkey={`ohl|${line.id}|amount`} style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, fontVariantNumeric: 'tabular-nums' }}
         value={amount} onChange={e => setAmount(e.target.value)} onBlur={saveAmount} placeholder="Soll" />
-      <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, color: '#facc15', fontVariantNumeric: 'tabular-nums' }}
+      <input inputMode="decimal" className="form-input text-right" data-fkey={`ohl|${line.id}|ist`} style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, color: '#facc15', fontVariantNumeric: 'tabular-nums' }}
         value={ist} onChange={e => setIst(e.target.value)} onBlur={saveAmount} placeholder="Ist" />
       <button onClick={del} disabled={busy} className="p-0.5 text-gray-500 hover:text-red-500" title="Zeile löschen"><TrashIcon className="w-3.5 h-3.5" /></button>
     </div>
