@@ -109,14 +109,11 @@ export function MobileBottomNav({ activeTab, onTabChange, isSuperadmin, initialA
   }, [onTabChange])
 
   const isMoreActive = MORE_ITEMS.some(i => i.id === activeNavItem)
-  // Add-ons (Equipment/Kalkulation) genau wie im Desktop-Menü freischalten:
-  // Sichtbarkeit über can('modules') + aktiviertes Modul – sonst über can(id).
-  const canModules = can('modules', role)
   const visibleMore = MORE_ITEMS.filter(item => {
-    if (item.id === 'equipment' || item.id === 'calculation') {
-      return canModules && isTenantModuleEnabled(item.id as any)
-    }
-    return can(item.id, role)
+    if (!can(item.id, role)) return false
+    // Add-ons nur zeigen, wenn das Modul für den Tenant aktiviert ist.
+    if (item.id === 'equipment' || item.id === 'calculation') return isTenantModuleEnabled(item.id as any)
+    return true
   })
 
   return (

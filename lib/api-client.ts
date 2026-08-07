@@ -3227,6 +3227,25 @@ export async function refreshRolePermissions(): Promise<void> {
   try { setRolePermsOverrides(await getRolePermissions()) } catch { /* Standard bleibt */ }
 }
 
+/** Aktivierte Module des aktuellen Tenants frisch laden und in den Cache schreiben.
+ *  Nötig, weil der gecachte Tenant (z.B. nach Tenant-Wechsel/altem Login) kein
+ *  modules_enabled hatte → Add-ons (Equipment) waren mobil nicht sichtbar. */
+export async function refreshTenantModules(): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const cur = getCurrentTenant()
+    if (!cur) return
+    const { tenants } = await getMyTenants()
+    const mine = (tenants as Array<{ id: number; modules_enabled?: string[] }>).find(t => t.id === cur.id)
+    if (!mine || !Array.isArray(mine.modules_enabled)) return
+    const raw = localStorage.getItem(CURRENT_TENANT_KEY)
+    if (!raw) return
+    const obj = JSON.parse(raw)
+    obj.modules_enabled = mine.modules_enabled
+    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify(obj))
+  } catch { /* Standard bleibt */ }
+}
+
 export interface TenantUser {
   id: number
   email: string
