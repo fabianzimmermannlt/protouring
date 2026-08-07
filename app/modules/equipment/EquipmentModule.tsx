@@ -8,7 +8,7 @@ import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
-  getEquipmentLocations, createEquipmentLocation, updateEquipmentLocation, deleteEquipmentLocation, type EquipmentLocation, type EquipmentLocationKind,
+  getEquipmentLocations, createEquipmentLocation, updateEquipmentLocation, deleteEquipmentLocation, moveEquipmentItems, type EquipmentLocation, type EquipmentLocationKind,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
@@ -1976,6 +1976,11 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [locModal, setLocModal] = useState<{ open: boolean; loc: EquipmentLocation | null }>({ open: false, loc: null })
+  // Verladen (Logistik): Von/Nach + Undo-Snackbar
+  const [fromLoc, setFromLoc] = useState<string>('')   // '' = keiner, 'none' = ohne Standort, sonst id
+  const [toLoc, setToLoc] = useState<string>('')
+  const [snack, setSnack] = useState<{ msg: string; undo: (() => void) | null } | null>(null)
+  useEffect(() => { if (!snack) return; const t = setTimeout(() => setSnack(null), 5000); return () => clearTimeout(t) }, [snack])
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
   const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
@@ -2708,6 +2713,112 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
+  // ── Verladen (Logistik) ────────────────────────────────────────────────────────
+  const renderVerladen = () => {
+    const countAt = (lid: number | null) => items.filter(i => (i.location_id ?? null) === lid).length
+    const selToId = (v: string): number | null => v === 'none' ? null : Number(v)
+    const selName = (v: string): string => v === '' ? '' : v === 'none' ? 'Ohne Standort' : (locations.find(l => String(l.id) === v)?.name ?? '')
+    const selIcon = (v: string): string => v === '' || v === 'none' ? '📦' : locKind(locations.find(l => String(l.id) === v)?.kind ?? 'sonstiges').icon
+    const fromItems = fromLoc === '' ? [] : items.filter(i => (i.location_id ?? null) === selToId(fromLoc)).sort((a, b) => a.case_id.localeCompare(b.case_id))
+    const canMove = fromLoc !== '' && toLoc !== '' && fromLoc !== toLoc
+
+    const move = async (ids: number[], target: string, source: string, label: string) => {
+      if (!ids.length) return
+      const targetId = selToId(target)
+      const tName = target === 'none' ? null : (locations.find(l => String(l.id) === target)?.name ?? null)
+      setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, location_id: targetId, location_name: tName } : i))
+      setSnack({ msg: `${label} → ${selName(target)}`, undo: () => move(ids, source, target, label) })
+      try { await moveEquipmentItems(ids, targetId) } catch { load(true); setSnack({ msg: 'Fehler – nicht gespeichert', undo: null }) }
+    }
+
+    return (
+      <div className="space-y-4" style={{ maxWidth: 640 }}>
+        <p className="text-sm text-gray-500">Gegenstände von einem Standort zum anderen umladen. Tippe eine Kachel als Quelle, wähle ein Ziel und lade – einzeln oder alles.</p>
+
+        {/* Standort-Kacheln (Übersicht + Quelle wählen) */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[{ id: 'none', name: 'Ohne Standort', kind: 'sonstiges', color: '#9ca3af' }, ...locations].map((l: any) => {
+            const idNum = l.id === 'none' ? null : l.id
+            const c = countAt(idNum)
+            const active = fromLoc === String(l.id)
+            return (
+              <button key={String(l.id)} onClick={() => setFromLoc(String(l.id))}
+                className="shrink-0 rounded-xl border px-3 py-2 text-left" style={{ minWidth: 128, borderColor: active ? '#3b82f6' : (l.color || '#e5e7eb'), borderLeftWidth: 4, background: active ? '#eff6ff' : '#fff' }}>
+                <div style={{ fontSize: 20, lineHeight: 1 }}>{locKind(l.kind).icon}</div>
+                <div className="text-sm font-medium text-gray-900 truncate mt-1">{l.name}</div>
+                <div className="text-xs text-gray-500">{c} {c === 1 ? 'Gegenstand' : 'Gegenstände'}</div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Von / Nach */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1 min-w-0">
+            <label className="form-label">Von</label>
+            <select className="form-select" value={fromLoc} onChange={e => setFromLoc(e.target.value)}>
+              <option value="">— wählen —</option>
+              <option value="none">📦 Ohne Standort ({countAt(null)})</option>
+              {locations.map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name} ({countAt(l.id)})</option>)}
+            </select>
+          </div>
+          <button onClick={() => { const a = fromLoc; setFromLoc(toLoc); setToLoc(a) }} className="btn btn-ghost" title="Von/Nach tauschen" style={{ padding: '0.5rem 0.6rem', fontSize: '1.1rem' }}>⇄</button>
+          <div className="flex-1 min-w-0">
+            <label className="form-label">Nach</label>
+            <select className="form-select" value={toLoc} onChange={e => setToLoc(e.target.value)}>
+              <option value="">— wählen —</option>
+              <option value="none">📦 Ohne Standort</option>
+              {locations.filter(l => String(l.id) !== fromLoc).map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Liste der Quell-Gegenstände */}
+        {fromLoc === '' ? (
+          <p className="text-sm text-gray-500 text-center py-8">Wähle oben einen Quell-Standort.</p>
+        ) : fromItems.length === 0 ? (
+          <div className="text-center py-10">
+            <CheckCircleIcon className="w-10 h-10 text-green-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Keine Gegenstände an „{selName(fromLoc)}".</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-gray-700 truncate">
+                {selIcon(fromLoc)} {selName(fromLoc)} · {fromItems.length}{canMove ? ` → ${selIcon(toLoc)} ${selName(toLoc)}` : ''}
+              </span>
+              {canMove && (
+                <button onClick={() => move(fromItems.map(i => i.id), toLoc, fromLoc, `${fromItems.length} Gegenstände`)} className="btn btn-primary shrink-0" style={{ fontSize: '0.8rem' }}>Alles laden</button>
+              )}
+            </div>
+            {!canMove && toLoc === '' && <p className="text-xs" style={{ color: '#d97706' }}>Wähle ein Ziel („Nach"), um zu laden.</p>}
+            <div className="space-y-2">
+              {fromItems.map(item => (
+                <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border bg-white">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 truncate">{item.bezeichnung}</div>
+                    <div className="text-xs text-gray-500">{item.case_id}{item.category_name ? ' · ' + item.category_name : ''}{item.gruppe_name ? ' · ' + item.gruppe_name : ''}</div>
+                  </div>
+                  {canMove && (
+                    <button onClick={() => move([item.id], toLoc, fromLoc, item.case_id)} className="btn btn-primary shrink-0" style={{ padding: '0.55rem 1rem' }} title={`nach ${selName(toLoc)} laden`}>→ laden</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Undo-Snackbar */}
+        {snack && (
+          <div className="fixed left-1/2 z-[9999] flex items-center gap-4 text-white text-sm rounded-full shadow-lg" style={{ transform: 'translateX(-50%)', bottom: 88, background: '#111827', padding: '10px 18px', maxWidth: '92vw' }}>
+            <span className="truncate">{snack.msg}</span>
+            {snack.undo && <button onClick={() => { const u = snack.undo!; setSnack(null); u() }} className="font-semibold shrink-0" style={{ color: '#93c5fd' }}>Rückgängig</button>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const sortedCarnets = useMemo(() => {
     const filtered = carnets.filter(c =>
       !search || [c.carnet_id, c.verwendungszweck, c.ziellaender, c.inhaber_name]
@@ -2832,6 +2943,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
       {activeTab === 'items'        && renderItems()}
       {activeTab === 'materials'    && renderMaterials()}
+      {activeTab === 'verladen'     && renderVerladen()}
       {activeTab === 'standorte'    && renderStandorte()}
       {activeTab === 'categories'   && renderCategories()}
       {activeTab === 'eigentuemer'  && renderEigentuemer()}

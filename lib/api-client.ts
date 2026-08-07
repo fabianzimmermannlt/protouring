@@ -751,6 +751,10 @@ export async function updateEquipmentLocation(id: number, data: Partial<Equipmen
 export async function deleteEquipmentLocation(id: number): Promise<void> {
   await request(`/api/equipment/locations/${id}`, { method: 'DELETE' });
 }
+// Verladen: mehrere Gegenstände auf einen Standort setzen (locationId=null → ortlos).
+export async function moveEquipmentItems(itemIds: number[], locationId: number | null): Promise<void> {
+  await request('/api/equipment/items/move', { method: 'POST', body: { item_ids: itemIds, location_id: locationId } });
+}
 
 // ============================================
 // Equipment: Gegenstände (Items)

@@ -7976,6 +7976,23 @@ app.delete('/api/equipment/locations/:id', authenticateToken, requireTenant, asy
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Verladen: mehrere Gegenstände auf einen Standort setzen (location_id=null = ortlos).
+app.post('/api/equipment/items/move', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const ids = Array.isArray(req.body?.item_ids) ? req.body.item_ids.map(Number).filter(Number.isInteger) : []
+    const locationId = req.body?.location_id != null ? Number(req.body.location_id) : null
+    if (ids.length === 0) return res.json({ ok: true, count: 0 })
+    if (locationId != null) {
+      const loc = await db.get('SELECT id FROM equipment_locations WHERE id=? AND tenant_id=?', [locationId, req.tenant.id])
+      if (!loc) return res.status(404).json({ error: 'Standort nicht gefunden' })
+    }
+    const ph = ids.map(() => '?').join(',')
+    await db.run(`UPDATE equipment_items SET location_id=?, updated_at=datetime('now') WHERE tenant_id=? AND id IN (${ph})`, [locationId, req.tenant.id, ...ids])
+    res.json({ ok: true, count: ids.length })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // ── Partner-Typen ────────────────────────────────────────────────────────────
 
 const DEFAULT_PARTNER_TYPES = [
