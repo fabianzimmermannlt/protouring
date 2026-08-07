@@ -29,16 +29,6 @@ const TYP_LABELS: Record<string, string> = {
   case: 'Case', dolly: 'Dolly', gitterbox: 'Gitterbox', kulisse: 'Kulisse', sonstiges: 'Sonstiges',
 }
 
-const STANDORT_STATUS_LABELS: Record<string, string> = {
-  lager: 'Im Lager',
-  transport: 'Im Transport',
-  'bühne': 'Auf der Bühne',
-  probe: 'Probe',
-  verleih: 'Beim Verleih',
-  reparatur: 'In Reparatur',
-  vermisst: 'Vermisst',
-}
-
 const POSITION_LABELS: Record<string, string> = {
   sl: 'SL – Stage Left', sr: 'SR – Stage Right', cs: 'CS – Center Stage',
   us: 'US – Upstage', ds: 'DS – Downstage',
@@ -98,9 +88,8 @@ const ITEMS_COLUMNS = [
   { id: 'typ',          label: 'Typ',             defaultVisible: true  },
   { id: 'kategorie',    label: 'Kategorie',       defaultVisible: false },
   { id: 'position',     label: 'Position',        defaultVisible: true  },
-  { id: 'standort',     label: 'Standort',        defaultVisible: false },
+  { id: 'standort',     label: 'Standort',        defaultVisible: true  },
   { id: 'load_order',   label: 'Ladereihenfolge', defaultVisible: false },
-  { id: 'status',       label: 'Status',          defaultVisible: true  },
   { id: 'masse',        label: 'Maße H×B×T',      defaultVisible: true  },
   { id: 'leer_kg',      label: 'Leer kg',         defaultVisible: true  },
   { id: 'farbe',        label: 'Labelfarbe',      defaultVisible: true  },
@@ -109,7 +98,7 @@ const ITEMS_COLUMNS = [
   { id: 'notiz',        label: 'Notiz',           defaultVisible: false },
 ]
 
-type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'standort_status' | 'masse' | 'label_color' | 'gesamt_kg' | 'notiz' | 'location_name'
+type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'masse' | 'label_color' | 'gesamt_kg' | 'notiz' | 'location_name'
 
 const CARNET_COLUMNS = [
   { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
@@ -282,7 +271,6 @@ function ItemModal({ item, locations, onSave, onClose }: {
     depth_cm:      item?.depth_cm != null ? String(item.depth_cm) : '',
     weight_empty_kg: item?.weight_empty_kg != null ? String(item.weight_empty_kg) : '',
     label_color:   item?.label_color ?? '',
-    standort_status: item?.standort_status ?? '',
     gruppe_name:   item?.gruppe_name ?? '',
     notiz:         item?.notiz ?? '',
   })
@@ -311,7 +299,6 @@ function ItemModal({ item, locations, onSave, onClose }: {
         depth_cm:        n(form.depth_cm),
         weight_empty_kg: n(form.weight_empty_kg),
         label_color:     form.label_color || null,
-        standort_status: form.standort_status || null,
         gruppe_name:     form.gruppe_name.trim() || null,
         notiz:           form.notiz || null,
       })
@@ -411,8 +398,8 @@ function ItemModal({ item, locations, onSave, onClose }: {
             </div>
           </div>
 
-          {/* Labelfarbe + Status */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Labelfarbe */}
+          <div>
             <div>
               <label className="form-label">Labelfarbe</label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -444,20 +431,6 @@ function ItemModal({ item, locations, onSave, onClose }: {
                   />
                 ))}
               </div>
-            </div>
-            <div>
-              <label className="form-label">Status / Standort</label>
-              <select className="form-select" value={form.standort_status}
-                onChange={e => setForm({...form, standort_status: e.target.value})}>
-                <option value="">— unbekannt —</option>
-                <option value="lager">Im Lager</option>
-                <option value="transport">Im Transport</option>
-                <option value="bühne">Auf der Bühne / im Einsatz</option>
-                <option value="probe">Probe / Rehearsal</option>
-                <option value="verleih">Beim Verleih</option>
-                <option value="reparatur">In Reparatur</option>
-                <option value="vermisst">Vermisst</option>
-              </select>
             </div>
           </div>
 
@@ -2068,10 +2041,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         const vol = (x: EquipmentItem) => (x.height_cm ?? 0) * (x.width_cm ?? 0) * (x.depth_cm ?? 0)
         av = vol(a); bv = vol(b)
       }
-      else if (itemSortKey === 'standort_status') {
-        av = (a.standort_status ? (STANDORT_STATUS_LABELS[a.standort_status] ?? a.standort_status) : '').toLowerCase()
-        bv = (b.standort_status ? (STANDORT_STATUS_LABELS[b.standort_status] ?? b.standort_status) : '').toLowerCase()
-      }
       else if (itemSortKey === 'label_color') {
         av = (a.label_color ?? '').toLowerCase(); bv = (b.label_color ?? '').toLowerCase()
       }
@@ -2236,7 +2205,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
                 {isVisible('standort')  && <th className="sortable" onClick={() => toggleItemSort('location_name')}>Standort <SortIndicator active={itemSortKey === 'location_name'} dir={itemSortDir} /></th>}
                 {isVisible('load_order') && <th className="sortable text-right" onClick={() => toggleItemSort('load_order')}>Ladereihenfolge <SortIndicator active={itemSortKey === 'load_order'} dir={itemSortDir} /></th>}
-                {isVisible('status')    && <th className="sortable" onClick={() => toggleItemSort('standort_status')}>Status <SortIndicator active={itemSortKey === 'standort_status'} dir={itemSortDir} /></th>}
                 {isVisible('masse')     && <th className="sortable text-right" onClick={() => toggleItemSort('masse')}>Maße H×B×T cm <SortIndicator active={itemSortKey === 'masse'} dir={itemSortDir} /></th>}
                 {isVisible('leer_kg')   && <th className="sortable text-right" onClick={() => toggleItemSort('weight_empty_kg')}>Leer kg <SortIndicator active={itemSortKey === 'weight_empty_kg'} dir={itemSortDir} /></th>}
                 {isVisible('farbe')     && <th className="sortable" onClick={() => toggleItemSort('label_color')}>Farbe <SortIndicator active={itemSortKey === 'label_color'} dir={itemSortDir} /></th>}
@@ -2263,9 +2231,6 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {isVisible('position')  && <td className="text-xs text-gray-600">{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
                       {isVisible('standort')  && <td className="text-xs">{item.location_name ? <span className="badge badge-blue">{item.location_name}</span> : <span className="text-gray-400">—</span>}</td>}
                       {isVisible('load_order') && <td className="text-right text-xs text-gray-600">{item.load_order != null ? item.load_order : '—'}</td>}
-                      {isVisible('status')    && <td>{item.standort_status
-                        ? <span className="badge">{STANDORT_STATUS_LABELS[item.standort_status] ?? item.standort_status}</span>
-                        : '—'}</td>}
                       {isVisible('masse')     && <td className="text-right text-xs text-gray-600">
                         {item.height_cm || item.width_cm || item.depth_cm
                           ? `${item.height_cm ?? '?'} × ${item.width_cm ?? '?'} × ${item.depth_cm ?? '?'}`

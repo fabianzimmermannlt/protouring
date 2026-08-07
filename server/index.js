@@ -1974,6 +1974,25 @@ async function initDatabase() {
   try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN person TEXT'); } catch (e) { /* Spalte existiert bereits */ }
   try { await db.exec('ALTER TABLE calc_actuals ADD COLUMN fuel_amount TEXT'); } catch (e) { /* Spalte existiert bereits */ }
 
+  // ── Einmal-Migration: altes Status/Standort-Feld → Standorte (Logistik) ──
+  // Bisherige standort_status-Werte werden als Standorte angelegt und übernommen;
+  // danach wird standort_status geleert (das alte Feld ist in der UI entfernt).
+  try {
+    const rows = await db.all(
+      `SELECT DISTINCT tenant_id, standort_status FROM equipment_items
+         WHERE standort_status IS NOT NULL AND standort_status != '' AND location_id IS NULL`)
+    const STAT_LABELS = { lager: 'Im Lager', transport: 'Im Transport', 'bühne': 'Auf der Bühne', probe: 'Probe', verleih: 'Beim Verleih', reparatur: 'In Reparatur', vermisst: 'Vermisst' }
+    const STAT_KINDS = { lager: 'lager', transport: 'lkw', 'bühne': 'buehne', probe: 'sonstiges', verleih: 'sonstiges', reparatur: 'sonstiges', vermisst: 'sonstiges' }
+    for (const r of rows) {
+      const name = STAT_LABELS[r.standort_status] || r.standort_status
+      const kind = STAT_KINDS[r.standort_status] || 'sonstiges'
+      let loc = await db.get('SELECT id FROM equipment_locations WHERE tenant_id=? AND name=?', [r.tenant_id, name])
+      if (!loc) { const res = await db.run('INSERT INTO equipment_locations (tenant_id, name, kind) VALUES (?,?,?)', [r.tenant_id, name, kind]); loc = { id: res.lastID } }
+      await db.run('UPDATE equipment_items SET location_id=?, standort_status=NULL WHERE tenant_id=? AND standort_status=? AND location_id IS NULL', [loc.id, r.tenant_id, r.standort_status])
+    }
+    if (rows.length) console.log(`✅ Migration: ${rows.length} Status-Werte → Standorte übernommen`)
+  } catch (e) { console.error('[migrate standort_status→locations]', e.message) }
+
   console.log('✅ Database initialized');
 }
 
