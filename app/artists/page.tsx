@@ -76,6 +76,9 @@ function ArtistsPageInner() {
       slug: tenant.slug,
       status: tenant.status,
       role: tenant.role,
+      // WICHTIG: aktivierte Module mitnehmen, sonst sind Add-ons (Equipment)
+      // nach dem Artist-Wechsel unsichtbar (isTenantModuleEnabled = false).
+      modules_enabled: (tenant as { modules_enabled?: string[] }).modules_enabled ?? [],
     }))
     // window.location.href statt router.push: Router-Cache würde useEffect in page.tsx nicht neu triggern
     window.location.href = terminId ? `/?terminId=${terminId}` : '/'

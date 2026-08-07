@@ -693,10 +693,10 @@ export function L3Layout({
     window.dispatchEvent(new CustomEvent('select-venue', { detail: { id: String(created.id) } }))
   }
 
-  const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string }) => {
+  const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string; modules_enabled?: string[] }) => {
     setShowUserMenu(false)
     localStorage.removeItem('protouring_preview_role')
-    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify(t))
+    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify({ ...t, modules_enabled: t.modules_enabled ?? [] }))
     setActiveTenantSlug(t.slug)
     window.location.href = '/'
   }

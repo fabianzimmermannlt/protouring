@@ -210,10 +210,10 @@ export function Navigation({
     handleTabChange('settings', 'profil')
   }
 
-  const handleSwitchTenant = (tenant: { id: number; name: string; slug: string; status: string; role: string }) => {
+  const handleSwitchTenant = (tenant: { id: number; name: string; slug: string; status: string; role: string; modules_enabled?: string[] }) => {
     setShowUserMenu(false)
     localStorage.removeItem('protouring_preview_role')
-    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify(tenant))
+    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify({ ...tenant, modules_enabled: tenant.modules_enabled ?? [] }))
     setActiveTenantSlug(tenant.slug)
     window.location.href = '/'
   }

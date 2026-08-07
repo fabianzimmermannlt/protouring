@@ -299,10 +299,11 @@ export function L2Layout({
     })
   }
 
-  const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string }) => {
+  const handleSwitchTenant = (t: { id: number; name: string; slug: string; status: string; role: string; modules_enabled?: string[] }) => {
     setShowUserMenu(false)
     localStorage.removeItem('protouring_preview_role')
-    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify(t))
+    // modules_enabled mitspeichern → Add-ons bleiben nach dem Wechsel sichtbar.
+    localStorage.setItem(CURRENT_TENANT_KEY, JSON.stringify({ ...t, modules_enabled: t.modules_enabled ?? [] }))
     setActiveTenantSlug(t.slug)
     window.location.href = '/'
   }
