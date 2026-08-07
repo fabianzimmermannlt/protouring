@@ -183,7 +183,9 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   // Gesperrt → eingefrorener Snapshot; sonst live (Soll = gewählte Variante,
   // Ist = tatsächliche Werte) → Soll/Ist direkt vergleichbar.
   const dsafe = (s: string) => { try { return new Decimal(s || '0') } catch { return new Decimal(0) } }
-  const diffOf = (soll: string, ist: string): string => { const di = dsafe(ist); return (ist === '' || di.isZero()) ? '' : di.minus(dsafe(soll)).toString() }
+  // Differenz Ist − Soll: sobald ein Ist erfasst ist (auch 0) und sich vom Soll
+  // unterscheidet. Nur bei wirklich leerem Ist (nicht erfasst) bleibt sie leer.
+  const diffOf = (soll: string, ist: string): string => { if (ist === '') return ''; const d = dsafe(ist).minus(dsafe(soll)); return d.isZero() ? '' : d.toString() }
   // Differenz relativ zum Soll, mit Vorzeichen ("+12,5 %"). Leer, wenn keine Differenz
   // oder Soll = 0 (kein Bezugswert).
   const diffPctStr = (soll: string, ist: string): string => {

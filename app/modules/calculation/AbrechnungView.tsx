@@ -9,7 +9,8 @@ const D = (s: string) => { try { return new Decimal(s || '0') } catch { return n
 const M = (s: string) => formatMoney(D(s))
 const Mopt = (s: string) => { const d = D(s); return d.isZero() ? '' : formatMoney(d) }
 // Differenz Ist − Soll; nur wenn ein (nicht-null) Ist vorliegt.
-const diffStr = (soll: string, ist: string): string => { const di = D(ist); return (ist === '' || di.isZero()) ? '' : di.minus(D(soll)).toString() }
+// Differenz Ist − Soll: sobald ein (auch 0-)Ist erfasst ist und ≠ Soll. Leer nur bei leerem Ist.
+const diffStr = (soll: string, ist: string): string => { if (ist === '') return ''; const d = D(ist).minus(D(soll)); return d.isZero() ? '' : d.toString() }
 const diffColor = (s: string) => (s === '' ? undefined : (D(s).isNegative() ? '#f87171' : '#4ade80'))
 const diffCell = (s: string) => (s === '' || D(s).isZero() ? '' : (D(s).isNegative() ? '' : '+') + M(s))
 
