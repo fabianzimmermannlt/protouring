@@ -193,6 +193,41 @@ const LOC_KINDS: { id: EquipmentLocationKind; label: string; icon: string }[] = 
   { id: 'sonstiges', label: 'Sonstiges', icon: '📦' },
 ]
 const locKind = (k: string) => LOC_KINDS.find(x => x.id === k) ?? LOC_KINDS[LOC_KINDS.length - 1]
+// Kachel-/Listen-Reihenfolge: nach Typ gruppiert (Lager → LKW → Venue → Bühne → Sonstiges), dann Name.
+const LOC_KIND_ORDER: Record<string, number> = { lager: 0, lkw: 1, venue: 2, buehne: 3, sonstiges: 4 }
+
+// Verladen: eine wischbare Gegenstands-Zeile (nach rechts wischen = laden) + Auswahl-Checkbox.
+function VerladeRow({ item, canMove, selected, onToggleSelect, onLoad }: {
+  item: EquipmentItem; canMove: boolean; selected: boolean; onToggleSelect: () => void; onLoad: () => void
+}) {
+  const [dx, setDx] = useState(0)
+  const startX = useRef(0)
+  const active = useRef(false)
+  const THRESH = 90
+  const onStart = (x: number) => { if (!canMove) return; startX.current = x; active.current = true }
+  const onMove = (x: number) => { if (!active.current) return; setDx(Math.max(0, Math.min(x - startX.current, 150))) }
+  const onEnd = () => {
+    if (!active.current) return
+    active.current = false
+    if (dx >= THRESH) { setDx(420); setTimeout(onLoad, 160) } else setDx(0)
+  }
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 12 }}>
+      <div style={{ position: 'absolute', inset: 0, background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', paddingLeft: 18, fontWeight: 700, fontSize: '0.9rem', borderRadius: 12 }}>→ laden</div>
+      <div className="flex items-center gap-2 p-3 border bg-white"
+        style={{ position: 'relative', borderRadius: 12, transform: `translateX(${dx}px)`, transition: active.current ? 'none' : 'transform .16s ease', touchAction: 'pan-y' }}
+        onTouchStart={e => onStart(e.touches[0].clientX)} onTouchMove={e => onMove(e.touches[0].clientX)} onTouchEnd={onEnd}>
+        <div className="shrink-0 flex items-center justify-center rounded-lg bg-gray-100 text-gray-900 font-bold" style={{ width: 36, height: 36, fontSize: '0.95rem', border: item.label_color ? `2px solid ${item.label_color}` : undefined }} title="Ladereihenfolge">{item.load_order ?? '–'}</div>
+        <input type="checkbox" checked={selected} onChange={onToggleSelect} onTouchStart={e => e.stopPropagation()} className="shrink-0" style={{ width: 20, height: 20 }} title="Auswählen" />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-gray-900 truncate">{item.bezeichnung}</div>
+          <div className="text-xs text-gray-500">{item.case_id}{item.category_name ? ' · ' + item.category_name : ''}{item.gruppe_name ? ' · ' + item.gruppe_name : ''}</div>
+        </div>
+        {canMove && <button onClick={onLoad} className="btn btn-primary shrink-0" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem' }} title="laden">→ laden</button>}
+      </div>
+    </div>
+  )
+}
 
 function LocationModal({ loc, onSave, onClose }: {
   loc: EquipmentLocation | null
@@ -1981,6 +2016,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [toLoc, setToLoc] = useState<string>('')
   const [snack, setSnack] = useState<{ msg: string; undo: (() => void) | null } | null>(null)
   useEffect(() => { if (!snack) return; const t = setTimeout(() => setSnack(null), 5000); return () => clearTimeout(t) }, [snack])
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
+  useEffect(() => { setSelectedItems(new Set()) }, [fromLoc, toLoc])   // Auswahl bei Standortwechsel leeren
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
   const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
@@ -2723,6 +2760,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       .sort((a, b) => (a.load_order ?? 9999) - (b.load_order ?? 9999) || a.case_id.localeCompare(b.case_id))
     const canMove = fromLoc !== '' && toLoc !== '' && fromLoc !== toLoc
 
+    const sortedLocs = [...locations].sort((a, b) => (LOC_KIND_ORDER[a.kind] ?? 9) - (LOC_KIND_ORDER[b.kind] ?? 9) || a.name.localeCompare(b.name))
+
     const move = async (ids: number[], target: string, source: string, label: string) => {
       if (!ids.length) return
       const targetId = selToId(target)
@@ -2731,24 +2770,28 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       setSnack({ msg: `${label} → ${selName(target)}`, undo: () => move(ids, source, target, label) })
       try { await moveEquipmentItems(ids, targetId) } catch { load(true); setSnack({ msg: 'Fehler – nicht gespeichert', undo: null }) }
     }
+    const toggleSelect = (id: number) => setSelectedItems(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+    const loadSingle = (item: EquipmentItem) => { move([item.id], toLoc, fromLoc, item.case_id); setSelectedItems(prev => { const n = new Set(prev); n.delete(item.id); return n }) }
+    const loadSelected = () => { const ids = fromItems.filter(i => selectedItems.has(i.id)).map(i => i.id); if (!ids.length) return; move(ids, toLoc, fromLoc, `${ids.length} Gegenstände`); setSelectedItems(new Set()) }
 
     return (
       <div className="space-y-4" style={{ maxWidth: 640 }}>
         <p className="text-sm text-gray-500">Gegenstände von einem Standort zum anderen umladen. Tippe eine Kachel als Quelle, wähle ein Ziel und lade – einzeln oder alles.</p>
 
-        {/* Standort-Kacheln (Übersicht + Quelle wählen) */}
+        {/* Standort-Kacheln (Übersicht + Quelle wählen); Venue/Bühne mit Restbestand = Warnung */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ id: 'none', name: 'Ohne Standort', kind: 'sonstiges', color: '#9ca3af' }, ...locations].map((l: any) => {
+          {[{ id: 'none', name: 'Ohne Standort', kind: 'sonstiges', color: '#9ca3af' }, ...sortedLocs].map((l: any) => {
             const idNum = l.id === 'none' ? null : l.id
             const c = countAt(idNum)
             const active = fromLoc === String(l.id)
+            const warn = idNum !== null && (l.kind === 'venue' || l.kind === 'buehne') && c > 0
             return (
               <button key={String(l.id)} onClick={() => setFromLoc(String(l.id))}
                 className={`shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'bg-blue-50' : 'bg-white'}`}
-                style={{ minWidth: 128, borderColor: active ? '#3b82f6' : (l.color || undefined), borderLeftWidth: 4 }}>
+                style={{ minWidth: 128, borderColor: active ? '#3b82f6' : warn ? '#f59e0b' : (l.color || undefined), borderLeftWidth: 4 }}>
                 <div style={{ fontSize: 20, lineHeight: 1 }}>{locKind(l.kind).icon}</div>
                 <div className="text-sm font-medium text-gray-900 truncate mt-1">{l.name}</div>
-                <div className="text-xs text-gray-500">{c} {c === 1 ? 'Gegenstand' : 'Gegenstände'}</div>
+                <div className="text-xs text-gray-500" style={{ color: warn ? '#f59e0b' : undefined, fontWeight: warn ? 600 : undefined }}>{warn ? '⚠️ ' : ''}{c} {c === 1 ? 'Gegenstand' : 'Gegenstände'}</div>
               </button>
             )
           })}
@@ -2761,7 +2804,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <select className="form-select" value={fromLoc} onChange={e => setFromLoc(e.target.value)}>
               <option value="">— wählen —</option>
               <option value="none">📦 Ohne Standort ({countAt(null)})</option>
-              {locations.map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name} ({countAt(l.id)})</option>)}
+              {sortedLocs.map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name} ({countAt(l.id)})</option>)}
             </select>
           </div>
           <button onClick={() => { const a = fromLoc; setFromLoc(toLoc); setToLoc(a) }} className="btn btn-ghost" title="Von/Nach tauschen" style={{ padding: '0.5rem 0.6rem', fontSize: '1.1rem' }}>⇄</button>
@@ -2770,7 +2813,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <select className="form-select" value={toLoc} onChange={e => setToLoc(e.target.value)}>
               <option value="">— wählen —</option>
               <option value="none">📦 Ohne Standort</option>
-              {locations.filter(l => String(l.id) !== fromLoc).map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name}</option>)}
+              {sortedLocs.filter(l => String(l.id) !== fromLoc).map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name}</option>)}
             </select>
           </div>
         </div>
@@ -2794,28 +2837,28 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               )}
             </div>
             {!canMove && toLoc === '' && <p className="text-xs" style={{ color: '#d97706' }}>Wähle ein Ziel („Nach"), um zu laden.</p>}
-            <div className="space-y-2">
+            {canMove && <p className="text-[11px] text-gray-400">Tipp: Zeile nach rechts wischen = laden. Mehrere auswählen und unten gemeinsam laden.</p>}
+            <div className="space-y-2" style={{ paddingBottom: selectedItems.size > 0 ? 64 : 0 }}>
               {fromItems.map(item => (
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border bg-white">
-                  <div className="shrink-0 flex items-center justify-center rounded-lg bg-gray-100 text-gray-900 font-bold" style={{ width: 38, height: 38, fontSize: '1rem', border: item.label_color ? `2px solid ${item.label_color}` : undefined }} title="Ladereihenfolge">
-                    {item.load_order ?? '–'}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-gray-900 truncate">{item.bezeichnung}</div>
-                    <div className="text-xs text-gray-500">{item.case_id}{item.category_name ? ' · ' + item.category_name : ''}{item.gruppe_name ? ' · ' + item.gruppe_name : ''}</div>
-                  </div>
-                  {canMove && (
-                    <button onClick={() => move([item.id], toLoc, fromLoc, item.case_id)} className="btn btn-primary shrink-0" style={{ padding: '0.55rem 1rem' }} title={`nach ${selName(toLoc)} laden`}>→ laden</button>
-                  )}
-                </div>
+                <VerladeRow key={item.id} item={item} canMove={canMove}
+                  selected={selectedItems.has(item.id)} onToggleSelect={() => toggleSelect(item.id)} onLoad={() => loadSingle(item)} />
               ))}
             </div>
           </>
         )}
 
+        {/* Auswahl-Aktionsleiste */}
+        {selectedItems.size > 0 && (
+          <div className="fixed left-1/2 z-[9998] flex items-center gap-3 text-white text-sm rounded-full shadow-lg" style={{ transform: 'translateX(-50%)', bottom: 88, background: '#1d4ed8', padding: '10px 16px', maxWidth: '92vw' }}>
+            <span className="font-medium shrink-0">{selectedItems.size} ausgewählt</span>
+            <button onClick={loadSelected} disabled={!canMove} className="font-semibold shrink-0" style={{ color: canMove ? '#fff' : '#9db4e8' }}>{canMove ? `→ nach ${selName(toLoc)} laden` : 'Ziel wählen'}</button>
+            <button onClick={() => setSelectedItems(new Set())} title="Auswahl aufheben" className="shrink-0" style={{ opacity: 0.85 }}>✕</button>
+          </div>
+        )}
+
         {/* Undo-Snackbar */}
         {snack && (
-          <div className="fixed left-1/2 z-[9999] flex items-center gap-4 text-white text-sm rounded-full shadow-lg" style={{ transform: 'translateX(-50%)', bottom: 88, background: '#111827', padding: '10px 18px', maxWidth: '92vw' }}>
+          <div className="fixed left-1/2 z-[9999] flex items-center gap-4 text-white text-sm rounded-full shadow-lg" style={{ transform: 'translateX(-50%)', bottom: selectedItems.size > 0 ? 144 : 88, background: '#111827', padding: '10px 18px', maxWidth: '92vw' }}>
             <span className="truncate">{snack.msg}</span>
             {snack.undo && <button onClick={() => { const u = snack.undo!; setSnack(null); u() }} className="font-semibold shrink-0" style={{ color: '#93c5fd' }}>Rückgängig</button>}
           </div>
