@@ -2719,7 +2719,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const selToId = (v: string): number | null => v === 'none' ? null : Number(v)
     const selName = (v: string): string => v === '' ? '' : v === 'none' ? 'Ohne Standort' : (locations.find(l => String(l.id) === v)?.name ?? '')
     const selIcon = (v: string): string => v === '' || v === 'none' ? '📦' : locKind(locations.find(l => String(l.id) === v)?.kind ?? 'sonstiges').icon
-    const fromItems = fromLoc === '' ? [] : items.filter(i => (i.location_id ?? null) === selToId(fromLoc)).sort((a, b) => a.case_id.localeCompare(b.case_id))
+    const fromItems = fromLoc === '' ? [] : items.filter(i => (i.location_id ?? null) === selToId(fromLoc))
+      .sort((a, b) => (a.load_order ?? 9999) - (b.load_order ?? 9999) || a.case_id.localeCompare(b.case_id))
     const canMove = fromLoc !== '' && toLoc !== '' && fromLoc !== toLoc
 
     const move = async (ids: number[], target: string, source: string, label: string) => {
@@ -2743,7 +2744,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             const active = fromLoc === String(l.id)
             return (
               <button key={String(l.id)} onClick={() => setFromLoc(String(l.id))}
-                className="shrink-0 rounded-xl border px-3 py-2 text-left" style={{ minWidth: 128, borderColor: active ? '#3b82f6' : (l.color || '#e5e7eb'), borderLeftWidth: 4, background: active ? '#eff6ff' : '#fff' }}>
+                className={`shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'bg-blue-50' : 'bg-white'}`}
+                style={{ minWidth: 128, borderColor: active ? '#3b82f6' : (l.color || undefined), borderLeftWidth: 4 }}>
                 <div style={{ fontSize: 20, lineHeight: 1 }}>{locKind(l.kind).icon}</div>
                 <div className="text-sm font-medium text-gray-900 truncate mt-1">{l.name}</div>
                 <div className="text-xs text-gray-500">{c} {c === 1 ? 'Gegenstand' : 'Gegenstände'}</div>
@@ -2795,6 +2797,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             <div className="space-y-2">
               {fromItems.map(item => (
                 <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border bg-white">
+                  <div className="shrink-0 flex items-center justify-center rounded-lg bg-gray-100 text-gray-900 font-bold" style={{ width: 38, height: 38, fontSize: '1rem', border: item.label_color ? `2px solid ${item.label_color}` : undefined }} title="Ladereihenfolge">
+                    {item.load_order ?? '–'}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-gray-900 truncate">{item.bezeichnung}</div>
                     <div className="text-xs text-gray-500">{item.case_id}{item.category_name ? ' · ' + item.category_name : ''}{item.gruppe_name ? ' · ' + item.gruppe_name : ''}</div>
