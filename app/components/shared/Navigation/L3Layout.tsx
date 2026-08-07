@@ -111,6 +111,7 @@ const CONTACTS_SUBS: SubItem[] = [
 const EQUIPMENT_SUBS: SubItem[] = [
   { id: 'items',       name: 'Gegenstände' },
   { id: 'materials',   name: 'Material' },
+  { id: 'standorte',   name: 'Standorte' },
   { id: 'categories',  name: 'Kategorien' },
   { id: 'eigentuemer', name: 'Eigentümer' },
   { id: 'carnets',     name: 'Carnets' },

@@ -8,6 +8,7 @@ import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
+  getEquipmentLocations, createEquipmentLocation, updateEquipmentLocation, deleteEquipmentLocation, type EquipmentLocation, type EquipmentLocationKind,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
@@ -97,6 +98,7 @@ const ITEMS_COLUMNS = [
   { id: 'typ',          label: 'Typ',             defaultVisible: true  },
   { id: 'kategorie',    label: 'Kategorie',       defaultVisible: false },
   { id: 'position',     label: 'Position',        defaultVisible: true  },
+  { id: 'standort',     label: 'Standort',        defaultVisible: false },
   { id: 'load_order',   label: 'Ladereihenfolge', defaultVisible: false },
   { id: 'status',       label: 'Status',          defaultVisible: true  },
   { id: 'masse',        label: 'Maße H×B×T',      defaultVisible: true  },
@@ -107,7 +109,7 @@ const ITEMS_COLUMNS = [
   { id: 'notiz',        label: 'Notiz',           defaultVisible: false },
 ]
 
-type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'standort_status' | 'masse' | 'label_color' | 'gesamt_kg' | 'notiz'
+type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'standort_status' | 'masse' | 'label_color' | 'gesamt_kg' | 'notiz' | 'location_name'
 
 const CARNET_COLUMNS = [
   { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
@@ -192,10 +194,78 @@ function CategoryModal({ cat, onSave, onClose }: {
   )
 }
 
+// ── Standorte (Logistik) ─────────────────────────────────────────────────────
+
+const LOC_KINDS: { id: EquipmentLocationKind; label: string; icon: string }[] = [
+  { id: 'lager',     label: 'Lager',     icon: '🏢' },
+  { id: 'lkw',       label: 'LKW',       icon: '🚚' },
+  { id: 'venue',     label: 'Venue',     icon: '🎪' },
+  { id: 'buehne',    label: 'Bühne',     icon: '🎭' },
+  { id: 'sonstiges', label: 'Sonstiges', icon: '📦' },
+]
+const locKind = (k: string) => LOC_KINDS.find(x => x.id === k) ?? LOC_KINDS[LOC_KINDS.length - 1]
+
+function LocationModal({ loc, onSave, onClose }: {
+  loc: EquipmentLocation | null
+  onSave: (data: { name: string; kind: EquipmentLocationKind; color: string | null }) => Promise<void>
+  onClose: () => void
+}) {
+  const [name, setName] = useState(loc?.name ?? '')
+  const [kind, setKind] = useState<EquipmentLocationKind>(loc?.kind ?? 'lager')
+  const [color, setColor] = useState(loc?.color ?? '#3b82f6')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const handle = async () => {
+    if (!name.trim()) { setErr('Name ist Pflicht'); return }
+    setSaving(true)
+    try { await onSave({ name: name.trim(), kind, color }); onClose() }
+    catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+  }
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container max-w-sm">
+        <div className="modal-header">
+          <h3 className="modal-title">{loc ? 'Standort bearbeiten' : 'Neuer Standort'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="modal-body space-y-3">
+          <div>
+            <label className="form-label">Name</label>
+            <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Lager Berlin, LKW 3" autoFocus />
+          </div>
+          <div>
+            <label className="form-label">Typ</label>
+            <div className="flex flex-wrap gap-2">
+              {LOC_KINDS.map(k => (
+                <button key={k.id} type="button" onClick={() => setKind(k.id)}
+                  className={`px-3 py-2 rounded-lg border text-sm ${kind === k.id ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600'}`}>
+                  <span className="mr-1">{k.icon}</span>{k.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Farbe</label>
+            <input type="color" className="h-9 w-16 rounded border border-gray-200 p-0.5" value={color} onChange={e => setColor(e.target.value)} />
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+        <div className="modal-footer">
+          <div className="ml-auto flex gap-2">
+            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">{saving ? 'Speichern…' : 'Speichern'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Gegenstand-Modal ─────────────────────────────────────────────────────────
 
-function ItemModal({ item, onSave, onClose }: {
+function ItemModal({ item, locations, onSave, onClose }: {
   item: EquipmentItem | null
+  locations: EquipmentLocation[]
   onSave: (data: Partial<EquipmentItem>) => Promise<void>
   onClose: () => void
 }) {
@@ -205,6 +275,7 @@ function ItemModal({ item, onSave, onClose }: {
     typ_custom:    item?.typ_custom ?? '',
     position:      item?.position ?? '',
     position_custom: item?.position_custom ?? '',
+    location_id:   item?.location_id != null ? String(item.location_id) : '',
     load_order:    item?.load_order != null ? String(item.load_order) : '',
     height_cm:     item?.height_cm != null ? String(item.height_cm) : '',
     width_cm:      item?.width_cm != null ? String(item.width_cm) : '',
@@ -233,6 +304,7 @@ function ItemModal({ item, onSave, onClose }: {
         typ_custom:      form.typ === 'sonstiges' ? form.typ_custom.trim() : null,
         position:        (form.position || null) as any,
         position_custom: form.position === 'sonstiges' ? form.position_custom.trim() : null,
+        location_id:     ni(form.location_id),
         load_order:      ni(form.load_order),
         height_cm:       n(form.height_cm),
         width_cm:        n(form.width_cm),
@@ -312,6 +384,15 @@ function ItemModal({ item, onSave, onClose }: {
                 onChange={e => setForm({...form, load_order: e.target.value})}
                 placeholder="1" min={1} />
             </div>
+          </div>
+
+          {/* Standort (Logistik) */}
+          <div>
+            <label className="form-label">Standort <span className="text-gray-400 font-normal">(aktueller Ort)</span></label>
+            <select className="form-select" value={form.location_id} onChange={e => setForm({ ...form, location_id: e.target.value })}>
+              <option value="">— kein Standort —</option>
+              {locations.map(l => <option key={l.id} value={l.id}>{locKind(l.kind).icon} {l.name}</option>)}
+            </select>
           </div>
 
           {/* Maße + Leergewicht */}
@@ -1886,6 +1967,7 @@ function CarnetModal({ carnet, onSave, onClose }: {
 export default function EquipmentModule({ activeSubTab }: { activeSubTab?: string }) {
   const activeTab = activeSubTab || 'items'
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
+  const [locations, setLocations] = useState<EquipmentLocation[]>([])
   const [items, setItems] = useState<EquipmentItem[]>([])
   const [materials, setMaterials] = useState<EquipmentMaterial[]>([])
   const [loading, setLoading] = useState(true)
@@ -1920,6 +2002,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   }
 
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
+  const [locModal, setLocModal] = useState<{ open: boolean; loc: EquipmentLocation | null }>({ open: false, loc: null })
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
   const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
@@ -1939,7 +2022,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const scrollY = silent ? window.scrollY : 0
     if (!silent) setLoading(true)
     try {
-      const [k, cats, itms, mats, settings, carnetsData, ownersData] = await Promise.all([
+      const [k, cats, itms, mats, settings, carnetsData, ownersData, locs] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
         getEquipmentItems(),
@@ -1947,9 +2030,11 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         getEquipmentSettings(),
         getCarnets(),
         getEquipmentOwners(),
+        getEquipmentLocations(),
       ])
       setKuerzel(k)
       setCategories(cats)
+      setLocations(locs)
       setItems(itms)
       setMaterials(mats)
       setCarnetEnabled(settings.carnet_ata_enabled)
@@ -2149,6 +2234,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 {isVisible('typ')       && <th className="sortable" onClick={() => toggleItemSort('typ')}>Typ <SortIndicator active={itemSortKey === 'typ'} dir={itemSortDir} /></th>}
                 {isVisible('kategorie') && <th className="sortable" onClick={() => toggleItemSort('category_name')}>Kategorie <SortIndicator active={itemSortKey === 'category_name'} dir={itemSortDir} /></th>}
                 {isVisible('position')  && <th className="sortable" onClick={() => toggleItemSort('position')}>Position <SortIndicator active={itemSortKey === 'position'} dir={itemSortDir} /></th>}
+                {isVisible('standort')  && <th className="sortable" onClick={() => toggleItemSort('location_name')}>Standort <SortIndicator active={itemSortKey === 'location_name'} dir={itemSortDir} /></th>}
                 {isVisible('load_order') && <th className="sortable text-right" onClick={() => toggleItemSort('load_order')}>Ladereihenfolge <SortIndicator active={itemSortKey === 'load_order'} dir={itemSortDir} /></th>}
                 {isVisible('status')    && <th className="sortable" onClick={() => toggleItemSort('standort_status')}>Status <SortIndicator active={itemSortKey === 'standort_status'} dir={itemSortDir} /></th>}
                 {isVisible('masse')     && <th className="sortable text-right" onClick={() => toggleItemSort('masse')}>Maße H×B×T cm <SortIndicator active={itemSortKey === 'masse'} dir={itemSortDir} /></th>}
@@ -2175,6 +2261,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {isVisible('typ')       && <td><span className="badge">{item.typ === 'sonstiges' ? (item.typ_custom || 'Sonstiges') : (TYP_LABELS[item.typ] ?? item.typ)}</span></td>}
                       {isVisible('kategorie') && <td className="text-xs text-gray-600">{item.category_name || '—'}</td>}
                       {isVisible('position')  && <td className="text-xs text-gray-600">{item.position === 'sonstiges' ? (item.position_custom || 'Sonstiges') : item.position ? (POSITION_LABELS[item.position] ?? item.position) : '—'}</td>}
+                      {isVisible('standort')  && <td className="text-xs">{item.location_name ? <span className="badge badge-blue">{item.location_name}</span> : <span className="text-gray-400">—</span>}</td>}
                       {isVisible('load_order') && <td className="text-right text-xs text-gray-600">{item.load_order != null ? item.load_order : '—'}</td>}
                       {isVisible('status')    && <td>{item.standort_status
                         ? <span className="badge">{STANDORT_STATUS_LABELS[item.standort_status] ?? item.standort_status}</span>
@@ -2619,6 +2706,43 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
+  // ── Standorte (Logistik) ──────────────────────────────────────────────────────
+  const renderStandorte = () => (
+    <div className="space-y-3" style={{ maxWidth: 560 }}>
+      <p className="text-sm text-gray-500">Standorte (Lager, LKW, Venue …) für die Logistik/Verladung. Sie erscheinen im Gegenstand als Auswahl.</p>
+      {canEdit && (
+        <button onClick={() => setLocModal({ open: true, loc: null })} className="btn btn-primary"><PlusIcon className="w-4 h-4" /> Neuer Standort</button>
+      )}
+      {locations.length === 0 ? (
+        <div className="text-center py-12">
+          <ArchiveBoxIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Noch keine Standorte angelegt</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {locations.map(loc => {
+            const k = locKind(loc.kind)
+            return (
+              <div key={loc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-white" style={{ borderColor: loc.color || '#e5e7eb', borderLeftWidth: 4 }}>
+                <span style={{ fontSize: 24, lineHeight: 1 }}>{k.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-gray-900 truncate">{loc.name}</div>
+                  <div className="text-xs text-gray-500">{k.label} · {loc.item_count ?? 0} Gegenstände</div>
+                </div>
+                {canEdit && (
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setLocModal({ open: true, loc })} className="p-2 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
+                    <button onClick={async () => { if (!confirm(`Standort „${loc.name}" löschen? Gegenstände dort werden ortlos (nicht gelöscht).`)) return; await deleteEquipmentLocation(loc.id); load(true) }} className="p-2 text-gray-400 hover:text-red-600" title="Löschen"><TrashIcon className="w-4 h-4" /></button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
   const sortedCarnets = useMemo(() => {
     const filtered = carnets.filter(c =>
       !search || [c.carnet_id, c.verwendungszweck, c.ziellaender, c.inhaber_name]
@@ -2743,6 +2867,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
       {activeTab === 'items'        && renderItems()}
       {activeTab === 'materials'    && renderMaterials()}
+      {activeTab === 'standorte'    && renderStandorte()}
       {activeTab === 'categories'   && renderCategories()}
       {activeTab === 'eigentuemer'  && renderEigentuemer()}
       {activeTab === 'carnets'      && renderCarnets()}
@@ -2777,9 +2902,21 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           onClose={() => setCatModal({ open: false, cat: null })}
         />
       )}
+      {locModal.open && (
+        <LocationModal
+          loc={locModal.loc}
+          onSave={async data => {
+            if (locModal.loc) await updateEquipmentLocation(locModal.loc.id, data)
+            else await createEquipmentLocation(data)
+            load(true)
+          }}
+          onClose={() => setLocModal({ open: false, loc: null })}
+        />
+      )}
       {itemModal.open && (
         <ItemModal
           item={itemModal.item}
+          locations={locations}
           onSave={async data => {
             if (itemModal.item) await updateEquipmentItem(itemModal.item.id, data)
             else await createEquipmentItem(data)

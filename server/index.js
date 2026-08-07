@@ -726,6 +726,7 @@ async function initDatabase() {
     `ALTER TABLE equipment_items ADD COLUMN label_color TEXT`,
     `ALTER TABLE equipment_items ADD COLUMN standort_status TEXT`,
     `ALTER TABLE equipment_items ADD COLUMN gruppe_name TEXT`,
+    `ALTER TABLE equipment_items ADD COLUMN location_id INTEGER`,
     // Carnet: Kontaktperson aufgeteilt + Vertreter-Kontaktperson
     `ALTER TABLE carnets ADD COLUMN inhaber_kontaktperson_vorname TEXT`,
     `ALTER TABLE carnets ADD COLUMN vertreter_kontaktperson_vorname TEXT`,
@@ -1338,6 +1339,19 @@ async function initDatabase() {
       tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       kuerzel TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  // Equipment-Standorte (Logistik): Orte wie Lager, LKW, Venue, Bühne …
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS equipment_locations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      kind TEXT DEFAULT 'sonstiges',
+      color TEXT,
       sort_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -7897,6 +7911,52 @@ app.delete('/api/equipment/categories/:id', authenticateToken, requireTenant, as
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// ── Equipment-Standorte (Logistik) ───────────────────────────────────────────
+app.get('/api/equipment/locations', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT el.*, (SELECT COUNT(*) FROM equipment_items ei WHERE ei.location_id = el.id) AS item_count
+         FROM equipment_locations el WHERE el.tenant_id = ? ORDER BY el.sort_order, el.name`,
+      [req.tenant.id])
+    res.json({ locations: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/equipment/locations', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { name, kind = 'sonstiges', color = null, sort_order = 0 } = req.body
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name ist Pflicht' })
+    const result = await db.run(
+      'INSERT INTO equipment_locations (tenant_id, name, kind, color, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [req.tenant.id, name.trim(), kind || 'sonstiges', color, sort_order])
+    const row = await db.get('SELECT * FROM equipment_locations WHERE id = ?', [result.lastID])
+    res.json({ location: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.put('/api/equipment/locations/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { name, kind, color, sort_order } = req.body
+    await db.run(
+      `UPDATE equipment_locations SET name=COALESCE(?,name), kind=COALESCE(?,kind), color=COALESCE(?,color), sort_order=COALESCE(?,sort_order) WHERE id=? AND tenant_id=?`,
+      [name?.trim() ?? null, kind ?? null, color ?? null, sort_order ?? null, req.params.id, req.tenant.id])
+    const row = await db.get('SELECT * FROM equipment_locations WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ location: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.delete('/api/equipment/locations/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    // Gegenstände an diesem Standort werden „ortlos" (location_id NULL), nicht gelöscht.
+    await db.run('UPDATE equipment_items SET location_id = NULL WHERE location_id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    await db.run('DELETE FROM equipment_locations WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // ── Partner-Typen ────────────────────────────────────────────────────────────
 
 const DEFAULT_PARTNER_TYPES = [
@@ -8926,9 +8986,11 @@ app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, re
         LEFT JOIN equipment_materials em ON em.id = ecc.material_id
         LEFT JOIN equipment_material_units emu ON emu.id = ecc.material_unit_id
         LEFT JOIN equipment_materials em2 ON em2.id = emu.material_id
-        WHERE ecc.item_id = ei.id) AS material_gewicht
+        WHERE ecc.item_id = ei.id) AS material_gewicht,
+        el.name AS location_name
        FROM equipment_items ei
        LEFT JOIN equipment_categories ec ON ec.id = ei.category_id
+       LEFT JOIN equipment_locations el ON el.id = ei.location_id
        WHERE ei.tenant_id = ?
        ORDER BY ei.load_order ASC NULLS LAST, ei.case_id ASC`,
       [req.tenant.id]
@@ -8941,15 +9003,15 @@ app.get('/api/equipment/items', authenticateToken, requireTenant, async (req, re
 app.post('/api/equipment/items', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { bezeichnung, category_id, typ, typ_custom, position, position_custom, load_order, height_cm, width_cm, depth_cm, weight_empty_kg, label_color, standort_status, gruppe_name, notiz } = req.body
+    const { bezeichnung, category_id, typ, typ_custom, position, position_custom, load_order, height_cm, width_cm, depth_cm, weight_empty_kg, label_color, standort_status, gruppe_name, notiz, location_id } = req.body
     if (!bezeichnung) return res.status(400).json({ error: 'Bezeichnung ist Pflicht' })
     const { caseId, seqNumber } = await getNextCaseId(req.tenant.id)
     const result = await db.run(
-      `INSERT INTO equipment_items (tenant_id, case_id, seq_number, bezeichnung, category_id, typ, typ_custom, position, position_custom, load_order, height_cm, width_cm, depth_cm, weight_empty_kg, label_color, standort_status, gruppe_name, notiz, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO equipment_items (tenant_id, case_id, seq_number, bezeichnung, category_id, typ, typ_custom, position, position_custom, load_order, height_cm, width_cm, depth_cm, weight_empty_kg, label_color, standort_status, gruppe_name, notiz, location_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [req.tenant.id, caseId, seqNumber, bezeichnung, category_id || null, typ || 'case', typ_custom || null,
        position || null, position_custom || null, load_order || null, height_cm || null, width_cm || null,
-       depth_cm || null, weight_empty_kg || null, label_color || null, standort_status || null, gruppe_name || null, notiz || null, req.user.id]
+       depth_cm || null, weight_empty_kg || null, label_color || null, standort_status || null, gruppe_name || null, notiz || null, location_id || null, req.user.id]
     )
     const row = await db.get(
       `SELECT ei.*, ec.name AS category_name FROM equipment_items ei LEFT JOIN equipment_categories ec ON ec.id=ei.category_id WHERE ei.id=?`,
@@ -8963,14 +9025,14 @@ app.post('/api/equipment/items', authenticateToken, requireTenant, async (req, r
 app.put('/api/equipment/items/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { bezeichnung, category_id, typ, typ_custom, position, position_custom, load_order, height_cm, width_cm, depth_cm, weight_empty_kg, label_color, standort_status, gruppe_name, notiz } = req.body
+    const { bezeichnung, category_id, typ, typ_custom, position, position_custom, load_order, height_cm, width_cm, depth_cm, weight_empty_kg, label_color, standort_status, gruppe_name, notiz, location_id } = req.body
     if (!bezeichnung) return res.status(400).json({ error: 'Bezeichnung ist Pflicht' })
     await db.run(
-      `UPDATE equipment_items SET bezeichnung=?, category_id=?, typ=?, typ_custom=?, position=?, position_custom=?, load_order=?, height_cm=?, width_cm=?, depth_cm=?, weight_empty_kg=?, label_color=?, standort_status=?, gruppe_name=?, notiz=?, updated_at=datetime('now')
+      `UPDATE equipment_items SET bezeichnung=?, category_id=?, typ=?, typ_custom=?, position=?, position_custom=?, load_order=?, height_cm=?, width_cm=?, depth_cm=?, weight_empty_kg=?, label_color=?, standort_status=?, gruppe_name=?, notiz=?, location_id=?, updated_at=datetime('now')
        WHERE id=? AND tenant_id=?`,
       [bezeichnung, category_id || null, typ || 'case', typ_custom || null, position || null, position_custom || null,
        load_order || null, height_cm || null, width_cm || null, depth_cm || null, weight_empty_kg || null,
-       label_color || null, standort_status || null, gruppe_name || null, notiz || null,
+       label_color || null, standort_status || null, gruppe_name || null, notiz || null, location_id || null,
        req.params.id, req.tenant.id]
     )
     const row = await db.get(

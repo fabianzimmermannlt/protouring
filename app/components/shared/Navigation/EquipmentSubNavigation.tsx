@@ -10,6 +10,7 @@ export interface SubNavigationProps {
 const equipmentSubItems = [
   { id: 'items',        name: 'GEGENSTÄNDE',  description: 'Cases & Equipment-Gegenstände' },
   { id: 'materials',    name: 'MATERIAL',     description: 'Material & Carnet-Einträge' },
+  { id: 'standorte',    name: 'STANDORTE',    description: 'Standorte (Logistik) verwalten' },
   { id: 'categories',   name: 'KATEGORIEN',   description: 'Kategorien verwalten' },
   { id: 'eigentuemer',  name: 'EIGENTÜMER',   description: 'Equipment-Eigentümer' },
   { id: 'carnets',      name: 'CARNETS',      description: 'Carnet ATA Dokumente' },
@@ -18,6 +19,7 @@ const equipmentSubItems = [
 const SHORT_LABEL: Record<string, string> = {
   items:       'Gegenstände',
   materials:   'Material',
+  standorte:   'Standorte',
   categories:  'Kategorien',
   eigentuemer: 'Eigentümer',
   carnets:     'Carnets',

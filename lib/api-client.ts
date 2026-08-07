@@ -724,6 +724,34 @@ export async function deleteEquipmentCategory(id: number): Promise<void> {
   await request(`/api/equipment/categories/${id}`, { method: 'DELETE' });
 }
 
+// ── Equipment-Standorte (Logistik) ───────────────────────────────────────────
+export type EquipmentLocationKind = 'lager' | 'lkw' | 'venue' | 'buehne' | 'sonstiges';
+export interface EquipmentLocation {
+  id: number;
+  tenant_id: number;
+  name: string;
+  kind: EquipmentLocationKind;
+  color: string | null;
+  sort_order: number;
+  item_count?: number;
+  created_at: string;
+}
+export async function getEquipmentLocations(): Promise<EquipmentLocation[]> {
+  const res = await request<{ locations: EquipmentLocation[] }>('/api/equipment/locations');
+  return res.locations;
+}
+export async function createEquipmentLocation(data: { name: string; kind?: EquipmentLocationKind; color?: string | null; sort_order?: number }): Promise<EquipmentLocation> {
+  const res = await request<{ location: EquipmentLocation }>('/api/equipment/locations', { method: 'POST', body: data });
+  return res.location;
+}
+export async function updateEquipmentLocation(id: number, data: Partial<EquipmentLocation>): Promise<EquipmentLocation> {
+  const res = await request<{ location: EquipmentLocation }>(`/api/equipment/locations/${id}`, { method: 'PUT', body: data });
+  return res.location;
+}
+export async function deleteEquipmentLocation(id: number): Promise<void> {
+  await request(`/api/equipment/locations/${id}`, { method: 'DELETE' });
+}
+
 // ============================================
 // Equipment: Gegenstände (Items)
 // ============================================
@@ -751,6 +779,8 @@ export interface EquipmentItem {
   position: EquipmentPosition | null;
   position_custom: string | null;
   load_order: number | null;
+  location_id: number | null;
+  location_name?: string | null;
   height_cm: number | null;
   width_cm: number | null;
   depth_cm: number | null;
