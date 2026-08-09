@@ -1661,123 +1661,123 @@ html.dark .pt-card-new { background: #252526; border-color: #3c3c3c; }
 html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
 /* L2 Detail Cards */
-.l2-content .pt-card {
+html.dark .l2-content .pt-card {
   background: #2d2d2d !important;
   border-color: #3c3c3c !important;
   box-shadow: none !important;
   border-radius: 0;
 }
-.l2-content .pt-card-header {
+html.dark .l2-content .pt-card-header {
   background: #383838 !important;
   border-bottom-color: #4a4a4a !important;
 }
-.l2-content .pt-card-title {
+html.dark .l2-content .pt-card-title {
   color: #d4d4d4 !important;
 }
-.l2-content .pt-card-title svg {
+html.dark .l2-content .pt-card-title svg {
   color: #d4d4d4 !important;
 }
 /* KV row dividers */
-.l2-content .pt-card-body [class*="border-gray-50"],
-.l2-content .pt-card-body [class*="border-b"] {
+html.dark .l2-content .pt-card-body [class*="border-gray-50"],
+html.dark .l2-content .pt-card-body [class*="border-b"] {
   border-color: #3c3c3c !important;
 }
 /* KV label (text-gray-400) */
-.l2-content .pt-card-body [class*="text-gray-400"] {
+html.dark .l2-content .pt-card-body [class*="text-gray-400"] {
   color: #8b8b8b !important;
 }
 /* KV value (text-gray-800) */
-.l2-content .pt-card-body [class*="text-gray-800"] {
+html.dark .l2-content .pt-card-body [class*="text-gray-800"] {
   color: #e0e0e0 !important;
 }
 /* Empty-state text */
-.l2-content .pt-card-body [class*="text-gray-400"]:not([class*="uppercase"]) {
+html.dark .l2-content .pt-card-body [class*="text-gray-400"]:not([class*="uppercase"]) {
   color: #6b7280 !important;
 }
 /* Inline edit inputs */
-.l2-content .pt-card-body input[type="text"],
-.l2-content .pt-card-body input[type="email"],
-.l2-content .pt-card-body input[type="tel"],
-.l2-content .pt-card-body textarea {
+html.dark .l2-content .pt-card-body input[type="text"],
+html.dark .l2-content .pt-card-body input[type="email"],
+html.dark .l2-content .pt-card-body input[type="tel"],
+html.dark .l2-content .pt-card-body textarea {
   background: #3c3c3c !important;
   border-color: #555 !important;
   color: #e0e0e0 !important;
 }
-.l2-content .pt-card-body input::placeholder,
-.l2-content .pt-card-body textarea::placeholder {
+html.dark .l2-content .pt-card-body input::placeholder,
+html.dark .l2-content .pt-card-body textarea::placeholder {
   color: #6b7280 !important;
 }
 /* InlineSaveBar border */
-.l2-content .pt-card-body [class*="border-gray-100"],
-.l2-content .pt-card-body [class*="border-t"] {
+html.dark .l2-content .pt-card-body [class*="border-gray-100"],
+html.dark .l2-content .pt-card-body [class*="border-t"] {
   border-color: #4a4a4a !important;
 }
 /* Cancel button in save bar */
-.l2-content .pt-card-body [class*="text-gray-500"] {
+html.dark .l2-content .pt-card-body [class*="text-gray-500"] {
   color: #8b8b8b !important;
 }
 /* Loading skeletons */
-.l2-content .pt-card-body [class*="bg-gray-100"] {
+html.dark .l2-content .pt-card-body [class*="bg-gray-100"] {
   background: #3c3c3c !important;
 }
 /* Pencil edit button */
-.l2-content .pt-card-header button [class*="text-gray-400"],
-.l2-content .pt-card-header [class*="text-gray-400"] {
+html.dark .l2-content .pt-card-header button [class*="text-gray-400"],
+html.dark .l2-content .pt-card-header [class*="text-gray-400"] {
   color: #6b7280 !important;
 }
 /* Desk: text-gray-900 / text-gray-700 / text-gray-600 / text-gray-500 in cards */
-.l2-content .pt-card-body [class*="text-gray-900"] { color: #e0e0e0 !important; }
-.l2-content .pt-card-body [class*="text-gray-700"] { color: #c0c0c0 !important; }
-.l2-content .pt-card-body [class*="text-gray-600"] { color: #a0a0a0 !important; }
+html.dark .l2-content .pt-card-body [class*="text-gray-900"] { color: #e0e0e0 !important; }
+html.dark .l2-content .pt-card-body [class*="text-gray-700"] { color: #c0c0c0 !important; }
+html.dark .l2-content .pt-card-body [class*="text-gray-600"] { color: #a0a0a0 !important; }
 /* hr in cards */
-.l2-content .pt-card-body hr { border-color: #3c3c3c !important; }
+html.dark .l2-content .pt-card-body hr { border-color: #3c3c3c !important; }
 /* font-medium names */
-.l2-content .pt-card-body .font-medium { color: #e0e0e0; }
+html.dark .l2-content .pt-card-body .font-medium { color: #e0e0e0; }
 /* Datum-Zeile oben */
-.l2-content .text-gray-700 { color: #9ca3af; }
+html.dark .l2-content .text-gray-700 { color: #9ca3af; }
 /* status dot */
-.l2-content .bg-green-500 { background-color: #22c55e !important; }
-.l2-content .bg-red-500   { background-color: #ef4444 !important; }
+html.dark .l2-content .bg-green-500 { background-color: #22c55e !important; }
+html.dark .l2-content .bg-red-500   { background-color: #ef4444 !important; }
 
 
 /* L2 Sidebar */
-.l2-sidebar { color: #e0e0e0; }
-.l2-nav-sub-item { color: #d0d0d0; }
+html.dark .l2-sidebar { color: #e0e0e0; }
+html.dark .l2-nav-sub-item { color: #d0d0d0; }
 
 /* L2 Content overrides */
-.l2-content .data-table-wrapper {
+html.dark .l2-content .data-table-wrapper {
   background: #2d2d2d !important;
   border-color: #3c3c3c !important;
   box-shadow: none !important;
   border-radius: 0;
 }
-.l2-content .data-table thead tr {
+html.dark .l2-content .data-table thead tr {
   background: #4a4a4a !important;
   border-bottom-color: #555 !important;
 }
-.l2-content .data-table thead th {
+html.dark .l2-content .data-table thead th {
   color: #b0b0b0 !important;
 }
-.l2-content .data-table thead th.sortable:hover {
+html.dark .l2-content .data-table thead th.sortable:hover {
   background: #4a4a4a !important;
   color: #b0b0b0 !important;
 }
-.l2-content .data-table tbody tr {
+html.dark .l2-content .data-table tbody tr {
   background: #2d2d2d !important;
   border-bottom-color: #383838 !important;
 }
-.l2-content .data-table tbody td {
+html.dark .l2-content .data-table tbody td {
   color: #e0e0e0 !important;
 }
-.l2-content .data-table tbody tr.clickable:hover,
-.l2-content .data-table tbody tr.hoverable:hover {
+html.dark .l2-content .data-table tbody tr.clickable:hover,
+html.dark .l2-content .data-table tbody tr.hoverable:hover {
   background-color: #383838 !important;
 }
-.l2-content .module-content {
+html.dark .l2-content .module-content {
   background: transparent;
 }
-.l2-content .search-input,
-.l2-content .l2-search {
+html.dark .l2-content .search-input,
+html.dark .l2-content .l2-search {
   background: #2d2d2d;
   border-color: #444;
   color: #e5e7eb;
@@ -1787,20 +1787,25 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
   padding-top: 0;
   padding-bottom: 0;
 }
-.l2-content .search-input::placeholder,
-.l2-content .l2-search::placeholder {
+html.dark .l2-content .search-input::placeholder,
+html.dark .l2-content .l2-search::placeholder {
   color: #6b7280;
 }
-.l2-content .btn.flex-shrink-0 {
+html.dark .l2-content .btn.flex-shrink-0 {
   height: 30px;
   padding-top: 0;
   padding-bottom: 0;
   align-self: center;
 }
-.l2-content .btn-primary,
-.l2-content .btn-secondary {
+html.dark .l2-content .btn-primary,
+html.dark .l2-content .btn-secondary {
   border-radius: 0;
 }
+
+/* L2 kompaktes Layout (Höhen) – themeunabhängig, damit es auch im Hell-Modus passt */
+.l2-content .search-input,
+.l2-content .l2-search { height: 30px; padding-top: 0; padding-bottom: 0; margin-bottom: 0; }
+.l2-content .btn.flex-shrink-0 { height: 30px; padding-top: 0; padding-bottom: 0; align-self: center; }
 
 /* QuickCreate Modal — dark input fields via CSS vars */
 .qfield-input {
@@ -1859,58 +1864,58 @@ html.dark .pt-card-new:hover { background: #2d2d2d; border-color: #4b5563; }
 
 /* Detail View — Underline Input, L2 dark overrides */
 /* Use high-specificity selectors so we win over .pt-card-body input[type] rules */
-.l2-content .detail-input,
-.l2-content input.detail-input,
-.l2-content select.detail-input,
-.l2-content textarea.detail-input,
-.l2-content .pt-card-body input.detail-input,
-.l2-content .pt-card-body select.detail-input,
-.l2-content .pt-card-body textarea.detail-input {
+html.dark .l2-content .detail-input,
+html.dark .l2-content input.detail-input,
+html.dark .l2-content select.detail-input,
+html.dark .l2-content textarea.detail-input,
+html.dark .l2-content .pt-card-body input.detail-input,
+html.dark .l2-content .pt-card-body select.detail-input,
+html.dark .l2-content .pt-card-body textarea.detail-input {
   color: #e0e0e0 !important;
   border: none !important;
   border-bottom: 1px solid #555 !important;
   background: transparent !important;
   border-radius: 0;
 }
-.l2-content .detail-input:focus,
-.l2-content input.detail-input:focus,
-.l2-content select.detail-input:focus,
-.l2-content textarea.detail-input:focus,
-.l2-content .pt-card-body input.detail-input:focus,
-.l2-content .pt-card-body select.detail-input:focus,
-.l2-content .pt-card-body textarea.detail-input:focus {
+html.dark .l2-content .detail-input:focus,
+html.dark .l2-content input.detail-input:focus,
+html.dark .l2-content select.detail-input:focus,
+html.dark .l2-content textarea.detail-input:focus,
+html.dark .l2-content .pt-card-body input.detail-input:focus,
+html.dark .l2-content .pt-card-body select.detail-input:focus,
+html.dark .l2-content .pt-card-body textarea.detail-input:focus {
   border: none !important;
   border-bottom: 1px solid #60a5fa !important;
   outline: none !important;
 }
-.l2-content .detail-input::placeholder,
-.l2-content .pt-card-body .detail-input::placeholder {
+html.dark .l2-content .detail-input::placeholder,
+html.dark .l2-content .pt-card-body .detail-input::placeholder {
   color: #484848 !important;
 }
-.l2-content .detail-input[readonly],
-.l2-content .detail-input:disabled,
-.l2-content .pt-card-body input.detail-input:disabled,
-.l2-content .pt-card-body select.detail-input:disabled,
-.l2-content .pt-card-body textarea.detail-input:disabled {
+html.dark .l2-content .detail-input[readonly],
+html.dark .l2-content .detail-input:disabled,
+html.dark .l2-content .pt-card-body input.detail-input:disabled,
+html.dark .l2-content .pt-card-body select.detail-input:disabled,
+html.dark .l2-content .pt-card-body textarea.detail-input:disabled {
   color: #6b7280 !important;
   border-bottom-color: #3c3c3c !important;
   background: transparent !important;
   cursor: default;
   opacity: 1 !important;
 }
-.l2-content select.detail-input {
+html.dark .l2-content select.detail-input {
   appearance: auto;
   cursor: pointer;
 }
-.l2-content select.detail-input:disabled {
+html.dark .l2-content select.detail-input:disabled {
   cursor: default;
   pointer-events: none;
 }
-.l2-content select.detail-input option {
+html.dark .l2-content select.detail-input option {
   background: #2c2c2c;
   color: #e0e0e0;
 }
-.l2-content .detail-label {
+html.dark .l2-content .detail-label {
   color: #9ca3af !important;
 }
 
@@ -2007,48 +2012,48 @@ html.dark .pt-fn-chip--active { background: #232323; border-color: #666; color: 
 html.dark .pt-fn-chip:hover { background: #232323; border-color: #888; color: #e0e0e0; }
 
 /* Funktionen – L2 dark context (immer aktiv in Settings) */
-.l2-content .pt-fn-group {
+html.dark .l2-content .pt-fn-group {
   background: #1a1a1a;
   border-color: #2a2a2a;
 }
-.l2-content .pt-fn-group-name {
+html.dark .l2-content .pt-fn-group-name {
   color: #777;
 }
-.l2-content .pt-fn-subtitle {
+html.dark .l2-content .pt-fn-subtitle {
   color: #555;
 }
-.l2-content .pt-fn-group-toggle {
+html.dark .l2-content .pt-fn-group-toggle {
   color: #555;
 }
-.l2-content .pt-fn-group-toggle:hover {
+html.dark .l2-content .pt-fn-group-toggle:hover {
   color: #aaa;
   text-decoration: underline;
 }
-.l2-content .pt-fn-group-divider {
+html.dark .l2-content .pt-fn-group-divider {
   color: #3a3a3a;
 }
-.l2-content .pt-fn-chip {
+html.dark .l2-content .pt-fn-chip {
   background: transparent;
   border-color: #2e2e2e;
   color: #555;
 }
-.l2-content .pt-fn-chip--active {
+html.dark .l2-content .pt-fn-chip--active {
   background: #232323;
   border-color: #5e5e5e;
   color: #d4d4d4;
 }
-.l2-content .pt-fn-chip:hover {
+html.dark .l2-content .pt-fn-chip:hover {
   background: #222;
   border-color: #888;
   color: #e0e0e0;
 }
-.l2-content .pt-fn-chip.pt-suggestion-chip {
+html.dark .l2-content .pt-fn-chip.pt-suggestion-chip {
   border-style: dashed;
   border-color: #2e2e2e;
   color: #444;
   cursor: pointer;
 }
-.l2-content .pt-fn-chip.pt-suggestion-chip:hover {
+html.dark .l2-content .pt-fn-chip.pt-suggestion-chip:hover {
   border-style: dashed;
   border-color: #666;
   color: #aaa;
