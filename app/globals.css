@@ -119,8 +119,8 @@ body {
 }
 
 .data-table thead tr {
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: #eef1f6;
+  border-bottom: 1px solid #e0e4ea;
 }
 
 .data-table thead th {
@@ -1487,8 +1487,8 @@ body {
    Neuer Code nutzt var(--…) statt fester Hex. Dunkel-Werte ≈ heutige
    Farben → Dunkel bleibt praktisch unverändert; Hell bekommt echte Werte. */
 :root {
-  --bg: #f6f7f9;
-  --pane: #f6f7f9;
+  --bg: #e9ecf1;
+  --pane: #e9ecf1;
   --surface: #ffffff;
   --surface-2: #f3f4f6;
   --surface-3: #e9ebef;
