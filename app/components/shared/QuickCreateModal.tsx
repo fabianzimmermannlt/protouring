@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
@@ -28,7 +28,10 @@ export function QuickCreateModal({
 }: QuickCreateModalProps) {
   const t = useT()
   const { layout } = useLayout()
-  const dark = true // App fest Dark-Mode
+  const [dark, setDark] = useState(true)
+  useEffect(() => {
+    setDark(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
+  }, [])
 
   // Close on Escape
   useEffect(() => {
@@ -37,7 +40,7 @@ export function QuickCreateModal({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const bg = dark ? 'var(--surface)' : '#ffffff'
+  const bg = dark ? 'var(--surface)' : '#f4f5f7'
   const border = dark ? '#444' : '#e5e7eb'
   const titleColor = dark ? 'var(--text)' : '#111827'
   const labelColor = dark ? '#b0b0b0' : '#4b5563'
