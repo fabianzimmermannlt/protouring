@@ -226,7 +226,7 @@ body {
 }
 
 .modal-container {
-  background: #fff;
+  background: #f4f5f7;
   border-radius: 0;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
   width: 100%;
@@ -237,7 +237,7 @@ body {
 }
 
 .modal-header {
-  background: #fff;
+  background: #f4f5f7;
   color: #111827;
   padding: 1.125rem 1.5rem;
   display: flex;
@@ -266,7 +266,7 @@ body {
   justify-content: space-between;
   padding: 1rem 1.5rem;
   border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  background: #f4f5f7;
   flex-shrink: 0;
 }
 
@@ -284,7 +284,7 @@ body {
   }
 
   .modal-header {
-    background: #fff;
+    background: #f4f5f7;
     color: #111827;
     border-bottom: 1px solid #e5e7eb;
   }
@@ -310,6 +310,8 @@ body {
 .form-textarea {
   width: 100%;
   padding: 0.25rem 0.5rem;
+  background: #fff;
+  color: #111827;
   border: 1px solid #d1d5db;
   border-radius: 0;
   font-size: 0.875rem;

@@ -722,7 +722,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
           <div className="modal-container max-w-md">
             <div className="modal-header">
               <h3 className="modal-title">{t('contacts.modal.inviteCrew')}</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-[var(--text)]">
                 <X size={18} />
               </button>
             </div>
@@ -793,7 +793,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
             <div className="modal-footer">
               <div />
               <div className="flex gap-2">
-                <button onClick={() => setShowAddModal(false)} className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200">
+                <button onClick={() => setShowAddModal(false)} className="px-4 py-1.5 text-sm text-gray-400 hover:text-[var(--text)]">
                   {addInviteLink ? t('general.close') : t('general.cancel')}
                 </button>
                 {!addInviteLink && (
@@ -816,7 +816,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
             <div className="modal-header">
               <h3 className="modal-title">{t('contacts.modal.createManualContact')}</h3>
               <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
-                className="text-gray-400 hover:text-white">
+                className="text-gray-400 hover:text-[var(--text)]">
                 <X size={16} />
               </button>
             </div>
@@ -844,7 +844,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               <div />
               <div className="flex items-center gap-2">
                 <button onClick={() => { setShowGastModal(false); setGastName(''); setGastFunction('') }}
-                  className="px-3 py-1.5 text-sm text-gray-400 hover:text-gray-200">
+                  className="px-3 py-1.5 text-sm text-gray-400 hover:text-[var(--text)]">
                   {t('general.cancel')}
                 </button>
                 <button onClick={handleCreateGast} disabled={gastSaving || !gastName.trim()}
@@ -864,7 +864,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
           <div className="modal-container max-w-3xl">
             <div className="modal-header">
               <h2 className="modal-title">{editingContact.firstName} {editingContact.lastName}</h2>
-              <button onClick={() => setEditingContact(null)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setEditingContact(null)} className="text-gray-400 hover:text-[var(--text)]">
                 <X size={18} />
               </button>
             </div>
@@ -888,7 +888,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
           <div className="modal-container max-w-md">
             <div className="modal-header">
               <h2 className="modal-title">{t('contacts.modal.setupAccess')}</h2>
-              <button onClick={() => setInviteContact(null)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setInviteContact(null)} className="text-gray-400 hover:text-[var(--text)]">
                 <X size={18} />
               </button>
             </div>
@@ -1007,7 +1007,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
               <h3 className="modal-title">
                 {actionContact.firstName} {actionContact.lastName}
               </h3>
-              <button onClick={() => setActionContact(null)} className="text-gray-400 hover:text-white"><X size={16} /></button>
+              <button onClick={() => setActionContact(null)} className="text-gray-400 hover:text-[var(--text)]"><X size={16} /></button>
             </div>
             <div className="modal-body space-y-3">
               {actionContact.userId ? (
