@@ -99,7 +99,7 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
               {expense.map((c, i) => <CatBlock key={'e' + i} c={c} />)}
               <Row label="Summe Ausgaben" soll={snap.sumAusgaben} ist={snap.sumAusgabenIst} bold headBg="#1a1a1a" />
 
-              <tr className="ab-sec" style={{ fontWeight: 700, background: '#2f2f2f' }}>
+              <tr className="ab-sec" style={{ fontWeight: 700, background: 'var(--surface)' }}>
                 <td>ERGEBNIS</td>
                 <td className="text-right ab-num" style={{ color: D(snap.ergebnis).isNegative() ? 'var(--neg)' : 'var(--pos)' }}>{M(snap.ergebnis)}</td>
                 <td className="text-right ab-num" style={{ color: D(snap.ergebnisIst).isNegative() ? 'var(--neg)' : 'var(--pos)' }}>{M(snap.ergebnisIst)}</td>

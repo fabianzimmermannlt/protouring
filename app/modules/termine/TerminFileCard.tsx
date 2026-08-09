@@ -178,7 +178,7 @@ function CategorySection({
       {/* Kategorie-Header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-[#383838] transition-colors"
+        className="w-full flex items-center justify-between px-6 py-2.5 hover:bg-[var(--hover)] transition-colors"
       >
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           {category}
@@ -194,7 +194,7 @@ function CategorySection({
       {open && (
         <div>
           {files.map(file => (
-            <div key={file.id} className="px-6 border-b border-[#383838] hover:bg-[#383838] transition-colors">
+            <div key={file.id} className="px-6 border-b border-[var(--hover)] hover:bg-[var(--hover)] transition-colors">
               {/* Hauptzeile */}
               <div className="flex items-center justify-between py-2 text-sm">
                 {editingId === file.id ? (

@@ -205,7 +205,7 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
                   style={{
                     fontSize: 11, padding: '3px 10px', borderRadius: 0, cursor: 'pointer',
                     border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                    background: active ? 'rgba(59,130,246,0.12)' : '#2a2a2a',
+                    background: active ? 'rgba(59,130,246,0.12)' : 'var(--surface)',
                     color: active ? 'var(--primary-2)' : 'var(--text-muted)',
                   }}>
                   {roleLabel(r)}
@@ -264,7 +264,7 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
   const dropBg     = dark ? 'var(--surface)' : '#ffffff'
   const dropBorder = dark ? 'var(--border-strong)' : '#e5e7eb'
   const dropText   = dark ? 'var(--text)' : '#374151'
-  const dropHover  = dark ? '#383838' : '#f9fafb'
+  const dropHover  = dark ? 'var(--hover)' : '#f9fafb'
   const dropDangerHover = dark ? '#3d1f1f' : '#fef2f2'
 
   return (

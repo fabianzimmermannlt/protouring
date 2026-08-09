@@ -93,7 +93,7 @@ export default function SongLibrarySettings() {
               <Plus className="w-4 h-4" /> {tab === 'song' ? 'Song' : 'Ansage'} hinzufügen
             </button>
           ) : (
-            <div className="border border-[var(--border)] rounded-lg p-4 mt-2 bg-[#262626] space-y-3">
+            <div className="border border-[var(--border)] rounded-lg p-4 mt-2 bg-[var(--surface-2)] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-white">{editId === 'new' ? 'Neu' : 'Bearbeiten'}</span>
                 <button onClick={cancel} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>

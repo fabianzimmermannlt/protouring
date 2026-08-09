@@ -121,7 +121,7 @@ export default function WeatherCard({ date, lat, lon, locationQuery, locationLab
               <div className="flex gap-1.5" style={{ minWidth: 'min-content' }}>
                 {hours.map(hr => (
                   <div key={hr.time} className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg"
-                    style={{ background: '#2a2a2a', minWidth: 50 }} title={wmo(hr.code).label}>
+                    style={{ background: 'var(--surface)', minWidth: 50 }} title={wmo(hr.code).label}>
                     <span className="text-gray-400" style={{ fontSize: 10 }}>{hr.time}</span>
                     <span style={{ fontSize: 16, lineHeight: 1 }}>{wmo(hr.code).icon}</span>
                     <span className="font-semibold text-gray-200 text-xs">{hr.temp}°</span>

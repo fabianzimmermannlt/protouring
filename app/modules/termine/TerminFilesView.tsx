@@ -30,7 +30,7 @@ export default function TerminFilesView({ terminId }: { terminId: number }) {
                 <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">{g.sourceType}: {g.sourceName}</div>
                 <div className="space-y-1">
                   {g.files.map(f => (
-                    <button key={f.id} onClick={() => open(f.id, f.originalName)} className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-[#2a2a2a] text-sm text-gray-200">
+                    <button key={f.id} onClick={() => open(f.id, f.originalName)} className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-[var(--surface)] text-sm text-gray-200">
                       <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                       <span className="flex-1 truncate">{f.originalName}</span>
                       {f.category && <span className="text-[10px] text-gray-500 shrink-0">{f.category}</span>}

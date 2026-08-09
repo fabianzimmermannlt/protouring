@@ -135,7 +135,7 @@ export default function NotificationBell() {
               items.map(n => (
                 <div
                   key={n.id}
-                  className={`group relative flex items-start border-b border-[var(--surface)] transition-colors hover:bg-[#2a2a2a] ${n.read_at ? '' : 'bg-blue-500/10'}`}
+                  className={`group relative flex items-start border-b border-[var(--surface)] transition-colors hover:bg-[var(--surface)] ${n.read_at ? '' : 'bg-blue-500/10'}`}
                 >
                   <div onClick={() => onItemClick(n)} className="flex items-start gap-2 flex-1 min-w-0 px-3 py-2.5 pr-8 cursor-pointer">
                     {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}

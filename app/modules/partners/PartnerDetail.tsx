@@ -260,7 +260,7 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
 
       {showDirtyDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: isL2 ? '#2a2a2a' : '#fff', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: isL2 ? 'var(--surface)' : '#fff', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <h3 style={{ color: titleColor, fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
             <p style={{ color: dirtyColor, fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

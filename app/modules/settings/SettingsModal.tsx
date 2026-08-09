@@ -91,7 +91,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
         </div>
 
         {/* Inhalt — gleiche Umgebung wie L2-Content (Venues/Details), damit alle Bereiche einheitlich theme'n */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#1c1c1c] relative">
+        <div className="flex-1 flex flex-col min-w-0 bg-[var(--pane)] relative">
           <button onClick={onClose} className="absolute top-4 right-4 z-10 p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-[var(--surface)]">
             <X className="w-5 h-5" />
           </button>

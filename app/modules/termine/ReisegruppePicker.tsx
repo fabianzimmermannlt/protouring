@@ -121,7 +121,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
   const border      = dark ? 'var(--border-strong)' : '#e5e7eb'
   const titleColor  = dark ? 'var(--text)' : '#111827'
   const labelColor  = dark ? '#b0b0b0' : 'var(--text-subtle)'
-  const rowHoverBg  = dark ? '#383838' : '#f9fafb'
+  const rowHoverBg  = dark ? 'var(--hover)' : '#f9fafb'
   const rowAddedBg  = dark ? '#1e3a1e' : '#f0fdf4'
   const inputBg     = dark ? 'var(--border)' : '#ffffff'
   const inputBorder = dark ? '#555555' : '#d1d5db'
@@ -222,7 +222,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
         </div>
 
         {/* Neu anlegen / Einladen */}
-        <div style={{ borderTop: `1px solid ${border}`, padding: '10px 20px', flexShrink: 0, background: dark ? '#262626' : '#fafafa' }}>
+        <div style={{ borderTop: `1px solid ${border}`, padding: '10px 20px', flexShrink: 0, background: dark ? 'var(--surface-2)' : '#fafafa' }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { setMode(mode === 'guest' ? 'none' : 'guest'); setCreateError('') }} style={tabStyle(mode === 'guest')}>
               <UserPlus size={13} /> Neue Person (Gast)

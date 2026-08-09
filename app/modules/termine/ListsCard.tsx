@@ -128,7 +128,7 @@ export default function ListsCard({ terminId }: { terminId: number }) {
               <div className="absolute right-0 top-full mt-1 z-30 bg-[var(--surface-3)] border border-[var(--border)] rounded-lg shadow-xl overflow-hidden min-w-[160px]">
                 <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-gray-500 border-b border-[var(--surface)]">Neue Liste als…</div>
                 {PRESETS.map(p => (
-                  <button key={p.key} onClick={() => addList(p)} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-[#2a2a2a]">{p.label}</button>
+                  <button key={p.key} onClick={() => addList(p)} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-[var(--surface)]">{p.label}</button>
                 ))}
               </div>
             )}
@@ -169,7 +169,7 @@ export default function ListsCard({ terminId }: { terminId: number }) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-[#262626]">
+                      <tr className="bg-[var(--surface-2)]">
                         {isEditor && <th className="w-6" />}
                         {list.columns.map(col => (
                           <th key={col.id} className="text-left px-2 py-1.5 font-medium text-gray-300 align-top min-w-[120px]">

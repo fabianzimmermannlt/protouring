@@ -1881,7 +1881,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
         )}
         {/* Mobile-Kopfzeile immer (md:hidden), unabhängig vom Layout (L3-Default greift sonst bei Superadmin am Handy) */}
         {(
-          <div className="md:hidden sticky top-0 z-20 flex items-center gap-2 mb-3 py-2" style={{ background: '#1c1c1c', borderBottom: '1px solid var(--border)' }}>
+          <div className="md:hidden sticky top-0 z-20 flex items-center gap-2 mb-3 py-2" style={{ background: 'var(--pane)', borderBottom: '1px solid var(--border)' }}>
             <button
               onClick={() => mPrev && selectTermin(mPrev.id, selectedView)}
               disabled={!mPrev}

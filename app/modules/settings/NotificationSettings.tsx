@@ -63,7 +63,7 @@ export default function NotificationSettings() {
       <p className="text-sm text-gray-400">Lege fest, worüber du wie informiert werden möchtest.</p>
 
       {/* Push auf diesem Gerät */}
-      <div className="border border-[var(--border)] rounded-lg p-4 bg-[#232323]">
+      <div className="border border-[var(--border)] rounded-lg p-4 bg-[var(--surface-2)]">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="text-sm font-medium text-gray-100">Push auf diesem Gerät</div>

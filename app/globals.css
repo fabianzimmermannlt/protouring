@@ -1486,9 +1486,11 @@ body {
    Farben → Dunkel bleibt praktisch unverändert; Hell bekommt echte Werte. */
 :root {
   --bg: #f6f7f9;
+  --pane: #f6f7f9;
   --surface: #ffffff;
   --surface-2: #f3f4f6;
   --surface-3: #e9ebef;
+  --hover: #eef0f3;
   --text: #1a2230;
   --text-muted: #5b6472;
   --text-subtle: #8a93a3;
@@ -1507,9 +1509,11 @@ body {
 }
 html.dark {
   --bg: #141414;
+  --pane: #1c1c1c;
   --surface: #2d2d2d;
   --surface-2: #242424;
   --surface-3: #1f1f1f;
+  --hover: #383838;
   --text: #e0e0e0;
   --text-muted: #9ca3af;
   --text-subtle: #6b7280;

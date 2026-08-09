@@ -451,7 +451,7 @@ function CateringBlock({
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all"
               style={{
                 borderColor: type === opt.value ? opt.color : 'var(--border)',
-                background:  type === opt.value ? `${opt.color}18` : '#2a2a2a',
+                background:  type === opt.value ? `${opt.color}18` : 'var(--surface)',
                 color:       type === opt.value ? opt.color : 'var(--text-muted)',
               }}
             >
@@ -673,7 +673,7 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
                     onClick={() => addBlock(opt.value)}
                     disabled={adding}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all"
-                    style={{ borderColor: 'var(--border)', background: '#2a2a2a', color: 'var(--text-muted)' }}
+                    style={{ borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-muted)' }}
                   >
                     {opt.icon}
                     {opt.label}

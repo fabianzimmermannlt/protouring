@@ -472,7 +472,7 @@ export function L2Layout({
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
-      <aside className="w-56 flex-shrink-0 bg-[#1c1c1c] flex flex-col border-r border-[var(--border)] l2-sidebar">
+      <aside className="w-56 flex-shrink-0 bg-[var(--pane)] flex flex-col border-r border-[var(--border)] l2-sidebar">
 
         {/* Identity */}
         <div className="px-4 py-4 border-b border-[var(--border)]">
@@ -641,14 +641,14 @@ export function L2Layout({
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 bg-[#1c1c1c] l2-content">
+        <div className="flex-1 overflow-y-auto p-5 bg-[var(--pane)] l2-content">
           {children}
         </div>
       </div>
 
       {dirtyDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#2a2a2a', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <h3 style={{ color: 'var(--text)', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

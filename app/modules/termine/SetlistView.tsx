@@ -346,7 +346,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
             )}
 
             {/* Zusammenfassung */}
-            <div className="px-3 py-2 border-t border-[var(--border)] bg-[#262626] text-sm space-y-0.5">
+            <div className="px-3 py-2 border-t border-[var(--border)] bg-[var(--surface-2)] text-sm space-y-0.5">
               <div className="flex items-center justify-between"><span className="text-gray-400">Gesamtdauer</span><span className="tabular-nums font-semibold text-gray-200">{secToMMSS(totalSec)}</span></div>
               {plannedEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Soll-Ende</span><span className="tabular-nums text-gray-200">{fmtClock(plannedEnd)}</span></div>}
               {actualEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Ist-Ende (Prognose)</span><span className={`tabular-nums font-semibold ${endDelta !== null && endDelta > 30 ? 'text-red-400' : endDelta !== null && endDelta < -30 ? 'text-green-400' : 'text-gray-200'}`}>{fmtClock(actualEnd)}{endDelta ? ` (${endDelta > 0 ? '+' : '-'}${secToMMSS(Math.abs(endDelta))})` : ''}</span></div>}

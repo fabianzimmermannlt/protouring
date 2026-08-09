@@ -331,12 +331,12 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   return (
     <div onBlurCapture={onFormulaBlur} onFocusCapture={onFormulaFocus}>
       <div className="flex items-start gap-3"
-        style={{ position: 'sticky', top: 0, zIndex: 40, background: '#1c1c1c',
+        style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--pane)',
           marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20,
-          paddingTop: 13, paddingBottom: 13, marginBottom: 12, borderBottom: '1px solid #2a2a2a',
+          paddingTop: 13, paddingBottom: 13, marginBottom: 12, borderBottom: '1px solid var(--surface)',
           // oberes Padding-Band des Scroll-Containers (p-5 = 20px) mit Vollfarbe abdecken,
           // damit beim Scrollen keine Tabellenzeilen darüber durchscheinen; + weicher Schlagschatten unten
-          boxShadow: '0 -22px 0 0 #1c1c1c, 0 8px 12px -8px rgba(0,0,0,0.8)' }}>
+          boxShadow: '0 -22px 0 0 var(--pane), 0 8px 12px -8px rgba(0,0,0,0.8)' }}>
         <button onClick={onBack} className="btn btn-ghost shrink-0" style={{ fontSize: '0.8rem' }}>
           <ArrowLeftIcon className="w-4 h-4" /> Zurück
         </button>
@@ -375,7 +375,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                 {printOpen && (
                   <>
                     <div onClick={() => setPrintOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 300, background: '#232323', border: '1px solid var(--border)', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
+                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 300, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
                       <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text)' }}>Druck / Export</div>
                       <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vergleich</label>
                       <select className="form-input" style={{ width: '100%', fontSize: '0.78rem', marginBottom: 10 }} value={selMode} onChange={e => setCfgMode(e.target.value)}>

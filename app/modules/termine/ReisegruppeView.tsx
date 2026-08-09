@@ -100,7 +100,7 @@ function BandBlock({
       border: `1px solid ${isExcluded ? (dark ? 'var(--border)' : '#e5e7eb') : (dark ? '#1e3a5f' : '#bfdbfe')}`,
       borderRadius: 0, padding: '0.75rem 1rem',
       display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-      background: isExcluded ? (dark ? '#2a2a2a' : '#f9fafb') : (dark ? '#0f2744' : '#eff6ff'),
+      background: isExcluded ? (dark ? 'var(--surface)' : '#f9fafb') : (dark ? '#0f2744' : '#eff6ff'),
       opacity: isExcluded ? 0.6 : 1,
     }}>
       <div className="flex-1 min-w-0">
@@ -357,7 +357,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                       {m.firstName} {m.lastName}
                     </span>
                     {m.contactType === 'guest' && (
-                      <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: 'var(--border)' } : undefined}>Gast</span>
+                      <span className="pt-guest-badge" style={dark ? { background: 'var(--surface)', color: 'var(--text-muted)', borderColor: 'var(--border)' } : undefined}>Gast</span>
                     )}
                     {m.noHotel && (
                       <span className="pt-guest-badge" style={{ background: '#3a2f10', color: 'var(--accent)', borderColor: '#5a4a1a' }}>🏠 Fährt heim</span>
@@ -489,7 +489,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 return (
                   <tr key={m.id}>
                     {isVisible('avail')      && <td><AvailCell status={m.availabilityStatus} /></td>}
-                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: 'var(--border)' } : undefined}>Gast</span>}</td>}
+                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: 'var(--surface)', color: 'var(--text-muted)', borderColor: 'var(--border)' } : undefined}>Gast</span>}</td>}
                     {isVisible('firstName')  && <td>{m.firstName || EMPTY}</td>}
                     {isVisible('role1')      && <td>{isAdmin ? <RolleDropdown value={m.role1} options={optsFor('role1')} saving={saving} onChange={v => updateRole(m, 'role1', v)} /> : (m.role1 || EMPTY)}</td>}
                     {isVisible('role2')      && <td>{isAdmin ? <RolleDropdown value={m.role2} options={optsFor('role2')} saving={saving} onChange={v => updateRole(m, 'role2', v)} /> : (m.role2 || EMPTY)}</td>}

@@ -15,11 +15,11 @@ type BookedStatus = 'confirmed' | 'rejected' | null
 // ── L2 Dark Palette ───────────────────────────────────────────────────────────
 const C = {
   bgRow1:     '#1e1e1e',
-  bgRow2:     '#232323',
+  bgRow2:     'var(--surface-2)',
   bgHead:     'var(--surface)',
   bgCrewHead: 'var(--surface)',
   bgCrewRow1: '#1e1e1e',
-  bgCrewRow2: '#232323',
+  bgCrewRow2: 'var(--surface-2)',
   border:     'var(--border)',
   borderCrew: 'var(--border)',
   borderSep:  '#4b5563',

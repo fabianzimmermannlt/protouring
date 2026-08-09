@@ -587,8 +587,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               if (r.type === 'section') {
                 return (
                   <tr key={i}>
-                    <td style={{ position: 'sticky', left: 0, zIndex: 1, fontWeight: 700, letterSpacing: '0.03em', background: '#383838', color: 'var(--text)' }}>{r.label}</td>
-                    <td colSpan={shows.length + 2} style={{ background: '#383838' }} />
+                    <td style={{ position: 'sticky', left: 0, zIndex: 1, fontWeight: 700, letterSpacing: '0.03em', background: 'var(--hover)', color: 'var(--text)' }}>{r.label}</td>
+                    <td colSpan={shows.length + 2} style={{ background: 'var(--hover)' }} />
                   </tr>
                 )
               }

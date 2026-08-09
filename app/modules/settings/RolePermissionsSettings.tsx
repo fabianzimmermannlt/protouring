@@ -93,7 +93,7 @@ export default function RolePermissionsSettings() {
 
   const th: React.CSSProperties = { padding: '0.5rem 0.4rem', fontSize: '0.68rem', fontWeight: 600, color: '#b0b0b0', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'center', whiteSpace: 'nowrap' }
   const rowLabel: React.CSSProperties = { padding: '0.55rem 0.75rem', fontSize: '0.85rem', color: 'var(--text)', whiteSpace: 'nowrap' }
-  const cell: React.CSSProperties = { padding: '0.4rem', textAlign: 'center', borderTop: '1px solid #383838' }
+  const cell: React.CSSProperties = { padding: '0.4rem', textAlign: 'center', borderTop: '1px solid var(--hover)' }
   const iconBtn = (disabled: boolean): React.CSSProperties => ({ background: 'none', border: 'none', padding: 2, lineHeight: 0, cursor: disabled ? 'not-allowed' : 'pointer' })
 
   return (
@@ -116,7 +116,7 @@ export default function RolePermissionsSettings() {
         <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface)' }}>
             <thead>
-              <tr style={{ background: '#383838' }}>
+              <tr style={{ background: 'var(--hover)' }}>
                 <th style={{ ...th, textAlign: 'left', minWidth: 220 }}>Recht</th>
                 {ROLE_ORDER.map(r => (
                   <th key={r} style={th}>{ROLE_LABELS[r]}</th>
@@ -138,7 +138,7 @@ export default function RolePermissionsSettings() {
                       const twoIcon = group === 'Bereiche' && editAreaSet.has(p.key)
                       return (
                         <tr key={p.key}>
-                          <td style={{ ...rowLabel, borderTop: '1px solid #383838' }}>{p.label}</td>
+                          <td style={{ ...rowLabel, borderTop: '1px solid var(--hover)' }}>{p.label}</td>
                           {ROLE_ORDER.map(role => {
                             const isAdmin = role === 'admin'
                             if (twoIcon) {
