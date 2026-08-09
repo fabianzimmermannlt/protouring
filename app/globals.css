@@ -1481,6 +1481,44 @@ body {
      #6b7280 (text muted)     → #9ca3af
    ============================================================ */
 
+/* ── Semantische Theme-Tokens (Phase 2: Hell/Dunkel-Migration) ──
+   Neuer Code nutzt var(--…) statt fester Hex. Dunkel-Werte ≈ heutige
+   Farben → Dunkel bleibt praktisch unverändert; Hell bekommt echte Werte. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --surface-3: #e9ebef;
+  --text: #1a2230;
+  --text-muted: #5b6472;
+  --text-subtle: #8a93a3;
+  --border: #e3e6ea;
+  --border-strong: #cfd4db;
+  --primary: #2563eb;
+  --primary-soft: #dbeafe;
+  --accent: #b8860b;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --success: #16a34a;
+}
+html.dark {
+  --bg: #141414;
+  --surface: #2d2d2d;
+  --surface-2: #242424;
+  --surface-3: #1f1f1f;
+  --text: #e0e0e0;
+  --text-muted: #9ca3af;
+  --text-subtle: #6b7280;
+  --border: #3a3a3a;
+  --border-strong: #4a4a4a;
+  --primary: #3b82f6;
+  --primary-soft: #172554;
+  --accent: #f5c518;
+  --danger: #ef4444;
+  --danger-soft: #7f1d1d;
+  --success: #22c55e;
+}
+
 html.dark body {
   background-color: #141414;
   color: #e6edf3;

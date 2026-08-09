@@ -105,20 +105,20 @@ const AVAIL_ICON: Record<string, { tKey: TranslationKey; color: string; symbol: 
   available:   { tKey: 'availability.available',   color: '#22c55e', symbol: '✓' },
   maybe:       { tKey: 'availability.maybe',       color: '#eab308', symbol: '?' },
   unavailable: { tKey: 'availability.unavailable', color: '#ef4444', symbol: '✗' },
-  null:        { tKey: 'availability.unknown',     color: '#9ca3af', symbol: '–' },
+  null:        { tKey: 'availability.unknown',     color: 'var(--text-muted)', symbol: '–' },
 }
 
 const STATUS_BOOKING_DOT: Record<string, string> = {
-  'Idee':                 '#9ca3af',
+  'Idee':                 'var(--text-muted)',
   'Option':               '#d97706',
   'noch nicht bestätigt': '#f59e0b',
   'bestätigt':            '#22c55e',
-  'abgeschlossen':        '#6b7280',
+  'abgeschlossen':        'var(--text-subtle)',
   'abgesagt':             '#ef4444',
 }
 
 const STATUS_PUBLIC_DOT: Record<string, string> = {
-  'nicht öffentlich': '#6b7280',
+  'nicht öffentlich': 'var(--text-subtle)',
   'tba':              '#d97706',
   'veröffentlicht':   '#22c55e',
 }
@@ -1123,9 +1123,9 @@ function TerminDetailHeader({
             onClick={() => prev && onNavigate(prev.id)}
             disabled={!prev}
             title={prev ? formatDateShort(prev.date) + ' · ' + (prev.city || prev.title) : undefined}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: 0, background: 'none', cursor: prev ? 'pointer' : 'default', opacity: prev ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid var(--border)', borderRadius: 0, background: 'none', cursor: prev ? 'pointer' : 'default', opacity: prev ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
             onMouseOver={e => { if (prev) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = '#888' }}
           >
             <ChevronLeft size={14} />
           </button>
@@ -1133,19 +1133,19 @@ function TerminDetailHeader({
             onClick={() => next && onNavigate(next.id)}
             disabled={!next}
             title={next ? formatDateShort(next.date) + ' · ' + (next.city || next.title) : undefined}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: 0, background: 'none', cursor: next ? 'pointer' : 'default', opacity: next ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid var(--border)', borderRadius: 0, background: 'none', cursor: next ? 'pointer' : 'default', opacity: next ? 1 : 0.2, color: '#888', transition: 'border-color 0.12s, color 0.12s' }}
             onMouseOver={e => { if (next) { e.currentTarget.style.borderColor = '#666'; e.currentTarget.style.color = '#ccc' } }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#888' }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = '#888' }}
           >
             <ChevronRight size={14} />
           </button>
         </div>
         {/* Title + Date stacked */}
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e0e0e0', margin: 0, lineHeight: 1.25 }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text)', margin: 0, lineHeight: 1.25 }}>
             {pageTitle}
           </h1>
-          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.1rem' }}>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-subtle)', marginTop: '0.1rem' }}>
             {formatDateLong(termin.date)}
           </div>
         </div>
@@ -1154,9 +1154,9 @@ function TerminDetailHeader({
           <button
             onClick={onDelete}
             title="Event löschen"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid #3a3a3a', borderRadius: 0, background: 'none', cursor: 'pointer', color: '#6b7280', flexShrink: 0, paddingTop: '3px', transition: 'border-color 0.12s, color 0.12s' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid var(--border)', borderRadius: 0, background: 'none', cursor: 'pointer', color: 'var(--text-subtle)', flexShrink: 0, paddingTop: '3px', transition: 'border-color 0.12s, color 0.12s' }}
             onMouseOver={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444' }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#3a3a3a'; e.currentTarget.style.color = '#6b7280' }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-subtle)' }}
           >
             <Trash2 size={13} />
           </button>
@@ -1886,20 +1886,20 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
               onClick={() => mPrev && selectTermin(mPrev.id, selectedView)}
               disabled={!mPrev}
               className="shrink-0"
-              style={{ background: 'none', border: 'none', cursor: mPrev ? 'pointer' : 'default', padding: '4px', color: mPrev ? '#9ca3af' : '#4b5563' }}
+              style={{ background: 'none', border: 'none', cursor: mPrev ? 'pointer' : 'default', padding: '4px', color: mPrev ? 'var(--text-muted)' : '#4b5563' }}
               title="Vorheriges Event"
             >
               <ChevronLeft size={24} />
             </button>
             <div className="flex-1 min-w-0 text-center">
-              <div className="text-sm font-medium truncate" style={{ color: '#e0e0e0' }}>{mTitle}</div>
-              <div className="text-xs truncate" style={{ color: '#9ca3af' }}>{formatDateLong(selectedTermin.date)}</div>
+              <div className="text-sm font-medium truncate" style={{ color: 'var(--text)' }}>{mTitle}</div>
+              <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{formatDateLong(selectedTermin.date)}</div>
             </div>
             <button
               onClick={() => mNext && selectTermin(mNext.id, selectedView)}
               disabled={!mNext}
               className="shrink-0"
-              style={{ background: 'none', border: 'none', cursor: mNext ? 'pointer' : 'default', padding: '4px', color: mNext ? '#9ca3af' : '#4b5563' }}
+              style={{ background: 'none', border: 'none', cursor: mNext ? 'pointer' : 'default', padding: '4px', color: mNext ? 'var(--text-muted)' : '#4b5563' }}
               title="Nächstes Event"
             >
               <ChevronRight size={24} />
@@ -1996,7 +1996,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
       {(
         <>
           {/* Titel */}
-          <h1 className="text-xl font-semibold mb-1" style={{ color: '#e0e0e0' }}>Events</h1>
+          <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text)' }}>Events</h1>
 
           {/* Toolbar: Neu + Suche + Filter + CSV */}
           <div className="flex items-center gap-2">
@@ -2024,7 +2024,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                   window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'list' } }))
                 }}
                   className="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded transition-colors"
-                  style={{ background: active ? '#3a3a3a' : 'transparent', color: active ? '#e0e0e0' : '#888', border: '1px solid', borderColor: active ? '#555' : 'transparent' }}>
+                  style={{ background: active ? 'var(--border)' : 'transparent', color: active ? 'var(--text)' : '#888', border: '1px solid', borderColor: active ? '#555' : 'transparent' }}>
                   {labels[f]}
                 </button>
               )
@@ -2035,7 +2035,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                 window.dispatchEvent(new CustomEvent('termine-listview-changed', { detail: { view: 'calendar' } }))
               }}
                 className="flex-shrink-0 px-2.5 py-1 text-xs font-medium rounded transition-colors"
-                style={{ background: listView === 'calendar' ? '#3a3a3a' : 'transparent', color: listView === 'calendar' ? '#e0e0e0' : '#888', border: '1px solid', borderColor: listView === 'calendar' ? '#555' : 'transparent' }}>
+                style={{ background: listView === 'calendar' ? 'var(--border)' : 'transparent', color: listView === 'calendar' ? 'var(--text)' : '#888', border: '1px solid', borderColor: listView === 'calendar' ? '#555' : 'transparent' }}>
                 {t('appointments.calendar')}
               </button>
             )}
@@ -2127,7 +2127,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900 text-sm truncate">{item.title}</span>
                       {item.statusBooking && (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 500, flexShrink: 0, color: STATUS_BOOKING_DOT[item.statusBooking] || '#9ca3af' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 500, flexShrink: 0, color: STATUS_BOOKING_DOT[item.statusBooking] || 'var(--text-muted)' }}>
                           {STATUS_BOOKING_TKEY[item.statusBooking] ? t(STATUS_BOOKING_TKEY[item.statusBooking]) : item.statusBooking}
                         </span>
                       )}
@@ -2234,7 +2234,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                   )
                   if (filtered.length === 0) return (
                     <tr>
-                      <td colSpan={20} className="text-center" style={{ padding: '3rem 1rem', color: '#9ca3af' }}>
+                      <td colSpan={20} className="text-center" style={{ padding: '3rem 1rem', color: 'var(--text-muted)' }}>
                         {termine.length === 0 ? t('appointments.emptyState') : t('appointments.noResults')}
                       </td>
                     </tr>
@@ -2250,14 +2250,14 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                             : <span className="text-gray-400">–</span>}
                         </td>
                         case 'statusBooking': return <td key="statusBooking" style={{ whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusBooking ? STATUS_BOOKING_DOT[termin.statusBooking] : undefined) || '#9ca3af' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusBooking ? STATUS_BOOKING_DOT[termin.statusBooking] : undefined) || 'var(--text-muted)' }}>
                             {termin.statusBooking
                               ? (STATUS_BOOKING_TKEY[termin.statusBooking] ? t(STATUS_BOOKING_TKEY[termin.statusBooking]) : termin.statusBooking)
                               : '–'}
                           </span>
                         </td>
                         case 'statusPublic': return <td key="statusPublic" style={{ whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusPublic ? STATUS_PUBLIC_DOT[termin.statusPublic] : undefined) || '#9ca3af' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: (termin.statusPublic ? STATUS_PUBLIC_DOT[termin.statusPublic] : undefined) || 'var(--text-muted)' }}>
                             {termin.statusPublic
                               ? (STATUS_PUBLIC_TKEY[termin.statusPublic] ? t(STATUS_PUBLIC_TKEY[termin.statusPublic]) : termin.statusPublic)
                               : '–'}

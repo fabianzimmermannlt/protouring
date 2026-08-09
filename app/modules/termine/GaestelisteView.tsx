@@ -994,7 +994,7 @@ export default function GaestelisteView({ terminId }: Props) {
                     || null
                   const rowStyle: React.CSSProperties = isPending
                     ? { opacity: 0.5, fontStyle: 'italic' }
-                    : isRejected ? { color: '#9ca3af' } : {}
+                    : isRejected ? { color: 'var(--text-muted)' } : {}
                   return (
                     <tr key={entry.id} style={rowStyle}>
                       {isEditor && (

@@ -135,7 +135,7 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
       {/* Topbar */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-800">
         {setlists.length > 1 ? (
-          <select value={sl.id} onChange={e => setSelId(parseInt(e.target.value))} className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-2 py-1 text-lg font-bold text-white outline-none">
+          <select value={sl.id} onChange={e => setSelId(parseInt(e.target.value))} className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-2 py-1 text-lg font-bold text-white outline-none">
             {setlists.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
         ) : <span className="text-lg font-bold flex-1 truncate">{sl.title}</span>}
@@ -143,22 +143,22 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
         <button onClick={() => toggleStop(sl)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${sl.endedAt ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'} text-white`}>
           {sl.endedAt ? 'Fortsetzen' : 'Show stoppen'}
         </button>
-        <button onClick={() => resetRun(sl)} title="Zurücksetzen" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#2d2d2d] hover:bg-[#3a3a3a] text-gray-200 flex items-center gap-1.5">
+        <button onClick={() => resetRun(sl)} title="Zurücksetzen" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[var(--surface)] hover:bg-[var(--border)] text-gray-200 flex items-center gap-1.5">
           <RotateCcw className="w-4 h-4" /> Reset
         </button>
         <div className="relative">
           <button onClick={() => setGearOpen(o => !o)} className="p-2 text-gray-300 hover:text-white"><Settings className="w-5 h-5" /></button>
           {gearOpen && (
-            <div className="absolute right-0 top-full mt-1 z-10 bg-[#1f1f1f] border border-[#3a3a3a] rounded-lg shadow-xl p-3 w-56 space-y-2 text-sm">
+            <div className="absolute right-0 top-full mt-1 z-10 bg-[var(--surface-3)] border border-[var(--border)] rounded-lg shadow-xl p-3 w-56 space-y-2 text-sm">
               {([['push', 'Push-Button'], ['timesPlanned', 'Geplante Zeit'], ['timesActual', 'Aktuelle Zeit'], ['duration', 'Dauer'], ['delta', 'Timing/Delta'], ['ansagen', 'Ansagen'], ['onlyUpcoming', 'Nur kommende Songs']] as [keyof ShowCfg, string][]).map(([k, label]) => (
                 <label key={k} className="flex items-center gap-2 text-gray-200 cursor-pointer">
                   <input type="checkbox" checked={!!cfg[k]} onChange={e => setCfgPersist({ [k]: e.target.checked } as Partial<ShowCfg>)} className="w-4 h-4 accent-blue-500" /> {label}
                 </label>
               ))}
-              <div className="flex items-center gap-2 pt-1 border-t border-[#3a3a3a]">
+              <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]">
                 <span className="text-gray-400 text-xs">Schrift</span>
                 {(['s', 'm', 'l'] as const).map(f => (
-                  <button key={f} onClick={() => setCfgPersist({ font: f })} className={`px-2 py-0.5 rounded text-xs ${cfg.font === f ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-300'}`}>{f.toUpperCase()}</button>
+                  <button key={f} onClick={() => setCfgPersist({ font: f })} className={`px-2 py-0.5 rounded text-xs ${cfg.font === f ? 'bg-blue-600 text-white' : 'bg-[var(--surface)] text-gray-300'}`}>{f.toUpperCase()}</button>
                 ))}
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function SetlistShowView({ terminId }: { terminId: number }) {
               {cfg.timesPlanned && <span className="tabular-nums text-gray-500 w-20 shrink-0" title="geplant">{planned[idx] ? fmtClockSec(planned[idx] as Date) : '–'}</span>}
               {cfg.timesActual && <span className="tabular-nums text-gray-200 w-20 shrink-0" title="aktuell">{t ? fmtClockSec(t) : '–'}</span>}
               {cfg.push && (
-                <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)} className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-200 hover:bg-[#3a3a3a]'}`}>
+                <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)} className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[var(--surface)] text-gray-200 hover:bg-[var(--border)]'}`}>
                   {it.startedAt ? <RotateCcw className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 </button>
               )}

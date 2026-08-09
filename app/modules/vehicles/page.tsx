@@ -106,9 +106,9 @@ export default function VehiclesPage() {
             setVehicles(prev => prev.filter(v => v.id !== selectedVehicleId))
             setSelectedVehicleId(null)
           }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }}
           onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
           title="Fahrzeug löschen"
         >
           <Trash2 size={14} />
@@ -121,7 +121,7 @@ export default function VehiclesPage() {
     <div className="module-content">
       {isL2 ? (
         <>
-          <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Fahrzeuge</h1>
+          <h1 className="text-xl font-semibold mb-1" style={{color:'var(--text)'}}>Fahrzeuge</h1>
           <div className="flex items-center gap-2 mb-2">
             {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'0'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
             <input type="text" placeholder={t('vehicles.searchPlaceholder')} value={searchTerm}

@@ -63,7 +63,7 @@ export default function NotificationSettings() {
       <p className="text-sm text-gray-400">Lege fest, worüber du wie informiert werden möchtest.</p>
 
       {/* Push auf diesem Gerät */}
-      <div className="border border-[#3a3a3a] rounded-lg p-4 bg-[#232323]">
+      <div className="border border-[var(--border)] rounded-lg p-4 bg-[#232323]">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="text-sm font-medium text-gray-100">Push auf diesem Gerät</div>
@@ -76,7 +76,7 @@ export default function NotificationSettings() {
           </div>
           {pushActive ? (
             <button onClick={doDisablePush} disabled={pushBusy}
-              className="text-xs px-3 py-1.5 rounded border border-[#4a4a4a] text-gray-200 hover:bg-[#2d2d2d]">
+              className="text-xs px-3 py-1.5 rounded border border-[var(--border-strong)] text-gray-200 hover:bg-[var(--surface)]">
               {pushBusy ? '…' : 'Deaktivieren'}
             </button>
           ) : (
@@ -89,8 +89,8 @@ export default function NotificationSettings() {
         {pushErr && <p className="text-xs text-red-400 mt-2">{pushErr}</p>}
       </div>
 
-      <div className="border border-[#3a3a3a] rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[1fr_70px_70px_70px] items-center px-4 py-2 bg-[#2d2d2d] border-b border-[#3a3a3a] text-xs font-medium text-gray-400">
+      <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+        <div className="grid grid-cols-[1fr_70px_70px_70px] items-center px-4 py-2 bg-[var(--surface)] border-b border-[var(--border)] text-xs font-medium text-gray-400">
           <span>Ereignis</span>
           <span className="text-center">In-App</span>
           <span className="text-center">E-Mail</span>
@@ -99,7 +99,7 @@ export default function NotificationSettings() {
         {entries.length === 0 ? (
           <p className="px-4 py-6 text-sm text-gray-500 text-center">Keine Benachrichtigungs-Typen verfügbar.</p>
         ) : entries.map(([key, v]) => (
-          <div key={key} className="grid grid-cols-[1fr_70px_70px_70px] items-center px-4 py-3 border-b border-[#2d2d2d] last:border-b-0">
+          <div key={key} className="grid grid-cols-[1fr_70px_70px_70px] items-center px-4 py-3 border-b border-[var(--surface)] last:border-b-0">
             <span className="text-sm text-gray-200 pr-2">{v.label}</span>
             <div className="flex justify-center">
               <input type="checkbox" checked={v.inApp} onChange={() => toggle(key, 'inApp')} className="w-4 h-4 accent-blue-500 cursor-pointer" />

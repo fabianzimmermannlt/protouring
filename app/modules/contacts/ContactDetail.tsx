@@ -169,8 +169,8 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
     ? (ROLE_LABELS[contact.tenantRole as TenantRole] ?? contact.tenantRole)
     : contact?.accessRights
 
-  const titleColor = isL2 ? '#e0e0e0' : '#111827'
-  const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
+  const titleColor = isL2 ? 'var(--text)' : '#111827'
+  const dirtyColor = isL2 ? '#b0b0b0' : 'var(--text-subtle)'
 
   if (loadError) return (
     <div className="module-content">
@@ -202,7 +202,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
                   {[contact!.function1, contact!.function2, contact!.function3].filter(Boolean).length > 0 && (
                     <p className="text-sm text-gray-500">{[contact!.function1, contact!.function2, contact!.function3].filter(Boolean).join(' · ')}</p>
                   )}
-                  {role && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: '#9ca3af' }}>{role}</span>}
+                  {role && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>{role}</span>}
                   {contact!.invitePending && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24' }}>{t('contacts.badge.invitationPending')}</span>}
                   {contact!.contactType === 'guest' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{t('contacts.badge.manual')}</span>}
                   {isEditor && onInvite && !contact!.userId && (contact!.contactType === 'guest' || contact!.contactType === 'artist') && (
@@ -242,9 +242,9 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
             <button
               onClick={onAction}
               title="Deaktivieren / Löschen"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af', flexShrink: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)', flexShrink: 0 }}
               onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
             >
               <Trash2 className="w-4 h-4" />
             </button>

@@ -44,7 +44,7 @@ interface Entry {
 }
 
 const ENTRY_TYPES: { value: EntryType; label: string; color: string; bg: string }[] = [
-  { value: 'info',         label: 'Info',            color: '#6b7280', bg: '#f3f4f6' },
+  { value: 'info',         label: 'Info',            color: 'var(--text-subtle)', bg: '#f3f4f6' },
   { value: 'abweichung',   label: 'Abweichung',      color: '#dc2626', bg: '#fef2f2' },
   { value: 'absprache',    label: 'Zusatzabsprache',  color: '#d97706', bg: '#fffbeb' },
   { value: 'bestaetigung', label: 'Bestätigung',     color: '#16a34a', bg: '#f0fdf4' },
@@ -223,7 +223,7 @@ export default function AdvancingCard({ terminId, isAdmin }: Props) {
     <div>
       {/* Titelzeile */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="flex items-center gap-1.5" style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>
+        <h2 className="flex items-center gap-1.5" style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>
           <ClipboardList className="w-4 h-4" />
           Advancing
         </h2>

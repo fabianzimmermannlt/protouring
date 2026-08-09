@@ -190,7 +190,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
           }
         }}>
           <div className="relative flex items-center">
-            <MagnifyingGlassIcon className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: '#9ca3af' }} />
+            <MagnifyingGlassIcon className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
             <input
               ref={inputRef}
               type="text"
@@ -218,7 +218,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
               <div className="absolute right-2.5 w-3 h-3 rounded-full animate-spin" style={{ border: '1.5px solid #f5c518', borderTopColor: 'transparent' }} />
             )}
             {!loading && query && (
-              <button onClick={clear} className="absolute right-2 hover:text-white transition-colors" style={{ color: '#6b7280' }}>
+              <button onClick={clear} className="absolute right-2 hover:text-white transition-colors" style={{ color: 'var(--text-subtle)' }}>
                 <XMarkIcon className="w-3.5 h-3.5" />
               </button>
             )}
@@ -289,7 +289,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
                   title="Seite als andere Rolle anzeigen"
                   className="flex items-center gap-1 text-xs rounded px-2 py-1 transition-colors"
                   style={{
-                    color: previewOpen ? '#f5c518' : '#9ca3af',
+                    color: previewOpen ? '#f5c518' : 'var(--text-muted)',
                     background: previewOpen ? 'rgba(245,197,24,0.12)' : 'transparent',
                     border: '1px solid',
                     borderColor: previewOpen ? '#f5c518' : '#374151',
@@ -302,7 +302,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
                   }}
                   onMouseLeave={e => {
                     if (!previewOpen) {
-                      e.currentTarget.style.color = '#9ca3af'
+                      e.currentTarget.style.color = 'var(--text-muted)'
                       e.currentTarget.style.borderColor = '#374151'
                     }
                   }}

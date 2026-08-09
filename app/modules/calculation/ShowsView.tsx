@@ -80,7 +80,7 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm" style={{ color: '#9ca3af' }}>{shows.length} Show(s)</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{shows.length} Show(s)</p>
         <button onClick={() => setModal({ open: true, show: null })} className="btn btn-primary" style={{ fontSize: '0.8rem' }}>
           <PlusIcon className="w-4 h-4" /> Neue Show
         </button>
@@ -110,7 +110,7 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
           </thead>
           <tbody>
             {sorted.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-6" style={{ color: '#9ca3af' }}>Noch keine Shows – „Neue Show" anlegen.</td></tr>
+              <tr><td colSpan={8} className="text-center py-6" style={{ color: 'var(--text-muted)' }}>Noch keine Shows – „Neue Show" anlegen.</td></tr>
             ) : sorted.map(({ show }) => (
               <tr key={show.id} style={{ opacity: show.is_active ? 1 : 0.5 }}>
                 <td className="text-xs">{formatDate(show.show_date)}</td>
@@ -119,7 +119,7 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
                     {show.city || '(öffnen)'}
                   </button>
                 </td>
-                <td className="text-xs" style={{ color: '#9ca3af' }}>{show.venue || '—'}</td>
+                <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{show.venue || '—'}</td>
                 <td className="text-right text-xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {show.guarantee != null ? Number(show.guarantee).toLocaleString('de-DE') + ' €' : '—'}
                 </td>
@@ -267,20 +267,20 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
                   </option>
                 ))}
               </select>
-              <p style={{ color: '#6b7280', fontSize: 11, marginTop: 4 }}>Felder werden vorbefüllt und bleiben editierbar.</p>
+              <p style={{ color: 'var(--text-subtle)', fontSize: 11, marginTop: 4 }}>Felder werden vorbefüllt und bleiben editierbar.</p>
             </div>
           )}
           {!show && otherShows.length > 0 && (
-            <div style={{ background: '#242424', border: '1px solid #3c3c3c', borderRadius: 6, padding: '8px 10px' }}>
+            <div style={{ background: 'var(--surface-2)', border: '1px solid #3c3c3c', borderRadius: 6, padding: '8px 10px' }}>
               <label className="form-label" style={{ marginBottom: 4 }}>Positionen übernehmen von (optional)</label>
               <select className="form-input" value={copyFrom} onChange={e => setCopyFrom(e.target.value)}>
                 <option value="">– keine (leere Show) –</option>
                 {otherShows.map(s => <option key={s.id} value={s.id}>{s.city || '(ohne Stadt)'}{s.show_date ? ' · ' + formatDate(s.show_date) : ''}</option>)}
               </select>
               {copyFrom && (
-                <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer select-none" style={{ color: '#e0e0e0' }}>
+                <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer select-none" style={{ color: 'var(--text)' }}>
                   <input type="checkbox" checked={copyWithValues} onChange={e => setCopyWithValues(e.target.checked)} />
-                  auch die Werte übernehmen <span style={{ color: '#6b7280', fontSize: 11 }}>(sonst nur leere Positionen)</span>
+                  auch die Werte übernehmen <span style={{ color: 'var(--text-subtle)', fontSize: 11 }}>(sonst nur leere Positionen)</span>
                 </label>
               )}
             </div>
@@ -354,7 +354,7 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
             <textarea className="form-input" rows={2} value={f.note} onChange={e => set('note', e.target.value)} />
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: '#e0e0e0' }}>
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: 'var(--text)' }}>
             <input type="checkbox" checked={f.is_active} onChange={e => set('is_active', e.target.checked)} />
             Aktiv (zählt in Übersicht &amp; Fixkostenumlage)
           </label>

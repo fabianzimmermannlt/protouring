@@ -104,11 +104,11 @@ function BandBlock({
       opacity: isExcluded ? 0.6 : 1,
     }}>
       <div className="flex-1 min-w-0">
-        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: isExcluded ? (dark ? '#6b7280' : '#9ca3af') : (dark ? '#e0e0e0' : '#111827'), textDecoration: isExcluded ? 'line-through' : 'none' }}>
+        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: isExcluded ? (dark ? 'var(--text-subtle)' : 'var(--text-muted)') : (dark ? 'var(--text)' : '#111827'), textDecoration: isExcluded ? 'line-through' : 'none' }}>
           {m.firstName} {m.lastName}
         </div>
         {(m.role1 || m.function1) && (
-          <div style={{ fontSize: '0.75rem', color: dark ? '#9ca3af' : '#6b7280', marginTop: '0.125rem' }}>
+          <div style={{ fontSize: '0.75rem', color: dark ? 'var(--text-muted)' : 'var(--text-subtle)', marginTop: '0.125rem' }}>
             {[m.role1 || m.function1, m.role2 || m.function2, m.role3 || m.function3].filter(Boolean).join(' · ')}
           </div>
         )}
@@ -128,7 +128,7 @@ function BandBlock({
   )
 
   const renderRow = (m: TravelPartyMember, isExcluded: boolean) => {
-    const dash = <span style={{ color: dark ? '#4b5563' : '#9ca3af' }}>–</span>
+    const dash = <span style={{ color: dark ? '#4b5563' : 'var(--text-muted)' }}>–</span>
     return (
       <tr key={m.id} style={{
         background: isExcluded
@@ -142,10 +142,10 @@ function BandBlock({
             : <span className="pt-travel-avail pt-travel-avail--available" title="immer dabei">✓</span>
           }
         </td>
-        <td style={{ fontWeight: 500, textDecoration: isExcluded ? 'line-through' : 'none', color: isExcluded ? (dark ? '#6b7280' : '#9ca3af') : (dark ? '#e0e0e0' : undefined) }}>
+        <td style={{ fontWeight: 500, textDecoration: isExcluded ? 'line-through' : 'none', color: isExcluded ? (dark ? 'var(--text-subtle)' : 'var(--text-muted)') : (dark ? 'var(--text)' : undefined) }}>
           {m.lastName || dash}
         </td>
-        <td style={{ color: isExcluded ? (dark ? '#6b7280' : '#9ca3af') : (dark ? '#e0e0e0' : undefined) }}>
+        <td style={{ color: isExcluded ? (dark ? 'var(--text-subtle)' : 'var(--text-muted)') : (dark ? 'var(--text)' : undefined) }}>
           {m.firstName || dash}
         </td>
         <td>{m.role1 || m.function1 || dash}</td>
@@ -338,7 +338,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
               <div
                 key={m.id}
                 style={{
-                  background: dark ? '#2d2d2d' : '#ffffff',
+                  background: dark ? 'var(--surface)' : '#ffffff',
                   border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
                   borderRadius: 0, padding: '0.75rem 1rem',
                   display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
@@ -353,18 +353,18 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: dark ? '#e0e0e0' : '#111827' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: dark ? 'var(--text)' : '#111827' }}>
                       {m.firstName} {m.lastName}
                     </span>
                     {m.contactType === 'guest' && (
-                      <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: '#9ca3af', borderColor: '#3c3c3c' } : undefined}>Gast</span>
+                      <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: '#3c3c3c' } : undefined}>Gast</span>
                     )}
                     {m.noHotel && (
                       <span className="pt-guest-badge" style={{ background: '#3a2f10', color: '#f5c518', borderColor: '#5a4a1a' }}>🏠 Fährt heim</span>
                     )}
                   </div>
                   {functions ? (
-                    <div style={{ fontSize: '0.75rem', color: dark ? '#9ca3af' : '#6b7280', marginTop: '0.125rem' }}>{functions}</div>
+                    <div style={{ fontSize: '0.75rem', color: dark ? 'var(--text-muted)' : 'var(--text-subtle)', marginTop: '0.125rem' }}>{functions}</div>
                   ) : isAdmin ? (
                     <div style={{ fontSize: '0.75rem', color: dark ? '#4b5563' : '#d1d5db', marginTop: '0.125rem', fontStyle: 'italic' }}>Funktion tippen zum Bearbeiten</div>
                   ) : null}
@@ -413,7 +413,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             <div
               style={{
                 position: 'relative',
-                background: dark ? '#2d2d2d' : '#ffffff',
+                background: dark ? 'var(--surface)' : '#ffffff',
                 borderRadius: 0,
                 padding: '1rem 1.25rem 2rem',
                 boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
@@ -422,7 +422,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
             >
               {/* Handle */}
               <div style={{ width: '2.5rem', height: '4px', background: dark ? '#555' : '#e5e7eb', borderRadius: 0, margin: '0 auto 1rem' }} />
-              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: dark ? '#e0e0e0' : '#111827', marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: dark ? 'var(--text)' : '#111827', marginBottom: '1rem' }}>
                 {editingMember.firstName} {editingMember.lastName}
               </p>
               {(['role1', 'role2', 'role3'] as const).map((field, i) => {
@@ -432,9 +432,9 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 const opts = allOpts.filter(fn => !usedElsewhere.has(fn) || fn === editRoles[field])
                 return (
                   <div key={field} style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: dark ? '#9ca3af' : '#9ca3af', marginBottom: '0.25rem' }}>Funktion {i + 1}</label>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: dark ? 'var(--text-muted)' : 'var(--text-muted)', marginBottom: '0.25rem' }}>Funktion {i + 1}</label>
                     <select
-                      style={{ width: '100%', border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`, borderRadius: 0, padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? '#e0e0e0' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
+                      style={{ width: '100%', border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`, borderRadius: 0, padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? 'var(--text)' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
                       value={editRoles[field]}
                       onChange={e => setEditRoles(prev => ({ ...prev, [field]: e.target.value }))}
                     >
@@ -489,7 +489,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 return (
                   <tr key={m.id}>
                     {isVisible('avail')      && <td><AvailCell status={m.availabilityStatus} /></td>}
-                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: '#9ca3af', borderColor: '#3c3c3c' } : undefined}>Gast</span>}</td>}
+                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: '#3c3c3c' } : undefined}>Gast</span>}</td>}
                     {isVisible('firstName')  && <td>{m.firstName || EMPTY}</td>}
                     {isVisible('role1')      && <td>{isAdmin ? <RolleDropdown value={m.role1} options={optsFor('role1')} saving={saving} onChange={v => updateRole(m, 'role1', v)} /> : (m.role1 || EMPTY)}</td>}
                     {isVisible('role2')      && <td>{isAdmin ? <RolleDropdown value={m.role2} options={optsFor('role2')} saving={saving} onChange={v => updateRole(m, 'role2', v)} /> : (m.role2 || EMPTY)}</td>}

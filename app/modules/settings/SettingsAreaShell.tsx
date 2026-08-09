@@ -34,7 +34,7 @@ export function SettingsAreaShell({ title, children }: { title: string; children
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px', paddingRight: '2rem' }}>
-        <h2 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>{title}</h2>
+        <h2 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>{title}</h2>
         {dirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>

@@ -1398,7 +1398,7 @@ const HEADER_COLORS = [
   { value: '#111111', label: 'Schwarz' },
   { value: '#1a1a2e', label: 'Navy' },
   { value: '#0d3b66', label: 'Blau' },
-  { value: '#2d2d2d', label: 'Dunkelgrau' },
+  { value: 'var(--surface)', label: 'Dunkelgrau' },
   { value: '#7b2d8b', label: 'Lila' },
   { value: '#8b0000', label: 'Dunkelrot' },
 ]
@@ -2780,7 +2780,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
         {/* Standort-Kacheln (Übersicht + Quelle wählen); Venue/Bühne mit Restbestand = Warnung */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[{ id: 'none', name: 'Ohne Standort', kind: 'sonstiges', color: '#9ca3af' }, ...sortedLocs].map((l: any) => {
+          {[{ id: 'none', name: 'Ohne Standort', kind: 'sonstiges', color: 'var(--text-muted)' }, ...sortedLocs].map((l: any) => {
             const idNum = l.id === 'none' ? null : l.id
             const c = countAt(idNum)
             const active = fromLoc === String(l.id)

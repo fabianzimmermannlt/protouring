@@ -224,12 +224,12 @@ export default function HotelCard({
             <div className="pt-leg-card-headline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Building2 size={11} style={{ display: 'inline' }} />
               <span>{stay.hotelName || '– kein Hotel gewählt –'}</span>
-              {stay.hotelCity && <span style={{ color: '#9ca3af' }}>· {stay.hotelCity}</span>}
+              {stay.hotelCity && <span style={{ color: 'var(--text-muted)' }}>· {stay.hotelCity}</span>}
               {stay.hotelId && (isAdmin ? (
                 <button
                   onClick={e => toggleRecommended(stay, e)}
                   title={stay.hotelRecommended ? 'Empfehlung entfernen' : 'Als Empfehlung merken (super Hotel)'}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: stay.hotelRecommended ? '#f5c518' : '#6b7280' }}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: stay.hotelRecommended ? '#f5c518' : 'var(--text-subtle)' }}
                 >
                   <Star size={13} fill={stay.hotelRecommended ? '#f5c518' : 'none'} />
                 </button>
@@ -240,20 +240,20 @@ export default function HotelCard({
 
             {/* Anschrift, Telefon, E-Mail, Website */}
             {(stay.hotelStreet || stay.hotelPhone || stay.hotelEmail || stay.hotelWebsite) && (
-              <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.2rem', lineHeight: 1.6 }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', marginTop: '0.2rem', lineHeight: 1.6 }}>
                 {stay.hotelStreet && (
                   <div>{stay.hotelStreet}{stay.hotelPostalCode || stay.hotelCity ? `, ${[stay.hotelPostalCode, stay.hotelCity].filter(Boolean).join(' ')}` : ''}</div>
                 )}
                 {stay.hotelPhone && (
                   <div>
-                    <a href={`tel:${stay.hotelPhone}`} onClick={e => e.stopPropagation()} style={{ color: '#6b7280', textDecoration: 'none' }}>
+                    <a href={`tel:${stay.hotelPhone}`} onClick={e => e.stopPropagation()} style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}>
                       📞 {stay.hotelPhone}
                     </a>
                   </div>
                 )}
                 {stay.hotelEmail && (
                   <div>
-                    <a href={`mailto:${stay.hotelEmail}`} onClick={e => e.stopPropagation()} style={{ color: '#6b7280', textDecoration: 'none' }}>
+                    <a href={`mailto:${stay.hotelEmail}`} onClick={e => e.stopPropagation()} style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}>
                       ✉ {stay.hotelEmail}
                     </a>
                   </div>
@@ -265,7 +265,7 @@ export default function HotelCard({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      style={{ color: '#6b7280', textDecoration: 'none' }}
+                      style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}
                     >
                       🌐 {stay.hotelWebsite.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
                     </a>
@@ -283,7 +283,7 @@ export default function HotelCard({
                   : null
               }
               {stay.bookingCode && (
-                <span style={{ color: '#9ca3af' }}>· #{stay.bookingCode}</span>
+                <span style={{ color: 'var(--text-muted)' }}>· #{stay.bookingCode}</span>
               )}
             </div>
 
@@ -294,7 +294,7 @@ export default function HotelCard({
                   onClick={e => toggleRooms(stay.id, e)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.25rem',
-                    fontSize: '0.72rem', color: '#6b7280', background: 'none',
+                    fontSize: '0.72rem', color: 'var(--text-subtle)', background: 'none',
                     border: 'none', cursor: 'pointer', padding: '0', lineHeight: 1.4,
                   }}
                 >

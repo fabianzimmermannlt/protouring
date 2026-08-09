@@ -286,7 +286,7 @@ export function FeedbackButton() {
 
 // ─── Trigger für die Top-Bar (neben der Glocke) ──────────────────────────────
 // Öffnet das Panel über dasselbe Event, das auch das mobile Mehr-Menü nutzt.
-// Optik bewusst identisch zu NotificationBell (w-7 h-7, #9ca3af, Hover #d1d5db).
+// Optik bewusst identisch zu NotificationBell (w-7 h-7, var(--text-muted), Hover #d1d5db).
 
 export function FeedbackTrigger() {
   const currentUser = getCurrentUser()
@@ -305,9 +305,9 @@ export function FeedbackTrigger() {
       onClick={() => window.dispatchEvent(new CustomEvent('open-feedback-panel'))}
       title="Feedback senden"
       className="relative flex items-center justify-center w-7 h-7 rounded transition-colors"
-      style={{ color: '#9ca3af' }}
+      style={{ color: 'var(--text-muted)' }}
       onMouseEnter={e => { e.currentTarget.style.color = '#d1d5db' }}
-      onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af' }}
+      onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)' }}
     >
       <MessageSquare size={16} />
       {isSuperadmin && unreadCount > 0 && (

@@ -13,7 +13,7 @@ const STATUS_NEXT: Record<TodoStatus, TodoStatus> = {
 const PRIORITY_COLOR: Record<string, string> = {
   high:   '#ef4444',
   medium: '#f59e0b',
-  low:    '#6b7280',
+  low:    'var(--text-subtle)',
 }
 
 function StatusIcon({ status }: { status: TodoStatus }) {
@@ -122,7 +122,7 @@ export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOve
             className="px-2 py-0.5 rounded text-xs transition-colors"
             style={{
               background: filter === f ? '#6366f1' : 'transparent',
-              color:      filter === f ? '#fff' : '#6b7280',
+              color:      filter === f ? '#fff' : 'var(--text-subtle)',
             }}
           >
             {label}
@@ -163,7 +163,7 @@ export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOve
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span
-                      style={{ width: 5, height: 5, borderRadius: '50%', background: PRIORITY_COLOR[todo.priority] ?? '#6b7280', flexShrink: 0 }}
+                      style={{ width: 5, height: 5, borderRadius: '50%', background: PRIORITY_COLOR[todo.priority] ?? 'var(--text-subtle)', flexShrink: 0 }}
                     />
                     <span className={`text-xs text-gray-800 truncate ${todo.status === 'done' ? 'line-through' : ''}`}>
                       {todo.title}
@@ -188,7 +188,7 @@ export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOve
                       </span>
                     )}
                     {todo.deadline && (
-                      <span className="text-xs" style={{ color: isOverdue(todo.deadline) ? '#ef4444' : '#6b7280' }}>
+                      <span className="text-xs" style={{ color: isOverdue(todo.deadline) ? '#ef4444' : 'var(--text-subtle)' }}>
                         {new Date(todo.deadline).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         {isOverdue(todo.deadline) ? ' ⚠' : ''}
                       </span>

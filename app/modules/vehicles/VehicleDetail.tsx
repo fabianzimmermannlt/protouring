@@ -150,9 +150,9 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
 
   const ro = !isEditor
   const hasTrailer = form.hasTrailer === 'true'
-  const titleColor = isL2 ? '#e0e0e0' : '#111827'
-  const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
-  const labelColor = isL2 ? '#9ca3af' : '#6b7280'
+  const titleColor = isL2 ? 'var(--text)' : '#111827'
+  const dirtyColor = isL2 ? '#b0b0b0' : 'var(--text-subtle)'
+  const labelColor = isL2 ? 'var(--text-muted)' : 'var(--text-subtle)'
 
   return (
     <div className="module-content">

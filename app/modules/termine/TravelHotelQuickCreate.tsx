@@ -92,7 +92,7 @@ export default function TravelHotelQuickCreate({ onClose, onCreated }: Props) {
           <button
             type="button"
             onClick={() => setShowMore(s => !s)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '0.25rem 0', fontSize: '0.85rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem 0', fontSize: '0.85rem' }}
           >
             {showMore ? <ChevronDown size={14} /> : <ChevronRight size={14} />} Weitere Details
           </button>

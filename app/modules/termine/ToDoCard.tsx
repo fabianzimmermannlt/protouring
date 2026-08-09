@@ -33,7 +33,7 @@ const PRIORITY_LABEL: Record<TodoPriority, string> = {
 const PRIORITY_COLOR: Record<TodoPriority, string> = {
   high:   '#ef4444',
   medium: '#f59e0b',
-  low:    '#6b7280',
+  low:    'var(--text-subtle)',
 }
 
 function StatusIcon({ status }: { status: TodoStatus }) {
@@ -51,7 +51,7 @@ function formatDeadline(d: string | null) {
   if (diff < 0)  return { label, color: '#ef4444', suffix: ` (${Math.abs(diff)}d überfällig)` }
   if (diff === 0) return { label, color: '#f59e0b', suffix: ' (heute)' }
   if (diff <= 3) return { label, color: '#f59e0b', suffix: ` (in ${diff}d)` }
-  return { label, color: '#6b7280', suffix: '' }
+  return { label, color: 'var(--text-subtle)', suffix: '' }
 }
 
 // ── TodoForm (inline modal) ─────────────────────────────────────────────────
@@ -342,7 +342,7 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
                 onClick={() => setFilter(tab.id)}
                 className="text-xs py-1.5 px-3 transition-colors"
                 style={{
-                  color: filter === tab.id ? '#3b82f6' : '#9ca3af',
+                  color: filter === tab.id ? '#3b82f6' : 'var(--text-muted)',
                   borderTop: 'none',
                   borderLeft: 'none',
                   borderRight: 'none',

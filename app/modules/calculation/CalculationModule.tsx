@@ -120,7 +120,7 @@ export default function CalculationModule() {
   }
 
   if (projects === null) {
-    return <div className="py-10 text-center text-sm" style={{ color: '#9ca3af' }}>Lädt…</div>
+    return <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
   }
 
   const btnBar: CSSProperties = { fontSize: '0.8rem', padding: '0.28rem 0.6rem', whiteSpace: 'nowrap' }
@@ -128,7 +128,7 @@ export default function CalculationModule() {
   return (
     <div className="pb-10">
       <div className="flex items-center gap-3 mb-4" style={{ flexWrap: 'nowrap' }}>
-        <h2 className="text-lg font-semibold shrink-0" style={{ color: '#e0e0e0' }}>Kalkulation</h2>
+        <h2 className="text-lg font-semibold shrink-0" style={{ color: 'var(--text)' }}>Kalkulation</h2>
         {projects.length > 0 && (
           <select className="form-select" value={selectedId} onChange={e => setSelectedId(e.target.value)}
             title="Kalkulation auswählen"
@@ -156,17 +156,17 @@ export default function CalculationModule() {
       {error && <div className="p-3 mb-3 rounded text-sm" style={{ background: '#3b1f22', color: '#fca5a5' }}>{error}</div>}
 
       {projects.length === 0 ? (
-        <div className="text-center py-16" style={{ color: '#9ca3af' }}>
+        <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
           <p className="mb-4">Noch kein Kalkulations-Projekt vorhanden.</p>
           <button onClick={handleImportDemo} disabled={importing} className="btn btn-primary">
             {importing ? 'Importiere…' : 'Demo-Projekt importieren'}
           </button>
-          <p className="text-xs mt-3" style={{ color: '#6b7280' }}>
+          <p className="text-xs mt-3" style={{ color: 'var(--text-subtle)' }}>
             Legt „Festivals 2026" (9 Shows, 2 Varianten) als bearbeitbares Beispiel an.
           </p>
         </div>
       ) : loadingDataset || !dataset ? (
-        <div className="py-10 text-center text-sm" style={{ color: '#9ca3af' }}>Projekt lädt…</div>
+        <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Projekt lädt…</div>
       ) : (
         <>
           <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '1rem' }}>
@@ -230,7 +230,7 @@ function NewProjectModal({ onClose, onCreate }: { onClose: () => void; onCreate:
             <label className="form-label">Name</label>
             <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Tour 2026" autoFocus onKeyDown={e => { if (e.key === 'Enter') create() }} />
           </div>
-          <p className="text-xs" style={{ color: '#6b7280' }}>Legt ein leeres Projekt mit Standard-Bereichen und Variante 1/2 an.</p>
+          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Legt ein leeres Projekt mit Standard-Bereichen und Variante 1/2 an.</p>
           {err && <p className="text-xs" style={{ color: '#fca5a5' }}>{err}</p>}
         </div>
         <div className="modal-footer">
@@ -284,7 +284,7 @@ function VariantsModal({ projectId, variants, dataset, onClose, onChanged }: {
       <div className="modal-container" style={{ maxWidth: 440 }}>
         <div className="modal-header"><h3 className="modal-title">Varianten</h3><button onClick={onClose} className="text-gray-400 hover:text-white">✕</button></div>
         <div className="modal-body space-y-2">
-          <p className="text-xs" style={{ color: '#6b7280' }}>Benenne die Varianten (z.B. „Variante 1"). Beim Löschen zeigt eine Abfrage, in welchen Shows variantenspezifische Werte liegen – diese kannst du dann bewusst mit verwerfen (gemeinsame 🔗-Werte bleiben).</p>
+          <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Benenne die Varianten (z.B. „Variante 1"). Beim Löschen zeigt eine Abfrage, in welchen Shows variantenspezifische Werte liegen – diese kannst du dann bewusst mit verwerfen (gemeinsame 🔗-Werte bleiben).</p>
           {sorted.map(v => (
             <div key={v.id} className="flex items-center gap-2">
               <input className="form-input" defaultValue={v.name} onBlur={e => rename(v.id, e.target.value, v.name)} style={{ fontSize: '0.85rem' }} />
@@ -507,16 +507,16 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     <div>
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
-          <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Ansicht</label>
+          <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Ansicht</label>
           <div className="inline-flex" style={{ border: '1px solid #3c3c3c', borderRadius: 6, overflow: 'hidden' }}>
             <button onClick={() => setIstMode(false)} className="btn" title="Soll (geplant, je Variante)"
-              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: !istMode ? '#2b3a4d' : 'transparent', color: !istMode ? '#dbeafe' : '#9ca3af', fontWeight: !istMode ? 600 : 400 }}>Soll</button>
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: !istMode ? '#2b3a4d' : 'transparent', color: !istMode ? '#dbeafe' : 'var(--text-muted)', fontWeight: !istMode ? 600 : 400 }}>Soll</button>
             <button onClick={() => setIstMode(true)} className="btn" title="Ist (tatsächliche Werte aus den Shows)"
-              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: istMode ? '#3a3222' : 'transparent', color: istMode ? '#facc15' : '#9ca3af', fontWeight: istMode ? 600 : 400 }}>Ist</button>
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: istMode ? '#3a3222' : 'transparent', color: istMode ? '#facc15' : 'var(--text-muted)', fontWeight: istMode ? 600 : 400 }}>Ist</button>
           </div>
         </div>
         <div style={{ opacity: istMode ? 0.4 : 1 }}>
-          <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Alle Shows auf Variante</label>
+          <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Alle Shows auf Variante</label>
           <select className="form-select" value="" style={{ minWidth: 160 }} disabled={istMode}
             onChange={e => { if (e.target.value) setVariantByShow(mkVariants(e.target.value)) }}>
             <option value="">– wählen –</option>
@@ -524,30 +524,30 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
           </select>
         </div>
         <div style={{ opacity: istMode ? 0.4 : 1 }}>
-          <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>
-            Szenario-Faktor: <span style={{ color: '#e0e0e0' }}>{(scenario * 100).toFixed(0)} %</span>
+          <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+            Szenario-Faktor: <span style={{ color: 'var(--text)' }}>{(scenario * 100).toFixed(0)} %</span>
           </label>
           <input type="range" min={0} max={1.5} step={0.05} value={scenario} disabled={useVVK || istMode}
             onChange={e => setScenario(Number(e.target.value))} style={{ width: 180, opacity: (useVVK || istMode) ? 0.4 : 1 }} />
         </div>
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK && !istMode ? '#facc15' : '#9ca3af', opacity: istMode ? 0.4 : 1 }}>
+        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK && !istMode ? '#facc15' : 'var(--text-muted)', opacity: istMode ? 0.4 : 1 }}>
           <input type="checkbox" checked={useVVK} disabled={istMode} onChange={e => setUseVVK(e.target.checked)} />
           Ist-VVK verwenden
         </label>
-        <div className="text-xs" style={{ color: '#9ca3af' }}>
-          Aktive Shows: <span style={{ color: '#e0e0e0' }}>{overview.activeShowCount}</span>
+        <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Aktive Shows: <span style={{ color: 'var(--text)' }}>{overview.activeShowCount}</span>
         </div>
         <div className="flex items-center gap-2 ml-auto">
           <button onClick={exportCsv} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} title="Übersicht als CSV (Excel) herunterladen">CSV</button>
           <button onClick={exportPdf} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} title="Übersicht als PDF drucken/speichern">PDF</button>
         </div>
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
           <input type="checkbox" checked={hideZero} onChange={e => setHideZero(e.target.checked)} />
           Nullzeilen ausblenden
         </label>
       </div>
 
-      <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+      <p className="text-xs mb-3" style={{ color: 'var(--text-subtle)' }}>
         {dataset.project.name} · Beträge in {dataset.project.currency}, kaufmännisch gerundet zur Anzeige.
       </p>
 
@@ -587,7 +587,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
               if (r.type === 'section') {
                 return (
                   <tr key={i}>
-                    <td style={{ position: 'sticky', left: 0, zIndex: 1, fontWeight: 700, letterSpacing: '0.03em', background: '#383838', color: '#e0e0e0' }}>{r.label}</td>
+                    <td style={{ position: 'sticky', left: 0, zIndex: 1, fontWeight: 700, letterSpacing: '0.03em', background: '#383838', color: 'var(--text)' }}>{r.label}</td>
                     <td colSpan={shows.length + 2} style={{ background: '#383838' }} />
                   </tr>
                 )
@@ -623,7 +623,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                       <td key={j} className="text-right" style={cellStyle}
                         title={isMax ? 'Höchstes Ergebnis' : isMin ? 'Niedrigstes Ergebnis' : (fixDealWon ? 'Garantie vorhanden – Deal ist höher und zählt' : undefined)}>
                         {fixDealWon
-                          ? <span style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.72rem' }}>(Deal)</span>
+                          ? <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.72rem' }}>(Deal)</span>
                           : money(v, r.type === 'line')}
                       </td>
                     )
@@ -631,7 +631,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                   <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, background: bg, ...neg(r.total!) }}>
                     {money(r.total!)}
                   </td>
-                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: '#9ca3af', whiteSpace: 'nowrap', background: bg }}>
+                  <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', whiteSpace: 'nowrap', background: bg }}>
                     {formatPercent(r.percent ?? null)}
                   </td>
                 </tr>

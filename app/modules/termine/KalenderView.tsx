@@ -7,11 +7,11 @@ import type { Termin } from '@/lib/api-client'
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 const STATUS_COLOR: Record<string, string> = {
-  'Idee':                  '#9ca3af',
+  'Idee':                  'var(--text-muted)',
   'Option':                '#f59e0b',
   'noch nicht bestätigt':  '#3b82f6',
   'bestätigt':             '#22c55e',
-  'abgeschlossen':         '#6b7280',
+  'abgeschlossen':         'var(--text-subtle)',
   'abgesagt':              '#ef4444',
 }
 
@@ -161,8 +161,8 @@ export default function KalenderView({ termine, onSelectTermin }: KalenderViewPr
                         onClick={() => onSelectTermin(t.id)}
                         className="text-left rounded px-1 py-0.5 text-xs leading-tight truncate transition-opacity hover:opacity-80 cursor-pointer"
                         style={{
-                          backgroundColor: (STATUS_COLOR[t.statusBooking ?? ''] ?? '#9ca3af') + '22',
-                          borderLeft: `3px solid ${STATUS_COLOR[t.statusBooking ?? ''] ?? '#9ca3af'}`,
+                          backgroundColor: (STATUS_COLOR[t.statusBooking ?? ''] ?? 'var(--text-muted)') + '22',
+                          borderLeft: `3px solid ${STATUS_COLOR[t.statusBooking ?? ''] ?? 'var(--text-muted)'}`,
                           color: '#1f2937',
                         }}
                         title={[t.title, t.city, t.venueName].filter(Boolean).join(' · ')}
@@ -171,7 +171,7 @@ export default function KalenderView({ termine, onSelectTermin }: KalenderViewPr
                           {t.myAvailability && (
                             <span
                               className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: AVAIL_DOT[t.myAvailability] ?? '#9ca3af' }}
+                              style={{ backgroundColor: AVAIL_DOT[t.myAvailability] ?? 'var(--text-muted)' }}
                             />
                           )}
                           <span className="truncate">

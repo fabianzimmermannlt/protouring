@@ -337,7 +337,7 @@ export function L2Layout({
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
           activeTab === 'events' && !activeSubTab && !termineInDetail
             ? 'pt-nav-sub-active'
-            : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+            : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
         }`}
       >
         Übersicht
@@ -347,7 +347,7 @@ export function L2Layout({
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
           activeTab === 'events' && activeSubTab === 'crew-booking'
             ? 'pt-nav-sub-active'
-            : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+            : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
         }`}
       >
         Crew-Buchung
@@ -377,7 +377,7 @@ export function L2Layout({
         <button
           onClick={() => hasSubNav ? toggleExpand() : handleNav(item.id)}
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-            isActive && !hasSubNav ? 'pt-nav-active' : 'hover:text-white hover:bg-[#2d2d2d]'
+            isActive && !hasSubNav ? 'pt-nav-active' : 'hover:text-white hover:bg-[var(--surface)]'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -412,7 +412,7 @@ export function L2Layout({
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id && !(activeTab === 'contacts' && sub.id === 'overview' && contactInDetail)
                     ? 'pt-nav-sub-active'
-                    : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+                    : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
                 }`}
               >
                 {sub.name}
@@ -439,7 +439,7 @@ export function L2Layout({
                   onTabChange('settings', sub.id)
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
                 }`}
               >
                 {sub.name}
@@ -456,7 +456,7 @@ export function L2Layout({
                   onTabChange('settings', sub.id)
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[#2d2d2d]'
+                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
                 }`}
               >
                 {sub.name}
@@ -615,7 +615,7 @@ export function L2Layout({
           <div ref={settingsRef} className="px-0 pb-3 border-t border-[#333] pt-3">
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('pt:open-settings', { detail: { subTab: 'profil' } }))}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[#2d2d2d]"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[var(--surface)]"
             >
               <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">Einstellungen</span>
@@ -649,15 +649,15 @@ export function L2Layout({
       {dirtyDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#2a2a2a', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-            <h3 style={{ color: '#e0e0e0', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
-            <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
+            <h3 style={{ color: 'var(--text)', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button onClick={() => setDirtyDialog(null)}
-                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', color: 'var(--text-muted)', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
                 Abbrechen
               </button>
               <button onClick={() => { setDirtyDialog(null); dirtyDialog.onProceed() }}
-                style={{ padding: '8px 16px', fontSize: '13px', color: '#9ca3af', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', color: 'var(--text-muted)', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
                 Verwerfen
               </button>
               <button onClick={async () => {

@@ -157,7 +157,7 @@ export default function FunktionenSettings({ hideTitle = false }: { hideTitle?: 
           </p>
         ) : (
           <div>
-            <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Funktionen</h1>
+            <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Funktionen</h1>
             <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
               {t('settings.funktionen.activeCount').replace('{active}', String(totalActive)).replace('{total}', String(totalAll))}
             </p>

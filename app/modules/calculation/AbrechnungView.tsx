@@ -66,7 +66,7 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
         <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
           <span className="pt-card-title" style={{ fontSize: '0.95rem', color: '#e5e7eb', textTransform: 'none', letterSpacing: 0 }}>Abrechnung</span>
           <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>{snap.showLabel}</span>
-          <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Variante: {snap.variantName} · {snap.memberCount} Bandmitglieder{snap.lockedAt ? ` · abgerechnet am ${new Date(snap.lockedAt).toLocaleDateString('de-DE')}` : ''}
           </span>
         </div>
@@ -105,7 +105,7 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
                 <td className="text-right ab-num" style={{ color: D(snap.ergebnisIst).isNegative() ? '#f87171' : '#4ade80' }}>{M(snap.ergebnisIst)}</td>
                 <td className="text-right ab-num" style={{ color: diffColor(dErg) }}>{diffCell(dErg)}</td>
               </tr>
-              <tr style={{ color: '#9ca3af' }}>
+              <tr style={{ color: 'var(--text-muted)' }}>
                 <td>je Bandmitglied ({snap.memberCount})</td>
                 <td className="text-right ab-num">{M(snap.jeBandmitglied)}</td>
                 <td className="text-right ab-num">{M(snap.jeBandmitgliedIst)}</td>

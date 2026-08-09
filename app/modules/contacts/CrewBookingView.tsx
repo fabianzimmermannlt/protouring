@@ -16,16 +16,16 @@ type BookedStatus = 'confirmed' | 'rejected' | null
 const C = {
   bgRow1:     '#1e1e1e',
   bgRow2:     '#232323',
-  bgHead:     '#2d2d2d',
-  bgCrewHead: '#2d2d2d',
+  bgHead:     'var(--surface)',
+  bgCrewHead: 'var(--surface)',
   bgCrewRow1: '#1e1e1e',
   bgCrewRow2: '#232323',
   border:     '#3c3c3c',
   borderCrew: '#3c3c3c',
   borderSep:  '#4b5563',
-  textPri:    '#e0e0e0',
-  textSec:    '#9ca3af',
-  textMuted:  '#6b7280',
+  textPri:    'var(--text)',
+  textSec:    'var(--text-muted)',
+  textMuted:  'var(--text-subtle)',
   textAccent: '#60a5fa',
 }
 
@@ -33,7 +33,7 @@ const AVAIL_CFG: Record<string, { color: string; symbol: string; label: string }
   available:   { color: '#22c55e', symbol: '✓', label: 'Verfügbar' },
   maybe:       { color: '#eab308', symbol: '?', label: 'Vielleicht' },
   unavailable: { color: '#ef4444', symbol: '✗', label: 'Nicht verfügbar' },
-  null:        { color: '#3a3a3a', symbol: '–', label: 'Keine Angabe' },
+  null:        { color: 'var(--border)', symbol: '–', label: 'Keine Angabe' },
 }
 
 function AvailIcon({ status }: { status: 'available' | 'maybe' | 'unavailable' | null | undefined }) {
@@ -69,7 +69,7 @@ function BookedToggle({ status, onChange, disabled }: {
               color: on ? 'white' : '#555',
               fontSize: 10, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: on ? 'none' : '1px solid #3a3a3a',
+              border: on ? 'none' : '1px solid var(--border)',
               cursor: disabled ? 'default' : 'pointer',
               opacity: disabled ? 0.5 : 1,
               transition: 'background 0.15s',
@@ -327,7 +327,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
         {[
           { color: '#3b82f6', symbol: '✓', label: 'gebucht',  tc: 'white' },
           { color: '#ef4444', symbol: '✗', label: 'abgesagt', tc: 'white' },
-          { color: '#2e2e2e', symbol: '–', label: 'offen',    tc: '#555', border: '1px solid #3a3a3a' },
+          { color: '#2e2e2e', symbol: '–', label: 'offen',    tc: '#555', border: '1px solid var(--border)' },
         ].map(b => (
           <span key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: b.color, color: b.tc, fontSize: 8, fontWeight: 700, border: (b as any).border }}>{b.symbol}</span>

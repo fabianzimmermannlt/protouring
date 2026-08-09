@@ -128,8 +128,8 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
 
   const ro = !isEditor
 
-  const titleColor = isL2 ? '#e0e0e0' : '#111827'
-  const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
+  const titleColor = isL2 ? 'var(--text)' : '#111827'
+  const dirtyColor = isL2 ? '#b0b0b0' : 'var(--text-subtle)'
 
   return (
     <div className="module-content">

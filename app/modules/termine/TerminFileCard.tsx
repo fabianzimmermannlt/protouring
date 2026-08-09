@@ -585,7 +585,7 @@ export function TerminFileCard({
                       )
                     })}
                   </div>
-                  <p className="text-xs mt-1.5" style={{ color: dark ? '#6b7280' : '#9ca3af' }}>
+                  <p className="text-xs mt-1.5" style={{ color: dark ? 'var(--text-subtle)' : 'var(--text-muted)' }}>
                     {selectedGewerkIds.length === 0
                       ? 'Keine Auswahl = für alle sichtbar.'
                       : 'Nur ausgewählte Gewerke (+ Editoren) sehen die Datei. Später änderbar.'}
@@ -596,7 +596,7 @@ export function TerminFileCard({
               {/* Drop Zone */}
               <div
                 style={{
-                  border: `2px dashed ${isDragging ? '#3b82f6' : dark ? '#4a4a4a' : '#d1d5db'}`,
+                  border: `2px dashed ${isDragging ? '#3b82f6' : dark ? 'var(--border-strong)' : '#d1d5db'}`,
                   borderRadius: 0,
                   padding: '2rem',
                   textAlign: 'center',
@@ -611,9 +611,9 @@ export function TerminFileCard({
                 onDrop={e => { e.preventDefault(); setIsDragging(false); handleUpload(e.dataTransfer.files) }}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: dark ? '#6b7280' : '#9ca3af' }} />
+                <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: dark ? 'var(--text-subtle)' : 'var(--text-muted)' }} />
                 <p className="text-sm" style={{ color: dark ? '#a0a0a0' : '#4b5563' }}>Dateien hierher ziehen oder klicken</p>
-                <p className="text-xs mt-1" style={{ color: dark ? '#6b7280' : '#9ca3af' }}>Max. 50 MB pro Datei</p>
+                <p className="text-xs mt-1" style={{ color: dark ? 'var(--text-subtle)' : 'var(--text-muted)' }}>Max. 50 MB pro Datei</p>
                 <input
                   ref={fileInputRef}
                   type="file"

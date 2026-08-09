@@ -26,7 +26,7 @@ const AVAIL = {
   available:   { color: '#22c55e', symbol: '✓', label: 'verfügbar' },
   maybe:       { color: '#eab308', symbol: '?', label: 'vielleicht' },
   unavailable: { color: '#ef4444', symbol: '✗', label: 'nicht verfügbar' },
-  null:        { color: '#9ca3af', symbol: '–', label: 'keine Angabe' },
+  null:        { color: 'var(--text-muted)', symbol: '–', label: 'keine Angabe' },
 }
 
 function AvailIcon({ status }: { status: TravelPartyPickerContact['availabilityStatus'] }) {
@@ -117,18 +117,18 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
   }
 
   // Colors
-  const bg         = dark ? '#2d2d2d' : '#ffffff'
-  const border      = dark ? '#4a4a4a' : '#e5e7eb'
-  const titleColor  = dark ? '#e0e0e0' : '#111827'
-  const labelColor  = dark ? '#b0b0b0' : '#6b7280'
+  const bg         = dark ? 'var(--surface)' : '#ffffff'
+  const border      = dark ? 'var(--border-strong)' : '#e5e7eb'
+  const titleColor  = dark ? 'var(--text)' : '#111827'
+  const labelColor  = dark ? '#b0b0b0' : 'var(--text-subtle)'
   const rowHoverBg  = dark ? '#383838' : '#f9fafb'
   const rowAddedBg  = dark ? '#1e3a1e' : '#f0fdf4'
   const inputBg     = dark ? '#3c3c3c' : '#ffffff'
   const inputBorder = dark ? '#555555' : '#d1d5db'
-  const inputColor  = dark ? '#e0e0e0' : '#111827'
+  const inputColor  = dark ? 'var(--text)' : '#111827'
   const dividerColor = dark ? '#3c3c3c' : '#f3f4f6'
-  const namColor    = dark ? '#e0e0e0' : '#111827'
-  const metaColor   = dark ? '#9ca3af' : '#6b7280'
+  const namColor    = dark ? 'var(--text)' : '#111827'
+  const metaColor   = dark ? 'var(--text-muted)' : 'var(--text-subtle)'
 
   const inpStyle: CSSProperties = { flex: 1, minWidth: 0, padding: '7px 10px', fontSize: 13, background: inputBg, border: `1px solid ${inputBorder}`, borderRadius: 0, color: inputColor, outline: 'none', boxSizing: 'border-box' }
   const tabStyle = (active: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 0, background: active ? '#3b82f6' : 'transparent', color: active ? '#fff' : titleColor, border: `1px solid ${active ? '#3b82f6' : inputBorder}` })

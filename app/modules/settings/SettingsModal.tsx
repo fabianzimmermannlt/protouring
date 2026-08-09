@@ -61,7 +61,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       key={s.id}
       onClick={() => setSubTab(s.id)}
       className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
-        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-300 hover:bg-[#2d2d2d] hover:text-white'
+        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-300 hover:bg-[var(--surface)] hover:text-white'
       }`}
     >
       {s.name}
@@ -92,7 +92,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
 
         {/* Inhalt — gleiche Umgebung wie L2-Content (Venues/Details), damit alle Bereiche einheitlich theme'n */}
         <div className="flex-1 flex flex-col min-w-0 bg-[#1c1c1c] relative">
-          <button onClick={onClose} className="absolute top-4 right-4 z-10 p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-[#2d2d2d]">
+          <button onClick={onClose} className="absolute top-4 right-4 z-10 p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-[var(--surface)]">
             <X className="w-5 h-5" />
           </button>
           <div className="l2-content flex-1 overflow-y-auto p-6">

@@ -38,10 +38,10 @@ function PartnerPickerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div style={{ background: '#2d2d2d', border: '1px solid #3c3c3c' }} className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+      <div style={{ background: 'var(--surface)', border: '1px solid #3c3c3c' }} className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
         <div style={{ borderBottom: '1px solid #3c3c3c' }} className="flex items-center justify-between px-5 py-4">
-          <h3 className="text-sm font-semibold" style={{ color: '#e0e0e0' }}>Partner verknüpfen</h3>
-          <button onClick={onClose} style={{ color: '#9ca3af' }} className="hover:text-white transition-colors">
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Partner verknüpfen</h3>
+          <button onClick={onClose} style={{ color: 'var(--text-muted)' }} className="hover:text-white transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -65,7 +65,7 @@ function PartnerPickerModal({
               <Plus size={11} /> Neuen Partner anlegen
             </button>
             {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-xs text-center" style={{ color: '#6b7280' }}>Keine Partner gefunden</div>
+              <div className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-subtle)' }}>Keine Partner gefunden</div>
             ) : filtered.map(p => (
               <button
                 key={p.id}
@@ -75,9 +75,9 @@ function PartnerPickerModal({
                 onMouseEnter={e => (e.currentTarget.style.background = '#1e1e1e')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <div className="font-medium" style={{ color: '#e0e0e0' }}>{p.companyName}</div>
+                <div className="font-medium" style={{ color: 'var(--text)' }}>{p.companyName}</div>
                 {(p.type || p.contactPerson || p.city) && (
-                  <div className="text-xs" style={{ color: '#9ca3af' }}>
+                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {[p.type, p.contactPerson, p.city].filter(Boolean).join(' · ')}
                   </div>
                 )}
@@ -180,9 +180,9 @@ export default function TerminPartnersCard({
                   onClick={() => { setSwappingLink(link); setShowPicker(true) }}
                   disabled={swappingId === link.id || removingId === link.id}
                   title="Partner wechseln"
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: '#9ca3af' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#60a5fa')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                 >
                   {swappingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowLeftRight size={12} />}
                   Wechseln
@@ -191,9 +191,9 @@ export default function TerminPartnersCard({
                   onClick={() => handleRemove(link)}
                   disabled={removingId === link.id || swappingId === link.id}
                   title="Verknüpfung aufheben"
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: '#9ca3af' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                 >
                   {removingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
                   Entfernen

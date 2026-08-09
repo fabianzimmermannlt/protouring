@@ -71,14 +71,14 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
   }
 
   // Colors
-  const bg          = dark ? '#2d2d2d' : '#ffffff'
-  const border      = dark ? '#4a4a4a' : '#e5e7eb'
-  const titleColor  = dark ? '#e0e0e0' : '#111827'
-  const labelColor  = dark ? '#b0b0b0' : '#6b7280'
+  const bg          = dark ? 'var(--surface)' : '#ffffff'
+  const border      = dark ? 'var(--border-strong)' : '#e5e7eb'
+  const titleColor  = dark ? 'var(--text)' : '#111827'
+  const labelColor  = dark ? '#b0b0b0' : 'var(--text-subtle)'
   const inputBg     = dark ? '#3c3c3c' : '#ffffff'
   const inputBorder = dark ? '#555555' : '#d1d5db'
-  const inputColor  = dark ? '#e0e0e0' : '#111827'
-  const hintColor   = dark ? '#6b7280' : '#9ca3af'
+  const inputColor  = dark ? 'var(--text)' : '#111827'
+  const hintColor   = dark ? 'var(--text-subtle)' : 'var(--text-muted)'
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '7px 12px', fontSize: 13,

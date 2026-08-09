@@ -44,7 +44,7 @@ export default function SchreibtischModule() {
   return (
     <div className="pb-10">
       {/* Datum */}
-      <div className="mb-3 text-sm" style={{ color: '#9ca3af' }}>
+      <div className="mb-3 text-sm" style={{ color: 'var(--text-muted)' }}>
         {new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       </div>
 

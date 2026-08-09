@@ -203,7 +203,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
           </button>
           {templates.length > 0 && (
             <select value="" onChange={e => { const id = parseInt(e.target.value); if (id) addFromTemplate(id); e.target.value = '' }}
-              className="bg-[#1f1f1f] border border-[#3a3a3a] rounded-lg px-2 py-2 text-sm text-gray-200 outline-none">
+              className="bg-[var(--surface-3)] border border-[var(--border)] rounded-lg px-2 py-2 text-sm text-gray-200 outline-none">
               <option value="">Aus Vorlage …</option>
               {templates.map(t => <option key={t.id} value={t.id}>{t.title} ({t.itemCount})</option>)}
             </select>
@@ -237,9 +237,9 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
         const bufferLive = liveBuffer !== null
 
         return (
-          <div key={sl.id} className="border border-[#3a3a3a] rounded-xl overflow-hidden">
+          <div key={sl.id} className="border border-[var(--border)] rounded-xl overflow-hidden">
             {/* Kopf */}
-            <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-[#2d2d2d] border-b border-[#3a3a3a]">
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-[var(--surface)] border-b border-[var(--border)]">
               {isEditor ? (
                 <input value={sl.title}
                   onFocus={() => { focusedRef.current = true }} onBlur={e => { focusedRef.current = false; saveSetlist(sl.id, { title: e.target.value }) }}
@@ -252,7 +252,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
                   <input type="time" value={sl.startTime || ''}
                     onFocus={() => { focusedRef.current = true }} onBlur={e => { focusedRef.current = false; saveSetlist(sl.id, { startTime: e.target.value || null }) }}
                     onChange={e => setStart(sl.id, e.target.value)}
-                    className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-2 py-1 text-white outline-none" />
+                    className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-2 py-1 text-white outline-none" />
                 ) : <span className="text-white">{sl.startTime || '–'}</span>}
               </div>
               <div className="flex items-center gap-1.5 text-sm text-gray-300" title="Harte Endzeit lt. Veranstalter (Venue-Kurve)">
@@ -261,7 +261,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
                   <input type="time" value={sl.stageEndTime || ''}
                     onFocus={() => { focusedRef.current = true }} onBlur={e => { focusedRef.current = false; saveSetlist(sl.id, { stageEndTime: e.target.value || null }) }}
                     onChange={e => setStageEnd(sl.id, e.target.value)}
-                    className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-2 py-1 text-white outline-none" />
+                    className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-2 py-1 text-white outline-none" />
                 ) : <span className="text-white">{sl.stageEndTime || '–'}</span>}
               </div>
               <span className="text-xs text-gray-400">Σ {secToMMSS(totalSec)}{base ? ` · Ende ~${fmtClock(new Date(base.getTime() + totalSec * 1000))}` : ''}</span>
@@ -293,7 +293,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => onDrop(sl.id, idx)}
                     onDragEnd={endDrag}
-                    className={`relative flex items-center gap-2 px-3 py-2 border-t border-[#2d2d2d] transition-all duration-150 ${dragging === `${sl.id}-${idx}` ? 'opacity-40 scale-[.99]' : it.skipped ? 'opacity-40' : ''}`}
+                    className={`relative flex items-center gap-2 px-3 py-2 border-t border-[var(--surface)] transition-all duration-150 ${dragging === `${sl.id}-${idx}` ? 'opacity-40 scale-[.99]' : it.skipped ? 'opacity-40' : ''}`}
                   >
                     {dragOver === `${sl.id}-${idx}` && dragging !== `${sl.id}-${idx}` && (
                       <div className="absolute -top-px left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10" />
@@ -304,7 +304,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
                     <span className={`tabular-nums text-sm w-12 shrink-0 ${isLive ? 'text-blue-300 font-semibold' : 'text-gray-400'}`} title="aktuell">{t ? fmtClock(t) : '–'}</span>
                     {/* Push */}
                     <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)} title={it.startedAt ? 'Push zurücksetzen' : 'Song-Start pushen'}
-                      className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-300 hover:bg-[#3a3a3a]'}`}>
+                      className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[var(--surface)] text-gray-300 hover:bg-[var(--border)]'}`}>
                       {it.startedAt ? <RotateCcw className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                     </button>
                     {/* Titel */}
@@ -327,12 +327,12 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
 
             {/* Hinzufügen */}
             {isEditor && (
-              <div className="px-3 py-2 border-t border-[#2d2d2d] flex items-center gap-2">
+              <div className="px-3 py-2 border-t border-[var(--surface)] flex items-center gap-2">
                 <Plus className="w-4 h-4 text-gray-400 shrink-0" />
                 <select
                   value=""
                   onChange={e => { const id = parseInt(e.target.value); if (id) addItem(sl.id, id); e.target.value = '' }}
-                  className="flex-1 bg-[#1f1f1f] border border-[#3a3a3a] rounded px-2 py-1.5 text-sm text-gray-200 outline-none"
+                  className="flex-1 bg-[var(--surface-3)] border border-[var(--border)] rounded px-2 py-1.5 text-sm text-gray-200 outline-none"
                 >
                   <option value="">Song / Ansage hinzufügen …</option>
                   <optgroup label="Songs">
@@ -346,7 +346,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
             )}
 
             {/* Zusammenfassung */}
-            <div className="px-3 py-2 border-t border-[#3a3a3a] bg-[#262626] text-sm space-y-0.5">
+            <div className="px-3 py-2 border-t border-[var(--border)] bg-[#262626] text-sm space-y-0.5">
               <div className="flex items-center justify-between"><span className="text-gray-400">Gesamtdauer</span><span className="tabular-nums font-semibold text-gray-200">{secToMMSS(totalSec)}</span></div>
               {plannedEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Soll-Ende</span><span className="tabular-nums text-gray-200">{fmtClock(plannedEnd)}</span></div>}
               {actualEnd && <div className="flex items-center justify-between"><span className="text-gray-400">Ist-Ende (Prognose)</span><span className={`tabular-nums font-semibold ${endDelta !== null && endDelta > 30 ? 'text-red-400' : endDelta !== null && endDelta < -30 ? 'text-green-400' : 'text-gray-200'}`}>{fmtClock(actualEnd)}{endDelta ? ` (${endDelta > 0 ? '+' : '-'}${secToMMSS(Math.abs(endDelta))})` : ''}</span></div>}
@@ -391,22 +391,22 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
               <button onClick={() => toggleStop(sl)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${sl.endedAt ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}>
                 {sl.endedAt ? 'Fortsetzen' : 'Show stoppen'}
               </button>
-              <button onClick={() => resetRun(sl)} title="Push-Zeiten zurücksetzen" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#2d2d2d] hover:bg-[#3a3a3a] text-gray-200 flex items-center gap-1.5">
+              <button onClick={() => resetRun(sl)} title="Push-Zeiten zurücksetzen" className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[var(--surface)] hover:bg-[var(--border)] text-gray-200 flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4" /> Reset
               </button>
               <div className="relative">
                 <button onClick={() => setGearOpen(o => !o)} className="p-2 text-gray-300 hover:text-white"><Settings className="w-5 h-5" /></button>
                 {gearOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-10 bg-[#1f1f1f] border border-[#3a3a3a] rounded-lg shadow-xl p-3 w-56 space-y-2 text-sm">
+                  <div className="absolute right-0 top-full mt-1 z-10 bg-[var(--surface-3)] border border-[var(--border)] rounded-lg shadow-xl p-3 w-56 space-y-2 text-sm">
                     {([['push', 'Push-Button'], ['timesPlanned', 'Geplante Zeit'], ['timesActual', 'Aktuelle Zeit'], ['duration', 'Dauer'], ['delta', 'Timing/Delta'], ['ansagen', 'Ansagen'], ['onlyUpcoming', 'Nur kommende Songs']] as [keyof ShowCfg, string][]).map(([k, label]) => (
                       <label key={k} className="flex items-center gap-2 text-gray-200 cursor-pointer">
                         <input type="checkbox" checked={!!cfg[k]} onChange={e => setCfgPersist({ [k]: e.target.checked } as Partial<ShowCfg>)} className="w-4 h-4 accent-blue-500" /> {label}
                       </label>
                     ))}
-                    <div className="flex items-center gap-2 pt-1 border-t border-[#3a3a3a]">
+                    <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]">
                       <span className="text-gray-400 text-xs">Schrift</span>
                       {(['s', 'm', 'l'] as const).map(f => (
-                        <button key={f} onClick={() => setCfgPersist({ font: f })} className={`px-2 py-0.5 rounded text-xs ${cfg.font === f ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-300'}`}>{f.toUpperCase()}</button>
+                        <button key={f} onClick={() => setCfgPersist({ font: f })} className={`px-2 py-0.5 rounded text-xs ${cfg.font === f ? 'bg-blue-600 text-white' : 'bg-[var(--surface)] text-gray-300'}`}>{f.toUpperCase()}</button>
                       ))}
                     </div>
                   </div>
@@ -460,7 +460,7 @@ export default function SetlistView({ terminId, standalone = false, autoFullscre
                     {cfg.timesActual && <span className="tabular-nums text-gray-200 w-20 shrink-0" title="aktuell">{t ? fmtClockSec(t) : '–'}</span>}
                     {cfg.push && (
                       <button onClick={() => togglePush(sl.id, it.id, !!it.startedAt)}
-                        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[#2d2d2d] text-gray-200 hover:bg-[#3a3a3a]'}`}>
+                        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${it.startedAt ? 'bg-blue-600 text-white' : 'bg-[var(--surface)] text-gray-200 hover:bg-[var(--border)]'}`}>
                         {it.startedAt ? <RotateCcw className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
                     )}

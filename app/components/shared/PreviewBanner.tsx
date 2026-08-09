@@ -72,7 +72,7 @@ export default function PreviewBanner() {
               padding: '0.25rem 0.6rem', borderRadius: 0,
               background: open ? '#e0e7ff' : 'transparent',
               border: '1px solid #e5e7eb',
-              color: '#6b7280', fontSize: '0.75rem', cursor: 'pointer',
+              color: 'var(--text-subtle)', fontSize: '0.75rem', cursor: 'pointer',
               transition: 'all 0.15s',
             }}
           >
@@ -87,7 +87,7 @@ export default function PreviewBanner() {
               borderRadius: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               zIndex: 200, minWidth: '160px', padding: '0.4rem 0',
             }}>
-              <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.3rem 0.75rem 0.4rem' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.3rem 0.75rem 0.4rem' }}>
                 Ansicht als…
               </div>
               {availableRoles.map(role => (

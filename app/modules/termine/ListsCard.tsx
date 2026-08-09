@@ -125,8 +125,8 @@ export default function ListsCard({ terminId }: { terminId: number }) {
               <Plus className="w-3.5 h-3.5" />
             </button>
             {presetOpen && (
-              <div className="absolute right-0 top-full mt-1 z-30 bg-[#1f1f1f] border border-[#3a3a3a] rounded-lg shadow-xl overflow-hidden min-w-[160px]">
-                <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-gray-500 border-b border-[#2d2d2d]">Neue Liste als…</div>
+              <div className="absolute right-0 top-full mt-1 z-30 bg-[var(--surface-3)] border border-[var(--border)] rounded-lg shadow-xl overflow-hidden min-w-[160px]">
+                <div className="px-3 py-1.5 text-[10px] uppercase tracking-wide text-gray-500 border-b border-[var(--surface)]">Neue Liste als…</div>
                 {PRESETS.map(p => (
                   <button key={p.key} onClick={() => addList(p)} className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-[#2a2a2a]">{p.label}</button>
                 ))}
@@ -147,9 +147,9 @@ export default function ListsCard({ terminId }: { terminId: number }) {
         ) : (
           <div className="space-y-6">
             {lists.map(list => (
-              <div key={list.id} className="border border-[#3a3a3a] rounded-lg overflow-hidden">
+              <div key={list.id} className="border border-[var(--border)] rounded-lg overflow-hidden">
                 {/* Listen-Kopf */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-[#2d2d2d] border-b border-[#3a3a3a]">
+                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--surface)] border-b border-[var(--border)]">
                   {isEditor ? (
                     <input
                       value={list.title}
@@ -180,13 +180,13 @@ export default function ListsCard({ terminId }: { terminId: number }) {
                                   onChange={e => setColLabel(list.id, col.id, e.target.value)}
                                   onBlur={e => saveColLabel(col.id, e.target.value)}
                                   placeholder="Spalte"
-                                  className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-1.5 py-1 text-xs text-white outline-none w-full"
+                                  className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-1.5 py-1 text-xs text-white outline-none w-full"
                                 />
                                 <div className="flex items-center gap-1">
                                   <select
                                     value={col.type}
                                     onChange={e => changeColType(list.id, col.id, e.target.value as EventListColumnType)}
-                                    className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-1 py-0.5 text-[11px] text-gray-300 outline-none"
+                                    className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-1 py-0.5 text-[11px] text-gray-300 outline-none"
                                   >
                                     {COL_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
                                   </select>
@@ -215,7 +215,7 @@ export default function ListsCard({ terminId }: { terminId: number }) {
                           onDragOver={e => e.preventDefault()}
                           onDrop={() => onRowDrop(list.id, idx)}
                           onDragEnd={() => { dragRef.current = null; setDragOver(null) }}
-                          className={`border-t border-[#2d2d2d] ${dragOver === `${list.id}-${idx}` ? 'bg-blue-500/10' : ''}`}
+                          className={`border-t border-[var(--surface)] ${dragOver === `${list.id}-${idx}` ? 'bg-blue-500/10' : ''}`}
                         >
                           {isEditor && (
                             <td className="text-center text-gray-600 cursor-grab active:cursor-grabbing"><GripVertical className="w-3.5 h-3.5 inline" /></td>
@@ -228,17 +228,17 @@ export default function ListsCard({ terminId }: { terminId: number }) {
                                 <select
                                   value={(row.cells[col.id] as string) ?? ''}
                                   onChange={e => setCellAndPersist(list.id, row.id, col.id, e.target.value)}
-                                  className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-1.5 py-1 text-xs text-white outline-none min-w-[120px]"
+                                  className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-1.5 py-1 text-xs text-white outline-none min-w-[120px]"
                                 >
                                   <option value="">—</option>
                                   {party.map(m => <option key={m.id} value={m.id}>{`${m.firstName} ${m.lastName}`.trim()}</option>)}
                                 </select>
                               ) : col.type === 'date' ? (
-                                <input type="date" value={(row.cells[col.id] as string) ?? ''} onChange={e => setCellAndPersist(list.id, row.id, col.id, e.target.value)} className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-1.5 py-1 text-xs text-white outline-none" />
+                                <input type="date" value={(row.cells[col.id] as string) ?? ''} onChange={e => setCellAndPersist(list.id, row.id, col.id, e.target.value)} className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-1.5 py-1 text-xs text-white outline-none" />
                               ) : col.type === 'number' ? (
-                                <input type="number" value={(row.cells[col.id] as string) ?? ''} onChange={e => setCell(list.id, row.id, col.id, e.target.value)} onBlur={() => persistRow(list.id, row.id)} className="bg-[#1f1f1f] border border-[#3a3a3a] rounded px-1.5 py-1 text-xs text-white outline-none w-20 text-right" />
+                                <input type="number" value={(row.cells[col.id] as string) ?? ''} onChange={e => setCell(list.id, row.id, col.id, e.target.value)} onBlur={() => persistRow(list.id, row.id)} className="bg-[var(--surface-3)] border border-[var(--border)] rounded px-1.5 py-1 text-xs text-white outline-none w-20 text-right" />
                               ) : (
-                                <input type="text" value={(row.cells[col.id] as string) ?? ''} onChange={e => setCell(list.id, row.id, col.id, e.target.value)} onBlur={() => persistRow(list.id, row.id)} className="bg-transparent border border-transparent hover:border-[#3a3a3a] focus:border-[#3a3a3a] rounded px-1.5 py-1 text-sm text-gray-100 outline-none w-full min-w-[120px]" />
+                                <input type="text" value={(row.cells[col.id] as string) ?? ''} onChange={e => setCell(list.id, row.id, col.id, e.target.value)} onBlur={() => persistRow(list.id, row.id)} className="bg-transparent border border-transparent hover:border-[var(--border)] focus:border-[var(--border)] rounded px-1.5 py-1 text-sm text-gray-100 outline-none w-full min-w-[120px]" />
                               )}
                             </td>
                           ))}
@@ -252,7 +252,7 @@ export default function ListsCard({ terminId }: { terminId: number }) {
                 </div>
 
                 {/* Zeile hinzufügen */}
-                <button onClick={() => addRow(list.id)} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-400 hover:text-blue-400 border-t border-[#2d2d2d] w-full">
+                <button onClick={() => addRow(list.id)} className="flex items-center gap-1 px-3 py-2 text-xs text-gray-400 hover:text-blue-400 border-t border-[var(--surface)] w-full">
                   <Plus className="w-3.5 h-3.5" /> Zeile hinzufügen
                 </button>
               </div>

@@ -56,7 +56,7 @@ export default function SongLibrarySettings() {
     try { await deleteSong(id); setSongs(prev => prev.filter(s => s.id !== id)) } catch {}
   }
 
-  const inp = 'w-full px-2 py-1.5 bg-[#1f1f1f] border border-[#3a3a3a] rounded text-sm text-white outline-none focus:border-blue-500'
+  const inp = 'w-full px-2 py-1.5 bg-[var(--surface-3)] border border-[var(--border)] rounded text-sm text-white outline-none focus:border-blue-500'
   const lbl = 'block text-[11px] text-gray-400 mb-1'
 
   return (
@@ -66,7 +66,7 @@ export default function SongLibrarySettings() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#2d2d2d] p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-[var(--surface)] p-1 rounded-lg w-fit">
         {(['song', 'ansage'] as SongType[]).map(t => (
           <button key={t} onClick={() => { setTab(t); cancel() }}
             className={`px-4 py-1.5 text-sm rounded-md ${tab === t ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
@@ -78,7 +78,7 @@ export default function SongLibrarySettings() {
       {loading ? <div className="text-sm text-gray-400 py-4">Lädt…</div> : (
         <div className="space-y-2">
           {list.map(s => (
-            <div key={s.id} className="flex items-center gap-3 px-3 py-2 border border-[#3a3a3a] rounded-lg">
+            <div key={s.id} className="flex items-center gap-3 px-3 py-2 border border-[var(--border)] rounded-lg">
               <span className="flex-1 text-sm text-gray-100 truncate">{s.title || <span className="text-gray-500">(ohne Titel)</span>}</span>
               <span className="text-xs text-gray-400 tabular-nums">{secToMMSS(s.durationSec) || '–'}</span>
               {tab === 'song' && s.bpm ? <span className="text-xs text-gray-500">{s.bpm} BPM</span> : null}
@@ -93,7 +93,7 @@ export default function SongLibrarySettings() {
               <Plus className="w-4 h-4" /> {tab === 'song' ? 'Song' : 'Ansage'} hinzufügen
             </button>
           ) : (
-            <div className="border border-[#3a3a3a] rounded-lg p-4 mt-2 bg-[#262626] space-y-3">
+            <div className="border border-[var(--border)] rounded-lg p-4 mt-2 bg-[#262626] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-white">{editId === 'new' ? 'Neu' : 'Bearbeiten'}</span>
                 <button onClick={cancel} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>

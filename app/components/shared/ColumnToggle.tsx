@@ -58,7 +58,7 @@ export default function ColumnToggle({ columns, isVisible, toggle }: ColumnToggl
       }}
     >
       <div style={{
-        fontSize: '0.65rem', fontWeight: 600, color: '#9ca3af',
+        fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-muted)',
         textTransform: 'uppercase', letterSpacing: '0.06em',
         padding: '0.3rem 0.75rem 0.4rem',
       }}>
@@ -97,7 +97,7 @@ export default function ColumnToggle({ columns, isVisible, toggle }: ColumnToggl
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           width: '1.4rem', height: '1.4rem',
-          color: open ? '#6366f1' : '#9ca3af',
+          color: open ? '#6366f1' : 'var(--text-muted)',
           background: 'none', border: 'none', cursor: 'pointer',
           borderRadius: 0,
           transition: 'color 0.15s',

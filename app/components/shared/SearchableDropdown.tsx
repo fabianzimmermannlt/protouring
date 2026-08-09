@@ -130,7 +130,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
       >
         <span style={{
           fontSize: '0.85rem',
-          color: value ? (dark ? '#e0e0e0' : '#111827') : '#9ca3af',
+          color: value ? (dark ? 'var(--text)' : '#111827') : 'var(--text-muted)',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
         }}>
           {value ? renderValue(value) : placeholder}
@@ -139,13 +139,13 @@ export default function SearchableDropdown<T extends { id: string | number }>({
           {clearable && value && (
             <span
               onClick={e => { e.stopPropagation(); onSelect(null) }}
-              style={{ color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              style={{ color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             >
               <X size={12} />
             </span>
           )}
           <ChevronDown size={13} style={{
-            color: '#6b7280',
+            color: 'var(--text-subtle)',
             transform: open ? 'rotate(180deg)' : 'none',
             transition: 'transform 0.15s',
           }} />
@@ -181,8 +181,8 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.8rem',
                     border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
                     borderRadius: 0, outline: 'none',
-                    background: dark ? '#2d2d2d' : '#fff',
-                    color: dark ? '#e0e0e0' : '#111827',
+                    background: dark ? 'var(--surface)' : '#fff',
+                    color: dark ? 'var(--text)' : '#111827',
                   }}
                 />
               </div>
@@ -228,7 +228,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                 )}
 
                 {filtered.length === 0 ? (
-                  <div style={{ padding: '0.75rem', fontSize: '0.8rem', color: '#9ca3af', textAlign: 'center' }}>
+                  <div style={{ padding: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                     Keine Treffer
                   </div>
                 ) : (() => {
@@ -240,10 +240,10 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                       style={{
                         width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
                         background: value?.id === item.id ? (dark ? '#1a3a5c' : '#eff6ff') : 'none',
-                        border: 'none', cursor: 'pointer', borderBottom: `1px solid ${dark ? '#2d2d2d' : '#f9fafb'}`,
+                        border: 'none', cursor: 'pointer', borderBottom: `1px solid ${dark ? 'var(--surface)' : '#f9fafb'}`,
                         display: 'block',
                       }}
-                      onMouseOver={e => { if (value?.id !== item.id) e.currentTarget.style.background = dark ? '#2d2d2d' : '#f9fafb' }}
+                      onMouseOver={e => { if (value?.id !== item.id) e.currentTarget.style.background = dark ? 'var(--surface)' : '#f9fafb' }}
                       onMouseOut={e => { if (value?.id !== item.id) e.currentTarget.style.background = 'none' }}
                     >
                       {renderItem(item, value?.id === item.id)}
@@ -255,8 +255,8 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     <div style={{
                       padding: '0.3rem 0.65rem', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.03em',
                       textTransform: 'uppercase',
-                      color: gold ? '#f5c518' : '#9ca3af',
-                      background: gold ? (dark ? '#242015' : '#fffbea') : (dark ? '#242424' : '#f9fafb'),
+                      color: gold ? '#f5c518' : 'var(--text-muted)',
+                      background: gold ? (dark ? '#242015' : '#fffbea') : (dark ? 'var(--surface-2)' : '#f9fafb'),
                       borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
                     }}>{gold ? '★ ' : ''}{label}</div>
                   )

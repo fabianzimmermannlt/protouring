@@ -551,7 +551,7 @@ export default function ContactsModule({ activeSubTab = 'overview' }: ContactsPr
             ) : isL2 ? (
               /* ── Desktop L2 Toolbar (matching Hotels/Partners pattern) ── */
               <>
-                <h1 className="text-xl font-semibold mb-1" style={{ color: '#e0e0e0' }}>Kontakte</h1>
+                <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text)' }}>Kontakte</h1>
                 <div className="flex items-center gap-2 mb-1">
                   {isEditor && (
                     <>

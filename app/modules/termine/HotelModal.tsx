@@ -240,7 +240,7 @@ export default function HotelModal({
                     <Star size={13} fill="#f5c518" color="#f5c518" style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.85rem', color: '#e8e8e8', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.hotel.name}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{[e.hotel.city, e.distanceKm != null ? `${e.distanceKm} km vom Venue` : null].filter(Boolean).join(' · ')}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{[e.hotel.city, e.distanceKm != null ? `${e.distanceKm} km vom Venue` : null].filter(Boolean).join(' · ')}</div>
                     </div>
                     <button
                       type="button"
@@ -270,12 +270,12 @@ export default function HotelModal({
                 renderValue={h => [h.name, h.city].filter(Boolean).join(' · ')}
                 renderItem={(h, selected) => (
                   <div>
-                    <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : '#e0e0e0', fontWeight: selected ? 500 : 400, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : 'var(--text)', fontWeight: selected ? 500 : 400, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       {h.recommended && <Star size={12} fill="#f5c518" color="#f5c518" style={{ flexShrink: 0 }} />}
                       {h.name}
                     </div>
                     {(h.city || h.phone) && (
-                      <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         {[h.city, h.phone].filter(Boolean).join(' · ')}
                       </div>
                     )}
@@ -289,7 +289,7 @@ export default function HotelModal({
                 pinnedLabel="Empfehlungen"
               />
               {selectedHotel && (selectedHotel.checkIn || selectedHotel.checkOut) && (
-                <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', marginTop: '0.2rem' }}>
                   Standard: Check-in {selectedHotel.checkIn || '–'} · Check-out {selectedHotel.checkOut || '–'}
                 </div>
               )}
@@ -407,7 +407,7 @@ export default function HotelModal({
                         <button
                           type="button"
                           onClick={() => setPersonPickerRoom(personPickerRoom === idx ? null : idx)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: '1px solid #555', color: '#9ca3af', cursor: 'pointer', padding: '3px 8px', fontSize: '0.8rem' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: '1px solid #555', color: 'var(--text-muted)', cursor: 'pointer', padding: '3px 8px', fontSize: '0.8rem' }}
                         >
                           <Plus size={11} />
                           {room.memberIds.length === 0 ? 'Personen hinzufügen' : 'Bearbeiten'}

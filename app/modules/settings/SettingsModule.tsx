@@ -307,7 +307,7 @@ function ArtistSettings() {
 
       {/* Header + dirty state */}
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
-        <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Artist</h1>
+        <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Artist</h1>
         {isDirty && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
@@ -355,15 +355,15 @@ function ArtistSettings() {
           <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.subscription')}</span></div>
           <div className="pt-card-body space-y-2">
             <p className="text-sm font-medium" style={{ color: '#60a5fa' }}>{subPlan}</p>
-            <p className="text-xs" style={{ color: '#9ca3af' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
-            <p className="text-xs" style={{ color: '#9ca3af' }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
             </p>
             <div className="space-y-2 pt-1">
               <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                 {t('settings.artist.upgradePlan')}
               </button>
-              <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: '#3a3a3a', color: '#9ca3af' }}>
+              <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
                 {t('settings.artist.changePayment')}
               </button>
             </div>
@@ -460,7 +460,7 @@ function FPCheckbox({ label, checked, onChange }: {
   label: string; checked: boolean; onChange: (v: boolean) => void
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#9ca3af' }}>
+    <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--text-muted)' }}>
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
         className="rounded border-gray-500 text-blue-600 focus:ring-blue-500" />
       {label}
@@ -675,9 +675,9 @@ function UserProfil() {
             {initials}
           </div>
           <div>
-            <p className="text-sm font-semibold leading-tight" style={{ color: '#e0e0e0' }}>{displayFirst} {displayLast}</p>
-            <p className="text-xs mt-0.5" style={{ color: '#9ca3af' }}>{form.email || currentUser?.email}</p>
-            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ background: '#333', color: '#9ca3af' }}>
+            <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--text)' }}>{displayFirst} {displayLast}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{form.email || currentUser?.email}</p>
+            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ background: '#333', color: 'var(--text-muted)' }}>
               {ROLE_LABELS[currentTenant?.role as TenantRole] ?? currentTenant?.role}
             </span>
           </div>
@@ -825,15 +825,15 @@ function UserProfil() {
                 if (next) setTimeout(() => pwAccordionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
               }}
               className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium"
-              style={{ background: '#2d2d2d', border: '1px solid #444', color: '#e0e0e0' }}
+              style={{ background: 'var(--surface)', border: '1px solid #444', color: 'var(--text)' }}
             >
               <span>{t('settings.profile.changePassword')}</span>
-              <svg className={`w-4 h-4 transition-transform${showPwForm ? ' rotate-180' : ''}`} style={{ color: '#9ca3af' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-4 h-4 transition-transform${showPwForm ? ' rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
             {showPwForm && (
-              <div className="mt-2 rounded-xl p-4" style={{ background: '#2d2d2d', border: '1px solid #444' }}>
+              <div className="mt-2 rounded-xl p-4" style={{ background: 'var(--surface)', border: '1px solid #444' }}>
                 <form onSubmit={handlePwChange} className="space-y-2.5">
                   {pwError && <div className="p-2 rounded text-xs" style={{ background: '#3b1515', border: '1px solid #7f1d1d', color: '#fca5a5' }}>{pwError}</div>}
                   {pwSuccess && <div className="p-2 rounded text-xs" style={{ background: '#14321e', border: '1px solid #166534', color: '#86efac' }}>{t('settings.profile.savedSuccess')}</div>}
@@ -880,12 +880,12 @@ function UserProfil() {
           <div className="flex gap-2">
             <button onClick={() => setLanguage('de')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${language === 'de' ? 'bg-blue-600 border-blue-500 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
-              style={{ background: language === 'de' ? '#2563eb' : '#2d2d2d' }}>
+              style={{ background: language === 'de' ? '#2563eb' : 'var(--surface)' }}>
               🇩🇪 Deutsch
             </button>
             <button onClick={() => setLanguage('en')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${language === 'en' ? 'bg-blue-600 border-blue-500 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-200'}`}
-              style={{ background: language === 'en' ? '#2563eb' : '#2d2d2d' }}>
+              style={{ background: language === 'en' ? '#2563eb' : 'var(--surface)' }}>
               🇺🇸 English
             </button>
           </div>
@@ -2299,7 +2299,7 @@ function PartnerTypesSettings() {
 
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Partner-Kategorien</h1>
+          <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Partner-Kategorien</h1>
           <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
             {(() => {
               const totalAll = PARTNER_SUGGESTIONS.flatMap(g => g.items).length + uncategorized.length
@@ -2437,15 +2437,15 @@ function TravelFactorsSettings() {
       <p className="text-sm text-gray-400">
         Multiplikator auf die reine PKW-Fahrzeit (z.B. für Pausen, langsameres Fahrzeug). 1,0 = keine Verlängerung.
       </p>
-      <div className="border border-[#3a3a3a] rounded-lg overflow-hidden">
+      <div className="border border-[var(--border)] rounded-lg overflow-hidden">
         {rows.map(r => (
-          <div key={r.key} className="flex items-center justify-between px-4 py-3 border-b border-[#2d2d2d] last:border-b-0">
+          <div key={r.key} className="flex items-center justify-between px-4 py-3 border-b border-[var(--surface)] last:border-b-0">
             <span className="text-sm text-gray-200">{r.label}</span>
             <input
               type="number" step="0.05" min="1" max="3"
               value={factors[r.key]}
               onChange={e => setFactors(prev => ({ ...prev, [r.key]: Number(e.target.value) }))}
-              className="w-24 px-3 py-1.5 bg-[#2d2d2d] border border-[#444] rounded-lg text-sm text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-24 px-3 py-1.5 bg-[var(--surface)] border border-[#444] rounded-lg text-sm text-white text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         ))}
@@ -2627,7 +2627,7 @@ function VehicleTypesSettings() {
 
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Fahrzeug-Typen</h1>
+          <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Fahrzeug-Typen</h1>
           <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>
             {(() => {
               const totalAll = VEHICLE_SUGGESTIONS.flatMap(g => g.items).length + uncategorized.length
@@ -2851,7 +2851,7 @@ function FileCategoriesSettings() {
 
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <div>
-          <h1 style={{ color: '#e0e0e0', fontSize: '17px', fontWeight: 600 }}>Upload-Kategorien</h1>
+          <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Upload-Kategorien</h1>
           <p className="pt-fn-subtitle" style={{ marginTop: '2px' }}>{activeCount} von {categories.length} aktiv</p>
         </div>
         {isDirty && (
@@ -3209,15 +3209,15 @@ function TravelSettings() {
           <span className="pt-fn-group-title">Nightliner / Hotelbetten</span>
         </div>
         <div className="pt-fn-group-body" style={{ padding: '1rem 1.25rem' }}>
-          <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '1rem', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
             Personen, die im Nightliner mitfahren, werden nicht als offene Hotelbetten gezählt.
             Hier festlegen, bei welchen Legs das gilt.
           </p>
           {loading ? (
-            <Loader2 size={16} className="animate-spin" style={{ color: '#6b7280' }} />
+            <Loader2 size={16} className="animate-spin" style={{ color: 'var(--text-subtle)' }} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)' }}>
                 <input
                   type="checkbox"
                   checked={nlAnreise}
@@ -3226,7 +3226,7 @@ function TravelSettings() {
                 />
                 Anreise — NL-Passagiere brauchen kein Hotel (Anreise-Nacht)
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)' }}>
                 <input
                   type="checkbox"
                   checked={nlAbreise}
@@ -3245,15 +3245,15 @@ function TravelSettings() {
           <span className="pt-fn-group-title">Hotel-Vorschläge</span>
         </div>
         <div className="pt-fn-group-body" style={{ padding: '1rem 1.25rem' }}>
-          <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '1rem', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
             Als Empfehlung markierte Hotels werden beim Zuweisen eines Hotels zum Event vorgeschlagen,
             wenn sie innerhalb der eingestellten Entfernung zur Veranstaltungsstätte liegen.
           </p>
           {loading ? (
-            <Loader2 size={16} className="animate-spin" style={{ color: '#6b7280' }} />
+            <Loader2 size={16} className="animate-spin" style={{ color: 'var(--text-subtle)' }} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: '#e0e0e0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)' }}>
                 <input
                   type="checkbox"
                   checked={hotelSuggest}
@@ -3262,14 +3262,14 @@ function TravelSettings() {
                 />
                 Hotel-Vorschläge aktivieren
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: hotelSuggest ? '#e0e0e0' : '#6b7280' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem', color: hotelSuggest ? 'var(--text)' : 'var(--text-subtle)' }}>
                 Max. Entfernung zum Venue
                 <input
                   type="number" min="1" step="1"
                   value={hotelRadius}
                   disabled={!hotelSuggest}
                   onChange={e => { setHotelRadius(e.target.value); setDirty(true) }}
-                  style={{ width: '70px', background: '#1f1f1f', border: '1px solid #3a3a3a', borderRadius: '4px', padding: '0.25rem 0.5rem', color: '#fff', textAlign: 'right' }}
+                  style={{ width: '70px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.25rem 0.5rem', color: '#fff', textAlign: 'right' }}
                 />
                 km
               </label>
@@ -3285,7 +3285,7 @@ function TravelSettings() {
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button
             onClick={() => { loadSettings(); setDirty(false); setSaveError('') }}
-            style={{ fontSize: '0.8rem', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem 0.6rem' }}
+            style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.3rem 0.6rem' }}
           >
             Abbrechen
           </button>

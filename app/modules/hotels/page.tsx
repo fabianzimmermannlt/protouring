@@ -214,9 +214,9 @@ export default function HotelsPage() {
             setHotels(prev => prev.filter(h => h.id !== selectedHotelId))
             setSelectedHotelId(null)
           }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#9ca3af' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }}
           onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
           title="Hotel löschen"
         >
           <Trash2 size={14} />
@@ -229,7 +229,7 @@ export default function HotelsPage() {
     <div className="module-content">
       {isL2 ? (
         <>
-          <h1 className="text-xl font-semibold mb-1" style={{color:'#e0e0e0'}}>Hotels</h1>
+          <h1 className="text-xl font-semibold mb-1" style={{color:'var(--text)'}}>Hotels</h1>
           <div className="flex items-center gap-2 mb-1">
             {isEditor && <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary flex-shrink-0" style={{borderRadius:'0'}}><Plus className="w-4 h-4" /> {t('general.new')}</button>}
             <input type="text" placeholder={t('hotels.searchPlaceholder')} value={searchTerm}

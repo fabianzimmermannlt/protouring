@@ -43,7 +43,7 @@ const writePref = (key: string, val: boolean) => {
 function Toggle({ on, onChange, title }: { on: boolean; onChange: (v: boolean) => void; title?: string }) {
   return (
     <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} title={title}
-      style={{ width: 34, height: 20, borderRadius: 10, background: on ? '#3b82f6' : '#4a4a4a', position: 'relative', transition: 'background .15s', flexShrink: 0, border: 'none', padding: 0, cursor: 'pointer' }}>
+      style={{ width: 34, height: 20, borderRadius: 10, background: on ? '#3b82f6' : 'var(--border-strong)', position: 'relative', transition: 'background .15s', flexShrink: 0, border: 'none', padding: 0, cursor: 'pointer' }}>
       <span style={{ position: 'absolute', top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.4)' }} />
     </button>
   )
@@ -352,7 +352,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
         </div>
         <div className="flex-1" style={{ minWidth: 0 }}>
           <div className="flex items-center gap-3 flex-wrap">
-            <h3 className="text-base font-semibold" style={{ color: '#e0e0e0' }}>
+            <h3 className="text-base font-semibold" style={{ color: 'var(--text)' }}>
               {show.city || '(ohne Stadt)'}{show.show_date ? ` · ${formatDate(show.show_date)}` : ''}{show.venue ? ` · ${show.venue}` : ''}
             </h3>
             {!show.locked && (
@@ -360,7 +360,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                 <button onClick={() => setEditParams(true)} className="btn btn-ghost" style={{ fontSize: '0.8rem' }}>
                   <PencilIcon className="w-3.5 h-3.5" /> Parameter
                 </button>
-                <label className="text-xs flex items-center gap-1.5" style={{ color: '#9ca3af' }}>
+                <label className="text-xs flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
                   Ergebnis-Spalte:
                   <select className="form-input" style={{ fontSize: '0.75rem', padding: '2px 6px' }} value={resultVar} onChange={e => setResultVar(e.target.value)}>
                     {variants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
@@ -376,8 +376,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                   <>
                     <div onClick={() => setPrintOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
                     <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 300, background: '#232323', border: '1px solid #3c3c3c', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
-                      <div className="text-xs font-semibold mb-2" style={{ color: '#e0e0e0' }}>Druck / Export</div>
-                      <label className="block text-xs mb-1" style={{ color: '#9ca3af' }}>Vergleich</label>
+                      <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text)' }}>Druck / Export</div>
+                      <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vergleich</label>
                       <select className="form-input" style={{ width: '100%', fontSize: '0.78rem', marginBottom: 10 }} value={selMode} onChange={e => setCfgMode(e.target.value)}>
                         {show.locked
                           ? <option value="soll">Variante „{lockedSnap?.variantName ?? '—'}" ↔ Ist</option>
@@ -388,8 +388,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                         <span>„je Bandmitglied"-Zeile</span>
                         <Toggle on={cfgMember} onChange={setCfgMember} title="je-Bandmitglied-Zeile ausgeben" />
                       </div>
-                      <div className="text-xs mb-1" style={{ color: '#9ca3af', borderTop: '1px solid #3a3a3a', paddingTop: 8 }}>Zusatzfelder je Bereich</div>
-                      <div className="flex items-center" style={{ fontSize: 10, color: '#6b7280', paddingBottom: 2 }}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 8 }}>Zusatzfelder je Bereich</div>
+                      <div className="flex items-center" style={{ fontSize: 10, color: 'var(--text-subtle)', paddingBottom: 2 }}>
                         <span style={{ flex: 1 }} />
                         <span style={{ width: 46, textAlign: 'center' }}>Spez.</span>
                         <span style={{ width: 46, textAlign: 'center' }}>Name</span>
@@ -424,9 +424,9 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
             </div>
           </div>
           {!show.locked && summary && (
-            <div className="text-xs flex gap-4 mt-1" style={{ color: '#9ca3af' }}>
-              <span>Gage netto: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.gageNet)}</b></span>
-              <span>Ausgaben: <b style={{ color: '#e0e0e0' }}>{formatEUR(summary.ausgaben)}</b></span>
+            <div className="text-xs flex gap-4 mt-1" style={{ color: 'var(--text-muted)' }}>
+              <span>Gage netto: <b style={{ color: 'var(--text)' }}>{formatEUR(summary.gageNet)}</b></span>
+              <span>Ausgaben: <b style={{ color: 'var(--text)' }}>{formatEUR(summary.ausgaben)}</b></span>
               <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
             </div>
           )}
@@ -436,7 +436,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
         <AbrechnungView snap={lockedSnap} />
       ) : (
         <>
-          <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-subtle)' }}>
             🔗 = ein gemeinsamer Soll-Wert für alle Varianten (Standard). Zum Auflösen aufs 🔗 klicken → je Variante ein eigenes Feld (der Wert bleibt erhalten, u.a. bei Var 1). „Ist" = tatsächliche Rechnung (für die Abrechnung).
           </p>
           <div className="space-y-4">
@@ -554,10 +554,10 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
         </span>
         <div className="flex items-center gap-3">
-          <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+          <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
             <input type="checkbox" checked={showSpec} onChange={e => setShowSpec(e.target.checked)} /> Spezifikation
           </label>
-          <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: '#9ca3af' }}>
+          <label className="text-xs flex items-center gap-1.5 cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
             <input type="checkbox" checked={showName} onChange={e => setShowName(e.target.checked)} /> Name
           </label>
         </div>
@@ -575,7 +575,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           </thead>
           <tbody>
             {rowPositions.length === 0 && !adding && (
-              <tr><td colSpan={colCount} className="text-center py-4" style={{ color: '#6b7280' }}>Noch keine Position – unten „+ Neue Position".</td></tr>
+              <tr><td colSpan={colCount} className="text-center py-4" style={{ color: 'var(--text-subtle)' }}>Noch keine Position – unten „+ Neue Position".</td></tr>
             )}
             {rowPositions.map(p => (
               p.pos_type === 'hotel' ? (
@@ -660,7 +660,7 @@ function LinkBadge({ shared, onClick }: { shared: boolean; onClick: () => void }
       title={shared
         ? 'Verknüpft: ein gemeinsamer Wert für ALLE Varianten. Klicken → je Variante ein eigenes Feld.'
         : 'Pro Variante getrennt: jede Variante hat ein eigenes Feld. Klicken → wieder ein gemeinsamer Wert für alle.'}
-      className="shrink-0" style={{ color: shared ? '#60a5fa' : '#6b7280', marginTop: 2 }}>
+      className="shrink-0" style={{ color: shared ? '#60a5fa' : 'var(--text-subtle)', marginTop: 2 }}>
       <LinkIcon className="w-4 h-4" />
     </button>
   )
@@ -850,7 +850,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           <div className="flex items-start gap-1.5">
             <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow}
               title="Zum Sortieren ziehen" className="shrink-0 cursor-grab active:cursor-grabbing"
-              style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0, marginTop: 4 }}>
+              style={{ color: dragging ? '#60a5fa' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
               <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
                 <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
                 <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -864,8 +864,8 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   title="Name bearbeiten"
                   className="text-sm"
-                  style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(6, nameVal.length + 1)}ch`, minWidth: 60 }}
-                  onFocus={e => { e.target.style.border = '1px solid #4a4a4a'; e.target.style.background = '#1f2937' }}
+                  style={{ color: 'var(--text)', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(6, nameVal.length + 1)}ch`, minWidth: 60 }}
+                  onFocus={e => { e.target.style.border = '1px solid var(--border-strong)'; e.target.style.background = '#1f2937' }}
                   onBlurCapture={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent' }} />
                 {/* Spezifikation + Reise rechtsbündig vor Variante 1 */}
                 <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
@@ -876,7 +876,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   {showTravel && (
                     <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
                       className="shrink-0 inline-flex items-center gap-1 rounded"
-                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? '#facc15' : 'transparent', border: `1px solid ${travelActive ? '#facc15' : '#4a4a4a'}` }}>
+                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? '#facc15' : 'transparent', border: `1px solid ${travelActive ? '#facc15' : 'var(--border-strong)'}` }}>
                       <TruckIcon className="w-3.5 h-3.5" /> Reise
                     </button>
                   )}
@@ -909,7 +909,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   style={{ ...cell.style, color: '#93c5fd', background: linkedCellBg }} />
               ) : (
                 <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
-                  style={{ ...cell.style, color: '#6b7280', minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                  style={{ ...cell.style, color: 'var(--text-subtle)', minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                   <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} />{norm(m.sharedVal) != null ? m.sharedVal : '–'}
                 </div>
               )
@@ -954,7 +954,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
         <tr>
           <td style={{ verticalAlign: 'top' }}>
             <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22, whiteSpace: 'nowrap' }} title="km × €/km plus optionaler Fixpreis (z.B. Zugticket)">
-              <TruckIcon className="w-3.5 h-3.5" /> Reise <span style={{ color: '#6b7280', fontSize: 10 }}>km×€ + Fix</span>
+              <TruckIcon className="w-3.5 h-3.5" /> Reise <span style={{ color: 'var(--text-subtle)', fontSize: 10 }}>km×€ + Fix</span>
               {travelActive && (
                 <button onClick={() => setM(p => ({ ...p, travelKm: {}, travelRate: {}, travelFix: {} }))} className="text-gray-500 hover:text-red-500 ml-1" title="Reisekosten löschen">✕</button>
               )}
@@ -971,7 +971,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                     onChange={e => setM(p => ({ ...p, travelRate: { ...p.travelRate, [v.id]: e.target.value } }))} />
                   <input {...tvCell} data-fkey={`s|${positionId}|tfix|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.travelFix[v.id] ?? ''} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                     onChange={e => setM(p => ({ ...p, travelFix: { ...p.travelFix, [v.id]: e.target.value } }))} />
-                  <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
+                  <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res != null ? formatMoney(res) : ''}</span>
                 </div>
               </td>
             )
@@ -1014,15 +1014,15 @@ function OverheadShowRow({ positionId, showId, name, variantCols, included, incl
           <input type="checkbox" checked={included} disabled={busy} onChange={toggle}
             title={included ? 'Gilt für diese Show (klicken zum Abwählen)' : 'Für diese Show abgewählt (klicken zum Anhaken)'} />
           <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ background: '#33312a', color: '#d6c98a' }}>übergeordnet</span>
-          <span className="text-sm" style={{ color: included ? '#cbd5e1' : '#6b7280', whiteSpace: 'nowrap' }}>{name}</span>
+          <span className="text-sm" style={{ color: included ? '#cbd5e1' : 'var(--text-subtle)', whiteSpace: 'nowrap' }}>{name}</span>
         </div>
       </td>
-      <td colSpan={variantCols + 1} className="text-xs" style={{ color: '#6b7280' }}>
+      <td colSpan={variantCols + 1} className="text-xs" style={{ color: 'var(--text-subtle)' }}>
         {included
           ? `Umlage über ${includedCount} Show${includedCount !== 1 ? 's' : ''} · ${formatMoney(soll)} gesamt`
           : 'für diese Show abgewählt'}
       </td>
-      <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: included ? '#93c5fd' : '#6b7280', fontWeight: 500 }}>
+      <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: included ? '#93c5fd' : 'var(--text-subtle)', fontWeight: 500 }}>
         {included ? formatMoney(share) : '—'}
       </td>
       <td />
@@ -1139,7 +1139,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
-            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0, marginTop: 4 }}>
+            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
             <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
               <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
               <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -1151,8 +1151,8 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
             <div className="flex items-center gap-1.5">
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
-                style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
-                onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
+                style={{ color: 'var(--text)', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
+                onFocus={e => { e.target.style.border = '1px solid var(--border-strong)' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
               {showSpec && (
                 <input value={whoVal} onChange={e => setWhoVal(e.target.value)} onBlur={saveWho}
                   className="form-input" placeholder="Spezifikation (z.B. Band, Crew, 1…)" style={{ fontSize: '0.72rem', padding: '1px 6px', width: 190 }} />
@@ -1175,7 +1175,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
             {mirror ? (
               <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: '#6b7280', fontSize: 12 }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: 'var(--text-subtle)', fontSize: 12 }}>
                 <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} />
                 <span>{val.rooms || '–'}×{val.nights || '–'}×{val.price || '–'}</span>
               </div>
@@ -1191,7 +1191,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
                   style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
               </div>
             )}
-            <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
+            <div className="text-right" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
           </td>
         )
       })}
@@ -1384,7 +1384,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
-            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0, marginTop: 4 }}>
+            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
             <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
               <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
               <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -1396,12 +1396,12 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
             <div className="flex items-center gap-1.5">
               <input value={nameVal} onChange={e => setNameVal(e.target.value)} onBlur={saveName}
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} title="Name bearbeiten" className="text-sm"
-                style={{ color: '#e0e0e0', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
-                onFocus={e => { e.target.style.border = '1px solid #4a4a4a' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
+                style={{ color: 'var(--text)', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(5, nameVal.length + 1)}ch`, minWidth: 44 }}
+                onFocus={e => { e.target.style.border = '1px solid var(--border-strong)' }} onBlurCapture={e => { e.target.style.border = '1px solid transparent' }} />
               <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
                 <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
                   className="shrink-0 inline-flex items-center gap-1 rounded"
-                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? '#facc15' : 'transparent', border: `1px solid ${m.fuelOn ? '#facc15' : '#4a4a4a'}` }}>
+                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? '#facc15' : 'transparent', border: `1px solid ${m.fuelOn ? '#facc15' : 'var(--border-strong)'}` }}>
                   ⛽ Sprit
                 </button>
               </div>
@@ -1428,7 +1428,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
             {mirror ? (
               <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: '#6b7280', fontSize: 12 }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: 'var(--text-subtle)', fontSize: 12 }}>
                 <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} /><span>verknüpft</span>
               </div>
             ) : (
@@ -1439,7 +1439,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
                 <input {...vCell} data-fkey={`s|${positionId}|vextra|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
               </div>
             )}
-            <div className="text-right" style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
+            <div className="text-right" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
           </td>
         )
       })}
@@ -1471,7 +1471,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
         <td style={{ verticalAlign: 'top' }}>
           <div className="flex items-center gap-1 text-xs" title="Strecke/100 × Verbrauch × €/L"
             style={{ color: '#facc15', paddingLeft: 22, whiteSpace: 'nowrap' }}>
-            ⛽ Sprit <span style={{ color: '#6b7280', fontSize: 10 }}>L/100 × €/L</span>
+            ⛽ Sprit <span style={{ color: 'var(--text-subtle)', fontSize: 10 }}>L/100 × €/L</span>
           </div>
         </td>
         {variants.map((v, idx) => {
@@ -1481,7 +1481,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
             <td key={v.id} style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 {mirror ? (
-                  <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4, color: '#6b7280', fontSize: 11 }}>
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-subtle)', fontSize: 11 }}>
                     <LinkIcon className="w-3 h-3" style={{ opacity: 0.6 }} />verknüpft
                   </span>
                 ) : (
@@ -1578,8 +1578,8 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, isTransport, c
         renderValue={it => it.name}
         renderItem={it => (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontSize: '0.82rem', color: '#e0e0e0' }}>{it.name}</span>
-            {it.group && <span style={{ fontSize: '0.68rem', color: '#6b7280' }}>{it.group}</span>}
+            <span style={{ fontSize: '0.82rem', color: 'var(--text)' }}>{it.name}</span>
+            {it.group && <span style={{ fontSize: '0.68rem', color: 'var(--text-subtle)' }}>{it.group}</span>}
           </div>
         )}
         onSelect={it => { if (it) commit({ name: it.name, kind: it.kind }) }}

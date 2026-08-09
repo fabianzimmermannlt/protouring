@@ -24,7 +24,7 @@ const D = (v: unknown): Decimal => { try { return new Decimal(v == null || v ===
 function Grip({ dragging }: { dragging?: boolean }) {
   return (
     <span title="Zum Sortieren ziehen" className="shrink-0 cursor-grab active:cursor-grabbing"
-      style={{ color: dragging ? '#60a5fa' : '#6b7280', lineHeight: 0 }}>
+      style={{ color: dragging ? 'var(--primary)' : 'var(--text-subtle)', lineHeight: 0 }}>
       <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
         <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
         <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -69,19 +69,19 @@ export default function OverheadView({ dataset, projectId, onChanged }: { datase
 
   return (
     <div className="space-y-4" onBlurCapture={onFormulaBlur} onFocusCapture={onFormulaFocus}>
-      <div className="text-xs" style={{ color: '#9ca3af', lineHeight: 1.5 }}>
+      <div className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>
         Übergeordnete Kosten verteilen sich automatisch gleichmäßig auf die angehakten Shows
-        (<span style={{ color: '#e0e0e0' }}>Umlage = Soll ÷ Anzahl angehakter Shows</span>).
+        (<span style={{ color: 'var(--text)' }}>Umlage = Soll ÷ Anzahl angehakter Shows</span>).
         Eine Show abwählen, wenn der Posten dort nicht anfällt. Ein Posten kann als
-        <span style={{ color: '#e0e0e0' }}> Sammelposten</span> mehrere Einzelpositionen enthalten (aufklappbar).
+        <span style={{ color: 'var(--text)' }}> Sammelposten</span> mehrere Einzelpositionen enthalten (aufklappbar).
       </div>
 
       {activeShows.length === 0 && (
-        <div className="text-sm" style={{ color: '#facc15' }}>Noch keine aktiven Shows – lege zuerst Shows an.</div>
+        <div className="text-sm" style={{ color: 'var(--accent)' }}>Noch keine aktiven Shows – lege zuerst Shows an.</div>
       )}
 
       {items.length === 0 ? (
-        <div className="text-sm" style={{ color: '#9ca3af' }}>Noch keine übergeordneten Kosten erfasst.</div>
+        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine übergeordneten Kosten erfasst.</div>
       ) : (
         <div className="space-y-2">
           {items.map(item => {
@@ -162,9 +162,9 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
   return (
     <div onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
       style={{
-        background: dragging ? '#243044' : '#242424', border: '1px solid #3c3c3c', borderRadius: 8, padding: '10px 12px',
+        background: dragging ? 'var(--primary-soft)' : 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
         opacity: dragging ? 0.35 : 1,
-        boxShadow: dropTarget ? 'inset 0 3px 0 0 #60a5fa' : undefined,
+        boxShadow: dropTarget ? 'inset 0 3px 0 0 var(--primary)' : undefined,
         transition: 'background 120ms ease, opacity 120ms ease, box-shadow 120ms ease',
       }}>
       <div className="flex items-center gap-2 flex-wrap">
@@ -174,22 +174,22 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
           value={name} onChange={e => setName(e.target.value)} onBlur={saveName} placeholder="Bezeichnung" />
         {hasLines ? (
           <>
-            <span className="text-xs" style={{ color: '#9ca3af' }}>Soll <b style={{ color: '#e0e0e0', marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(sumMoney('amount'))}</b></span>
-            <span className="text-xs" style={{ color: '#9ca3af' }}>Ist <b style={{ color: '#facc15', marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(sumMoney('ist_amount'))}</b></span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Soll <b style={{ color: 'var(--text)', marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(sumMoney('amount'))}</b></span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Ist <b style={{ color: 'var(--accent)', marginLeft: 4, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(sumMoney('ist_amount'))}</b></span>
           </>
         ) : (
           <>
-            <label className="text-xs" style={{ color: '#9ca3af' }}>Soll
+            <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Soll
               <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|soll`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
                 value={sollV} onChange={e => setSollV(e.target.value)} onBlur={saveAmount} placeholder="0" />
             </label>
-            <label className="text-xs" style={{ color: '#9ca3af' }}>Ist
-              <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|ist`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: '#facc15' }}
+            <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Ist
+              <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|ist`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: 'var(--accent)' }}
                 value={istV} onChange={e => setIstV(e.target.value)} onBlur={saveAmount} placeholder="0" />
             </label>
           </>
         )}
-        <label className="text-xs" style={{ color: '#9ca3af' }} title="Anteil, der auf DIESE Kalkulation entfällt (z.B. 50 %, wenn die Anschaffung auch für andere Touren/Saisons genutzt wird). Gilt für Soll und Ist.">
+        <label className="text-xs" style={{ color: 'var(--text-muted)' }} title="Anteil, der auf DIESE Kalkulation entfällt (z.B. 50 %, wenn die Anschaffung auch für andere Touren/Saisons genutzt wird). Gilt für Soll und Ist.">
           Anteil
           <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 6 }}>
             <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|pct`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 60 }}
@@ -197,22 +197,22 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
             <span style={{ marginLeft: 3 }}>%</span>
           </span>
         </label>
-        <span className="text-xs" style={{ color: '#93c5fd', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{shareLabel}</span>
+        <span className="text-xs" style={{ color: 'var(--primary)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{shareLabel}</span>
         <button onClick={del} disabled={busy} className="p-1 text-gray-400 hover:text-red-500 ml-auto" title="Löschen">
           <TrashIcon className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5 flex-wrap mt-2" style={{ paddingTop: 8, borderTop: '1px solid #333' }}>
-        <span className="text-xs mr-1" style={{ color: '#6b7280' }}>Gilt für:</span>
+      <div className="flex items-center gap-1.5 flex-wrap mt-2" style={{ paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+        <span className="text-xs mr-1" style={{ color: 'var(--text-subtle)' }}>Gilt für:</span>
         {activeShows.map(s => {
           const inc = !isExcluded(s.id)
           const label = `${s.city || '(Stadt)'}${s.show_date ? ' · ' + formatDate(s.show_date) : ''}`
           return (
             <button key={s.id} onClick={() => toggleShow(s.id, !inc)} disabled={busy} title={inc ? 'Angehakt – klicken zum Abwählen' : 'Abgewählt – klicken zum Anhaken'}
               className="text-xs rounded inline-flex items-center gap-1" style={{
-                padding: '2px 8px', color: inc ? '#111827' : '#9ca3af',
-                background: inc ? '#60a5fa' : 'transparent', border: `1px solid ${inc ? '#60a5fa' : '#4a4a4a'}`, opacity: busy ? 0.6 : 1,
+                padding: '2px 8px', color: inc ? '#111827' : 'var(--text-muted)',
+                background: inc ? 'var(--primary)' : 'transparent', border: `1px solid ${inc ? 'var(--primary)' : 'var(--border-strong)'}`, opacity: busy ? 0.6 : 1,
               }}>
               <span style={{ fontWeight: 700 }}>{inc ? '✓' : '×'}</span> {label}
             </button>
@@ -221,20 +221,20 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
       </div>
 
       {/* Einzelpositionen (Sammelposten) – aufklappbar */}
-      <div className="mt-2" style={{ paddingTop: 8, borderTop: '1px solid #333' }}>
+      <div className="mt-2" style={{ paddingTop: 8, borderTop: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2">
-          <button onClick={() => setExpanded(v => !v)} className="text-xs inline-flex items-center gap-1" style={{ color: '#9ca3af' }}>
+          <button onClick={() => setExpanded(v => !v)} className="text-xs inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
             {expanded ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
             Einzelpositionen{hasLines ? ` (${lines.length})` : ''}
           </button>
           <button onClick={addLine} disabled={busy} className="btn btn-secondary inline-flex items-center gap-1" style={{ fontSize: '0.72rem', padding: '0.12rem 0.45rem' }}>
             <PlusIcon className="w-3.5 h-3.5" /> Zeile
           </button>
-          {!hasLines && <span className="text-[11px]" style={{ color: '#6b7280' }}>Optional: Betrag in mehrere Rechnungen/Posten aufteilen</span>}
+          {!hasLines && <span className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>Optional: Betrag in mehrere Rechnungen/Posten aufteilen</span>}
         </div>
         {expanded && hasLines && (
           <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6b7280', paddingLeft: 18 }}>
+            <div className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--text-subtle)', paddingLeft: 18 }}>
               <span style={{ flex: 1 }}>Bezeichnung</span>
               <span style={{ width: 96, textAlign: 'right' }}>Soll</span>
               <span style={{ width: 96, textAlign: 'right' }}>Ist</span>
@@ -271,9 +271,9 @@ function LineRow({ line, onChanged, dragging, dropTarget, onDragStartLine, onDra
     <div onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterLine} onDrop={onDropLine}
       className="flex items-center gap-2"
       style={{
-        background: dragging ? '#2a3340' : '#1f1f1f', border: '1px solid #333', borderRadius: 6, padding: '3px 6px',
+        background: dragging ? 'var(--primary-soft)' : 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 6px',
         opacity: dragging ? 0.35 : 1,
-        boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined,
+        boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary)' : undefined,
         transition: 'background 120ms ease, opacity 120ms ease, box-shadow 120ms ease',
       }}>
       <span draggable onDragStart={onDragStartLine} onDragEnd={onDragEndLine}><Grip dragging={dragging} /></span>
@@ -281,7 +281,7 @@ function LineRow({ line, onChanged, dragging, dropTarget, onDragStartLine, onDra
         value={label} onChange={e => setLabel(e.target.value)} onBlur={saveLabel} placeholder="z.B. Rechnung Zubehör" />
       <input inputMode="decimal" className="form-input text-right" data-fkey={`ohl|${line.id}|amount`} style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, fontVariantNumeric: 'tabular-nums' }}
         value={amount} onChange={e => setAmount(e.target.value)} onBlur={saveAmount} placeholder="Soll" />
-      <input inputMode="decimal" className="form-input text-right" data-fkey={`ohl|${line.id}|ist`} style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, color: '#facc15', fontVariantNumeric: 'tabular-nums' }}
+      <input inputMode="decimal" className="form-input text-right" data-fkey={`ohl|${line.id}|ist`} style={{ fontSize: '0.78rem', padding: '2px 6px', width: 96, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}
         value={ist} onChange={e => setIst(e.target.value)} onBlur={saveAmount} placeholder="Ist" />
       <button onClick={del} disabled={busy} className="p-0.5 text-gray-500 hover:text-red-500" title="Zeile löschen"><TrashIcon className="w-3.5 h-3.5" /></button>
     </div>

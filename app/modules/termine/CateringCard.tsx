@@ -19,7 +19,7 @@ const dark = true
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 const TYPE_OPTIONS: { value: CateringType; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: 'none',    label: 'Kein Catering', icon: <UtensilsCrossed size={14} />, color: '#6b7280' },
+  { value: 'none',    label: 'Kein Catering', icon: <UtensilsCrossed size={14} />, color: 'var(--text-subtle)' },
   { value: 'inhouse', label: 'Inhouse',        icon: <Building2 size={14} />,       color: '#3b82f6' },
   { value: 'buyout',  label: 'Buy Out',         icon: <Banknote size={14} />,        color: '#10b981' },
   { value: 'order',   label: 'Auf Bestellung',  icon: <ShoppingBag size={14} />,     color: '#f59e0b' },
@@ -117,7 +117,7 @@ function OrderEditRow({
         >
           <option value="">– Person –</option>
           {memberOptions.map(n => (
-            <option key={n} value={n} disabled={orderedNames.has(n)} style={orderedNames.has(n) ? { color: '#9ca3af' } : undefined}>
+            <option key={n} value={n} disabled={orderedNames.has(n)} style={orderedNames.has(n) ? { color: 'var(--text-muted)' } : undefined}>
               {n}{orderedNames.has(n) ? ' ✓' : ''}
             </option>
           ))}
@@ -452,7 +452,7 @@ function CateringBlock({
               style={{
                 borderColor: type === opt.value ? opt.color : '#3c3c3c',
                 background:  type === opt.value ? `${opt.color}18` : '#2a2a2a',
-                color:       type === opt.value ? opt.color : '#9ca3af',
+                color:       type === opt.value ? opt.color : 'var(--text-muted)',
               }}
             >
               {opt.icon}
@@ -673,7 +673,7 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
                     onClick={() => addBlock(opt.value)}
                     disabled={adding}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all"
-                    style={{ borderColor: '#3c3c3c', background: '#2a2a2a', color: '#9ca3af' }}
+                    style={{ borderColor: '#3c3c3c', background: '#2a2a2a', color: 'var(--text-muted)' }}
                   >
                     {opt.icon}
                     {opt.label}
@@ -687,7 +687,7 @@ export default function CateringCard({ terminId, isAdmin }: { terminId: number; 
             onClick={() => addBlock('order')}
             disabled={adding}
             className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-dashed text-sm transition-colors"
-            style={{ borderColor: '#3c3c3c', color: '#9ca3af' }}
+            style={{ borderColor: '#3c3c3c', color: 'var(--text-muted)' }}
           >
             {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Weiterer Catering-Block
           </button>

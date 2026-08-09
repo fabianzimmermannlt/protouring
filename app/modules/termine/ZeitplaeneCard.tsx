@@ -206,7 +206,7 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
                     fontSize: 11, padding: '3px 10px', borderRadius: 0, cursor: 'pointer',
                     border: `1px solid ${active ? '#3b82f6' : '#3c3c3c'}`,
                     background: active ? 'rgba(59,130,246,0.12)' : '#2a2a2a',
-                    color: active ? '#60a5fa' : '#9ca3af',
+                    color: active ? '#60a5fa' : 'var(--text-muted)',
                   }}>
                   {roleLabel(r)}
                 </button>
@@ -261,9 +261,9 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
     }},
   ]
 
-  const dropBg     = dark ? '#2d2d2d' : '#ffffff'
-  const dropBorder = dark ? '#4a4a4a' : '#e5e7eb'
-  const dropText   = dark ? '#e0e0e0' : '#374151'
+  const dropBg     = dark ? 'var(--surface)' : '#ffffff'
+  const dropBorder = dark ? 'var(--border-strong)' : '#e5e7eb'
+  const dropText   = dark ? 'var(--text)' : '#374151'
   const dropHover  = dark ? '#383838' : '#f9fafb'
   const dropDangerHover = dark ? '#3d1f1f' : '#fef2f2'
 
@@ -274,7 +274,7 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
           <span className="pt-card-title">
             {s.title || <span className="normal-case font-normal tracking-normal text-gray-400 italic">Ohne Titel</span>}
             {isAdmin && s.visibleRoles.length > 0 && (
-              <span className="normal-case font-normal tracking-normal" style={{ fontSize: 10, color: '#9ca3af', marginLeft: 6 }} title="Eingeschränkte Sichtbarkeit">
+              <span className="normal-case font-normal tracking-normal" style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6 }} title="Eingeschränkte Sichtbarkeit">
                 🔒 {s.visibleRoles.map(roleLabel).join(', ')}
               </span>
             )}

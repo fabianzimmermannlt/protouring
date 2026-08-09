@@ -92,7 +92,7 @@ export default function RolePermissionsSettings() {
   }
 
   const th: React.CSSProperties = { padding: '0.5rem 0.4rem', fontSize: '0.68rem', fontWeight: 600, color: '#b0b0b0', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'center', whiteSpace: 'nowrap' }
-  const rowLabel: React.CSSProperties = { padding: '0.55rem 0.75rem', fontSize: '0.85rem', color: '#e0e0e0', whiteSpace: 'nowrap' }
+  const rowLabel: React.CSSProperties = { padding: '0.55rem 0.75rem', fontSize: '0.85rem', color: 'var(--text)', whiteSpace: 'nowrap' }
   const cell: React.CSSProperties = { padding: '0.4rem', textAlign: 'center', borderTop: '1px solid #383838' }
   const iconBtn = (disabled: boolean): React.CSSProperties => ({ background: 'none', border: 'none', padding: 2, lineHeight: 0, cursor: disabled ? 'not-allowed' : 'pointer' })
 
@@ -102,7 +102,7 @@ export default function RolePermissionsSettings() {
         <ShieldCheck className="w-5 h-5 text-gray-300" />
         <h3 className="text-lg font-semibold text-gray-100">Rollen & Rechte</h3>
       </div>
-      <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, maxWidth: 720 }}>
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 720 }}>
         Lege fest, was jede Rolle in der App darf. Bei den Bereichen unterscheidest du zwischen{' '}
         <Eye size={13} style={{ display: 'inline', verticalAlign: '-2px', color: '#7c7cf8' }} /> <strong>sehen</strong> und{' '}
         <Pencil size={12} style={{ display: 'inline', verticalAlign: '-1px', color: '#f5c518' }} /> <strong>bearbeiten</strong>.
@@ -114,7 +114,7 @@ export default function RolePermissionsSettings() {
         <div className="flex items-center gap-2 text-sm text-gray-400 py-6"><Loader2 className="w-4 h-4 animate-spin" /> Lädt…</div>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid #3c3c3c', borderRadius: 8 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', background: '#2d2d2d' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface)' }}>
             <thead>
               <tr style={{ background: '#383838' }}>
                 <th style={{ ...th, textAlign: 'left', minWidth: 220 }}>Recht</th>
@@ -148,10 +148,10 @@ export default function RolePermissionsSettings() {
                                 <td key={role} style={cell}>
                                   <div style={{ display: 'flex', gap: 6, justifyContent: 'center', alignItems: 'center' }}>
                                     <button type="button" title={viewOn ? 'Darf sehen' : 'Sehen: aus'} disabled={isAdmin} onClick={() => toggleView(p.key, role)} style={iconBtn(isAdmin)}>
-                                      <Eye size={15} color={viewOn ? '#7c7cf8' : '#4a4a4a'} />
+                                      <Eye size={15} color={viewOn ? '#7c7cf8' : 'var(--border-strong)'} />
                                     </button>
                                     <button type="button" title={editOn ? 'Darf bearbeiten' : 'Bearbeiten: aus'} disabled={isAdmin} onClick={() => toggleEdit(p.key, role)} style={iconBtn(isAdmin)}>
-                                      <Pencil size={14} color={editOn ? '#f5c518' : '#4a4a4a'} />
+                                      <Pencil size={14} color={editOn ? '#f5c518' : 'var(--border-strong)'} />
                                     </button>
                                   </div>
                                 </td>

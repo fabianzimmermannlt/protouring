@@ -441,11 +441,11 @@ export default function AnreiseModal({
                   renderValue={v => [v.designation, v.vehicleType ? `(${v.vehicleType})` : '', v.seats ? `· ${v.seats} Sitze` : ''].filter(Boolean).join(' ')}
                   renderItem={(v, selected) => (
                     <div>
-                      <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : (dark ? '#e0e0e0' : '#111827'), fontWeight: selected ? 500 : 400 }}>
+                      <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : (dark ? 'var(--text)' : '#111827'), fontWeight: selected ? 500 : 400 }}>
                         {v.designation}{v.vehicleType ? ` · ${v.vehicleType}` : ''}
                       </div>
                       {(v.seats || v.licensePlate) && (
-                        <div style={{ fontSize: '0.72rem', color: dark ? '#9ca3af' : '#6b7280' }}>
+                        <div style={{ fontSize: '0.72rem', color: dark ? 'var(--text-muted)' : 'var(--text-subtle)' }}>
                           {[v.seats ? `${v.seats} Sitze` : '', v.licensePlate].filter(Boolean).join(' · ')}
                         </div>
                       )}
@@ -462,7 +462,7 @@ export default function AnreiseModal({
                     <span>
                       {occupiedSeats}/{totalSeats} Sitze belegt
                       {freeSeats != null && freeSeats > 0 && (
-                        <span style={{ color: '#6b7280' }}> · {freeSeats} frei</span>
+                        <span style={{ color: 'var(--text-subtle)' }}> · {freeSeats} frei</span>
                       )}
                       {freeSeats != null && freeSeats < 0 && (
                         <span style={{ color: '#dc2626' }}> · {Math.abs(freeSeats)} zu viele!</span>
@@ -655,7 +655,7 @@ export default function AnreiseModal({
                   type="button"
                   onClick={() => setPersonPickerOpen(p => !p)}
                   className="flex items-center gap-1 text-sm px-2 py-1 rounded"
-                  style={{ background: 'none', border: '1px solid #555', color: '#9ca3af', cursor: 'pointer' }}
+                  style={{ background: 'none', border: '1px solid #555', color: 'var(--text-muted)', cursor: 'pointer' }}
                 >
                   <Plus size={12} />
                   {selectedMemberIds.size === 0 ? 'Personen hinzufügen' : 'Bearbeiten'}

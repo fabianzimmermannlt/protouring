@@ -96,9 +96,9 @@ export default function NotificationBell() {
         onClick={toggle}
         title="Benachrichtigungen"
         className="relative flex items-center justify-center w-7 h-7 rounded transition-colors"
-        style={{ color: open ? '#f5c518' : '#9ca3af' }}
+        style={{ color: open ? '#f5c518' : 'var(--text-muted)' }}
         onMouseEnter={e => { if (!open) e.currentTarget.style.color = '#d1d5db' }}
-        onMouseLeave={e => { if (!open) e.currentTarget.style.color = '#9ca3af' }}
+        onMouseLeave={e => { if (!open) e.currentTarget.style.color = 'var(--text-muted)' }}
       >
         <Bell size={16} />
         {count > 0 && (
@@ -110,9 +110,9 @@ export default function NotificationBell() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 w-80 bg-[#1f1f1f] rounded-lg shadow-xl border border-[#3a3a3a] overflow-hidden z-[9999]"
+          className="absolute right-0 top-full mt-1.5 w-80 bg-[var(--surface-3)] rounded-lg shadow-xl border border-[var(--border)] overflow-hidden z-[9999]"
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-[#3a3a3a]">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
             <span className="text-sm font-semibold text-gray-100">Benachrichtigungen</span>
             <div className="flex items-center gap-3">
               {items.some(i => !i.read_at) && (
@@ -135,7 +135,7 @@ export default function NotificationBell() {
               items.map(n => (
                 <div
                   key={n.id}
-                  className={`group relative flex items-start border-b border-[#2d2d2d] transition-colors hover:bg-[#2a2a2a] ${n.read_at ? '' : 'bg-blue-500/10'}`}
+                  className={`group relative flex items-start border-b border-[var(--surface)] transition-colors hover:bg-[#2a2a2a] ${n.read_at ? '' : 'bg-blue-500/10'}`}
                 >
                   <div onClick={() => onItemClick(n)} className="flex items-start gap-2 flex-1 min-w-0 px-3 py-2.5 pr-8 cursor-pointer">
                     {!n.read_at && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}

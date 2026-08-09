@@ -148,8 +148,8 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
   })
 
   const ro = !isEditor
-  const titleColor = '#e0e0e0'  // App ist fest Dark-Mode → Titel immer hell (auch mobil, wo isL2 false ist)
-  const dirtyColor = isL2 ? '#b0b0b0' : '#6b7280'
+  const titleColor = 'var(--text)'  // App ist fest Dark-Mode → Titel immer hell (auch mobil, wo isL2 false ist)
+  const dirtyColor = isL2 ? '#b0b0b0' : 'var(--text-subtle)'
 
   return (
     <div className="module-content">
