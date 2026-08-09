@@ -44,6 +44,7 @@ import { useLayout } from './LayoutContext'
 import { useLanguage } from '@/app/lib/i18n/LanguageContext'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import NotificationBell from '@/app/components/shared/NotificationBell'
+import { ThemeToggle } from '@/app/components/shared/ThemeToggle'
 import { FeedbackTrigger } from '@/app/components/shared/FeedbackButton'
 
 // ─── Sub-item definitions ─────────────────────────────────────────────────────
@@ -633,6 +634,7 @@ export function L2Layout({
           {/* Right: Feedback + Glocke + Preview Banner */}
           <div className="flex-1 flex items-center justify-end gap-3">
             <FeedbackTrigger />
+            <ThemeToggle className="flex items-center justify-center w-7 h-7 rounded text-gray-400 hover:text-gray-200 transition-colors" />
             <NotificationBell />
             <PreviewBanner />
           </div>

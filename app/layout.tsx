@@ -37,6 +37,13 @@ export default function RootLayout({
   return (
     <html lang="de" className="dark">
       <body className={inter.className}>
+        {/* No-Flash: gespeicherte Theme-Wahl vor dem ersten Zeichnen anwenden.
+            Default = dunkel (bis der Hell-Modus vollständig migriert ist). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('pt-theme');var d=t?t==='dark':true;document.documentElement.classList.toggle('dark',d);}catch(e){}})();`,
+          }}
+        />
         <ServiceWorkerRegister />
         <ModalScrollReset />
         {children}

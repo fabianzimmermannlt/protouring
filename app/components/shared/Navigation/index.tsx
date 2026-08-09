@@ -29,6 +29,7 @@ import { getCurrentUser, getCurrentTenant, getAllTenants, setAllTenants, getMyTe
 import { useRouter } from 'next/navigation'
 import PreviewBanner from '@/app/components/shared/PreviewBanner'
 import NotificationBell from '@/app/components/shared/NotificationBell'
+import { ThemeToggle } from '@/app/components/shared/ThemeToggle'
 import DeactivatedScreen from '@/app/components/shared/DeactivatedScreen'
 import { SubNavigation } from './SubNavigation'
 import { ContactsSubNavigation } from './ContactsSubNavigation'
@@ -490,6 +491,7 @@ export function Navigation({
 
           {/* Rechts: Glocke + PreviewBanner */}
           <div className="flex items-center gap-2">
+            <ThemeToggle className="flex items-center justify-center w-7 h-7 rounded text-gray-400 hover:text-gray-200 transition-colors" />
             <NotificationBell />
             <PreviewBanner />
           </div>

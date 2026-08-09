@@ -5,6 +5,7 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Eye, X, ChevronDown } from 'lucide-react'
 import { searchGlobal, SearchResult, SearchResultType, getRealTenantRole, getPreviewRole, setPreviewRole, ROLE_LABELS } from '@/lib/api-client'
 import NotificationBell from '@/app/components/shared/NotificationBell'
+import { ThemeToggle } from '@/app/components/shared/ThemeToggle'
 import { FeedbackTrigger } from '@/app/components/shared/FeedbackButton'
 
 // ── Icons per type ────────────────────────────────────────────────────────────
@@ -258,6 +259,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
       {/* ── RIGHT: Feedback + Glocke + Preview Button ──────────────────────── */}
       <div className="ml-auto flex-shrink-0 flex items-center gap-2">
         <FeedbackTrigger />
+        <ThemeToggle className="flex items-center justify-center w-7 h-7 rounded text-gray-400 hover:text-gray-200 transition-colors" />
         <NotificationBell />
         {canPreview && (
           <div ref={previewRef} className="relative">
