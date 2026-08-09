@@ -169,7 +169,7 @@ export default function CalculationModule() {
         <div className="py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Projekt lädt…</div>
       ) : (
         <>
-          <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflowX: 'auto', marginBottom: '1rem' }}>
             <button onClick={() => guardNav(() => setView('overview'))} className={`pt-detail-tab${view === 'overview' ? ' active' : ''}`}>Übersicht</button>
             <button onClick={() => guardNav(() => setView('shows'))} className={`pt-detail-tab${view === 'shows' ? ' active' : ''}`}>Shows</button>
             <button onClick={() => guardNav(() => setView('overhead'))} className={`pt-detail-tab${view === 'overhead' ? ' active' : ''}`}>Übergeordnet</button>
@@ -427,7 +427,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   }, [overview, viewShows, totals, hideZero, dataset])
 
   const money = (v: Decimal, dashZero = false) => (dashZero && v.isZero() ? '–' : formatMoney(v))
-  const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: '#f87171' } : undefined)
+  const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: 'var(--neg)' } : undefined)
 
   // Hintergrund je Zeilentyp: Gesamt-/Ergebnis-Zeilen heben sich farblich ab.
   const rowBgFor = (t: Row['type']): string | undefined => {
@@ -488,7 +488,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       th{background:#ececec;text-align:right}
       th.pos,td.pos{text-align:left}
       td.num{text-align:right;font-variant-numeric:tabular-nums}
-      tr.sec td{background:#333;color:#fff;font-weight:bold;letter-spacing:.04em}
+      tr.sec td{background:var(--border);color:#fff;font-weight:bold;letter-spacing:.04em}
       tr.catsum td{background:#f1f1f1;font-weight:bold}
       tr.grand td{background:#dde6f0;font-weight:bold}
       .note{color:#777;font-style:italic;font-size:9px}
@@ -508,11 +508,11 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       <div className="flex flex-wrap items-end gap-4 mb-4">
         <div>
           <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Ansicht</label>
-          <div className="inline-flex" style={{ border: '1px solid #3c3c3c', borderRadius: 6, overflow: 'hidden' }}>
+          <div className="inline-flex" style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
             <button onClick={() => setIstMode(false)} className="btn" title="Soll (geplant, je Variante)"
               style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: !istMode ? '#2b3a4d' : 'transparent', color: !istMode ? '#dbeafe' : 'var(--text-muted)', fontWeight: !istMode ? 600 : 400 }}>Soll</button>
             <button onClick={() => setIstMode(true)} className="btn" title="Ist (tatsächliche Werte aus den Shows)"
-              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: istMode ? '#3a3222' : 'transparent', color: istMode ? '#facc15' : 'var(--text-muted)', fontWeight: istMode ? 600 : 400 }}>Ist</button>
+              style={{ fontSize: '0.75rem', padding: '0.28rem 0.8rem', borderRadius: 0, background: istMode ? '#3a3222' : 'transparent', color: istMode ? 'var(--accent)' : 'var(--text-muted)', fontWeight: istMode ? 600 : 400 }}>Ist</button>
           </div>
         </div>
         <div style={{ opacity: istMode ? 0.4 : 1 }}>
@@ -530,7 +530,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
           <input type="range" min={0} max={1.5} step={0.05} value={scenario} disabled={useVVK || istMode}
             onChange={e => setScenario(Number(e.target.value))} style={{ width: 180, opacity: (useVVK || istMode) ? 0.4 : 1 }} />
         </div>
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK && !istMode ? '#facc15' : 'var(--text-muted)', opacity: istMode ? 0.4 : 1 }}>
+        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: useVVK && !istMode ? 'var(--accent)' : 'var(--text-muted)', opacity: istMode ? 0.4 : 1 }}>
           <input type="checkbox" checked={useVVK} disabled={istMode} onChange={e => setUseVVK(e.target.checked)} />
           Ist-VVK verwenden
         </label>
@@ -564,7 +564,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.7 }}>{formatDate(meta?.show_date)}</div>
                     <div style={{ fontWeight: 400, fontSize: '0.7rem', opacity: 0.55 }}>{meta?.venue}</div>
                     {istMode ? (
-                      <div style={{ marginTop: 4, fontSize: '0.7rem', fontWeight: 600, color: '#facc15' }} title="Ist – tatsächliche Werte">Ist</div>
+                      <div style={{ marginTop: 4, fontSize: '0.7rem', fontWeight: 600, color: 'var(--accent)' }} title="Ist – tatsächliche Werte">Ist</div>
                     ) : (
                       <select
                         value={variantByShow[s.showId] ?? defaultVariant}

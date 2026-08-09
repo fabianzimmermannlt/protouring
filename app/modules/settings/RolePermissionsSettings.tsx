@@ -105,7 +105,7 @@ export default function RolePermissionsSettings() {
       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 720 }}>
         Lege fest, was jede Rolle in der App darf. Bei den Bereichen unterscheidest du zwischen{' '}
         <Eye size={13} style={{ display: 'inline', verticalAlign: '-2px', color: '#7c7cf8' }} /> <strong>sehen</strong> und{' '}
-        <Pencil size={12} style={{ display: 'inline', verticalAlign: '-1px', color: '#f5c518' }} /> <strong>bearbeiten</strong>.
+        <Pencil size={12} style={{ display: 'inline', verticalAlign: '-1px', color: 'var(--accent)' }} /> <strong>bearbeiten</strong>.
         „Bearbeiten" schaltet „Sehen" automatisch mit ein. Die Spalte <strong>Admin</strong> ist immer aktiv (Schutz vor Aussperren).
         Änderungen wirken nach dem Speichern.
       </p>
@@ -113,7 +113,7 @@ export default function RolePermissionsSettings() {
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-gray-400 py-6"><Loader2 className="w-4 h-4 animate-spin" /> Lädt…</div>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #3c3c3c', borderRadius: 8 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface)' }}>
             <thead>
               <tr style={{ background: '#383838' }}>
@@ -130,7 +130,7 @@ export default function RolePermissionsSettings() {
                 return (
                   <Fragment key={group}>
                     <tr>
-                      <td colSpan={ROLE_ORDER.length + 1} style={{ padding: '0.4rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: '#f5c518', textTransform: 'uppercase', letterSpacing: '0.04em', background: '#242015', borderTop: '1px solid #3c3c3c' }}>
+                      <td colSpan={ROLE_ORDER.length + 1} style={{ padding: '0.4rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em', background: '#242015', borderTop: '1px solid var(--border)' }}>
                         {group}{group === 'Bereiche' && <span style={{ color: '#8a8a8a', fontWeight: 400, textTransform: 'none' }}> — 👁 sehen · ✏️ bearbeiten</span>}
                       </td>
                     </tr>
@@ -151,7 +151,7 @@ export default function RolePermissionsSettings() {
                                       <Eye size={15} color={viewOn ? '#7c7cf8' : 'var(--border-strong)'} />
                                     </button>
                                     <button type="button" title={editOn ? 'Darf bearbeiten' : 'Bearbeiten: aus'} disabled={isAdmin} onClick={() => toggleEdit(p.key, role)} style={iconBtn(isAdmin)}>
-                                      <Pencil size={14} color={editOn ? '#f5c518' : 'var(--border-strong)'} />
+                                      <Pencil size={14} color={editOn ? 'var(--accent)' : 'var(--border-strong)'} />
                                     </button>
                                   </div>
                                 </td>

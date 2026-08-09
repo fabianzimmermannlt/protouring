@@ -229,9 +229,9 @@ export default function HotelCard({
                 <button
                   onClick={e => toggleRecommended(stay, e)}
                   title={stay.hotelRecommended ? 'Empfehlung entfernen' : 'Als Empfehlung merken (super Hotel)'}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: stay.hotelRecommended ? '#f5c518' : 'var(--text-subtle)' }}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', color: stay.hotelRecommended ? 'var(--accent)' : 'var(--text-subtle)' }}
                 >
-                  <Star size={13} fill={stay.hotelRecommended ? '#f5c518' : 'none'} />
+                  <Star size={13} fill={stay.hotelRecommended ? 'var(--accent)' : 'none'} />
                 </button>
               ) : stay.hotelRecommended ? (
                 <Star size={13} fill="#f5c518" color="#f5c518" style={{ marginLeft: 'auto' }} />

@@ -38,8 +38,8 @@ function PartnerPickerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div style={{ background: 'var(--surface)', border: '1px solid #3c3c3c' }} className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        <div style={{ borderBottom: '1px solid #3c3c3c' }} className="flex items-center justify-between px-5 py-4">
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between px-5 py-4">
           <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Partner verknüpfen</h3>
           <button onClick={onClose} style={{ color: 'var(--text-muted)' }} className="hover:text-white transition-colors">
             <X size={16} />
@@ -54,11 +54,11 @@ function PartnerPickerModal({
             className="form-input w-full text-sm"
             style={{ fontSize: 13 }}
           />
-          <div className="max-h-64 overflow-y-auto" style={{ border: '1px solid #3c3c3c' }}>
+          <div className="max-h-64 overflow-y-auto" style={{ border: '1px solid var(--border)' }}>
             <button
               onClick={() => setShowCreate(true)}
               className="w-full text-left px-3 py-2 text-xs flex items-center gap-1 transition-colors"
-              style={{ color: '#60a5fa', borderBottom: '1px solid #3c3c3c' }}
+              style={{ color: 'var(--primary-2)', borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#1e1e1e')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
@@ -71,7 +71,7 @@ function PartnerPickerModal({
                 key={p.id}
                 onClick={() => onSelect(p)}
                 className="w-full text-left px-3 py-2.5 text-sm transition-colors"
-                style={{ borderBottom: '1px solid #3c3c3c' }}
+                style={{ borderBottom: '1px solid var(--border)' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#1e1e1e')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
@@ -181,7 +181,7 @@ export default function TerminPartnersCard({
                   disabled={swappingId === link.id || removingId === link.id}
                   title="Partner wechseln"
                   style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#60a5fa')}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary-2)')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                 >
                   {swappingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowLeftRight size={12} />}
@@ -192,7 +192,7 @@ export default function TerminPartnersCard({
                   disabled={removingId === link.id || swappingId === link.id}
                   title="Verknüpfung aufheben"
                   style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                 >
                   {removingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}

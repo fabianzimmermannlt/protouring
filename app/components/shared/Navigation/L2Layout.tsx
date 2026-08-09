@@ -331,7 +331,7 @@ export function L2Layout({
 
   // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
   const renderTermineSubs = () => (
-    <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
+    <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5">
       <button
         onClick={() => guardDirtyNav(() => { handleNav('events'); window.dispatchEvent(new CustomEvent('termine-go-to-list')); onSubTabChange?.('') })}
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
@@ -399,7 +399,7 @@ export function L2Layout({
         {isExpanded && item.id === 'events' && renderTermineSubs()}
 
         {isExpanded && item.id !== 'appointments' && hasSubNav && (
-          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
+          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5">
             {subs.map(sub => (
               <button
                 key={sub.id}
@@ -429,7 +429,7 @@ export function L2Layout({
     const kontoItems = filterSettings(SETTINGS_KONTO)
     const workspaceItems = filterSettings(SETTINGS_WORKSPACE)
     return (
-      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[#333] space-y-0.5">
+      <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5">
         {kontoItems.length > 0 && (
           <>
             <p className="px-2 pt-1 pb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider">Konto</p>
@@ -472,10 +472,10 @@ export function L2Layout({
     <div className="hidden md:flex h-screen bg-gray-100 overflow-hidden">
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────────────── */}
-      <aside className="w-56 flex-shrink-0 bg-[#1c1c1c] flex flex-col border-r border-[#333] l2-sidebar">
+      <aside className="w-56 flex-shrink-0 bg-[#1c1c1c] flex flex-col border-r border-[var(--border)] l2-sidebar">
 
         {/* Identity */}
-        <div className="px-4 py-4 border-b border-[#333]">
+        <div className="px-4 py-4 border-b border-[var(--border)]">
           <div className="flex items-center gap-2.5 mb-1">
             <div className="relative" ref={userMenuRef}>
               <button
@@ -598,7 +598,7 @@ export function L2Layout({
             {can('modules', role) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
               <>
                 <div className="pt-2 pb-1">
-                  <div className="border-t border-[#333]" />
+                  <div className="border-t border-[var(--border)]" />
                 </div>
                 <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                   Module
@@ -612,7 +612,7 @@ export function L2Layout({
           <div className="flex-1" />
 
           {/* Einstellungen – unten, scrollt mit */}
-          <div ref={settingsRef} className="px-0 pb-3 border-t border-[#333] pt-3">
+          <div ref={settingsRef} className="px-0 pb-3 border-t border-[var(--border)] pt-3">
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('pt:open-settings', { detail: { subTab: 'profil' } }))}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[var(--surface)]"
@@ -666,7 +666,7 @@ export function L2Layout({
                 setDirtyDialog(null)
                 dirtyDialog.onProceed()
               }}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}>
                 Speichern
               </button>
             </div>

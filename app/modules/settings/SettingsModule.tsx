@@ -316,7 +316,7 @@ function ArtistSettings() {
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -354,7 +354,7 @@ function ArtistSettings() {
         <div className="pt-card">
           <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.subscription')}</span></div>
           <div className="pt-card-body space-y-2">
-            <p className="text-sm font-medium" style={{ color: '#60a5fa' }}>{subPlan}</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--primary-2)' }}>{subPlan}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
@@ -471,7 +471,7 @@ function FPCheckbox({ label, checked, onChange }: {
 function FPSection({ title }: { title: string }) {
   return (
     <h3 className="text-xs font-semibold uppercase tracking-wider"
-      style={{ color: '#888', borderBottom: '1px solid #333', paddingBottom: '6px' }}>
+      style={{ color: '#888', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
       {title}
     </h3>
   )
@@ -677,7 +677,7 @@ function UserProfil() {
           <div>
             <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--text)' }}>{displayFirst} {displayLast}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{form.email || currentUser?.email}</p>
-            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ background: '#333', color: 'var(--text-muted)' }}>
+            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
               {ROLE_LABELS[currentTenant?.role as TenantRole] ?? currentTenant?.role}
             </span>
           </div>
@@ -690,7 +690,7 @@ function UserProfil() {
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -805,7 +805,7 @@ function UserProfil() {
             <FPField label={t('profile.pants')} value={form.pantsSize} onChange={v => set('pantsSize', v)} placeholder="32, 34, 36" />
             <FPField label={t('profile.shoes')} value={form.shoeSize} onChange={v => set('shoeSize', v)} placeholder="42, 43, 44" />
           </div>
-          <div className="mt-4 pt-3" style={{ borderTop: '1px solid #3c3c3c' }}>
+          <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
             <FPCheckbox label={t('profile.crewToolActive')} checked={form.crewToolActive} onChange={v => set('crewToolActive', v)} />
           </div>
         </div>
@@ -2320,7 +2320,7 @@ function PartnerTypesSettings() {
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -2648,7 +2648,7 @@ function VehicleTypesSettings() {
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -2862,7 +2862,7 @@ function FileCategoriesSettings() {
               <X className="w-3 h-3 inline mr-1" />Abbrechen
             </button>
             <button onClick={saveEdit}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Save className="w-3 h-3" />Speichern
             </button>
           </div>
@@ -3279,7 +3279,7 @@ function TravelSettings() {
       </div>
 
       {saveError && (
-        <div style={{ color: '#f87171', fontSize: '0.8rem', textAlign: 'right' }}>{saveError}</div>
+        <div style={{ color: 'var(--neg)', fontSize: '0.8rem', textAlign: 'right' }}>{saveError}</div>
       )}
       {dirty && (
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>

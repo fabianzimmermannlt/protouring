@@ -231,7 +231,7 @@ export default function HotelModal({
           {/* Prominentes Empfehlungs-Panel */}
           {panelEntries.length > 0 && (
             <div style={{ border: '1px solid rgba(245,197,24,0.45)', background: 'rgba(245,197,24,0.08)', borderRadius: '8px', padding: '0.6rem 0.7rem' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f5c518', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
                 <Star size={14} fill="#f5c518" color="#f5c518" /> {panelNearby ? 'Empfehlung in der Nähe' : 'Empfohlene Hotels'}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -245,7 +245,7 @@ export default function HotelModal({
                     <button
                       type="button"
                       onClick={() => { set('hotelId', Number(e.hotel.id)); setHotels(prev => prev.find(x => x.id === e.hotel.id) ? prev : [...prev, e.hotel]) }}
-                      style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: '#f5c518', color: '#1a1a1a', border: 'none', borderRadius: '5px', padding: '0.3rem 0.7rem', cursor: 'pointer' }}
+                      style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, background: 'var(--accent)', color: '#1a1a1a', border: 'none', borderRadius: '5px', padding: '0.3rem 0.7rem', cursor: 'pointer' }}
                     >
                       Auswählen
                     </button>
@@ -270,7 +270,7 @@ export default function HotelModal({
                 renderValue={h => [h.name, h.city].filter(Boolean).join(' · ')}
                 renderItem={(h, selected) => (
                   <div>
-                    <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : 'var(--text)', fontWeight: selected ? 500 : 400, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: selected ? 'var(--primary-2)' : 'var(--text)', fontWeight: selected ? 500 : 400, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       {h.recommended && <Star size={12} fill="#f5c518" color="#f5c518" style={{ flexShrink: 0 }} />}
                       {h.name}
                     </div>

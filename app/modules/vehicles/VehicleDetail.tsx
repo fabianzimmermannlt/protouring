@@ -174,7 +174,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -235,7 +235,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
                   <div style={{ paddingTop: '4px' }}>
                     <input type="checkbox" id="hasTrailer" checked={hasTrailer} disabled={ro}
                       onChange={e => f('hasTrailer', e.target.checked ? 'true' : 'false')}
-                      style={{ accentColor: '#60a5fa', width: '14px', height: '14px', cursor: ro ? 'default' : 'pointer' }} />
+                      style={{ accentColor: 'var(--primary-2)', width: '14px', height: '14px', cursor: ro ? 'default' : 'pointer' }} />
                     <label htmlFor="hasTrailer" style={{ marginLeft: '6px', fontSize: '0.875rem', color: labelColor, cursor: ro ? 'default' : 'pointer' }}>
                       Kann Anhänger ziehen
                     </label>
@@ -304,7 +304,7 @@ export function VehicleDetailContent({ vehicleId, onNotFound, onBack, headerRigh
                 Verwerfen
               </button>
               <button onClick={async () => { const ok = await saveEdit(); if (ok) { setShowDirtyDialog(false); onBack?.() } }} disabled={saving}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
                 Speichern
               </button>
             </div>

@@ -115,7 +115,7 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
               <tr key={show.id} style={{ opacity: show.is_active ? 1 : 0.5 }}>
                 <td className="text-xs">{formatDate(show.show_date)}</td>
                 <td className="font-medium text-sm">
-                  <button onClick={() => setDetailId(show.id)} className="hover:underline" style={{ color: '#60a5fa' }} title="Buchungen öffnen">
+                  <button onClick={() => setDetailId(show.id)} className="hover:underline" style={{ color: 'var(--primary-2)' }} title="Buchungen öffnen">
                     {show.city || '(öffnen)'}
                   </button>
                 </td>
@@ -271,7 +271,7 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
             </div>
           )}
           {!show && otherShows.length > 0 && (
-            <div style={{ background: 'var(--surface-2)', border: '1px solid #3c3c3c', borderRadius: 6, padding: '8px 10px' }}>
+            <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px' }}>
               <label className="form-label" style={{ marginBottom: 4 }}>Positionen übernehmen von (optional)</label>
               <select className="form-input" value={copyFrom} onChange={e => setCopyFrom(e.target.value)}>
                 <option value="">– keine (leere Show) –</option>

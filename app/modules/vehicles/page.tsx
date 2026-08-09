@@ -107,7 +107,7 @@ export default function VehiclesPage() {
             setSelectedVehicleId(null)
           }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
           title="Fahrzeug löschen"
         >
@@ -239,7 +239,7 @@ function VehicleTable({ vehicles, onEdit, onDelete, isAdmin }: { vehicles: Vehic
                   onDrop={() => { colDrop(i); setDragOverCol(null) }}
                   onDragEnd={() => setDragOverCol(null)}
                   className="sortable"
-                  style={{ cursor: 'grab', borderLeft: isOver ? '2px solid #60a5fa' : undefined, userSelect: 'none' }}
+                  style={{ cursor: 'grab', borderLeft: isOver ? '2px solid var(--primary-2)' : undefined, userSelect: 'none' }}
                   onClick={() => toggleSort(m.sortKey)}
                 >
                   {m.label}

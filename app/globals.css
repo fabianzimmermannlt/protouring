@@ -1495,11 +1495,15 @@ body {
   --border: #e3e6ea;
   --border-strong: #cfd4db;
   --primary: #2563eb;
+  --primary-2: #3b82f6;
+  --primary-3: #60a5fa;
   --primary-soft: #dbeafe;
   --accent: #b8860b;
   --danger: #dc2626;
   --danger-soft: #fee2e2;
   --success: #16a34a;
+  --pos: #16a34a;
+  --neg: #dc2626;
 }
 html.dark {
   --bg: #141414;
@@ -1512,11 +1516,15 @@ html.dark {
   --border: #3a3a3a;
   --border-strong: #4a4a4a;
   --primary: #3b82f6;
+  --primary-2: #60a5fa;
+  --primary-3: #93c5fd;
   --primary-soft: #172554;
   --accent: #f5c518;
   --danger: #ef4444;
   --danger-soft: #7f1d1d;
   --success: #22c55e;
+  --pos: #4ade80;
+  --neg: #f87171;
 }
 
 html.dark body {

@@ -23,9 +23,9 @@ const GROUP_KEY_MAP: Record<string, TranslationKey> = {
 }
 
 const PRESET_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#3b82f6', '#06b6d4', '#64748b', '#1f2937',
+  '#6366f1', '#8b5cf6', '#ec4899', 'var(--danger)',
+  '#f97316', '#eab308', 'var(--success)', '#14b8a6',
+  'var(--primary)', '#06b6d4', '#64748b', '#1f2937',
 ]
 
 interface GewerkFormState {

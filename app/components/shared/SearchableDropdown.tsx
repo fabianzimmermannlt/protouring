@@ -158,7 +158,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
           position: 'fixed', left: pos.left, width: pos.width, zIndex: 1000,
           ...(pos.up ? { bottom: pos.bottom } : { top: pos.top }),
           background: dark ? '#1e1e1e' : '#fff',
-          border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
+          border: `1px solid ${dark ? 'var(--border)' : '#e5e7eb'}`,
           borderRadius: 0,
           boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.1)',
         }}>
@@ -170,7 +170,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
           ) : (
             <>
               {/* Suche */}
-              <div style={{ padding: '0.5rem', borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}` }}>
+              <div style={{ padding: '0.5rem', borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}` }}>
                 <input
                   ref={inputRef}
                   type="text"
@@ -179,7 +179,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                   placeholder="Suchen …"
                   style={{
                     width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.8rem',
-                    border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
+                    border: `1px solid ${dark ? 'var(--border)' : '#e5e7eb'}`,
                     borderRadius: 0, outline: 'none',
                     background: dark ? 'var(--surface)' : '#fff',
                     color: dark ? 'var(--text)' : '#111827',
@@ -199,9 +199,9 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     }}
                     style={{
                       width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                      fontSize: '0.8rem', color: '#3b82f6', background: 'none', border: 'none',
+                      fontSize: '0.8rem', color: 'var(--primary)', background: 'none', border: 'none',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
-                      borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
+                      borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}`,
                     }}
                     onMouseOver={e => (e.currentTarget.style.background = dark ? '#1a3a5c' : '#eff6ff')}
                     onMouseOut={e => (e.currentTarget.style.background = 'none')}
@@ -217,8 +217,8 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     onClick={() => { onSelect(null); close() }}
                     style={{
                       width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                      fontSize: '0.8rem', color: '#ef4444', background: 'none', border: 'none',
-                      cursor: 'pointer', borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
+                      fontSize: '0.8rem', color: 'var(--danger)', background: 'none', border: 'none',
+                      cursor: 'pointer', borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}`,
                     }}
                     onMouseOver={e => (e.currentTarget.style.background = dark ? '#3b1010' : '#fef2f2')}
                     onMouseOut={e => (e.currentTarget.style.background = 'none')}
@@ -255,9 +255,9 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                     <div style={{
                       padding: '0.3rem 0.65rem', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.03em',
                       textTransform: 'uppercase',
-                      color: gold ? '#f5c518' : 'var(--text-muted)',
+                      color: gold ? 'var(--accent)' : 'var(--text-muted)',
                       background: gold ? (dark ? '#242015' : '#fffbea') : (dark ? 'var(--surface-2)' : '#f9fafb'),
-                      borderBottom: `1px solid ${dark ? '#3c3c3c' : '#f3f4f6'}`,
+                      borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}`,
                     }}>{gold ? '★ ' : ''}{label}</div>
                   )
                   return (

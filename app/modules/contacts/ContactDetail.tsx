@@ -204,7 +204,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
                   )}
                   {role && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)' }}>{role}</span>}
                   {contact!.invitePending && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.15)', color: '#fbbf24' }}>{t('contacts.badge.invitationPending')}</span>}
-                  {contact!.contactType === 'guest' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{t('contacts.badge.manual')}</span>}
+                  {contact!.contactType === 'guest' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.15)', color: 'var(--primary-2)' }}>{t('contacts.badge.manual')}</span>}
                   {isEditor && onInvite && !contact!.userId && (contact!.contactType === 'guest' || contact!.contactType === 'artist') && (
                     <button onClick={() => onInvite(contact!)}
                       className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors">
@@ -224,7 +224,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
             <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
             </button>
@@ -234,7 +234,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
             <button
               onClick={onReactivate}
               title="Reaktivieren"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#22c55e', flexShrink: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--success)', flexShrink: 0 }}
             >
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -243,7 +243,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
               onClick={onAction}
               title="Deaktivieren / Löschen"
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)', flexShrink: 0 }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
               onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
             >
               <Trash2 className="w-4 h-4" />
@@ -457,7 +457,7 @@ export function ContactDetailContent({ contactId, onInvite, onBack, onAction, on
                 Verwerfen
               </button>
               <button onClick={async () => { const ok = await saveEdit(); if (ok) { setShowDirtyDialog(false); onBack?.() } }} disabled={saving}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
                 Speichern
               </button>
             </div>

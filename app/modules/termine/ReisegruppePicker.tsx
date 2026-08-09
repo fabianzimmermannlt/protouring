@@ -23,9 +23,9 @@ interface ReisegruppePickerProps {
 }
 
 const AVAIL = {
-  available:   { color: '#22c55e', symbol: '✓', label: 'verfügbar' },
+  available:   { color: 'var(--success)', symbol: '✓', label: 'verfügbar' },
   maybe:       { color: '#eab308', symbol: '?', label: 'vielleicht' },
-  unavailable: { color: '#ef4444', symbol: '✗', label: 'nicht verfügbar' },
+  unavailable: { color: 'var(--danger)', symbol: '✗', label: 'nicht verfügbar' },
   null:        { color: 'var(--text-muted)', symbol: '–', label: 'keine Angabe' },
 }
 
@@ -123,15 +123,15 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
   const labelColor  = dark ? '#b0b0b0' : 'var(--text-subtle)'
   const rowHoverBg  = dark ? '#383838' : '#f9fafb'
   const rowAddedBg  = dark ? '#1e3a1e' : '#f0fdf4'
-  const inputBg     = dark ? '#3c3c3c' : '#ffffff'
+  const inputBg     = dark ? 'var(--border)' : '#ffffff'
   const inputBorder = dark ? '#555555' : '#d1d5db'
   const inputColor  = dark ? 'var(--text)' : '#111827'
-  const dividerColor = dark ? '#3c3c3c' : '#f3f4f6'
+  const dividerColor = dark ? 'var(--border)' : '#f3f4f6'
   const namColor    = dark ? 'var(--text)' : '#111827'
   const metaColor   = dark ? 'var(--text-muted)' : 'var(--text-subtle)'
 
   const inpStyle: CSSProperties = { flex: 1, minWidth: 0, padding: '7px 10px', fontSize: 13, background: inputBg, border: `1px solid ${inputBorder}`, borderRadius: 0, color: inputColor, outline: 'none', boxSizing: 'border-box' }
-  const tabStyle = (active: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 0, background: active ? '#3b82f6' : 'transparent', color: active ? '#fff' : titleColor, border: `1px solid ${active ? '#3b82f6' : inputBorder}` })
+  const tabStyle = (active: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', borderRadius: 0, background: active ? 'var(--primary)' : 'transparent', color: active ? '#fff' : titleColor, border: `1px solid ${active ? 'var(--primary)' : inputBorder}` })
   const submitStyle = (busy: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', fontSize: 12, fontWeight: 600, background: '#16a34a', color: '#fff', border: 'none', borderRadius: 0, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 })
 
   return (
@@ -206,7 +206,7 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
                       onClick={() => handleAdd(c)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                        fontSize: 12, fontWeight: 500, background: '#3b82f6', color: '#fff',
+                        fontSize: 12, fontWeight: 500, background: 'var(--primary)', color: '#fff',
                         border: 'none', borderRadius: 0, cursor: adding === c.id ? 'not-allowed' : 'pointer',
                         opacity: adding === c.id ? 0.6 : 1, flexShrink: 0,
                       }}
@@ -267,14 +267,14 @@ export default function ReisegruppePicker({ terminId, onClose, onAdded }: Reiseg
             </div>
           )}
 
-          {createError && <div style={{ color: '#f87171', fontSize: 12, marginTop: 8 }}>{createError}</div>}
+          {createError && <div style={{ color: 'var(--neg)', fontSize: 12, marginTop: 8 }}>{createError}</div>}
         </div>
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${border}`, flexShrink: 0 }}>
           <button
             onClick={onClose}
-            style={{ padding: '7px 16px', fontSize: 13, fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}
+            style={{ padding: '7px 16px', fontSize: 13, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}
           >
             Fertig
           </button>

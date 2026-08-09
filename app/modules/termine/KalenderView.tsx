@@ -9,16 +9,16 @@ const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 const STATUS_COLOR: Record<string, string> = {
   'Idee':                  'var(--text-muted)',
   'Option':                '#f59e0b',
-  'noch nicht bestätigt':  '#3b82f6',
-  'bestätigt':             '#22c55e',
+  'noch nicht bestätigt':  'var(--primary)',
+  'bestätigt':             'var(--success)',
   'abgeschlossen':         'var(--text-subtle)',
-  'abgesagt':              '#ef4444',
+  'abgesagt':              'var(--danger)',
 }
 
 const AVAIL_DOT: Record<string, string> = {
-  available:   '#22c55e',
+  available:   'var(--success)',
   maybe:       '#f59e0b',
-  unavailable: '#ef4444',
+  unavailable: 'var(--danger)',
 }
 
 interface KalenderViewProps {

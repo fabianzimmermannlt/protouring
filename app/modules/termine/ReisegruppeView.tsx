@@ -97,7 +97,7 @@ function BandBlock({
 
   const renderCard = (m: TravelPartyMember, isExcluded: boolean) => (
     <div key={m.id} style={{
-      border: `1px solid ${isExcluded ? (dark ? '#3c3c3c' : '#e5e7eb') : (dark ? '#1e3a5f' : '#bfdbfe')}`,
+      border: `1px solid ${isExcluded ? (dark ? 'var(--border)' : '#e5e7eb') : (dark ? '#1e3a5f' : '#bfdbfe')}`,
       borderRadius: 0, padding: '0.75rem 1rem',
       display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
       background: isExcluded ? (dark ? '#2a2a2a' : '#f9fafb') : (dark ? '#0f2744' : '#eff6ff'),
@@ -339,7 +339,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 key={m.id}
                 style={{
                   background: dark ? 'var(--surface)' : '#ffffff',
-                  border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`,
+                  border: `1px solid ${dark ? 'var(--border)' : '#e5e7eb'}`,
                   borderRadius: 0, padding: '0.75rem 1rem',
                   display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
                   cursor: isAdmin ? 'pointer' : 'default',
@@ -357,10 +357,10 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                       {m.firstName} {m.lastName}
                     </span>
                     {m.contactType === 'guest' && (
-                      <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: '#3c3c3c' } : undefined}>Gast</span>
+                      <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: 'var(--border)' } : undefined}>Gast</span>
                     )}
                     {m.noHotel && (
-                      <span className="pt-guest-badge" style={{ background: '#3a2f10', color: '#f5c518', borderColor: '#5a4a1a' }}>🏠 Fährt heim</span>
+                      <span className="pt-guest-badge" style={{ background: '#3a2f10', color: 'var(--accent)', borderColor: '#5a4a1a' }}>🏠 Fährt heim</span>
                     )}
                   </div>
                   {functions ? (
@@ -434,7 +434,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                   <div key={field} style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', color: dark ? 'var(--text-muted)' : 'var(--text-muted)', marginBottom: '0.25rem' }}>Funktion {i + 1}</label>
                     <select
-                      style={{ width: '100%', border: `1px solid ${dark ? '#3c3c3c' : '#e5e7eb'}`, borderRadius: 0, padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? 'var(--text)' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
+                      style={{ width: '100%', border: `1px solid ${dark ? 'var(--border)' : '#e5e7eb'}`, borderRadius: 0, padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: dark ? 'var(--text)' : '#1f2937', background: dark ? '#1e1e1e' : '#ffffff' }}
                       value={editRoles[field]}
                       onChange={e => setEditRoles(prev => ({ ...prev, [field]: e.target.value }))}
                     >
@@ -489,7 +489,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                 return (
                   <tr key={m.id}>
                     {isVisible('avail')      && <td><AvailCell status={m.availabilityStatus} /></td>}
-                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: '#3c3c3c' } : undefined}>Gast</span>}</td>}
+                    {isVisible('lastName')   && <td>{m.lastName || EMPTY}{m.contactType === 'guest' && <span className="pt-guest-badge" style={dark ? { background: '#2a2a2a', color: 'var(--text-muted)', borderColor: 'var(--border)' } : undefined}>Gast</span>}</td>}
                     {isVisible('firstName')  && <td>{m.firstName || EMPTY}</td>}
                     {isVisible('role1')      && <td>{isAdmin ? <RolleDropdown value={m.role1} options={optsFor('role1')} saving={saving} onChange={v => updateRole(m, 'role1', v)} /> : (m.role1 || EMPTY)}</td>}
                     {isVisible('role2')      && <td>{isAdmin ? <RolleDropdown value={m.role2} options={optsFor('role2')} saving={saving} onChange={v => updateRole(m, 'role2', v)} /> : (m.role2 || EMPTY)}</td>}
@@ -500,7 +500,7 @@ export default function ReisegruppeView({ terminId, isAdmin }: { terminId: numbe
                     {isVisible('residence')  && <td>{m.residence || EMPTY}</td>}
                     {isVisible('noHotel')    && <td style={{ textAlign: 'center' }}>
                       {isAdmin
-                        ? <input type="checkbox" checked={!!m.noHotel} onChange={() => toggleNoHotel(m)} title="Fährt heim – kein Hotel nötig" style={{ accentColor: '#f5c518', cursor: 'pointer', width: 15, height: 15 }} />
+                        ? <input type="checkbox" checked={!!m.noHotel} onChange={() => toggleNoHotel(m)} title="Fährt heim – kein Hotel nötig" style={{ accentColor: 'var(--accent)', cursor: 'pointer', width: 15, height: 15 }} />
                         : (m.noHotel ? <Home size={14} className="text-amber-500 inline" /> : EMPTY)}
                     </td>}
                     {isVisible('files')      && <td><button className="pt-travel-action-btn" title="Dateien (kommt in Phase 1b)" disabled><Paperclip size={13} /></button></td>}

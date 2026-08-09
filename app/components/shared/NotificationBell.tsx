@@ -96,7 +96,7 @@ export default function NotificationBell() {
         onClick={toggle}
         title="Benachrichtigungen"
         className="relative flex items-center justify-center w-7 h-7 rounded transition-colors"
-        style={{ color: open ? '#f5c518' : 'var(--text-muted)' }}
+        style={{ color: open ? 'var(--accent)' : 'var(--text-muted)' }}
         onMouseEnter={e => { if (!open) e.currentTarget.style.color = '#d1d5db' }}
         onMouseLeave={e => { if (!open) e.currentTarget.style.color = 'var(--text-muted)' }}
       >

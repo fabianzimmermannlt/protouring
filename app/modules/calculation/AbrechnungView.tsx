@@ -11,7 +11,7 @@ const Mopt = (s: string) => { const d = D(s); return d.isZero() ? '' : formatMon
 // Differenz Ist − Soll; nur wenn ein (nicht-null) Ist vorliegt.
 // Differenz Ist − Soll: sobald ein (auch 0-)Ist erfasst ist und ≠ Soll. Leer nur bei leerem Ist.
 const diffStr = (soll: string, ist: string): string => { if (ist === '') return ''; const d = D(ist).minus(D(soll)); return d.isZero() ? '' : d.toString() }
-const diffColor = (s: string) => (s === '' ? undefined : (D(s).isNegative() ? '#f87171' : '#4ade80'))
+const diffColor = (s: string) => (s === '' ? undefined : (D(s).isNegative() ? 'var(--neg)' : 'var(--pos)'))
 const diffCell = (s: string) => (s === '' || D(s).isZero() ? '' : (D(s).isNegative() ? '' : '+') + M(s))
 
 function Row({ label, soll, ist, indent, bold, headBg }: { label: string; soll: string; ist: string; indent?: boolean; bold?: boolean; headBg?: string }) {
@@ -101,8 +101,8 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
 
               <tr className="ab-sec" style={{ fontWeight: 700, background: '#2f2f2f' }}>
                 <td>ERGEBNIS</td>
-                <td className="text-right ab-num" style={{ color: D(snap.ergebnis).isNegative() ? '#f87171' : '#4ade80' }}>{M(snap.ergebnis)}</td>
-                <td className="text-right ab-num" style={{ color: D(snap.ergebnisIst).isNegative() ? '#f87171' : '#4ade80' }}>{M(snap.ergebnisIst)}</td>
+                <td className="text-right ab-num" style={{ color: D(snap.ergebnis).isNegative() ? 'var(--neg)' : 'var(--pos)' }}>{M(snap.ergebnis)}</td>
+                <td className="text-right ab-num" style={{ color: D(snap.ergebnisIst).isNegative() ? 'var(--neg)' : 'var(--pos)' }}>{M(snap.ergebnisIst)}</td>
                 <td className="text-right ab-num" style={{ color: diffColor(dErg) }}>{diffCell(dErg)}</td>
               </tr>
               <tr style={{ color: 'var(--text-muted)' }}>

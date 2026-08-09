@@ -31,7 +31,7 @@ const PRIORITY_LABEL: Record<TodoPriority, string> = {
 }
 
 const PRIORITY_COLOR: Record<TodoPriority, string> = {
-  high:   '#ef4444',
+  high:   'var(--danger)',
   medium: '#f59e0b',
   low:    'var(--text-subtle)',
 }
@@ -48,7 +48,7 @@ function formatDeadline(d: string | null) {
   const today = new Date(); today.setHours(0,0,0,0)
   const diff = Math.ceil((date.getTime() - today.getTime()) / 86400000)
   const label = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  if (diff < 0)  return { label, color: '#ef4444', suffix: ` (${Math.abs(diff)}d überfällig)` }
+  if (diff < 0)  return { label, color: 'var(--danger)', suffix: ` (${Math.abs(diff)}d überfällig)` }
   if (diff === 0) return { label, color: '#f59e0b', suffix: ' (heute)' }
   if (diff <= 3) return { label, color: '#f59e0b', suffix: ` (in ${diff}d)` }
   return { label, color: 'var(--text-subtle)', suffix: '' }
@@ -342,11 +342,11 @@ export default function ToDoCard({ terminId }: { terminId: number }) {
                 onClick={() => setFilter(tab.id)}
                 className="text-xs py-1.5 px-3 transition-colors"
                 style={{
-                  color: filter === tab.id ? '#3b82f6' : 'var(--text-muted)',
+                  color: filter === tab.id ? 'var(--primary)' : 'var(--text-muted)',
                   borderTop: 'none',
                   borderLeft: 'none',
                   borderRight: 'none',
-                  borderBottom: filter === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
+                  borderBottom: filter === tab.id ? '2px solid var(--primary)' : '2px solid transparent',
                   fontWeight: filter === tab.id ? 600 : 400,
                   background: 'none',
                   outline: 'none',

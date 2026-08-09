@@ -43,7 +43,7 @@ const writePref = (key: string, val: boolean) => {
 function Toggle({ on, onChange, title }: { on: boolean; onChange: (v: boolean) => void; title?: string }) {
   return (
     <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} title={title}
-      style={{ width: 34, height: 20, borderRadius: 10, background: on ? '#3b82f6' : 'var(--border-strong)', position: 'relative', transition: 'background .15s', flexShrink: 0, border: 'none', padding: 0, cursor: 'pointer' }}>
+      style={{ width: 34, height: 20, borderRadius: 10, background: on ? 'var(--primary)' : 'var(--border-strong)', position: 'relative', transition: 'background .15s', flexShrink: 0, border: 'none', padding: 0, cursor: 'pointer' }}>
       <span style={{ position: 'absolute', top: 2, left: on ? 16 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.4)' }} />
     </button>
   )
@@ -300,7 +300,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
       td.pos{text-align:left}
       td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       td .ind{padding-left:14px;color:#444}
-      tr.sec td{background:#333;color:#fff;font-weight:bold;letter-spacing:.04em}
+      tr.sec td{background:var(--border);color:#fff;font-weight:bold;letter-spacing:.04em}
       tr.cat td{background:#f1f1f1;font-weight:bold}
       tr.sum td{background:#dde6f0;font-weight:bold}
       tr.res td{background:#dde6f0;border-top:2px solid #000;font-weight:bold;font-size:12px}
@@ -375,7 +375,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                 {printOpen && (
                   <>
                     <div onClick={() => setPrintOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 300, background: '#232323', border: '1px solid #3c3c3c', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
+                    <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 300, background: '#232323', border: '1px solid var(--border)', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
                       <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text)' }}>Druck / Export</div>
                       <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vergleich</label>
                       <select className="form-input" style={{ width: '100%', fontSize: '0.78rem', marginBottom: 10 }} value={selMode} onChange={e => setCfgMode(e.target.value)}>
@@ -427,7 +427,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
             <div className="text-xs flex gap-4 mt-1" style={{ color: 'var(--text-muted)' }}>
               <span>Gage netto: <b style={{ color: 'var(--text)' }}>{formatEUR(summary.gageNet)}</b></span>
               <span>Ausgaben: <b style={{ color: 'var(--text)' }}>{formatEUR(summary.ausgaben)}</b></span>
-              <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? '#f87171' : '#4ade80' }}>{formatEUR(summary.ergebnis)}</b></span>
+              <span>Ergebnis: <b style={{ color: summary.ergebnis.isNegative() ? 'var(--neg)' : 'var(--pos)' }}>{formatEUR(summary.ergebnis)}</b></span>
             </div>
           )}
         </div>
@@ -460,7 +460,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
           <div className="modal-container" style={{ maxWidth: 400 }}>
             <div className="modal-header"><h3 className="modal-title">Show entsperren</h3><button onClick={() => { setUnlockOpen(false); setPin(''); setPinErr('') }} className="text-gray-400 hover:text-white">✕</button></div>
             <div className="modal-body space-y-3">
-              <div className="text-xs" style={{ color: '#facc15', background: '#332', border: '1px solid #5a4', borderRadius: 6, padding: '8px 10px' }}>
+              <div className="text-xs" style={{ color: 'var(--accent)', background: '#332', border: '1px solid #5a4', borderRadius: 6, padding: '8px 10px' }}>
                 ⚠️ Superadmin: Entsperren verwirft den eingefrorenen Abrechnungs-Snapshot. Die Show wird wieder editierbar. Nur für Korrekturen/Tests.
               </div>
               <label className="form-label">PIN</label>
@@ -548,9 +548,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     <div>
     <div className="pt-card">
       <div className="pt-card-header flex items-center justify-between"
-        style={{ background: category.kind === 'income' ? '#173a28' : '#26313f', borderLeft: `4px solid ${category.kind === 'income' ? '#4ade80' : '#60a5fa'}` }}>
+        style={{ background: category.kind === 'income' ? '#173a28' : '#26313f', borderLeft: `4px solid ${category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)'}` }}>
         <span className="pt-card-title" style={{ color: '#e5e7eb', letterSpacing: '0.02em' }}>
-          <span style={{ fontWeight: 700, color: category.kind === 'income' ? '#4ade80' : '#93c5fd' }}>{category.kind === 'income' ? 'EINNAHME' : 'AUSGABE'}</span>
+          <span style={{ fontWeight: 700, color: category.kind === 'income' ? 'var(--pos)' : 'var(--primary-3)' }}>{category.kind === 'income' ? 'EINNAHME' : 'AUSGABE'}</span>
           <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
         </span>
         <div className="flex items-center gap-3">
@@ -568,7 +568,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
             <tr>
               <th style={{ width: COLW.pos }}>Position</th>
               {variants.map(v => <th key={v.id} className="text-right" style={{ width: COLW.variant }}>{v.name}</th>)}
-              <th className="text-right" style={{ width: COLW.ist, color: '#facc15' }}>Ist</th>
+              <th className="text-right" style={{ width: COLW.ist, color: 'var(--accent)' }}>Ist</th>
               <th className="text-right" style={{ width: COLW.erg }}>Ergebnis{defaultVarName && <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}> ({defaultVarName})</span>}</th>
               <th style={{ width: COLW.act }} />
             </tr>
@@ -634,7 +634,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
           <button onClick={() => setAdding(false)} className="btn btn-primary shrink-0" style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem' }}>Fertig</button>
         </div>
       ) : (
-        <button onClick={() => setAdding(true)} className="btn btn-ghost inline-flex items-center gap-1" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', color: '#93c5fd' }}>
+        <button onClick={() => setAdding(true)} className="btn btn-ghost inline-flex items-center gap-1" style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', color: 'var(--primary-3)' }}>
           <PlusIcon className="w-3.5 h-3.5" /> Neue Position
         </button>
       )}
@@ -660,7 +660,7 @@ function LinkBadge({ shared, onClick }: { shared: boolean; onClick: () => void }
       title={shared
         ? 'Verknüpft: ein gemeinsamer Wert für ALLE Varianten. Klicken → je Variante ein eigenes Feld.'
         : 'Pro Variante getrennt: jede Variante hat ein eigenes Feld. Klicken → wieder ein gemeinsamer Wert für alle.'}
-      className="shrink-0" style={{ color: shared ? '#60a5fa' : 'var(--text-subtle)', marginTop: 2 }}>
+      className="shrink-0" style={{ color: shared ? 'var(--primary-2)' : 'var(--text-subtle)', marginTop: 2 }}>
       <LinkIcon className="w-4 h-4" />
     </button>
   )
@@ -843,14 +843,14 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
         style={{
           opacity: dragging ? 0.35 : 1,
           background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : undefined),
-          boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined,
+          boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined,
           transition: 'background 120ms ease, opacity 120ms ease',
         }}>
         <td>
           <div className="flex items-start gap-1.5">
             <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow}
               title="Zum Sortieren ziehen" className="shrink-0 cursor-grab active:cursor-grabbing"
-              style={{ color: dragging ? '#60a5fa' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
+              style={{ color: dragging ? 'var(--primary-2)' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
               <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
                 <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
                 <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -876,7 +876,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   {showTravel && (
                     <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
                       className="shrink-0 inline-flex items-center gap-1 rounded"
-                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? '#facc15' : 'transparent', border: `1px solid ${travelActive ? '#facc15' : 'var(--border-strong)'}` }}>
+                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? 'var(--accent)' : 'transparent', border: `1px solid ${travelActive ? 'var(--accent)' : 'var(--border-strong)'}` }}>
                       <TruckIcon className="w-3.5 h-3.5" /> Reise
                     </button>
                   )}
@@ -906,7 +906,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                     })
                   }}
                   placeholder="0" title="Verknüpft: ein Wert für alle Varianten (🔗 klicken zum Auflösen)"
-                  style={{ ...cell.style, color: '#93c5fd', background: linkedCellBg }} />
+                  style={{ ...cell.style, color: 'var(--primary-3)', background: linkedCellBg }} />
               ) : (
                 <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
                   style={{ ...cell.style, color: 'var(--text-subtle)', minHeight: 24, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
@@ -953,7 +953,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
       {showTravel && travelOpen && (
         <tr>
           <td style={{ verticalAlign: 'top' }}>
-            <div className="flex items-center gap-1 text-xs" style={{ color: '#facc15', paddingLeft: 22, whiteSpace: 'nowrap' }} title="km × €/km plus optionaler Fixpreis (z.B. Zugticket)">
+            <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--accent)', paddingLeft: 22, whiteSpace: 'nowrap' }} title="km × €/km plus optionaler Fixpreis (z.B. Zugticket)">
               <TruckIcon className="w-3.5 h-3.5" /> Reise <span style={{ color: 'var(--text-subtle)', fontSize: 10 }}>km×€ + Fix</span>
               {travelActive && (
                 <button onClick={() => setM(p => ({ ...p, travelKm: {}, travelRate: {}, travelFix: {} }))} className="text-gray-500 hover:text-red-500 ml-1" title="Reisekosten löschen">✕</button>
@@ -984,7 +984,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
               <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tfix`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                 onChange={e => setM(p => ({ ...p, istTravelFix: e.target.value }))} onBlur={saveIst} />
-              <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
+              <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
             </div>
           </td>
           <td />
@@ -1022,7 +1022,7 @@ function OverheadShowRow({ positionId, showId, name, variantCols, included, incl
           ? `Umlage über ${includedCount} Show${includedCount !== 1 ? 's' : ''} · ${formatMoney(soll)} gesamt`
           : 'für diese Show abgewählt'}
       </td>
-      <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: included ? '#93c5fd' : 'var(--text-subtle)', fontWeight: 500 }}>
+      <td className="text-right" style={{ fontVariantNumeric: 'tabular-nums', color: included ? 'var(--primary-3)' : 'var(--text-subtle)', fontWeight: 500 }}>
         {included ? formatMoney(share) : '—'}
       </td>
       <td />
@@ -1135,11 +1135,11 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
 
   return (
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#211f17'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined }}>
+      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#211f17'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
-            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
+            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? 'var(--primary-2)' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
             <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
               <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
               <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -1182,13 +1182,13 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
             ) : (
               <div style={{ display: 'flex', gap: 3 }}>
                 <input {...hCell} data-fkey={`s|${positionId}|hrooms|${v.id}`} value={val.rooms} placeholder="Zi" title="Zimmer" onChange={e => setVals(v.id, { rooms: e.target.value })}
-                  style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+                  style={{ ...hCell.style, color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} />
                 <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
                 <input {...hCell} data-fkey={`s|${positionId}|hnights|${v.id}`} value={val.nights} placeholder="Nä" title="Nächte" onChange={e => setVals(v.id, { nights: e.target.value })}
-                  style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+                  style={{ ...hCell.style, color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} />
                 <span style={{ color: '#555', fontSize: 10, alignSelf: 'center' }}>×</span>
                 <input {...hCell} data-fkey={`s|${positionId}|hprice|${v.id}`} value={val.price} placeholder="€/N" title="€ pro Nacht" onChange={e => setVals(v.id, { price: e.target.value })}
-                  style={{ ...hCell.style, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} />
+                  style={{ ...hCell.style, color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} />
               </div>
             )}
             <div className="text-right" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
@@ -1380,11 +1380,11 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   return (
     <>
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#1a2420'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 #60a5fa' : undefined }}>
+      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#1a2420'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
-            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? '#60a5fa' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
+            className="shrink-0 cursor-grab active:cursor-grabbing" style={{ color: dragging ? 'var(--primary-2)' : 'var(--text-subtle)', lineHeight: 0, marginTop: 4 }}>
             <svg width="9" height="15" viewBox="0 0 9 15" fill="currentColor" aria-hidden="true">
               <circle cx="2.2" cy="3" r="1.25" /><circle cx="6.8" cy="3" r="1.25" />
               <circle cx="2.2" cy="7.5" r="1.25" /><circle cx="6.8" cy="7.5" r="1.25" />
@@ -1401,7 +1401,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
               <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
                 <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
                   className="shrink-0 inline-flex items-center gap-1 rounded"
-                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? '#facc15' : 'transparent', border: `1px solid ${m.fuelOn ? '#facc15' : 'var(--border-strong)'}` }}>
+                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? 'var(--accent)' : 'transparent', border: `1px solid ${m.fuelOn ? 'var(--accent)' : 'var(--border-strong)'}` }}>
                   ⛽ Sprit
                 </button>
               </div>
@@ -1415,7 +1415,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
             )}
             {hasDefaults && (
               <button onClick={applyDefaults} title="Miete/inkl. km/€ pro Mehr-km aus den Fahrzeugdaten übernehmen"
-                className="text-xs" style={{ color: '#60a5fa', marginTop: 2, display: 'inline-block' }}>Fahrzeugwerte übernehmen</button>
+                className="text-xs" style={{ color: 'var(--primary-2)', marginTop: 2, display: 'inline-block' }}>Fahrzeugwerte übernehmen</button>
             )}
           </div>
         </div>
@@ -1433,10 +1433,10 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
               </div>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                <input {...vCell} data-fkey={`s|${positionId}|vrental|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
-                <input {...vCell} data-fkey={`s|${positionId}|vkm|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
-                <input {...vCell} data-fkey={`s|${positionId}|vincl|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
-                <input {...vCell} data-fkey={`s|${positionId}|vextra|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vrental|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.rental} placeholder="Miete" title="Fixmiete" onChange={e => setVals(v.id, { rental: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vkm|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.km} placeholder="km" title="gefahrene km" onChange={e => setVals(v.id, { km: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vincl|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.included} placeholder="inkl." title="inkl. km" onChange={e => setVals(v.id, { included: e.target.value })} />
+                <input {...vCell} data-fkey={`s|${positionId}|vextra|${v.id}`} style={{ ...vCell.style, flex: '1 1 46%', color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.extra} placeholder="€/km" title="€ pro Mehr-km" onChange={e => setVals(v.id, { extra: e.target.value })} />
               </div>
             )}
             <div className="text-right" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
@@ -1470,7 +1470,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       <tr style={{ background: '#211f17' }}>
         <td style={{ verticalAlign: 'top' }}>
           <div className="flex items-center gap-1 text-xs" title="Strecke/100 × Verbrauch × €/L"
-            style={{ color: '#facc15', paddingLeft: 22, whiteSpace: 'nowrap' }}>
+            style={{ color: 'var(--accent)', paddingLeft: 22, whiteSpace: 'nowrap' }}>
             ⛽ Sprit <span style={{ color: 'var(--text-subtle)', fontSize: 10 }}>L/100 × €/L</span>
           </div>
         </td>
@@ -1486,11 +1486,11 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
                   </span>
                 ) : (
                   <>
-                    <input {...tvCell} data-fkey={`s|${positionId}|vcons|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
-                    <input {...tvCell} data-fkey={`s|${positionId}|vfprice|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? '#93c5fd' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
+                    <input {...tvCell} data-fkey={`s|${positionId}|vcons|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.cons} placeholder="L/100" title="Verbrauch L/100 km" onChange={e => setVals(v.id, { cons: e.target.value })} />
+                    <input {...tvCell} data-fkey={`s|${positionId}|vfprice|${v.id}`} style={{ ...tvCell.style, flex: 1, minWidth: 0, color: m.shared ? 'var(--primary-3)' : undefined, background: m.shared ? linkedCellBg : undefined }} value={val.price} placeholder="€/L" title="Spritpreis €/L" onChange={e => setVals(v.id, { price: e.target.value })} />
                   </>
                 )}
-                <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: '#facc15', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatMoney(fuelAmount(val))}</span>
+                <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatMoney(fuelAmount(val))}</span>
               </div>
             </td>
           )
@@ -1564,9 +1564,9 @@ function AddPositionControl({ category, isPersonal, isUnterkunft, isTransport, c
     <div>
       {isTransport && (
         <div className="flex gap-1 text-[11px]" style={{ marginBottom: 5 }}>
-          <button onClick={() => setTMode('vehicle')} style={{ color: tMode === 'vehicle' ? '#60a5fa' : '#8b8b8b', fontWeight: tMode === 'vehicle' ? 600 : 400 }}>Fahrzeug</button>
+          <button onClick={() => setTMode('vehicle')} style={{ color: tMode === 'vehicle' ? 'var(--primary-2)' : '#8b8b8b', fontWeight: tMode === 'vehicle' ? 600 : 400 }}>Fahrzeug</button>
           <span style={{ color: '#555' }}>·</span>
-          <button onClick={() => setTMode('other')} style={{ color: tMode === 'other' ? '#60a5fa' : '#8b8b8b', fontWeight: tMode === 'other' ? 600 : 400 }}>Sonstiges (Sprit, Maut …)</button>
+          <button onClick={() => setTMode('other')} style={{ color: tMode === 'other' ? 'var(--primary-2)' : '#8b8b8b', fontWeight: tMode === 'other' ? 600 : 400 }}>Sonstiges (Sprit, Maut …)</button>
         </div>
       )}
       <SearchableDropdown<PItem>

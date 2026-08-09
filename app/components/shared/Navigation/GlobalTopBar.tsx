@@ -165,14 +165,14 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
     >
       {/* ── LEFT: Logo + Name ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 flex-shrink-0 select-none">
-        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#f5c518' }}>
+        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
           <span className="text-[10px] font-bold tracking-tight leading-none" style={{ color: '#0d1117' }}>PT</span>
         </div>
         <span className="text-white text-sm font-semibold tracking-tight">ProTouring</span>
         {artistName && (
           <>
             <span className="text-sm" style={{ color: '#4b5563' }}>/</span>
-            <span className="text-sm truncate max-w-[140px]" style={{ color: '#f5c518' }}>{artistName}</span>
+            <span className="text-sm truncate max-w-[140px]" style={{ color: 'var(--accent)' }}>{artistName}</span>
           </>
         )}
       </div>
@@ -206,7 +206,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)',
               }}
               onFocusCapture={e => {
-                e.currentTarget.style.borderColor = '#f5c518'
+                e.currentTarget.style.borderColor = 'var(--accent)'
                 e.currentTarget.style.backgroundColor = '#343d4a'
               }}
               onBlurCapture={e => {
@@ -215,7 +215,7 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
               }}
             />
             {loading && (
-              <div className="absolute right-2.5 w-3 h-3 rounded-full animate-spin" style={{ border: '1.5px solid #f5c518', borderTopColor: 'transparent' }} />
+              <div className="absolute right-2.5 w-3 h-3 rounded-full animate-spin" style={{ border: '1.5px solid var(--accent)', borderTopColor: 'transparent' }} />
             )}
             {!loading && query && (
               <button onClick={clear} className="absolute right-2 hover:text-white transition-colors" style={{ color: 'var(--text-subtle)' }}>
@@ -289,10 +289,10 @@ export default function GlobalTopBar({ artistName, onNavigate }: GlobalTopBarPro
                   title="Seite als andere Rolle anzeigen"
                   className="flex items-center gap-1 text-xs rounded px-2 py-1 transition-colors"
                   style={{
-                    color: previewOpen ? '#f5c518' : 'var(--text-muted)',
+                    color: previewOpen ? 'var(--accent)' : 'var(--text-muted)',
                     background: previewOpen ? 'rgba(245,197,24,0.12)' : 'transparent',
                     border: '1px solid',
-                    borderColor: previewOpen ? '#f5c518' : '#374151',
+                    borderColor: previewOpen ? 'var(--accent)' : '#374151',
                   }}
                   onMouseEnter={e => {
                     if (!previewOpen) {

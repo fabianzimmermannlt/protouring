@@ -49,7 +49,7 @@ export default function SchreibtischModule() {
       </div>
 
       {/* Reiter: Team / Persönlich (gleicher Stil wie Event-Tabs) */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflowX: 'auto', marginBottom: '1rem' }}>
         <button onClick={() => pickZone('team')} className={`pt-detail-tab${zone === 'team' ? ' active' : ''}`}>Team</button>
         <button onClick={() => pickZone('personal')} className={`pt-detail-tab${zone === 'personal' ? ' active' : ''}`}>Persönlich</button>
       </div>

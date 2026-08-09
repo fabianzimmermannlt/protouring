@@ -11,7 +11,7 @@ const STATUS_NEXT: Record<TodoStatus, TodoStatus> = {
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  high:   '#ef4444',
+  high:   'var(--danger)',
   medium: '#f59e0b',
   low:    'var(--text-subtle)',
 }
@@ -188,7 +188,7 @@ export default function GlobalTodoOverview({ hideHeader = false }: GlobalTodoOve
                       </span>
                     )}
                     {todo.deadline && (
-                      <span className="text-xs" style={{ color: isOverdue(todo.deadline) ? '#ef4444' : 'var(--text-subtle)' }}>
+                      <span className="text-xs" style={{ color: isOverdue(todo.deadline) ? 'var(--danger)' : 'var(--text-subtle)' }}>
                         {new Date(todo.deadline).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         {isOverdue(todo.deadline) ? ' ⚠' : ''}
                       </span>

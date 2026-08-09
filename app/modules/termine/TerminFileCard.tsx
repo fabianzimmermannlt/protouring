@@ -174,7 +174,7 @@ function CategorySection({
   const [gewerkEditId, setGewerkEditId] = useState<string | null>(null)
 
   return (
-    <div className="border-b border-[#3c3c3c] last:border-b-0">
+    <div className="border-b border-[var(--border)] last:border-b-0">
       {/* Kategorie-Header */}
       <button
         onClick={() => setOpen(o => !o)}
@@ -596,7 +596,7 @@ export function TerminFileCard({
               {/* Drop Zone */}
               <div
                 style={{
-                  border: `2px dashed ${isDragging ? '#3b82f6' : dark ? 'var(--border-strong)' : '#d1d5db'}`,
+                  border: `2px dashed ${isDragging ? 'var(--primary)' : dark ? 'var(--border-strong)' : '#d1d5db'}`,
                   borderRadius: 0,
                   padding: '2rem',
                   textAlign: 'center',

@@ -155,7 +155,7 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
   }
 
   return (
-    <div className="pt-card" style={{ outline: '2px solid #3b82f6', outlineOffset: '-1px' }}>
+    <div className="pt-card" style={{ outline: '2px solid var(--primary)', outlineOffset: '-1px' }}>
       <div className="pt-card-header">
         <input
           type="text" value={title} onChange={e => setTitle(e.target.value)}
@@ -204,9 +204,9 @@ function ScheduleEditCard({ terminId, schedule, sortOrder, onSaved, onDeleted, o
                   onClick={() => setVisibleRoles(prev => prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r])}
                   style={{
                     fontSize: 11, padding: '3px 10px', borderRadius: 0, cursor: 'pointer',
-                    border: `1px solid ${active ? '#3b82f6' : '#3c3c3c'}`,
+                    border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
                     background: active ? 'rgba(59,130,246,0.12)' : '#2a2a2a',
-                    color: active ? '#60a5fa' : 'var(--text-muted)',
+                    color: active ? 'var(--primary-2)' : 'var(--text-muted)',
                   }}>
                   {roleLabel(r)}
                 </button>
@@ -323,7 +323,7 @@ function ScheduleCard({ s, isAdmin, terminId, onEdit, onSaveAsTemplate, onDelete
             <button key={item.label} onClick={item.onClick} style={{
               display: 'flex', alignItems: 'center', gap: 8, width: '100%',
               padding: '7px 14px', fontSize: 13, background: 'none', border: 'none',
-              cursor: 'pointer', color: item.danger ? '#ef4444' : dropText, textAlign: 'left',
+              cursor: 'pointer', color: item.danger ? 'var(--danger)' : dropText, textAlign: 'left',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = item.danger ? dropDangerHover : dropHover)}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}

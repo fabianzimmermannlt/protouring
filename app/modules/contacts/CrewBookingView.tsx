@@ -20,19 +20,19 @@ const C = {
   bgCrewHead: 'var(--surface)',
   bgCrewRow1: '#1e1e1e',
   bgCrewRow2: '#232323',
-  border:     '#3c3c3c',
-  borderCrew: '#3c3c3c',
+  border:     'var(--border)',
+  borderCrew: 'var(--border)',
   borderSep:  '#4b5563',
   textPri:    'var(--text)',
   textSec:    'var(--text-muted)',
   textMuted:  'var(--text-subtle)',
-  textAccent: '#60a5fa',
+  textAccent: 'var(--primary-2)',
 }
 
 const AVAIL_CFG: Record<string, { color: string; symbol: string; label: string }> = {
-  available:   { color: '#22c55e', symbol: '✓', label: 'Verfügbar' },
+  available:   { color: 'var(--success)', symbol: '✓', label: 'Verfügbar' },
   maybe:       { color: '#eab308', symbol: '?', label: 'Vielleicht' },
-  unavailable: { color: '#ef4444', symbol: '✗', label: 'Nicht verfügbar' },
+  unavailable: { color: 'var(--danger)', symbol: '✗', label: 'Nicht verfügbar' },
   null:        { color: 'var(--border)', symbol: '–', label: 'Keine Angabe' },
 }
 
@@ -52,9 +52,9 @@ function BookedToggle({ status, onChange, disabled }: {
   status: BookedStatus; onChange: (v: BookedStatus) => void; disabled: boolean
 }) {
   const btns: { value: BookedStatus; label: string; active: string; title: string }[] = [
-    { value: 'confirmed', label: '✓', active: '#3b82f6', title: 'Gebucht' },
+    { value: 'confirmed', label: '✓', active: 'var(--primary)', title: 'Gebucht' },
     { value: null,        label: '–', active: '#555',    title: 'Offen' },
-    { value: 'rejected',  label: '✗', active: '#ef4444', title: 'Abgesagt' },
+    { value: 'rejected',  label: '✗', active: 'var(--danger)', title: 'Abgesagt' },
   ]
   return (
     <div style={{ display: 'flex', gap: 2 }}>
@@ -286,7 +286,7 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
                           <React.Fragment key={c.id}>
                             <td style={{ width: 36, height: 34, background: bg, borderBottom: `1px solid ${C.border}`, borderLeft: ci > 0 ? `1px solid ${C.border}` : undefined, textAlign: 'center', padding: '0 4px', transition: 'background 0.1s' }}>
                               {c.contactType === 'guest'
-                                ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#22c55e', color: 'white', fontSize: 8, fontWeight: 700 }} title={t('contacts.tooltip.manualNoLogin')}>M</span>
+                                ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'var(--success)', color: 'white', fontSize: 8, fontWeight: 700 }} title={t('contacts.tooltip.manualNoLogin')}>M</span>
                                 : <AvailIcon status={getAvail(x, c.userId ?? null)} />}
                             </td>
                             <td style={{ width: 100, height: 34, background: bg, borderBottom: `1px solid ${C.border}`, borderRight: `1px solid ${C.border}`, textAlign: 'center', padding: '0 4px', transition: 'background 0.1s' }}>
@@ -325,8 +325,8 @@ export default function CrewBookingView({ isAdmin }: { isAdmin: boolean }) {
         })}
         <span style={{ color: C.border }}>·</span>
         {[
-          { color: '#3b82f6', symbol: '✓', label: 'gebucht',  tc: 'white' },
-          { color: '#ef4444', symbol: '✗', label: 'abgesagt', tc: 'white' },
+          { color: 'var(--primary)', symbol: '✓', label: 'gebucht',  tc: 'white' },
+          { color: 'var(--danger)', symbol: '✗', label: 'abgesagt', tc: 'white' },
           { color: '#2e2e2e', symbol: '–', label: 'offen',    tc: '#555', border: '1px solid var(--border)' },
         ].map(b => (
           <span key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

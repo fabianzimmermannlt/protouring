@@ -75,7 +75,7 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
   const border      = dark ? 'var(--border-strong)' : '#e5e7eb'
   const titleColor  = dark ? 'var(--text)' : '#111827'
   const labelColor  = dark ? '#b0b0b0' : 'var(--text-subtle)'
-  const inputBg     = dark ? '#3c3c3c' : '#ffffff'
+  const inputBg     = dark ? 'var(--border)' : '#ffffff'
   const inputBorder = dark ? '#555555' : '#d1d5db'
   const inputColor  = dark ? 'var(--text)' : '#111827'
   const hintColor   = dark ? 'var(--text-subtle)' : 'var(--text-muted)'
@@ -105,7 +105,7 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
         {/* Body */}
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {error && (
-            <div style={{ fontSize: 12, color: '#f87171', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, padding: '8px 12px' }}>
+            <div style={{ fontSize: 12, color: 'var(--neg)', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, padding: '8px 12px' }}>
               {error}
             </div>
           )}
@@ -153,7 +153,7 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
           <button
             onClick={handleDelete}
             disabled={deleting}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 13, fontWeight: 500, background: dark ? '#3d1f1f' : '#fef2f2', color: '#ef4444', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', fontSize: 13, fontWeight: 500, background: dark ? '#3d1f1f' : '#fef2f2', color: 'var(--danger)', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}
           >
             {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
             Entfernen
@@ -168,7 +168,7 @@ export default function ReisegruppeModal({ terminId, member, onClose, onSaved, o
             <button
               onClick={handleSave}
               disabled={saving}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 13, fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 13, fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               Speichern

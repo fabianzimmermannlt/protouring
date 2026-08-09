@@ -441,7 +441,7 @@ export default function AnreiseModal({
                   renderValue={v => [v.designation, v.vehicleType ? `(${v.vehicleType})` : '', v.seats ? `· ${v.seats} Sitze` : ''].filter(Boolean).join(' ')}
                   renderItem={(v, selected) => (
                     <div>
-                      <div style={{ fontSize: '0.85rem', color: selected ? '#60a5fa' : (dark ? 'var(--text)' : '#111827'), fontWeight: selected ? 500 : 400 }}>
+                      <div style={{ fontSize: '0.85rem', color: selected ? 'var(--primary-2)' : (dark ? 'var(--text)' : '#111827'), fontWeight: selected ? 500 : 400 }}>
                         {v.designation}{v.vehicleType ? ` · ${v.vehicleType}` : ''}
                       </div>
                       {(v.seats || v.licensePlate) && (

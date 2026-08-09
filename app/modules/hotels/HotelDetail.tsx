@@ -147,11 +147,11 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
         </h2>
         {!loading && (isEditor ? (
           <button onClick={toggleRecommended} title={form.recommended ? 'Empfehlung entfernen' : 'Als Empfehlung merken'}
-            style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', fontSize: '13px', background: 'none', border: `1px solid ${form.recommended ? '#f5c518' : (isL2 ? '#555' : '#d1d5db')}`, borderRadius: 0, color: form.recommended ? '#f5c518' : dirtyColor, cursor: 'pointer' }}>
-            <Star className="w-4 h-4" fill={form.recommended ? '#f5c518' : 'none'} /> Empfehlung
+            style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', fontSize: '13px', background: 'none', border: `1px solid ${form.recommended ? 'var(--accent)' : (isL2 ? '#555' : '#d1d5db')}`, borderRadius: 0, color: form.recommended ? 'var(--accent)' : dirtyColor, cursor: 'pointer' }}>
+            <Star className="w-4 h-4" fill={form.recommended ? 'var(--accent)' : 'none'} /> Empfehlung
           </button>
         ) : form.recommended ? (
-          <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#f5c518' }}><Star className="w-4 h-4" fill="#f5c518" /> Empfehlung</span>
+          <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--accent)' }}><Star className="w-4 h-4" fill="#f5c518" /> Empfehlung</span>
         ) : null)}
         {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -165,7 +165,7 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
             <button
               onClick={saveEdit}
               disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {t('general.save')}
@@ -271,7 +271,7 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
                 Verwerfen
               </button>
               <button onClick={async () => { const ok = await saveEdit(); if (ok) { setShowDirtyDialog(false); onBack?.() } }} disabled={saving}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
                 Speichern
               </button>
             </div>

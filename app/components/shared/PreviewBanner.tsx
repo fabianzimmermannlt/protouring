@@ -55,7 +55,7 @@ export default function PreviewBanner() {
             style={{
               display: 'flex', alignItems: 'center',
               background: 'none', border: 'none', cursor: 'pointer',
-              color: '#3b82f6', padding: '0 2px', marginLeft: '2px',
+              color: 'var(--primary)', padding: '0 2px', marginLeft: '2px',
             }}
           >
             <X size={13} />

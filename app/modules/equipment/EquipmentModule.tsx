@@ -236,7 +236,7 @@ function LocationModal({ loc, onSave, onClose }: {
 }) {
   const [name, setName] = useState(loc?.name ?? '')
   const [kind, setKind] = useState<EquipmentLocationKind>(loc?.kind ?? 'lager')
-  const [color, setColor] = useState(loc?.color ?? '#3b82f6')
+  const [color, setColor] = useState(loc?.color ?? 'var(--primary)')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const handle = async () => {
@@ -440,11 +440,11 @@ function ItemModal({ item, locations, onSave, onClose }: {
               <div className="flex flex-wrap gap-2 mt-1">
                 {[
                   { color: '', label: 'keine' },
-                  { color: '#ef4444', label: 'Rot' },
+                  { color: 'var(--danger)', label: 'Rot' },
                   { color: '#f97316', label: 'Orange' },
                   { color: '#eab308', label: 'Gelb' },
-                  { color: '#22c55e', label: 'Grün' },
-                  { color: '#3b82f6', label: 'Blau' },
+                  { color: 'var(--success)', label: 'Grün' },
+                  { color: 'var(--primary)', label: 'Blau' },
                   { color: '#8b5cf6', label: 'Lila' },
                   { color: '#ec4899', label: 'Pink' },
                   { color: '#ffffff', label: 'Weiß' },
@@ -458,7 +458,7 @@ function ItemModal({ item, locations, onSave, onClose }: {
                     className="w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform"
                     style={{
                       backgroundColor: color || 'transparent',
-                      borderColor: form.label_color === color ? '#3b82f6' : (color === '' ? '#d1d5db' : color),
+                      borderColor: form.label_color === color ? 'var(--primary)' : (color === '' ? '#d1d5db' : color),
                       transform: form.label_color === color ? 'scale(1.25)' : 'scale(1)',
                       backgroundImage: color === '' ? 'repeating-linear-gradient(45deg, #d1d5db 0, #d1d5db 2px, transparent 0, transparent 50%)' : undefined,
                       backgroundSize: color === '' ? '6px 6px' : undefined,
@@ -1463,7 +1463,7 @@ function LabelTemplateModal({ onClose }: { onClose: () => void }) {
                 {HEADER_COLORS.map(c => (
                   <button key={c.value} title={c.label}
                     onClick={() => set('headerBgColor', c.value)}
-                    style={{ background: c.value, border: tpl.headerBgColor === c.value ? '3px solid #3b82f6' : '2px solid transparent' }}
+                    style={{ background: c.value, border: tpl.headerBgColor === c.value ? '3px solid var(--primary)' : '2px solid transparent' }}
                     className="w-9 h-9 rounded shadow-sm" />
                 ))}
               </div>
@@ -2788,7 +2788,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             return (
               <button key={String(l.id)} onClick={() => setFromLoc(String(l.id))}
                 className={`shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'bg-blue-50' : 'bg-white'}`}
-                style={{ minWidth: 128, borderColor: active ? '#3b82f6' : warn ? '#f59e0b' : (l.color || undefined), borderLeftWidth: 4 }}>
+                style={{ minWidth: 128, borderColor: active ? 'var(--primary)' : warn ? '#f59e0b' : (l.color || undefined), borderLeftWidth: 4 }}>
                 <div style={{ fontSize: 20, lineHeight: 1 }}>{locKind(l.kind).icon}</div>
                 <div className="text-sm font-medium text-gray-900 truncate mt-1">{l.name}</div>
                 <div className="text-xs text-gray-500" style={{ color: warn ? '#f59e0b' : undefined, fontWeight: warn ? 600 : undefined }}>{warn ? '⚠️ ' : ''}{c} {c === 1 ? 'Gegenstand' : 'Gegenstände'}</div>
@@ -2860,7 +2860,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         {snack && (
           <div className="fixed left-1/2 z-[9999] flex items-center gap-4 text-white text-sm rounded-full shadow-lg" style={{ transform: 'translateX(-50%)', bottom: selectedItems.size > 0 ? 144 : 88, background: '#111827', padding: '10px 18px', maxWidth: '92vw' }}>
             <span className="truncate">{snack.msg}</span>
-            {snack.undo && <button onClick={() => { const u = snack.undo!; setSnack(null); u() }} className="font-semibold shrink-0" style={{ color: '#93c5fd' }}>Rückgängig</button>}
+            {snack.undo && <button onClick={() => { const u = snack.undo!; setSnack(null); u() }} className="font-semibold shrink-0" style={{ color: 'var(--primary-3)' }}>Rückgängig</button>}
           </div>
         )}
       </div>

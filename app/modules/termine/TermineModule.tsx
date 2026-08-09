@@ -102,9 +102,9 @@ const TERMINE_COLUMNS = [
 ]
 
 const AVAIL_ICON: Record<string, { tKey: TranslationKey; color: string; symbol: string }> = {
-  available:   { tKey: 'availability.available',   color: '#22c55e', symbol: '✓' },
+  available:   { tKey: 'availability.available',   color: 'var(--success)', symbol: '✓' },
   maybe:       { tKey: 'availability.maybe',       color: '#eab308', symbol: '?' },
-  unavailable: { tKey: 'availability.unavailable', color: '#ef4444', symbol: '✗' },
+  unavailable: { tKey: 'availability.unavailable', color: 'var(--danger)', symbol: '✗' },
   null:        { tKey: 'availability.unknown',     color: 'var(--text-muted)', symbol: '–' },
 }
 
@@ -112,15 +112,15 @@ const STATUS_BOOKING_DOT: Record<string, string> = {
   'Idee':                 'var(--text-muted)',
   'Option':               '#d97706',
   'noch nicht bestätigt': '#f59e0b',
-  'bestätigt':            '#22c55e',
+  'bestätigt':            'var(--success)',
   'abgeschlossen':        'var(--text-subtle)',
-  'abgesagt':             '#ef4444',
+  'abgesagt':             'var(--danger)',
 }
 
 const STATUS_PUBLIC_DOT: Record<string, string> = {
   'nicht öffentlich': 'var(--text-subtle)',
   'tba':              '#d97706',
-  'veröffentlicht':   '#22c55e',
+  'veröffentlicht':   'var(--success)',
 }
 
 // Maps DB status values (stored in German) → translation keys
@@ -1155,7 +1155,7 @@ function TerminDetailHeader({
             onClick={onDelete}
             title="Event löschen"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', border: '1px solid var(--border)', borderRadius: 0, background: 'none', cursor: 'pointer', color: 'var(--text-subtle)', flexShrink: 0, paddingTop: '3px', transition: 'border-color 0.12s, color 0.12s' }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444' }}
+            onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--danger)'; e.currentTarget.style.color = 'var(--danger)' }}
             onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-subtle)' }}
           >
             <Trash2 size={13} />
@@ -1164,7 +1164,7 @@ function TerminDetailHeader({
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #333', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -1881,7 +1881,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
         )}
         {/* Mobile-Kopfzeile immer (md:hidden), unabhängig vom Layout (L3-Default greift sonst bei Superadmin am Handy) */}
         {(
-          <div className="md:hidden sticky top-0 z-20 flex items-center gap-2 mb-3 py-2" style={{ background: '#1c1c1c', borderBottom: '1px solid #3c3c3c' }}>
+          <div className="md:hidden sticky top-0 z-20 flex items-center gap-2 mb-3 py-2" style={{ background: '#1c1c1c', borderBottom: '1px solid var(--border)' }}>
             <button
               onClick={() => mPrev && selectTermin(mPrev.id, selectedView)}
               disabled={!mPrev}
@@ -2207,7 +2207,7 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
                           style={{
                             width: m.width,
                             cursor: 'grab',
-                            borderLeft: isOver ? '2px solid #60a5fa' : undefined,
+                            borderLeft: isOver ? '2px solid var(--primary-2)' : undefined,
                             userSelect: 'none',
                           }}
                           onClick={() => toggleTableSort(m.sortKey)}
