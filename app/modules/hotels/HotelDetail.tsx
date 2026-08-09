@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { AlertCircle, Save, Loader2, Building2, Clock, Coffee, X, ArrowLeft, Star } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
-import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import {
   isEditorRole, getEffectiveRole,
   getHotel, updateHotel, type Hotel, type HotelFormData,
@@ -41,8 +40,6 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
 
 export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }: { hotelId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
   const t = useT()
-  const { layout } = useLayout()
-  const isL2 = true // App fest Dark-Mode
   const isEditor = isEditorRole(getEffectiveRole())
 
   const [hotel, setHotel] = useState<Hotel | null>(null)
@@ -128,8 +125,8 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
 
   const ro = !isEditor
 
-  const titleColor = isL2 ? 'var(--text)' : '#111827'
-  const dirtyColor = isL2 ? '#b0b0b0' : 'var(--text-subtle)'
+  const titleColor = 'var(--text)'
+  const dirtyColor = 'var(--text-subtle)'
 
   return (
     <div className="module-content">
@@ -147,7 +144,7 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
         </h2>
         {!loading && (isEditor ? (
           <button onClick={toggleRecommended} title={form.recommended ? 'Empfehlung entfernen' : 'Als Empfehlung merken'}
-            style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', fontSize: '13px', background: 'none', border: `1px solid ${form.recommended ? 'var(--accent)' : (isL2 ? '#555' : '#d1d5db')}`, borderRadius: 0, color: form.recommended ? 'var(--accent)' : dirtyColor, cursor: 'pointer' }}>
+            style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', fontSize: '13px', background: 'none', border: `1px solid ${form.recommended ? 'var(--accent)' : ('var(--border-strong)')}`, borderRadius: 0, color: form.recommended ? 'var(--accent)' : dirtyColor, cursor: 'pointer' }}>
             <Star className="w-4 h-4" fill={form.recommended ? 'var(--accent)' : 'none'} /> Empfehlung
           </button>
         ) : form.recommended ? (
@@ -158,7 +155,7 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
             <button
               onClick={cancelEdit}
-              style={{ padding: '5px 12px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${isL2 ? '#555' : '#d1d5db'}`, borderRadius: 0, cursor: 'pointer' }}
+              style={{ padding: '5px 12px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${'var(--border-strong)'}`, borderRadius: 0, cursor: 'pointer' }}
             >
               <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
             </button>
@@ -258,16 +255,16 @@ export function HotelDetailContent({ hotelId, onNotFound, onBack, headerRight }:
 
       {showDirtyDialog && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: isL2 ? '#2a2a2a' : '#fff', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <h3 style={{ color: titleColor, fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
             <p style={{ color: dirtyColor, fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowDirtyDialog(false)}
-                style={{ padding: '8px 16px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${isL2 ? '#555' : '#d1d5db'}`, borderRadius: 0, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${'var(--border-strong)'}`, borderRadius: 0, cursor: 'pointer' }}>
                 Abbrechen
               </button>
               <button onClick={() => { setShowDirtyDialog(false); cancelEdit(); onBack?.() }}
-                style={{ padding: '8px 16px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${isL2 ? '#555' : '#d1d5db'}`, borderRadius: 0, cursor: 'pointer' }}>
+                style={{ padding: '8px 16px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${'var(--border-strong)'}`, borderRadius: 0, cursor: 'pointer' }}>
                 Verwerfen
               </button>
               <button onClick={async () => { const ok = await saveEdit(); if (ok) { setShowDirtyDialog(false); onBack?.() } }} disabled={saving}

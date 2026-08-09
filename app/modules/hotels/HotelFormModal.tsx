@@ -94,7 +94,7 @@ export default function HotelFormModal({ hotel, onClose, onSaved, onDeleted }: H
       <div className="modal-container max-w-4xl">
         <div className="modal-header">
           <h2 className="modal-title">{hotel ? t('hotels.editHotel') : t('hotels.newHotelShort')}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <button onClick={onClose} className="text-gray-400 hover:text-[var(--text)]">
             <X className="h-6 w-6" />
           </button>
         </div>

@@ -102,7 +102,7 @@ function HotelTable({ hotels, onEdit, onDelete, isAdmin }: { hotels: Hotel[]; on
               {isAdmin && (
                 <button
                   onClick={() => onDelete(hotel.id)}
-                  className="text-gray-300 hover:text-red-500 transition-colors"
+                  className="text-gray-400 hover:text-red-500 transition-colors"
                   title="Löschen"
                 >
                   <Trash2 size={13} />
