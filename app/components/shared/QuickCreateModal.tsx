@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
-import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 
 interface QuickCreateModalProps {
   title: string
@@ -27,11 +26,6 @@ export function QuickCreateModal({
   children,
 }: QuickCreateModalProps) {
   const t = useT()
-  const { layout } = useLayout()
-  const [dark, setDark] = useState(true)
-  useEffect(() => {
-    setDark(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
-  }, [])
 
   // Close on Escape
   useEffect(() => {
@@ -40,43 +34,32 @@ export function QuickCreateModal({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const bg = dark ? 'var(--surface)' : '#f4f5f7'
-  const border = dark ? '#444' : '#e5e7eb'
-  const titleColor = dark ? 'var(--text)' : '#111827'
-  const labelColor = dark ? '#b0b0b0' : '#4b5563'
-  const bodyBg = dark ? 'var(--border-strong)' : '#ffffff'
-
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div style={{ background: bg, borderRadius: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: '100%', maxWidth: '420px', border: `1px solid ${border}`, ['--qf-label' as string]: dark ? '#b0b0b0' : '#4b5563', ['--qf-input-bg' as string]: dark ? 'var(--border)' : '#fff', ['--qf-input-border' as string]: dark ? '#555' : '#d1d5db', ['--qf-input-color' as string]: dark ? 'var(--text)' : '#111827' } as React.CSSProperties}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: bg, borderBottom: `1px solid ${border}` }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 600, color: titleColor, margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ color: labelColor, background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
+    <div className="modal-overlay">
+      {/* Kompakte Variante des Standard-Modals mit den globalen Modal- und Formular-Klassen */}
+      <div className="modal-container max-w-[420px]">
+        <div className="modal-header">
+          <h3 className="modal-title">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-[var(--text)]"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
             <X size={18} />
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: bg }}>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {error && (
-            <div style={{ fontSize: '12px', color: 'var(--neg)', background: dark ? '#3d1f1f' : '#fef2f2', border: `1px solid ${dark ? '#7f1d1d' : '#fecaca'}`, borderRadius: 0, padding: '8px 12px' }}>{error}</div>
+            <div className="text-xs" style={{ color: 'var(--neg)', background: 'var(--danger-soft)', border: '1px solid var(--danger)', padding: '8px 12px' }}>{error}</div>
           )}
           {children}
         </div>
 
-        {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '14px 20px', background: bg, borderTop: `1px solid ${border}` }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '7px 14px', fontSize: '13px', color: labelColor, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 0}}
-          >
-            {t('general.cancel')}
-          </button>
+        <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: '8px' }}>
+          <button onClick={onClose} className="btn btn-ghost">{t('general.cancel')}</button>
           <button
             onClick={onSubmit}
             disabled={disabled || submitting}
-            style={{ padding: '7px 14px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: disabled || submitting ? 'not-allowed' : 'pointer', opacity: disabled || submitting ? 0.5 : 1 }}
+            className="btn btn-primary"
+            style={{ opacity: disabled || submitting ? 0.5 : 1, cursor: disabled || submitting ? 'not-allowed' : 'pointer' }}
           >
             {submitting ? t('general.creating') : (submitLabel ?? t('general.create'))}
           </button>
@@ -86,11 +69,11 @@ export function QuickCreateModal({
   )
 }
 
-// Reusable field components
+// Reusable field components – nutzen die globalen Formular-Klassen
 export function QField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="qfield-label block text-xs font-medium mb-1" style={{ color: 'var(--qf-label, #4b5563)' }}>
+      <label className="form-label">
         {label}{required && <span className="req-star" style={{ marginLeft: '2px' }}>*</span>}
       </label>
       {children}
@@ -98,5 +81,5 @@ export function QField({ label, required, children }: { label: string; required?
   )
 }
 
-export const inputCls = 'qfield-input w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500'
-export const selectCls = 'qfield-input w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500'
+export const inputCls = 'form-input'
+export const selectCls = 'form-select'
