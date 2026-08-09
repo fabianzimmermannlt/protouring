@@ -1809,27 +1809,6 @@ html.dark .l2-content .btn-secondary {
 .l2-content .l2-search { height: 30px; padding-top: 0; padding-bottom: 0; margin-bottom: 0; }
 .l2-content .btn.flex-shrink-0 { height: 30px; padding-top: 0; padding-bottom: 0; align-self: center; }
 
-/* QuickCreate Modal — dark input fields via CSS vars */
-.qfield-input {
-  background: var(--qf-input-bg, #fff);
-  border: 1px solid var(--qf-input-border, #d1d5db);
-  color: var(--qf-input-color, #111827);
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: 0;
-  font-size: 13px;
-  outline: none;
-}
-.qfield-input:focus {
-  ring: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
-}
-.qfield-input::placeholder {
-  color: var(--qf-label, #9ca3af);
-  opacity: 0.7;
-}
-
 /* Detail View — Underline Input Style */
 .detail-input {
   width: 100%;
@@ -1919,20 +1898,6 @@ html.dark .l2-content select.detail-input option {
 }
 html.dark .l2-content .detail-label {
   color: #9ca3af !important;
-}
-
-/* QuickCreate Modal — dark form-input override (for NameAddressAutocomplete) */
-.qcm-dark .form-input,
-.qcm-dark .form-input:focus {
-  background: #3c3c3c !important;
-  border-color: #555 !important;
-  color: #e0e0e0 !important;
-}
-.qcm-dark .form-input::placeholder {
-  color: #6b7280 !important;
-}
-.qcm-dark .form-label {
-  color: #b0b0b0 !important;
 }
 
 /* PT-Sidebar Nav Active */
