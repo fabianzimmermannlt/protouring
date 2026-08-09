@@ -337,7 +337,7 @@ export function L2Layout({
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
           activeTab === 'events' && !activeSubTab && !termineInDetail
             ? 'pt-nav-sub-active'
-            : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
+            : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
         }`}
       >
         Übersicht
@@ -347,7 +347,7 @@ export function L2Layout({
         className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
           activeTab === 'events' && activeSubTab === 'crew-booking'
             ? 'pt-nav-sub-active'
-            : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
+            : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
         }`}
       >
         Crew-Buchung
@@ -377,13 +377,13 @@ export function L2Layout({
         <button
           onClick={() => hasSubNav ? toggleExpand() : handleNav(item.id)}
           className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-            isActive && !hasSubNav ? 'pt-nav-active' : 'hover:text-white hover:bg-[var(--surface)]'
+            isActive && !hasSubNav ? 'pt-nav-active' : 'hover:text-[var(--text)] hover:bg-[var(--hover)]'
           }`}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
           <span className="flex-1">{item.name}</span>
           {isModule && (
-            <span className="text-[9px] font-semibold text-orange-400 bg-orange-950 border border-orange-800 px-1 py-0.5 rounded">
+            <span className="text-[9px] font-semibold px-1 py-0.5 rounded text-orange-700 bg-orange-100 border border-orange-300 dark:text-orange-400 dark:bg-orange-950 dark:border-orange-800">
               ADDON
             </span>
           )}
@@ -412,7 +412,7 @@ export function L2Layout({
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
                   activeSubTab === sub.id && !(activeTab === 'contacts' && sub.id === 'overview' && contactInDetail)
                     ? 'pt-nav-sub-active'
-                    : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
+                    : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
                 }`}
               >
                 {sub.name}
@@ -439,7 +439,7 @@ export function L2Layout({
                   onTabChange('settings', sub.id)
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
+                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
                 }`}
               >
                 {sub.name}
@@ -456,7 +456,7 @@ export function L2Layout({
                   onTabChange('settings', sub.id)
                 })}
                 className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-white hover:bg-[var(--surface)]'
+                  activeSubTab === sub.id ? 'pt-nav-sub-active' : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
                 }`}
               >
                 {sub.name}
@@ -615,7 +615,7 @@ export function L2Layout({
           <div ref={settingsRef} className="px-0 pb-3 border-t border-[var(--border)] pt-3">
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('pt:open-settings', { detail: { subTab: 'profil' } }))}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-white hover:bg-[var(--surface)]"
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left hover:text-[var(--text)] hover:bg-[var(--hover)]"
             >
               <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">Einstellungen</span>
