@@ -2101,6 +2101,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   useEffect(() => { if (!snack) return; const t = setTimeout(() => setSnack(null), 5000); return () => clearTimeout(t) }, [snack])
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   useEffect(() => { setSelectedItems(new Set()) }, [fromLoc, toLoc])   // Auswahl bei Standortwechsel leeren
+  // Verladen: Scan-Modus (Bluetooth-Scanner tippt die Case-ID)
+  const [scanMode, setScanMode] = useState(false)
+  const [scanLog, setScanLog] = useState<{ text: string; kind: 'ok' | 'err' | 'info' }[]>([])
+  const scanInputRef = useRef<HTMLInputElement>(null)
   const [itemModal, setItemModal] = useState<{ open: boolean; item: EquipmentItem | null }>({ open: false, item: null })
   const [matModal, setMatModal] = useState<{ open: boolean; mat: EquipmentMaterial | null }>({ open: false, mat: null })
   const [carnetModal, setCarnetModal] = useState<{ open: boolean; carnet: Carnet | null }>({ open: false, carnet: null })
@@ -2895,6 +2899,30 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const loadSingle = (item: EquipmentItem) => { move([item.id], toLoc, fromLoc, item.case_id); setSelectedItems(prev => { const n = new Set(prev); n.delete(item.id); return n }) }
     const loadSelected = () => { const ids = fromItems.filter(i => selectedItems.has(i.id)).map(i => i.id); if (!ids.length) return; move(ids, toLoc, fromLoc, `${ids.length} Gegenstände`); setSelectedItems(new Set()) }
 
+    // Scan-Modus: gescannte Case-ID → Gegenstand finden → nach „Nach" laden.
+    const pushScan = (text: string, kind: 'ok' | 'err' | 'info') => setScanLog(prev => [{ text, kind }, ...prev].slice(0, 8))
+    const buzz = (p: number | number[]) => { try { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(p) } catch { /* ignore */ } }
+    const handleScan = (raw: string) => {
+      const code = raw.trim()
+      if (!code) return
+      const item = items.find(i => i.case_id.toLowerCase() === code.toLowerCase())
+      if (!item) { pushScan(`${code} — unbekannt`, 'err'); buzz([60, 40, 60]); return }
+      const targetId = selToId(toLoc)
+      if ((item.location_id ?? null) === targetId) { pushScan(`${item.case_id} — schon an ${selName(toLoc)}`, 'info'); buzz(20); return }
+      const prevLoc = item.location_id == null ? 'none' : String(item.location_id)
+      move([item.id], toLoc, prevLoc, item.case_id)
+      pushScan(`${item.case_id} · ${item.bezeichnung} → ${selName(toLoc)}`, 'ok')
+      buzz(35)
+    }
+    const onScanSubmit = (e: React.FormEvent) => {
+      e.preventDefault()
+      const el = scanInputRef.current
+      const code = el?.value ?? ''
+      if (el) el.value = ''
+      if (code.trim()) handleScan(code)
+      el?.focus()
+    }
+
     return (
       <div className="space-y-4" style={{ maxWidth: 640 }}>
         <p className="text-sm text-gray-500">Gegenstände von einem Standort zum anderen umladen. Tippe eine Kachel als Quelle, wähle ein Ziel und lade – einzeln oder alles.</p>
@@ -2938,6 +2966,48 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             </select>
           </div>
         </div>
+
+        {/* Scan-Modus (Bluetooth-Scanner tippt die Case-ID) */}
+        {canMove && (
+          <button
+            onClick={() => { setScanMode(s => !s); if (scanMode) setScanLog([]) }}
+            className={`btn ${scanMode ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ display: 'flex', width: '100%', justifyContent: 'center' }}
+          >
+            {scanMode ? '⏹ Scan-Modus beenden' : '📷 Scan-Modus (Bluetooth-Scanner)'}
+          </button>
+        )}
+        {scanMode && canMove && (
+          <div className="rounded-xl p-4" style={{ border: '2px solid var(--primary)', background: 'var(--surface)' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+              📷 Scannen → {selIcon(toLoc)} {selName(toLoc)}
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">QR-Code scannen — der Gegenstand wird nach „{selName(toLoc)}" geladen. Das Feld bleibt aktiv.</p>
+            <form onSubmit={onScanSubmit}>
+              <input
+                ref={scanInputRef}
+                autoFocus
+                inputMode="none"
+                autoComplete="off"
+                spellCheck={false}
+                className="form-input"
+                style={{ fontSize: '1rem', fontFamily: 'monospace' }}
+                placeholder="Bereit zum Scannen…"
+                onBlur={() => { if (scanMode) setTimeout(() => scanInputRef.current?.focus(), 150) }}
+              />
+            </form>
+            {scanLog.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {scanLog.map((e, i) => (
+                  <div key={i} className="text-sm flex items-center gap-2" style={{ color: e.kind === 'ok' ? 'var(--success)' : e.kind === 'err' ? 'var(--danger)' : 'var(--text-muted)' }}>
+                    <span className="shrink-0">{e.kind === 'ok' ? '✓' : e.kind === 'err' ? '✗' : '•'}</span>
+                    <span className="truncate">{e.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Liste der Quell-Gegenstände */}
         {fromLoc === '' ? (
