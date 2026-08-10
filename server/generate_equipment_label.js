@@ -1,15 +1,15 @@
 'use strict';
 /**
- * Fixed-zone A6 landscape label generator (pdfkit + qrcode).
+ * Fixed-zone landscape label generator (pdfkit + qrcode).
  * Zones are fixed; content adapts via auto font-scaling.
- * A6 landscape: 419.53 × 297.64 pt
+ * Label stock: 152 × 102 mm (4×6", landscape) = 430.87 × 289.13 pt
  */
 const PDFDocument = require('pdfkit');
 const QRCode      = require('qrcode');
 const fs          = require('fs');
 
-const W = 419.53;
-const H = 297.64;
+const W = 430.87;   // 152 mm
+const H = 289.13;   // 102 mm
 const M = 7;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -262,8 +262,8 @@ async function generateEquipmentLabel(opts) {
     // ── QR CODE (4.5 cm = 128 pt, flush right with separator, M from bottom) ─
     if (showQR) {
       const qrS = 128;
-      const qrX = W - M - qrS; // flush with separator right end (W - M = 412.53)
-      const qrY = H - M - qrS; // M from bottom = 297.64 - 7 - 128 = 162.64
+      const qrX = W - M - qrS; // flush with separator right end (W - M = 423.87)
+      const qrY = H - M - qrS; // M from bottom = 289.13 - 7 - 128 = 154.13
       if (qrBuffer) {
         doc.image(qrBuffer, qrX, qrY, { width: qrS, height: qrS });
       } else {
