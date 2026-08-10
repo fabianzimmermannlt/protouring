@@ -531,13 +531,13 @@ body {
   white-space: nowrap;
 }
 .pt-detail-tab:hover {
-  color: #ccc;
-  background: #2d2d2d;
+  color: var(--text);
+  background: var(--hover);
 }
 .pt-detail-tab.active {
-  color: #e0e0e0;
+  color: var(--text);
   font-weight: 500;
-  border-bottom: 2px solid #3b82f6;
+  border-bottom: 2px solid var(--primary);
   background: none;
 }
 .pt-detail-tab.active:hover {
