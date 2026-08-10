@@ -3,8 +3,9 @@
  * Fixed-zone landscape label generator (pdfkit + qrcode).
  * Zones are fixed; content adapts via auto font-scaling.
  * Label stock: 152 × 102 mm (4×6", landscape) = 430.87 × 289.13 pt.
- * Drucker lassen einen unbedruckbaren Rand (~6 mm); daher wird der komplette
- * Inhalt um SAFE zentriert eingerückt, damit nichts angeschnitten wird.
+ * Drucker lassen am rechten (152-mm-)Ende einen unbedruckbaren Rand (~6 mm);
+ * daher werden nur die rechts angeschlagenen Elemente (QR, Maße/Typ, Case-ID)
+ * um MR nach innen geholt – oben/unten/links bleibt unverändert.
  */
 const PDFDocument = require('pdfkit');
 const QRCode      = require('qrcode');
@@ -13,7 +14,7 @@ const fs          = require('fs');
 const W = 430.87;   // 152 mm
 const H = 289.13;   // 102 mm
 const M = 7;
-const SAFE = 20;    // ~7 mm sicherer Rand gegen unbedruckbaren Drucker-Randbereich
+const MR = 18;      // ~6.3 mm rechter Sicherheitsrand (Drucker schneidet die 152er-Seite an)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -140,13 +141,6 @@ async function generateEquipmentLabel(opts) {
     // We clip visually AND prevent the page addition entirely.
     doc.save();
     doc.rect(0, 0, W, H).clip();
-
-    // Kompletten Inhalt sicher einrücken + zentrieren, damit der unbedruckbare
-    // Drucker-Rand (~6 mm) nichts abschneidet. Maßgeblich ist die lange (152 mm)
-    // Achse – dort schneidet der Drucker ab; der QR bleibt durch uniformen Scale quadratisch.
-    const insetScale = (W - 2 * SAFE) / W;
-    doc.translate((W - W * insetScale) / 2, (H - H * insetScale) / 2);
-    doc.scale(insetScale);
     const _addPage = doc.addPage.bind(doc);
     doc.addPage = function () {
       console.warn('Label: overflow blocked – staying on page 1');
@@ -195,7 +189,7 @@ async function generateEquipmentLabel(opts) {
     txt(doc, 'INHALT:', M, MID_Y, { lineBreak: false });
     if (caseId) {
       doc.fillColor('#111111').fontSize(8).font('Helvetica-Bold');
-      txt(doc, caseId, M, MID_Y, { width: W - M * 2, align: 'right', lineBreak: false });
+      txt(doc, caseId, M, MID_Y, { width: W - M - MR, align: 'right', lineBreak: false });
     }
 
     // ── BEZEICHNUNG (left, 230pt wide) ───────────────────────────────────────
@@ -216,22 +210,22 @@ async function generateEquipmentLabel(opts) {
       if (showMasse && (heightCm != null || widthCm != null || depthCm != null)) {
         const masseStr = `H×B×T: ${fmt(heightCm)} × ${fmt(widthCm)} × ${fmt(depthCm)} cm`;
         doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
-        txt(doc, masseStr, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        txt(doc, masseStr, M, metaY, { width: W - M - MR, align: 'right', lineBreak: false });
         metaY += metaLineH;
       }
       if (showGewicht && gesamtgewicht) {
         doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
-        txt(doc, `Gewicht: ${gesamtgewicht} kg`, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        txt(doc, `Gewicht: ${gesamtgewicht} kg`, M, metaY, { width: W - M - MR, align: 'right', lineBreak: false });
         metaY += metaLineH;
       }
       if (showTyp && typ) {
         doc.fillColor('#555555').fontSize(metaFS).font('Helvetica');
-        txt(doc, `Typ: ${TYP_LABELS[typ] || typ}`, M, metaY, { width: W - M * 2, align: 'right', lineBreak: false });
+        txt(doc, `Typ: ${TYP_LABELS[typ] || typ}`, M, metaY, { width: W - M - MR, align: 'right', lineBreak: false });
       }
     }
 
     // ── SEPARATOR ────────────────────────────────────────────────────────────
-    doc.moveTo(M, SEP_Y).lineTo(W - M, SEP_Y).lineWidth(0.75).stroke('#111111');
+    doc.moveTo(M, SEP_Y).lineTo(W - MR, SEP_Y).lineWidth(0.75).stroke('#111111');
 
     // ── LOAD ORDER LABEL (number stays bottom-anchored from H) ──────────────
     if (showLoadOrder && loadOrder != null) {
@@ -272,7 +266,7 @@ async function generateEquipmentLabel(opts) {
     // ── QR CODE (4.5 cm = 128 pt, flush right with separator, M from bottom) ─
     if (showQR) {
       const qrS = 128;
-      const qrX = W - M - qrS; // flush with separator right end (W - M = 423.87)
+      const qrX = W - MR - qrS; // flush with separator right end (W - MR)
       const qrY = H - M - qrS; // M from bottom = 289.13 - 7 - 128 = 154.13
       if (qrBuffer) {
         doc.image(qrBuffer, qrX, qrY, { width: qrS, height: qrS });
