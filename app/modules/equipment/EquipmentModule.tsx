@@ -225,7 +225,14 @@ function VerladeRow({ item, canMove, selected, onToggleSelect, onLoad }: {
           <div className="font-medium text-gray-900 truncate">{item.bezeichnung}</div>
           <div className="text-xs text-gray-500">{item.case_id}{item.category_name ? ' · ' + item.category_name : ''}{item.gruppe_name ? ' · ' + item.gruppe_name : ''}</div>
         </div>
-        {canMove && <button onClick={onLoad} className="btn btn-primary shrink-0" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem' }} title="laden">→ laden</button>}
+        {canMove && (
+          <>
+            {/* Desktop: Button (kein Wischen mit Maus) */}
+            <button onClick={onLoad} className="btn btn-primary shrink-0 hidden md:inline-flex" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem' }} title="laden">→ laden</button>
+            {/* Handy: nur ein Pfeil als Wisch-Hinweis (antippbar als Fallback) */}
+            <button onClick={onLoad} onTouchStart={e => e.stopPropagation()} className="md:hidden shrink-0" style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', lineHeight: 1, padding: '0 6px' }} aria-label="laden" title="nach rechts wischen zum Laden">→</button>
+          </>
+        )}
       </div>
     </div>
   )
