@@ -114,6 +114,7 @@ const EQUIPMENT_SUBS: SubItem[] = [
   { id: 'verladen',    name: 'Verladen' },
   { id: 'standorte',   name: 'Standorte' },
   { id: 'categories',  name: 'Kategorien' },
+  { id: 'farben',      name: 'Farben' },
   { id: 'eigentuemer', name: 'Eigentümer' },
   { id: 'carnets',     name: 'Carnets' },
 ]
@@ -1198,6 +1199,7 @@ export function L3Layout({
         { id: 'items',       label: t('equipment.sub.items') },
         { id: 'materials',   label: t('equipment.sub.materials') },
         { id: 'categories',  label: t('equipment.sub.categories') },
+        { id: 'farben',      label: t('equipment.sub.farben') },
         { id: 'eigentuemer', label: t('equipment.sub.eigentuemer') },
         { id: 'carnets',     label: t('equipment.sub.carnets') },
       ]

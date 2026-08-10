@@ -129,6 +129,7 @@ const en = {
   'equipment.sub.items':          'Cases',
   'equipment.sub.materials':      'Gear',
   'equipment.sub.categories':     'Categories',
+  'equipment.sub.farben':         'Colors',
   'equipment.sub.eigentuemer':    'Owners',
   'equipment.sub.carnets':        'Carnets',
   'equipment.addon':              'ADDON',

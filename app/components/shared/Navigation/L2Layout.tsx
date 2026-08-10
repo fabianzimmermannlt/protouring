@@ -84,6 +84,7 @@ const EQUIPMENT_SUBS: SubItem[] = [
   { id: 'verladen',    name: 'Verladen' },
   { id: 'standorte',   name: 'Standorte' },
   { id: 'categories',  name: 'Kategorien' },
+  { id: 'farben',      name: 'Farben' },
   { id: 'eigentuemer', name: 'Eigentümer' },
   { id: 'carnets',     name: 'Carnets' },
 ]

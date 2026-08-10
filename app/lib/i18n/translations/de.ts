@@ -130,6 +130,7 @@ const de = {
   'equipment.sub.items':          'Gegenstände',
   'equipment.sub.materials':      'Material',
   'equipment.sub.categories':     'Kategorien',
+  'equipment.sub.farben':         'Farben',
   'equipment.sub.eigentuemer':    'Eigentümer',
   'equipment.sub.carnets':        'Carnets',
   'equipment.addon':              'ADDON',
