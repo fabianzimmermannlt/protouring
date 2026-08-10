@@ -9,6 +9,7 @@ import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility
 import {
   getEquipmentCategories, createEquipmentCategory, updateEquipmentCategory, deleteEquipmentCategory,
   getEquipmentLocations, createEquipmentLocation, updateEquipmentLocation, deleteEquipmentLocation, moveEquipmentItems, type EquipmentLocation, type EquipmentLocationKind,
+  getEquipmentLabels, createEquipmentLabel, updateEquipmentLabel, deleteEquipmentLabel, type EquipmentLabel,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
   getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
@@ -93,12 +94,13 @@ const ITEMS_COLUMNS = [
   { id: 'masse',        label: 'Maße H×B×T',      defaultVisible: true  },
   { id: 'leer_kg',      label: 'Leer kg',         defaultVisible: true  },
   { id: 'farbe',        label: 'Labelfarbe',      defaultVisible: true  },
+  { id: 'owner',        label: 'Eigentümer',      defaultVisible: false },
   { id: 'material',     label: 'Material',        defaultVisible: true  },
   { id: 'gesamt_kg',    label: 'Gesamt kg',       defaultVisible: true  },
   { id: 'notiz',        label: 'Notiz',           defaultVisible: false },
 ]
 
-type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'masse' | 'label_color' | 'gesamt_kg' | 'notiz' | 'location_name'
+type ItemSortKey = 'case_id' | 'bezeichnung' | 'typ' | 'category_name' | 'position' | 'weight_empty_kg' | 'material_count' | 'load_order' | 'gruppe_name' | 'masse' | 'label_color' | 'owner_name' | 'gesamt_kg' | 'notiz' | 'location_name'
 
 const CARNET_COLUMNS = [
   { id: 'carnet_id',        label: 'Carnet-ID',        defaultVisible: true  },
@@ -285,11 +287,63 @@ function LocationModal({ loc, onSave, onClose }: {
   )
 }
 
+// ── Labelfarben-Modal ────────────────────────────────────────────────────────
+
+function LabelModal({ label, onSave, onClose }: {
+  label: EquipmentLabel | null
+  onSave: (data: { name: string; color: string }) => Promise<void>
+  onClose: () => void
+}) {
+  const [name, setName] = useState(label?.name ?? '')
+  const [color, setColor] = useState(label?.color ?? '#3b82f6')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const handle = async () => {
+    if (!name.trim()) { setErr('Name ist Pflicht'); return }
+    setSaving(true)
+    try { await onSave({ name: name.trim(), color }); onClose() }
+    catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
+  }
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container max-w-sm">
+        <div className="modal-header">
+          <h3 className="modal-title">{label ? 'Farbe bearbeiten' : 'Neue Farbe'}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-[var(--text)]"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="modal-body space-y-3">
+          <div>
+            <label className="form-label">Name</label>
+            <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Blau, Bühne links" autoFocus />
+          </div>
+          <div>
+            <label className="form-label">Farbe</label>
+            <div className="flex items-center gap-3">
+              <input type="color" className="h-9 w-16 rounded border border-gray-200 p-0.5" value={color} onChange={e => setColor(e.target.value)} />
+              <span className="inline-block w-7 h-7 rounded-full border border-gray-300" style={{ backgroundColor: color }} />
+              <span className="text-xs text-gray-500 font-mono">{color}</span>
+            </div>
+          </div>
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+        <div className="modal-footer">
+          <div className="ml-auto flex gap-2">
+            <button onClick={onClose} className="btn btn-ghost">Abbrechen</button>
+            <button onClick={handle} disabled={saving} className="btn btn-primary disabled:opacity-50">{saving ? 'Speichern…' : 'Speichern'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Gegenstand-Modal ─────────────────────────────────────────────────────────
 
-function ItemModal({ item, locations, onSave, onClose }: {
+function ItemModal({ item, locations, owners, labels, onSave, onClose }: {
   item: EquipmentItem | null
   locations: EquipmentLocation[]
+  owners: EquipmentOwner[]
+  labels: EquipmentLabel[]
   onSave: (data: Partial<EquipmentItem>) => Promise<void>
   onClose: () => void
 }) {
@@ -305,7 +359,8 @@ function ItemModal({ item, locations, onSave, onClose }: {
     width_cm:      item?.width_cm != null ? String(item.width_cm) : '',
     depth_cm:      item?.depth_cm != null ? String(item.depth_cm) : '',
     weight_empty_kg: item?.weight_empty_kg != null ? String(item.weight_empty_kg) : '',
-    label_color:   item?.label_color ?? '',
+    label_id:      item?.label_id != null ? String(item.label_id) : '',
+    owner_id:      item?.owner_id != null ? String(item.owner_id) : '',
     gruppe_name:   item?.gruppe_name ?? '',
     notiz:         item?.notiz ?? '',
   })
@@ -333,7 +388,9 @@ function ItemModal({ item, locations, onSave, onClose }: {
         width_cm:        n(form.width_cm),
         depth_cm:        n(form.depth_cm),
         weight_empty_kg: n(form.weight_empty_kg),
-        label_color:     form.label_color || null,
+        label_id:        ni(form.label_id),
+        label_color:     null,
+        owner_id:        ni(form.owner_id),
         gruppe_name:     form.gruppe_name.trim() || null,
         notiz:           form.notiz || null,
       })
@@ -433,40 +490,54 @@ function ItemModal({ item, locations, onSave, onClose }: {
             </div>
           </div>
 
-          {/* Labelfarbe */}
+          {/* Labelfarbe (konfigurierbar im Tab „Farben") */}
           <div>
-            <div>
-              <label className="form-label">Labelfarbe</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {[
-                  { color: '', label: 'keine' },
-                  { color: 'var(--danger)', label: 'Rot' },
-                  { color: '#f97316', label: 'Orange' },
-                  { color: '#eab308', label: 'Gelb' },
-                  { color: 'var(--success)', label: 'Grün' },
-                  { color: 'var(--primary)', label: 'Blau' },
-                  { color: '#8b5cf6', label: 'Lila' },
-                  { color: '#ec4899', label: 'Pink' },
-                  { color: '#ffffff', label: 'Weiß' },
-                  { color: '#000000', label: 'Schwarz' },
-                ].map(({ color, label }) => (
+            <label className="form-label">Labelfarbe</label>
+            <div className="flex flex-wrap gap-2 mt-1 items-center">
+              {/* keine Farbe */}
+              <button
+                type="button"
+                title="keine Farbe"
+                onClick={() => setForm({ ...form, label_id: '' })}
+                className="w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform"
+                style={{
+                  backgroundColor: 'transparent',
+                  borderColor: form.label_id === '' ? 'var(--primary)' : '#d1d5db',
+                  transform: form.label_id === '' ? 'scale(1.2)' : 'scale(1)',
+                  backgroundImage: 'repeating-linear-gradient(45deg, #d1d5db 0, #d1d5db 2px, transparent 0, transparent 50%)',
+                  backgroundSize: '6px 6px',
+                }}
+              />
+              {labels.map(l => {
+                const sel = form.label_id === String(l.id)
+                return (
                   <button
-                    key={color}
+                    key={l.id}
                     type="button"
-                    title={label}
-                    onClick={() => setForm({...form, label_color: color})}
+                    title={l.name}
+                    onClick={() => setForm({ ...form, label_id: String(l.id) })}
                     className="w-7 h-7 rounded-full border-2 flex-shrink-0 transition-transform"
                     style={{
-                      backgroundColor: color || 'transparent',
-                      borderColor: form.label_color === color ? 'var(--primary)' : (color === '' ? '#d1d5db' : color),
-                      transform: form.label_color === color ? 'scale(1.25)' : 'scale(1)',
-                      backgroundImage: color === '' ? 'repeating-linear-gradient(45deg, #d1d5db 0, #d1d5db 2px, transparent 0, transparent 50%)' : undefined,
-                      backgroundSize: color === '' ? '6px 6px' : undefined,
+                      backgroundColor: l.color || 'transparent',
+                      borderColor: sel ? 'var(--primary)' : '#d1d5db',
+                      transform: sel ? 'scale(1.2)' : 'scale(1)',
                     }}
                   />
-                ))}
-              </div>
+                )
+              })}
             </div>
+            {labels.length === 0 && (
+              <p className="text-xs text-gray-400 mt-1">Noch keine Farben angelegt — im Tab „Farben" verwalten.</p>
+            )}
+          </div>
+
+          {/* Eigentümer (gleiche Daten wie beim Material) */}
+          <div>
+            <label className="form-label">Eigentümer</label>
+            <select className="form-select" value={form.owner_id} onChange={e => setForm({ ...form, owner_id: e.target.value })}>
+              <option value="">— kein Eigentümer —</option>
+              {owners.map(o => <option key={o.id} value={o.id}>{o.name}{o.typ && o.typ !== 'privatperson' ? ` (${OWNER_TYP_LABELS[o.typ] ?? o.typ})` : ''}</option>)}
+            </select>
           </div>
 
           {/* Gruppe */}
@@ -1976,6 +2047,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const activeTab = activeSubTab || 'items'
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
   const [locations, setLocations] = useState<EquipmentLocation[]>([])
+  const [labels, setLabels] = useState<EquipmentLabel[]>([])
   const [items, setItems] = useState<EquipmentItem[]>([])
   const [materials, setMaterials] = useState<EquipmentMaterial[]>([])
   const [loading, setLoading] = useState(true)
@@ -2011,6 +2083,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
   const [catModal, setCatModal] = useState<{ open: boolean; cat: EquipmentCategory | null }>({ open: false, cat: null })
   const [locModal, setLocModal] = useState<{ open: boolean; loc: EquipmentLocation | null }>({ open: false, loc: null })
+  const [labelModal, setLabelModal] = useState<{ open: boolean; label: EquipmentLabel | null }>({ open: false, label: null })
   // Verladen (Logistik): Von/Nach + Undo-Snackbar
   const [fromLoc, setFromLoc] = useState<string>('')   // '' = keiner, 'none' = ohne Standort, sonst id
   const [toLoc, setToLoc] = useState<string>('')
@@ -2037,7 +2110,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const scrollY = silent ? window.scrollY : 0
     if (!silent) setLoading(true)
     try {
-      const [k, cats, itms, mats, settings, carnetsData, ownersData, locs] = await Promise.all([
+      const [k, cats, itms, mats, settings, carnetsData, ownersData, locs, labs] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
         getEquipmentItems(),
@@ -2046,10 +2119,12 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         getCarnets(),
         getEquipmentOwners(),
         getEquipmentLocations(),
+        getEquipmentLabels(),
       ])
       setKuerzel(k)
       setCategories(cats)
       setLocations(locs)
+      setLabels(labs)
       setItems(itms)
       setMaterials(mats)
       setCarnetEnabled(settings.carnet_ata_enabled)
@@ -2250,6 +2325,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                 {isVisible('masse')     && <th className="sortable text-right" onClick={() => toggleItemSort('masse')}>Maße H×B×T cm <SortIndicator active={itemSortKey === 'masse'} dir={itemSortDir} /></th>}
                 {isVisible('leer_kg')   && <th className="sortable text-right" onClick={() => toggleItemSort('weight_empty_kg')}>Leer kg <SortIndicator active={itemSortKey === 'weight_empty_kg'} dir={itemSortDir} /></th>}
                 {isVisible('farbe')     && <th className="sortable" onClick={() => toggleItemSort('label_color')}>Farbe <SortIndicator active={itemSortKey === 'label_color'} dir={itemSortDir} /></th>}
+                {isVisible('owner')     && <th className="sortable" onClick={() => toggleItemSort('owner_name')}>Eigentümer <SortIndicator active={itemSortKey === 'owner_name'} dir={itemSortDir} /></th>}
                 {isVisible('material')  && <th className="sortable text-right" onClick={() => toggleItemSort('material_count')}>Material <SortIndicator active={itemSortKey === 'material_count'} dir={itemSortDir} /></th>}
                 {isVisible('gesamt_kg') && <th className="sortable text-right" onClick={() => toggleItemSort('gesamt_kg')}>Gesamt kg <SortIndicator active={itemSortKey === 'gesamt_kg'} dir={itemSortDir} /></th>}
                 {isVisible('notiz')     && <th className="sortable" onClick={() => toggleItemSort('notiz')}>Notiz <SortIndicator active={itemSortKey === 'notiz'} dir={itemSortDir} /></th>}
@@ -2281,9 +2357,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                       {isVisible('leer_kg')   && <td className="text-right">{fmt(item.weight_empty_kg, ' kg')}</td>}
                       {isVisible('farbe')     && <td>
                         {item.label_color
-                          ? <span className="inline-block w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: item.label_color }} title={item.label_color} />
+                          ? <span className="inline-block w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: item.label_color }} title={item.label_name || item.label_color} />
                           : '—'}
                       </td>}
+                      {isVisible('owner')     && <td className="text-xs text-gray-600">{item.owner_name || '—'}</td>}
                       {isVisible('material')  && <td className="text-right">{item.material_count ? `${item.material_count}×` : '—'}</td>}
                       {isVisible('gesamt_kg') && <td className="text-right font-medium">{totalWeight > 0 ? `${totalWeight.toLocaleString('de-DE')} kg` : '—'}</td>}
                       {isVisible('notiz')     && <td className="text-xs text-gray-500" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.notiz || ''}>{item.notiz || '—'}</td>}
@@ -2750,6 +2827,40 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     </div>
   )
 
+  // ── Farben (Labelfarben) ──────────────────────────────────────────────────────
+  const renderFarben = () => (
+    <div className="space-y-3" style={{ maxWidth: 560 }}>
+      <p className="text-sm text-gray-500">Labelfarben zum Markieren von Gegenständen. Sie erscheinen als Auswahl im Gegenstand und als farbiger Punkt in der Tabelle.</p>
+      {canEdit && (
+        <button onClick={() => setLabelModal({ open: true, label: null })} className="btn btn-primary"><PlusIcon className="w-4 h-4" /> Neue Farbe</button>
+      )}
+      {labels.length === 0 ? (
+        <div className="text-center py-12">
+          <SwatchIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Noch keine Farben angelegt</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {labels.map(lab => (
+            <div key={lab.id} className="flex items-center gap-3 p-3 rounded-lg border bg-white" style={{ borderColor: lab.color || '#e5e7eb', borderLeftWidth: 4 }}>
+              <span className="inline-block w-6 h-6 rounded-full border border-gray-300 flex-shrink-0" style={{ backgroundColor: lab.color || 'transparent' }} />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-gray-900 truncate">{lab.name}</div>
+                <div className="text-xs text-gray-500 font-mono">{lab.color || '—'} · {lab.item_count ?? 0} Gegenstände</div>
+              </div>
+              {canEdit && (
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => setLabelModal({ open: true, label: lab })} className="p-2 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
+                  <button onClick={async () => { if (!confirm(`Farbe „${lab.name}" löschen? Gegenstände verlieren nur die Markierung.`)) return; await deleteEquipmentLabel(lab.id); load(true) }} className="p-2 text-gray-400 hover:text-red-600" title="Löschen"><TrashIcon className="w-4 h-4" /></button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
   // ── Verladen (Logistik) ────────────────────────────────────────────────────────
   const renderVerladen = () => {
     const countAt = (lid: number | null) => items.filter(i => (i.location_id ?? null) === lid).length
@@ -2994,6 +3105,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       {activeTab === 'verladen'     && renderVerladen()}
       {activeTab === 'standorte'    && renderStandorte()}
       {activeTab === 'categories'   && renderCategories()}
+      {activeTab === 'farben'       && renderFarben()}
       {activeTab === 'eigentuemer'  && renderEigentuemer()}
       {activeTab === 'carnets'      && renderCarnets()}
 
@@ -3038,10 +3150,23 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           onClose={() => setLocModal({ open: false, loc: null })}
         />
       )}
+      {labelModal.open && (
+        <LabelModal
+          label={labelModal.label}
+          onSave={async data => {
+            if (labelModal.label) await updateEquipmentLabel(labelModal.label.id, data)
+            else await createEquipmentLabel(data)
+            load(true)
+          }}
+          onClose={() => setLabelModal({ open: false, label: null })}
+        />
+      )}
       {itemModal.open && (
         <ItemModal
           item={itemModal.item}
           locations={locations}
+          owners={owners}
+          labels={labels}
           onSave={async data => {
             if (itemModal.item) await updateEquipmentItem(itemModal.item.id, data)
             else await createEquipmentItem(data)

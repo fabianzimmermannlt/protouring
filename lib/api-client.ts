@@ -756,6 +756,32 @@ export async function moveEquipmentItems(itemIds: number[], locationId: number |
   await request('/api/equipment/items/move', { method: 'POST', body: { item_ids: itemIds, location_id: locationId } });
 }
 
+// ── Equipment-Labelfarben (konfigurierbare Marker für Gegenstände) ────────────
+export interface EquipmentLabel {
+  id: number;
+  tenant_id: number;
+  name: string;
+  color: string | null;
+  sort_order: number;
+  item_count?: number;
+  created_at: string;
+}
+export async function getEquipmentLabels(): Promise<EquipmentLabel[]> {
+  const res = await request<{ labels: EquipmentLabel[] }>('/api/equipment/labels');
+  return res.labels;
+}
+export async function createEquipmentLabel(data: { name: string; color?: string | null; sort_order?: number }): Promise<EquipmentLabel> {
+  const res = await request<{ label: EquipmentLabel }>('/api/equipment/labels', { method: 'POST', body: data });
+  return res.label;
+}
+export async function updateEquipmentLabel(id: number, data: Partial<EquipmentLabel>): Promise<EquipmentLabel> {
+  const res = await request<{ label: EquipmentLabel }>(`/api/equipment/labels/${id}`, { method: 'PUT', body: data });
+  return res.label;
+}
+export async function deleteEquipmentLabel(id: number): Promise<void> {
+  await request(`/api/equipment/labels/${id}`, { method: 'DELETE' });
+}
+
 // ============================================
 // Equipment: Gegenstände (Items)
 // ============================================
@@ -790,6 +816,10 @@ export interface EquipmentItem {
   depth_cm: number | null;
   weight_empty_kg: number | null;
   label_color: string | null;
+  label_id: number | null;
+  label_name?: string | null;
+  owner_id: number | null;
+  owner_name?: string | null;
   standort_status: string | null;
   gruppe_name: string | null;
   notiz: string | null;

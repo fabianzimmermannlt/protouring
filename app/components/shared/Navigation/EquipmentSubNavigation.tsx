@@ -13,6 +13,7 @@ const equipmentSubItems = [
   { id: 'verladen',     name: 'VERLADEN',     description: 'Gegenstände umladen (Logistik)' },
   { id: 'standorte',    name: 'STANDORTE',    description: 'Standorte (Logistik) verwalten' },
   { id: 'categories',   name: 'KATEGORIEN',   description: 'Kategorien verwalten' },
+  { id: 'farben',       name: 'FARBEN',       description: 'Labelfarben für Gegenstände verwalten' },
   { id: 'eigentuemer',  name: 'EIGENTÜMER',   description: 'Equipment-Eigentümer' },
   { id: 'carnets',      name: 'CARNETS',      description: 'Carnet ATA Dokumente' },
 ]
@@ -23,6 +24,7 @@ const SHORT_LABEL: Record<string, string> = {
   verladen:    'Verladen',
   standorte:   'Standorte',
   categories:  'Kategorien',
+  farben:      'Farben',
   eigentuemer: 'Eigentümer',
   carnets:     'Carnets',
 }
