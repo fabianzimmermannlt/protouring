@@ -853,7 +853,7 @@ body {
 /* Aktiver Zustand */
 .pt-subnav-btn.active {
   background: #dbeafe;
-  color: #5b9cf8;
+  color: #1d4ed8;
   border-color: #bfdbfe;
 }
 
@@ -881,9 +881,9 @@ body {
 }
 
 .pt-chip.active {
-  background: #eff6ff;
-  color: #5b9cf8;
-  border-color: #a8d0fd;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
   font-weight: 600;
 }
 
