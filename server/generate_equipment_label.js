@@ -2,7 +2,9 @@
 /**
  * Fixed-zone landscape label generator (pdfkit + qrcode).
  * Zones are fixed; content adapts via auto font-scaling.
- * Label stock: 152 × 102 mm (4×6", landscape) = 430.87 × 289.13 pt
+ * Label stock: 152 × 102 mm (4×6", landscape) = 430.87 × 289.13 pt.
+ * Drucker lassen einen unbedruckbaren Rand (~6 mm); daher wird der komplette
+ * Inhalt um SAFE zentriert eingerückt, damit nichts angeschnitten wird.
  */
 const PDFDocument = require('pdfkit');
 const QRCode      = require('qrcode');
@@ -11,6 +13,7 @@ const fs          = require('fs');
 const W = 430.87;   // 152 mm
 const H = 289.13;   // 102 mm
 const M = 7;
+const SAFE = 20;    // ~7 mm sicherer Rand gegen unbedruckbaren Drucker-Randbereich
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -137,6 +140,13 @@ async function generateEquipmentLabel(opts) {
     // We clip visually AND prevent the page addition entirely.
     doc.save();
     doc.rect(0, 0, W, H).clip();
+
+    // Kompletten Inhalt sicher einrücken + zentrieren, damit der unbedruckbare
+    // Drucker-Rand (~6 mm) nichts abschneidet. Maßgeblich ist die lange (152 mm)
+    // Achse – dort schneidet der Drucker ab; der QR bleibt durch uniformen Scale quadratisch.
+    const insetScale = (W - 2 * SAFE) / W;
+    doc.translate((W - W * insetScale) / 2, (H - H * insetScale) / 2);
+    doc.scale(insetScale);
     const _addPage = doc.addPage.bind(doc);
     doc.addPage = function () {
       console.warn('Label: overflow blocked – staying on page 1');
