@@ -227,8 +227,11 @@ function VerladeRow({ item, canMove, selected, onToggleSelect, onLoad }: {
         </div>
         {canMove && (
           <>
-            {/* Desktop: Button (kein Wischen mit Maus) */}
-            <button onClick={onLoad} className="btn btn-primary shrink-0 hidden md:inline-flex" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem' }} title="laden">→ laden</button>
+            {/* Desktop: Button (kein Wischen mit Maus). Wrapper steuert Sichtbarkeit,
+                da .btn ein eigenes display:inline-flex setzt und `hidden` sonst überschreibt. */}
+            <span className="hidden md:inline-flex shrink-0">
+              <button onClick={onLoad} className="btn btn-primary" style={{ padding: '0.5rem 0.85rem', fontSize: '0.8rem' }} title="laden">→ laden</button>
+            </span>
             {/* Handy: nur ein Pfeil als Wisch-Hinweis (antippbar als Fallback) */}
             <button onClick={onLoad} onTouchStart={e => e.stopPropagation()} className="md:hidden shrink-0" style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', lineHeight: 1, padding: '0 6px' }} aria-label="laden" title="nach rechts wischen zum Laden">→</button>
           </>
