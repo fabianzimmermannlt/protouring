@@ -596,7 +596,7 @@ export function L2Layout({
             )}
 
             {/* Module section */}
-            {can('modules', role) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
+            {MODULE_NAV.some(item => can(item.id, role) && isTenantModuleEnabled(item.id as any)) && (
               <>
                 <div className="pt-2 pb-1">
                   <div className="border-t border-[var(--border)]" />
@@ -604,7 +604,7 @@ export function L2Layout({
                 <p className="px-3 pb-1 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
                   Module
                 </p>
-                {MODULE_NAV.filter(item => isTenantModuleEnabled(item.id as any)).map(item => renderNavItem(item, true))}
+                {MODULE_NAV.filter(item => can(item.id, role) && isTenantModuleEnabled(item.id as any)).map(item => renderNavItem(item, true))}
               </>
             )}
           </nav>

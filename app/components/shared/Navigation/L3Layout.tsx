@@ -1808,10 +1808,10 @@ export function L3Layout({
           })}
 
           {/* Module divider */}
-          {can('modules', role) && MODULE_NAV.some(item => isTenantModuleEnabled(item.id as any)) && (
+          {MODULE_NAV.some(item => can(item.id, role) && isTenantModuleEnabled(item.id as any)) && (
             <>
               <div className="w-8 border-t border-gray-300 my-1" />
-              {MODULE_NAV.filter(item => isTenantModuleEnabled(item.id as any)).map(item => {
+              {MODULE_NAV.filter(item => can(item.id, role) && isTenantModuleEnabled(item.id as any)).map(item => {
                 const isActive = activeTab === item.id
                 return (
                   <button

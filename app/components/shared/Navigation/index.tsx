@@ -225,7 +225,7 @@ export function Navigation({
 
   // Sichtbarkeit: Stammdaten zeigen wenn mindestens ein Kind sichtbar
   const canSeeStammdaten = STAMMDATEN_CHILDREN.some(c => can(c.id, role))
-  const canSeeModules = can('modules', role) && MODULE_CHILDREN.some(c => isTenantModuleEnabled(c.id as any))
+  const canSeeModules = MODULE_CHILDREN.some(c => can(c.id, role) && isTenantModuleEnabled(c.id as any))
 
   // Nav-Button Helper
   const NavButton = ({ item }: { item: NavigationItem }) => (
@@ -295,7 +295,7 @@ export function Navigation({
                   </button>
                   {showModulesDropdown && (
                     <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                      {MODULE_CHILDREN.filter(child => isTenantModuleEnabled(child.id as any)).map(child => (
+                      {MODULE_CHILDREN.filter(child => can(child.id, role) && isTenantModuleEnabled(child.id as any)).map(child => (
                         <button
                           key={child.id}
                           onClick={() => handleTabChange(child.id)}
