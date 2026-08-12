@@ -866,6 +866,11 @@ export async function renameCalcProject(id: string, name: string): Promise<{ id:
   return request<{ id: string; name: string }>(`/api/calc/projects/${id}`, { method: 'PATCH', body: { name } })
 }
 
+/** Ganze Kalkulation löschen (inkl. Shows/Positionen/Einträge/Formeln). */
+export async function deleteCalcProject(id: string): Promise<void> {
+  await request(`/api/calc/projects/${id}`, { method: 'DELETE' })
+}
+
 export async function createCalcVariant(projectId: string, name: string): Promise<{ id: string }> {
   return request<{ id: string }>(`/api/calc/projects/${projectId}/variants`, { method: 'POST', body: { name } })
 }

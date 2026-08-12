@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Decimal from 'decimal.js'
 import { TrashIcon } from '@heroicons/react/24/outline'
 import {
-  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject, duplicateCalcProject, renameCalcProject,
+  getCalcProjects, getCalcProject, seedCalcDemo, createCalcProject, duplicateCalcProject, renameCalcProject, deleteCalcProject,
   createCalcVariant, updateCalcVariant, deleteCalcVariant, getArtistMembers, type CalcProjectSummary,
 } from '@/lib/api-client'
 import { buildOverview, percentOf } from '@/lib/calculation/engine'
@@ -100,6 +100,21 @@ export default function CalculationModule() {
     } catch (e: any) { setError(e?.message ?? 'Fehler beim Umbenennen') }
   }
 
+  const [deleting, setDeleting] = useState(false)
+  const handleDelete = async () => {
+    if (!selectedId || !dataset) return
+    if (!confirm(`Kalkulation „${dataset.project.name}" wirklich unwiderruflich löschen?\n\nAlle Shows, Positionen, Werte, Ist-Daten und Formeln gehen dabei verloren.`)) return
+    setDeleting(true); setError('')
+    try {
+      await deleteCalcProject(selectedId)
+      setDataset(null)
+      const list = await getCalcProjects()
+      setProjects(list)
+      setSelectedId(list.length ? list[0].id : '')
+      setView('overview')
+    } catch (e: any) { setError(e?.message ?? 'Fehler beim Löschen') } finally { setDeleting(false) }
+  }
+
   const handleCreateProject = async (name: string) => {
     const created = await createCalcProject(name)
     await loadProjects(false)
@@ -145,6 +160,9 @@ export default function CalculationModule() {
           )}
           {dataset && (
             <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-ghost shrink-0" style={btnBar}>{duplicating ? 'Dupliziere…' : 'Duplizieren'}</button>
+          )}
+          {dataset && (
+            <button onClick={handleDelete} disabled={deleting} className="btn btn-ghost shrink-0" style={{ ...btnBar, color: 'var(--danger)' }} title="Kalkulation löschen">{deleting ? 'Lösche…' : 'Löschen'}</button>
           )}
           <button onClick={() => setShowNewProject(true)} className="btn btn-ghost shrink-0" style={btnBar}>+ Neues Projekt</button>
           <button onClick={handleImportDemo} disabled={importing} className="btn btn-ghost shrink-0" style={btnBar}>

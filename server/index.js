@@ -9018,6 +9018,38 @@ app.patch('/api/calc/projects/:id', authenticateToken, requireTenant, requireEdi
   }
 });
 
+// Komplette Kalkulation löschen (mit allen Shows/Positionen/Einträgen/Formeln).
+app.delete('/api/calc/projects/:id', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const proj = await db.get('SELECT id FROM calc_projects WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id]);
+    if (!proj) return res.status(404).json({ error: 'Kalkulation nicht gefunden' });
+    const pid = req.params.id;
+    // Kinder deterministisch vor den Eltern löschen (entries vor positions wegen ON DELETE RESTRICT).
+    const posSub = 'SELECT pos.id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id WHERE c.project_id = ?';
+    await db.run('BEGIN');
+    try {
+      await db.run(`DELETE FROM calc_overhead_lines WHERE position_id IN (${posSub})`, [pid]);
+      await db.run(`DELETE FROM calc_overhead_exclude WHERE position_id IN (${posSub})`, [pid]);
+      await db.run('DELETE FROM calc_actuals WHERE show_id IN (SELECT id FROM calc_shows WHERE project_id = ?)', [pid]);
+      await db.run('DELETE FROM calc_entries WHERE project_id = ?', [pid]);
+      await db.run('DELETE FROM calc_formulas WHERE project_id = ?', [pid]);
+      await db.run('DELETE FROM calc_positions WHERE category_id IN (SELECT id FROM calc_categories WHERE project_id = ?)', [pid]);
+      await db.run('DELETE FROM calc_categories WHERE project_id = ?', [pid]);
+      await db.run('DELETE FROM calc_shows WHERE project_id = ?', [pid]);
+      await db.run('DELETE FROM calc_variants WHERE project_id = ?', [pid]);
+      await db.run('DELETE FROM calc_projects WHERE id = ? AND tenant_id = ?', [pid, req.tenant.id]);
+      await db.run('COMMIT');
+    } catch (inner) {
+      await db.run('ROLLBACK');
+      throw inner;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] delete project:', e);
+    res.status(500).json({ error: 'Fehler beim Löschen der Kalkulation' });
+  }
+});
+
 async function calcVariantTenant(vid) {
   return db.get('SELECT p.tenant_id AS tenant_id, v.project_id AS project_id FROM calc_variants v JOIN calc_projects p ON p.id = v.project_id WHERE v.id = ?', [vid]);
 }
