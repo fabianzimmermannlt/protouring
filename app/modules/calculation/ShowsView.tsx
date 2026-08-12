@@ -10,6 +10,7 @@ import { PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { createCalcShow, updateCalcShow, deleteCalcShow, copyCalcPositions, getTermine, type CalcShowInput, type Termin } from '@/lib/api-client'
 import type { CalcDataset, CalcShow, DealType } from '@/lib/calculation/types'
 import { formatDate } from '@/lib/calculation/format'
+import { dealTicketThresholds, type DealTicketThresholds } from '@/lib/calculation/engine'
 import { useSortable } from '@/app/hooks/useSortable'
 import ShowDetailView from './ShowDetailView'
 
@@ -20,6 +21,64 @@ const DEAL_TYPES: { value: DealType; label: string }[] = [
   { value: 'door', label: 'Door / nur Deal' },
 ]
 const dealLabel = (t?: DealType) => DEAL_TYPES.find(d => d.value === (t ?? 'vs'))?.label ?? t
+
+const deNum = (n: number) => n.toLocaleString('de-DE')
+const thresholdsForShow = (show: CalcShow): DealTicketThresholds => dealTicketThresholds({
+  dealType: show.deal_type ?? 'vs',
+  guarantee: show.guarantee ?? '0',
+  deal_share: show.deal_share ?? '0',
+  break_even: show.break_even ?? '0',
+  ticket_price: show.ticket_price ?? '0',
+  capacity: show.capacity ?? null,
+  vvk: show.vvk ?? null,
+})
+
+/** Kompaktes Badge für die Shows-Tabelle (VS: „Deal ab X · noch Y"; sonst „Break X"). */
+function dealBadgeText(info: DealTicketThresholds): string | null {
+  if (!info.applicable) return null
+  if (info.dealType === 'vs') {
+    if (info.dealTickets == null) return null
+    let s = `Deal ab ${deNum(info.dealTickets)}`
+    if (info.vvk != null) s += info.vvk >= info.dealTickets ? ' ✓' : ` · noch ${deNum(info.dealTickets - info.vvk)}`
+    if (info.capacity != null && info.dealTickets > info.capacity) s += ' ⚠︎'
+    return s
+  }
+  return info.breakTickets != null ? `Break ${deNum(info.breakTickets)}` : null
+}
+
+/** Ausführlicher Live-Hinweis im Show-Formular. */
+function DealHintBox({ info }: { info: DealTicketThresholds }) {
+  let content: string | null = null
+  if (info.note === 'no-ticketprice') {
+    content = 'Ticketpreis eingeben, um die Break-/Deal-Schwelle zu berechnen.'
+  } else if (info.dealType === 'vs' && info.note === 'no-share') {
+    content = `Break-Even bei ~${deNum(info.breakTickets ?? 0)} Tickets. Deal-Anteil 0 % – der Deal kann die Garantie nie schlagen.`
+  } else if (info.dealType === 'vs' && info.dealTickets != null) {
+    const parts = [`Break-Even bei ~${deNum(info.breakTickets ?? 0)} Tickets`]
+    let deal = `Deal schlägt Garantie ab ~${deNum(info.dealTickets)} Tickets`
+    if (info.capacity != null) {
+      deal += info.dealTickets > info.capacity
+        ? ` (über Kapazität – mit ${deNum(info.capacity)} Plätzen nicht erreichbar)`
+        : ` (${Math.round(info.dealTickets / info.capacity * 100)} % der Kapazität)`
+    }
+    parts.push(deal)
+    if (info.vvk != null) {
+      parts.push(info.vvk >= info.dealTickets
+        ? `✓ mit VVK ${deNum(info.vvk)} bereits erreicht`
+        : `bei VVK ${deNum(info.vvk)} noch ${deNum(info.dealTickets - info.vvk)} Tickets`)
+    }
+    content = parts.join(' · ')
+  } else if (info.applicable && info.breakTickets != null) {
+    const suffix = info.dealType === 'door' ? ' – ab da gibt es Deal-Einnahmen' : ' – ab da kommt der Deal-Anteil obendrauf'
+    content = `Break-Even bei ~${deNum(info.breakTickets)} Tickets${suffix}`
+  }
+  if (!content) return null
+  return (
+    <div className="text-xs rounded-md px-3 py-2" style={{ background: 'var(--primary-soft)', color: 'var(--text)', border: '1px solid var(--primary)' }}>
+      🎟️ {content}
+    </div>
+  )
+}
 
 export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
   dataset: CalcDataset
@@ -123,7 +182,10 @@ export default function ShowsView({ dataset, projectId, onChanged, guardNav }: {
                 <td className="text-right text-xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {show.guarantee != null ? Number(show.guarantee).toLocaleString('de-DE') + ' €' : '—'}
                 </td>
-                <td className="text-xs">{dealLabel(show.deal_type)}</td>
+                <td className="text-xs">
+                  {dealLabel(show.deal_type)}
+                  {(() => { const b = dealBadgeText(thresholdsForShow(show)); return b ? <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{b}</div> : null })()}
+                </td>
                 <td className="text-right text-xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   {show.commission != null ? new Decimal(show.commission).times(100).toDecimalPlaces(2).toString() + ' %' : '—'}
                 </td>
@@ -224,6 +286,15 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
   const set = (k: keyof FormState, v: string | boolean) => setF(p => ({ ...p, [k]: v }))
   const showDeal = f.deal_type !== 'guarantee'
   const noGuarantee = f.deal_type === 'door'   // Door / nur Deal: keine Garantie
+  const dealInfo = dealTicketThresholds({
+    dealType: f.deal_type,
+    guarantee: f.guarantee || '0',
+    deal_share: pctToRatio(f.deal_sharePct) ?? '0',
+    break_even: f.break_even || '0',
+    ticket_price: f.ticket_price || '0',
+    capacity: f.capacity.trim() ? parseInt(f.capacity, 10) : null,
+    vvk: f.vvk.trim() ? parseInt(f.vvk, 10) : null,
+  })
 
   const save = async () => {
     setSaving(true); setErr('')
@@ -348,6 +419,8 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
               </div>
             </div>
           )}
+
+          {showDeal && <DealHintBox info={dealInfo} />}
 
           <div>
             <label className="form-label">Notiz</label>

@@ -113,6 +113,57 @@ export function showGageBreakdown(
   return { gross, fix, deal, provision: gross.minus(net), net }
 }
 
+// ── Break/Deal-Schwelle in Tickets ───────────────────────────────────────────
+// Ab wie vielen verkauften Tickets deckt der Veranstalter den Break-Even (Über-
+// schuss = 0)? Und – nur bei „vs" – ab wann schlägt der Deal die Garantie?
+// Herleitung (netFactor kürzt sich): Deal ≥ Garantie ⇔
+//   deal_share × (Besucher × Ticketpreis − Break-Even) ≥ Garantie
+//   ⇔ Besucher ≥ (Break-Even + Garantie/deal_share) / Ticketpreis
+// Ungerundet gerechnet, erst zur Anzeige auf ganze Tickets aufgerundet.
+export type DealTicketThresholds = {
+  dealType: DealType
+  applicable: boolean          // deal-basierte Show mit brauchbaren Eingaben
+  breakTickets: number | null  // Tickets bis Überschuss = 0 (Kosten gedeckt)
+  dealTickets: number | null   // nur „vs": Tickets, ab denen Deal ≥ Garantie
+  capacity: number | null
+  vvk: number | null
+  note: 'ok' | 'not-deal' | 'no-ticketprice' | 'no-share'
+}
+
+export function dealTicketThresholds(input: {
+  dealType: DealType
+  guarantee: Money
+  deal_share: Money           // Ratio (0.7 = 70 %)
+  break_even: Money
+  ticket_price: Money
+  capacity?: number | null
+  vvk?: number | null
+}): DealTicketThresholds {
+  const dealType = input.dealType ?? 'vs'
+  const capacity = input.capacity ?? null
+  const vvk = input.vvk ?? null
+  const base = { dealType, capacity, vvk }
+  if (dealType === 'guarantee') {
+    return { ...base, applicable: false, breakTickets: null, dealTickets: null, note: 'not-deal' }
+  }
+  const price = D(input.ticket_price)
+  if (price.lte(0)) {
+    return { ...base, applicable: false, breakTickets: null, dealTickets: null, note: 'no-ticketprice' }
+  }
+  const breakEven = D(input.break_even)
+  const breakTickets = Math.max(0, Math.ceil(breakEven.div(price).toNumber()))
+  if (dealType !== 'vs') {
+    // plus / door: kein „schlägt Garantie" – nur der Break-Even ist relevant.
+    return { ...base, applicable: true, breakTickets, dealTickets: null, note: 'ok' }
+  }
+  const share = D(input.deal_share)
+  if (share.lte(0)) {
+    return { ...base, applicable: true, breakTickets, dealTickets: null, note: 'no-share' }
+  }
+  const dealTickets = Math.max(0, Math.ceil(breakEven.plus(D(input.guarantee).div(share)).div(price).toNumber()))
+  return { ...base, applicable: true, breakTickets, dealTickets, note: 'ok' }
+}
+
 // ── Regel 3 – Variantenfilter ────────────────────────────────────────────────
 export function variantMatches(entry: CalcEntry, variantId: string | null | undefined): boolean {
   return entry.variant_id == null || entry.variant_id === variantId
