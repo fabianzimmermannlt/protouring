@@ -1508,6 +1508,8 @@ body {
   --success: #16a34a;
   --pos: #16a34a;
   --neg: #dc2626;
+  --calc-row-cat: #e9ebef;    /* Übersicht: Gesamt <Bereich> */
+  --calc-row-total: #d8dde6;  /* Übersicht: SUMME / ERGEBNIS / je Mitglied */
 }
 html.dark {
   --bg: #141414;
@@ -1531,6 +1533,8 @@ html.dark {
   --success: #22c55e;
   --pos: #4ade80;
   --neg: #f87171;
+  --calc-row-cat: #3d3d3d;
+  --calc-row-total: #38414d;
 }
 
 html.dark body {
