@@ -386,7 +386,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                           : variants.map(v => <option key={v.id} value={v.id}>Variante „{v.name}" ↔ Ist</option>)}
                         <option value="ist">Nur Ist (ohne Variante/Differenz)</option>
                       </select>
-                      <div className="flex items-center justify-between text-xs mb-2" style={{ color: '#cbd5e1' }}>
+                      <div className="flex items-center justify-between text-xs mb-2" style={{ color: 'var(--text)' }}>
                         <span>„je Bandmitglied"-Zeile</span>
                         <Toggle on={cfgMember} onChange={setCfgMember} title="je-Bandmitglied-Zeile ausgeben" />
                       </div>
@@ -399,7 +399,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
                       <div style={{ maxHeight: 190, overflowY: 'auto' }}>
                         {categories.map(c => (
                           <div key={c.id} className="flex items-center" style={{ padding: '3px 0' }}>
-                            <span className="text-xs" style={{ flex: 1, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</span>
+                            <span className="text-xs" style={{ flex: 1, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</span>
                             <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>
                               <Toggle on={catPrefs[c.name]?.spec ?? true} onChange={v => setCatPref(c.name, 'spec', v)} title={`Spezifikation in „${c.name}"`} />
                             </span>
@@ -559,9 +559,9 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     <div>
     <div className="pt-card">
       <div className="pt-card-header flex items-center justify-between"
-        style={{ background: category.kind === 'income' ? '#173a28' : '#26313f', borderLeft: `4px solid ${category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)'}` }}>
-        <span className="pt-card-title" style={{ color: '#e5e7eb', letterSpacing: '0.02em' }}>
-          <span style={{ fontWeight: 700, color: category.kind === 'income' ? 'var(--pos)' : 'var(--primary-3)' }}>{category.kind === 'income' ? 'EINNAHME' : 'AUSGABE'}</span>
+        style={{ background: category.kind === 'income' ? 'var(--calc-cat-income)' : 'var(--calc-cat-expense)', borderLeft: `4px solid ${category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)'}` }}>
+        <span className="pt-card-title" style={{ color: 'var(--text)', letterSpacing: '0.02em' }}>
+          <span style={{ fontWeight: 700, color: category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)' }}>{category.kind === 'income' ? 'EINNAHME' : 'AUSGABE'}</span>
           <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
         </span>
         <div className="flex items-center gap-3">
@@ -1002,7 +1002,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
             value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         </td>
 
-        <td className="text-right" style={{ padding: '4px 8px', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
+        <td className="text-right" style={{ padding: '4px 8px', fontVariantNumeric: 'tabular-nums', color: 'var(--text)', fontWeight: 500 }}>
           {formatMoney(rowResultSoll())}
         </td>
 
@@ -1083,7 +1083,7 @@ function OverheadShowRow({ positionId, showId, name, variantCols, included, incl
     try { await setCalcOverheadShow(positionId, showId, !included); onChanged() } finally { setBusy(false) }
   }
   return (
-    <tr style={{ background: '#20262e' }} title="Übergeordneter Posten – Betrag im Tab Übergeordnet pflegen">
+    <tr style={{ background: 'var(--calc-row-overhead)' }} title="Übergeordneter Posten – Betrag im Tab Übergeordnet pflegen">
       <td>
         <div className="flex items-center gap-2">
           <input type="checkbox" checked={included} disabled={busy} onChange={toggle}
@@ -1282,7 +1282,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
       </td>
 
-      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
+      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: 'var(--text)', fontWeight: 500 }}>
         {formatMoney(rowResult())}
       </td>
 
@@ -1537,7 +1537,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
         {/* Ist-Sprit steht ausschließlich in der Sprit-Zeile darunter (⛽ aktiv schalten). */}
       </td>
 
-      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: '#e5e7eb', fontWeight: 500 }}>
+      <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top', fontVariantNumeric: 'tabular-nums', color: 'var(--text)', fontWeight: 500 }}>
         {formatMoney(rowResult())}
       </td>
 
@@ -1554,7 +1554,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
     </tr>
 
     {m.fuelOn && (
-      <tr style={{ background: '#211f17' }}>
+      <tr style={{ background: 'var(--calc-row-fuel)' }}>
         <td style={{ verticalAlign: 'top' }}>
           <div className="flex items-center gap-1 text-xs" title="Strecke/100 × Verbrauch × €/L"
             style={{ color: 'var(--accent)', paddingLeft: 22, whiteSpace: 'nowrap' }}>
