@@ -652,6 +652,23 @@ const sollSnap = (x: RowModel) => JSON.stringify({ shared: x.shared, sharedVal: 
 // Hintergrund-Tönung für Eingabefelder, deren Wert für ALLE Varianten gilt (verknüpft)
 const linkedCellBg = 'rgba(96,165,250,0.14)'
 
+// „Ist fehlt"-Markierung: Konzert vorbei (Datum < heute), Soll geplant, aber Ist noch leer.
+const showDatePast = (dateStr?: string | null): boolean => {
+  if (!dateStr) return false
+  // YYYY-MM-DD lokal interpretieren (kein UTC-Versatz), sonst Fallback.
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr)
+  const d = iso ? new Date(+iso[1], +iso[2] - 1, +iso[3]) : new Date(dateStr)
+  if (isNaN(d.getTime())) return false
+  const today = new Date(); today.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0)
+  return d.getTime() < today.getTime()
+}
+// Wert vorhanden = nicht leer und nicht 0 (Soll-Prüfung).
+const hasVal = (s?: string): boolean => { if (!s) return false; const t = s.trim(); return t !== '' && !/^-?0*([.,]0*)?$/.test(t) }
+// Ist erfasst = irgendein Zeichen eingetragen (auch bewusste 0 zählt als „erledigt").
+const istFilled = (s?: string): boolean => !!s && s.trim() !== ''
+const anyRecHasVal = (rec: Record<string, string>) => Object.values(rec).some(hasVal)
+const missingIstStyle = { borderColor: 'var(--danger)', background: 'var(--danger-soft)', boxShadow: '0 0 0 1px var(--danger)' } as const
+
 // Kompaktes 🔗-Symbol: verknüpft (blau) = ein gemeinsames Feld für alle Varianten;
 // Klick löst auf → je Variante ein eigenes Eingabefeld erscheint.
 function LinkBadge({ shared, onClick }: { shared: boolean; onClick: () => void }) {
@@ -720,6 +737,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const [savedSnap, setSavedSnap] = useState(() => sollSnap(initial))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  // Ist fehlt? (Konzert vorbei, Soll geplant, kein Ist erfasst) → Feld rot markieren.
+  const hasPlan = anyRecHasVal(m.perVar) || anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
+  const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
+  const mustFillIst = showDatePast(show.show_date) && hasPlan && istEmpty
   const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== '' || (initial.travelFix[v.id] ?? '') !== ''))
   // Spezifikation + Name werden PRO SHOW gespeichert (calc_actuals); Positionswert nur als Fallback.
   const actMeta = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
@@ -923,7 +945,9 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
         ))}
 
         <td className="text-right" style={{ padding: '4px 8px' }}>
-          <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+          <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')}
+            title={mustFillIst ? 'Ist fehlt – Konzert ist vorbei, aber Soll ist geplant' : undefined}
+            style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums', ...(mustFillIst ? missingIstStyle : {}) }}
             value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         </td>
 
@@ -1077,6 +1101,9 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const dirty = hSnap(m) !== savedSnap
+  // Ist fehlt? (Konzert vorbei, Hotel geplant, kein Ist erfasst)
+  const hasPlan = Object.values(m.perVar).some(hv => { const p = hProd(hv); return p != null && !p.isZero() })
+  const mustFillIst = showDatePast(show.show_date) && hasPlan && !istFilled(m.ist)
   const saveWho = async () => { try { await setCalcActual(show.id, positionId, { spec: whoVal.trim() || null }); onChanged() } catch { /* still */ } }
   const savePerson = async () => { try { await setCalcActual(show.id, positionId, { person: personVal.trim() || null }); onChanged() } catch { /* still */ } }
 
@@ -1197,7 +1224,9 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
       })}
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')}
+          title={mustFillIst ? 'Ist fehlt – Konzert ist vorbei, aber Soll ist geplant' : undefined}
+          style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums', ...(mustFillIst ? missingIstStyle : {}) }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
       </td>
 
@@ -1275,6 +1304,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   const [m, setM] = useState<VModel>(initial)
   const [savedSnap, setSavedSnap] = useState(() => vSnapKey(initial))
   const [nameVal, setNameVal] = useState(positionName)
+  // Ist fehlt? (Konzert vorbei, Fahrzeug-/Spritkosten geplant, kein Ist erfasst)
+  const hasPlan = Object.values(m.perVar).some(v => !vAmount(v).isZero() || !fuelAmount(v).isZero())
+  const mustFillIst = showDatePast(show.show_date) && hasPlan && !istFilled(m.ist) && !istFilled(m.fuelIst)
   const vehAct = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
   const [info, setInfo] = useState(vehAct?.person ?? snapshot.person ?? '')
   const saveInfo = async () => { try { await setCalcActual(show.id, positionId, { person: info.trim() || null }); onChanged() } catch { /* still */ } }
@@ -1445,7 +1477,9 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       })}
 
       <td className="text-right" style={{ padding: '4px 8px', verticalAlign: 'top' }}>
-        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')} style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' }}
+        <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')}
+          title={mustFillIst ? 'Ist fehlt – Konzert ist vorbei, aber Soll ist geplant' : undefined}
+          style={{ fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums', ...(mustFillIst ? missingIstStyle : {}) }}
           value={m.ist} onChange={e => setM(p => ({ ...p, ist: e.target.value }))} onBlur={saveIst} placeholder="0" />
         {/* Ist-Sprit steht ausschließlich in der Sprit-Zeile darunter (⛽ aktiv schalten). */}
       </td>
