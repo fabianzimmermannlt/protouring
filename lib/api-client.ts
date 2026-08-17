@@ -3281,6 +3281,16 @@ export async function refreshTenantModules(): Promise<void> {
   } catch { /* Standard bleibt */ }
 }
 
+// ── Anzeige-Einstellungen pro Nutzer (Surface Desktop/Mobil) ──────────────────
+export type UiSurface = 'desktop' | 'mobile'
+export async function getUiPrefs(): Promise<Partial<Record<UiSurface, Record<string, string>>>> {
+  const res = await request<{ prefs: Partial<Record<UiSurface, Record<string, string>>> }>('/api/me/ui-prefs')
+  return res.prefs || {}
+}
+export async function saveUiPrefs(surface: UiSurface, data: Record<string, string>): Promise<void> {
+  await request('/api/me/ui-prefs', { method: 'PUT', body: { surface, data } })
+}
+
 export interface TenantUser {
   id: number
   email: string

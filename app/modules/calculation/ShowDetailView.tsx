@@ -18,6 +18,7 @@ import AbrechnungView from './AbrechnungView'
 interface FuncGroup { group: string; names: string[] }
 import type { CalcDataset, CalcShow, CalcProject, CalcEntry } from '@/lib/calculation/types'
 import { buildOverview, entryAmount } from '@/lib/calculation/engine'
+import { recordUiPref } from '@/app/lib/uiPrefs'
 import { formulaNorm, useFormulaFields } from '@/lib/calculation/formula'
 import { formatEUR, formatMoney, formatDate } from '@/lib/calculation/format'
 import { ShowFormModal } from './ShowsView'
@@ -36,7 +37,7 @@ const readPref = (key: string, def: boolean): boolean => {
   return v == null ? def : v === '1'
 }
 const writePref = (key: string, val: boolean) => {
-  if (typeof window !== 'undefined') window.localStorage.setItem(key, val ? '1' : '0')
+  if (typeof window !== 'undefined') { const v = val ? '1' : '0'; window.localStorage.setItem(key, v); recordUiPref(key, v) }
 }
 
 // iOS-artiger Schieberegler (statt Häkchen) für An/Aus-Einstellungen.

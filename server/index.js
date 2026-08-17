@@ -729,6 +729,8 @@ async function initDatabase() {
     `ALTER TABLE equipment_items ADD COLUMN location_id INTEGER`,
     `ALTER TABLE equipment_items ADD COLUMN label_id INTEGER REFERENCES equipment_labels(id) ON DELETE SET NULL`,
     `ALTER TABLE equipment_items ADD COLUMN owner_id INTEGER REFERENCES equipment_owners(id) ON DELETE SET NULL`,
+    // Anzeige-Einstellungen pro Nutzer (getrennt nach Surface Desktop/Mobil), JSON.
+    `ALTER TABLE users ADD COLUMN ui_prefs TEXT DEFAULT '{}'`,
     // Carnet: Kontaktperson aufgeteilt + Vertreter-Kontaktperson
     `ALTER TABLE carnets ADD COLUMN inhaber_kontaktperson_vorname TEXT`,
     `ALTER TABLE carnets ADD COLUMN vertreter_kontaktperson_vorname TEXT`,
@@ -3057,6 +3059,33 @@ app.put('/api/me/password', authenticateToken, async (req, res) => {
     res.json({ message: 'Passwort erfolgreich geändert' });
   } catch (e) {
     res.status(500).json({ error: 'Fehler beim Ändern des Passworts' });
+  }
+});
+
+// ── Anzeige-Einstellungen pro Nutzer (getrennt nach Surface Desktop/Mobil) ────
+app.get('/api/me/ui-prefs', authenticateToken, async (req, res) => {
+  try {
+    const u = await db.get('SELECT ui_prefs FROM users WHERE id = ?', [req.user.id]);
+    let prefs = {};
+    try { prefs = JSON.parse(u?.ui_prefs || '{}') || {}; } catch { prefs = {}; }
+    res.json({ prefs });
+  } catch (e) {
+    res.status(500).json({ error: 'Fehler beim Laden der Anzeige-Einstellungen' });
+  }
+});
+
+app.put('/api/me/ui-prefs', authenticateToken, async (req, res) => {
+  try {
+    const surface = req.body?.surface === 'mobile' ? 'mobile' : 'desktop';
+    const data = (req.body && req.body.data && typeof req.body.data === 'object') ? req.body.data : {};
+    const u = await db.get('SELECT ui_prefs FROM users WHERE id = ?', [req.user.id]);
+    let prefs = {};
+    try { prefs = JSON.parse(u?.ui_prefs || '{}') || {}; } catch { prefs = {}; }
+    prefs[surface] = data;
+    await db.run('UPDATE users SET ui_prefs = ? WHERE id = ?', [JSON.stringify(prefs), req.user.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Fehler beim Speichern der Anzeige-Einstellungen' });
   }
 });
 

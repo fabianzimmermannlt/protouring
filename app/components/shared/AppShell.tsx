@@ -10,6 +10,7 @@ import { Navigation } from './Navigation'
 import { MobileBottomNav } from './Navigation/MobileBottomNav'
 import { FeedbackButton } from './FeedbackButton'
 import { getEffectiveRole, getCurrentUser, refreshRolePermissions, refreshTenantModules } from '@/lib/api-client'
+import { hydrateUiPrefs } from '@/app/lib/uiPrefs'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -27,7 +28,7 @@ function AppShellInner({ children, activeTab, onTabChange, activeSubTab = '', on
 
   // Rollen-Rechte-Matrix laden und Shell danach neu rendern (damit can() greift)
   const [, setPermsTick] = useState(0)
-  useEffect(() => { Promise.all([refreshRolePermissions(), refreshTenantModules()]).then(() => setPermsTick(t => t + 1)) }, [])
+  useEffect(() => { Promise.all([refreshRolePermissions(), refreshTenantModules()]).then(() => setPermsTick(t => t + 1)); hydrateUiPrefs() }, [])
 
   const useL2 = layout === 'L2'
   const useL3 = layout === 'L3'

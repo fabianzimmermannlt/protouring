@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { recordUiPref } from '@/app/lib/uiPrefs'
 
 export interface ColumnDef {
   id: string
@@ -8,13 +9,15 @@ export interface ColumnDef {
 }
 
 export function useColumnVisibility(storageKey: string, columns: ColumnDef[]) {
-  const [visible, setVisible] = useState<Set<string>>(() => {
+  const lsKey = `col-vis:${storageKey}`
+
+  const compute = (): Set<string> => {
     const defaults = new Set(
       columns.filter(c => c.defaultVisible !== false).map(c => c.id)
     )
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem(`col-vis:${storageKey}`)
+        const stored = localStorage.getItem(lsKey)
         if (stored) {
           const ids = JSON.parse(stored) as string[]
           const knownIds = new Set(columns.map(c => c.id))
@@ -29,16 +32,27 @@ export function useColumnVisibility(storageKey: string, columns: ColumnDef[]) {
       } catch {}
     }
     return defaults
-  })
+  }
+
+  const [visible, setVisible] = useState<Set<string>>(compute)
+
+  // Nach dem Login/Hydrate (Server-Präferenzen → localStorage) neu einlesen,
+  // damit der Account-Stand auch ohne Reload greift.
+  useEffect(() => {
+    const onHydrated = () => setVisible(compute())
+    window.addEventListener('ui-prefs-hydrated', onHydrated)
+    return () => window.removeEventListener('ui-prefs-hydrated', onHydrated)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lsKey])
 
   const toggle = (id: string) => {
     setVisible(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      try {
-        localStorage.setItem(`col-vis:${storageKey}`, JSON.stringify(Array.from(next)))
-      } catch {}
+      const serialized = JSON.stringify(Array.from(next))
+      try { localStorage.setItem(lsKey, serialized) } catch {}
+      recordUiPref(lsKey, serialized)   // an den Account synchronisieren
       return next
     })
   }
