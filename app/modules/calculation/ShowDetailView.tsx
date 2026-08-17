@@ -99,6 +99,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
   const [editParams, setEditParams] = useState(false)
   const project = dataset.project
   const variants: Variant[] = useMemo(() => [...dataset.variants].sort((a, b) => a.sort_order - b.sort_order), [dataset])
+  const missingIstCount = useMemo(() => countMissingIst(dataset, project, show, variants), [dataset, project, show, variants])
   const categories = useMemo(() => [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order), [dataset])
 
   // Formeln in Betragsfeldern (data-fkey) – Auswerten/Speichern/Wiederanzeigen zentral.
@@ -436,6 +437,15 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
         <AbrechnungView snap={lockedSnap} />
       ) : (
         <>
+          {missingIstCount > 0 && (
+            <div className="rounded-md px-3 py-2 mb-3 text-sm flex items-center gap-2"
+              style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', color: 'var(--text)' }}>
+              <span style={{ color: 'var(--danger)', fontSize: '1rem' }}>⚠️</span>
+              <span>
+                <b>{missingIstCount}</b> {missingIstCount === 1 ? 'Ist-Wert fehlt' : 'Ist-Werte fehlen'} – das Konzert ist vorbei, aber {missingIstCount === 1 ? 'für eine geplante Position' : 'für geplante Positionen'} ist noch kein Ist erfasst <span style={{ color: 'var(--text-muted)' }}>(rot markiert)</span>.
+              </span>
+            </div>
+          )}
           <p className="text-xs mb-3" style={{ color: 'var(--text-subtle)' }}>
             🔗 = ein gemeinsamer Soll-Wert für alle Varianten (Standard). Zum Auflösen aufs 🔗 klicken → je Variante ein eigenes Feld (der Wert bleibt erhalten, u.a. bei Var 1). „Ist" = tatsächliche Rechnung (für die Abrechnung).
           </p>
@@ -669,6 +679,31 @@ const istFilled = (s?: string): boolean => !!s && s.trim() !== ''
 const anyRecHasVal = (rec: Record<string, string>) => Object.values(rec).some(hasVal)
 const missingIstStyle = { borderColor: 'var(--danger)', background: 'var(--danger-soft)', boxShadow: '0 0 0 1px var(--danger)' } as const
 
+// Wie viele Positionen der Show haben ein geplantes Soll, aber (nach dem Konzert)
+// noch kein Ist? Nutzt dieselben Model-Builder wie die Zeilen → identische Logik.
+function countMissingIst(dataset: CalcDataset, project: CalcProject, show: CalcShow, variants: Variant[]): number {
+  if (show.locked || !showDatePast(show.show_date)) return 0
+  let n = 0
+  for (const p of dataset.positions) {
+    if (p.is_overhead) continue
+    if (p.pos_type === 'hotel') {
+      const m = buildHotelModel(dataset, show.id, p.id, variants)
+      const hasPlan = Object.values(m.perVar).some(hv => { const pr = hProd(hv); return pr != null && !pr.isZero() })
+      if (hasPlan && !istFilled(m.ist)) n++
+    } else if (p.pos_type === 'vehicle') {
+      const m = buildVehicleModel(dataset, show.id, p.id, variants)
+      const hasPlan = Object.values(m.perVar).some(v => !vAmount(v).isZero() || !fuelAmount(v).isZero())
+      if (hasPlan && !istFilled(m.ist) && !istFilled(m.fuelIst)) n++
+    } else {
+      const m = buildRowModel(dataset, project, show.id, p.id, variants)
+      const hasPlan = anyRecHasVal(m.perVar) || anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
+      const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
+      if (hasPlan && istEmpty) n++
+    }
+  }
+  return n
+}
+
 // Kompaktes 🔗-Symbol: verknüpft (blau) = ein gemeinsames Feld für alle Varianten;
 // Klick löst auf → je Variante ein eigenes Eingabefeld erscheint.
 function LinkBadge({ shared, onClick }: { shared: boolean; onClick: () => void }) {
@@ -739,9 +774,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const [err, setErr] = useState('')
 
   // Ist fehlt? (Konzert vorbei, Soll geplant, kein Ist erfasst) → Feld rot markieren.
-  const hasPlan = anyRecHasVal(m.perVar) || anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
+  const hasTravelPlan = anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
+  const hasPlan = anyRecHasVal(m.perVar) || hasTravelPlan
   const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
   const mustFillIst = showDatePast(show.show_date) && hasPlan && istEmpty
+  const mustFillTravelIst = mustFillIst && hasTravelPlan   // Reise-Ist-Felder ebenfalls rot
   const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== '' || (initial.travelFix[v.id] ?? '') !== ''))
   // Spezifikation + Name werden PRO SHOW gespeichert (calc_actuals); Positionswert nur als Fallback.
   const actMeta = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
@@ -1002,11 +1039,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           })}
           <td style={{ padding: '2px 6px', verticalAlign: 'middle' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tkm`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelKm} placeholder="km"
+              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tkm`} style={{ ...tvCell.style, flex: 1, minWidth: 0, ...(mustFillTravelIst ? missingIstStyle : {}) }} value={m.istTravelKm} placeholder="km"
                 onChange={e => setM(p => ({ ...p, istTravelKm: e.target.value }))} onBlur={saveIst} />
-              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|trate`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelRate} placeholder="€/km"
+              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|trate`} style={{ ...tvCell.style, flex: 1, minWidth: 0, ...(mustFillTravelIst ? missingIstStyle : {}) }} value={m.istTravelRate} placeholder="€/km"
                 onChange={e => setM(p => ({ ...p, istTravelRate: e.target.value }))} onBlur={saveIst} />
-              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tfix`} style={{ ...tvCell.style, flex: 1, minWidth: 0 }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
+              <input {...tvCell} data-fkey={`i|${show.id}|${positionId}|tfix`} style={{ ...tvCell.style, flex: 1, minWidth: 0, ...(mustFillTravelIst ? missingIstStyle : {}) }} value={m.istTravelFix} placeholder="Fix €" title="Fixpreis (z.B. Zugticket)"
                 onChange={e => setM(p => ({ ...p, istTravelFix: e.target.value }))} onBlur={saveIst} />
               <span style={{ flex: '1.7 1 0', minWidth: 56, textAlign: 'right', fontSize: 11, color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{istTravelRes() != null ? formatMoney(istTravelRes()!) : ''}</span>
             </div>
