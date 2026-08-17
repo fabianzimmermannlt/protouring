@@ -5,6 +5,7 @@ import { Plus, Loader2, Building2, BedDouble, BedSingle, ChevronRight, ChevronDo
 import {
   getHotelStays,
   getTravelParty,
+  setTravelPartyNoHotel,
   getTravelLegs,
   getTenantSetting,
   setHotelRecommended,
@@ -67,6 +68,15 @@ export default function HotelCard({
   const [modalOpen, setModalOpen] = useState(false)
   const [editStay, setEditStay] = useState<HotelStay | null>(null)
   const [expandedRooms, setExpandedRooms] = useState<Set<number>>(new Set())
+  const [showHomePanel, setShowHomePanel] = useState(false)
+
+  // "Fährt heim (kein Hotel)" pro Person umschalten – optimistisch, revert bei Fehler.
+  const toggleNoHotel = async (m: TravelPartyMember) => {
+    const next = !m.noHotel
+    setTravelParty(prev => prev.map(x => x.id === m.id ? { ...x, noHotel: next } : x))
+    try { await setTravelPartyNoHotel(terminId, m.id, next) }
+    catch { setTravelParty(prev => prev.map(x => x.id === m.id ? { ...x, noHotel: !next } : x)) }
+  }
 
   const toggleRooms = (stayId: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -154,8 +164,11 @@ export default function HotelCard({
   const allAssigned = new Set(
     stays.flatMap(s => s.rooms.flatMap(r => r.persons.map(p => p.travelPartyMemberId)))
   )
-  // "Fährt heim (kein Hotel)"-Personen brauchen kein Hotelbett → nicht als offen zählen
-  const unplannedMembers = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id) && !m.noHotel)
+  // Personen ohne Zimmer & nicht im Nightliner: brauchen entweder ein Bett (offen)
+  // oder fahren heim (no_hotel). "Fährt heim" zählt nicht als offen.
+  const relevantForHotel = travelParty.filter(m => !allAssigned.has(m.id) && !nightlinerExcluded.has(m.id))
+  const unplannedMembers = relevantForHotel.filter(m => !m.noHotel)
+  const noHotelMembers = relevantForHotel.filter(m => m.noHotel)
   const unplannedCount = unplannedMembers.length
   const unplannedNames = unplannedMembers.map(m => `${m.firstName} ${m.lastName}`.trim()).filter(Boolean).join('\n')
 
@@ -197,8 +210,13 @@ export default function HotelCard({
             )}
           </div>
         </div>
-        {!loading && unplannedCount > 0 && (
-          <span className="pt-leg-unplanned-hint" style={{ marginTop: 0, marginBottom: '-0.4rem', cursor: 'help' }} title={unplannedNames ? `Nicht eingeplant:\n${unplannedNames}` : undefined}>{unplannedCount} nicht eingeplant</span>
+        {!loading && (unplannedCount > 0 || noHotelMembers.length > 0) && (
+          <button type="button" onClick={e => { e.stopPropagation(); setShowHomePanel(v => !v) }}
+            className="pt-leg-unplanned-hint"
+            style={{ marginTop: 0, marginBottom: '-0.4rem', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+            title={unplannedNames ? `Nicht eingeplant:\n${unplannedNames}\n\n(Klicken: „fährt heim" verwalten)` : 'Klicken: „fährt heim" verwalten'}>
+            {unplannedCount > 0 ? `${unplannedCount} nicht eingeplant` : 'alle eingeplant'}{noHotelMembers.length > 0 ? ` · ${noHotelMembers.length} fährt heim` : ''}
+          </button>
         )}
       </div>
 
@@ -206,6 +224,27 @@ export default function HotelCard({
         {loading && (
           <div className="pt-leg-empty">
             <Loader2 size={16} className="animate-spin" style={{ display: 'inline' }} />
+          </div>
+        )}
+
+        {!loading && showHomePanel && relevantForHotel.length > 0 && (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', marginBottom: 10, background: 'var(--surface-2)' }}>
+            <div className="text-xs" style={{ color: 'var(--text-muted)', marginBottom: 6 }}>
+              Wer braucht <b>kein</b> Hotelzimmer (fährt nach der Show heim)? Haken setzen → zählt nicht mehr als offen.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {relevantForHotel.map(m => (
+                <label key={m.id} className="flex items-center gap-2 text-sm"
+                  style={{ padding: '3px 4px', borderRadius: 6, cursor: isAdmin ? 'pointer' : 'default', opacity: m.noHotel ? 0.7 : 1 }}>
+                  <input type="checkbox" checked={!!m.noHotel} disabled={!isAdmin} onChange={() => toggleNoHotel(m)} style={{ width: 16, height: 16 }} />
+                  <span style={{ color: 'var(--text)', textDecoration: m.noHotel ? 'line-through' : 'none' }}>
+                    {`${m.firstName} ${m.lastName}`.trim() || '—'}
+                  </span>
+                  {m.isArtistMember && <span className="text-[10px]" style={{ color: 'var(--text-subtle)' }}>Artist</span>}
+                  {m.noHotel && <span className="text-[11px]" style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>🏠 fährt heim</span>}
+                </label>
+              ))}
+            </div>
           </div>
         )}
 
