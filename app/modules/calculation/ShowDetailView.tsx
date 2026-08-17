@@ -697,10 +697,14 @@ function countMissingIst(dataset: CalcDataset, project: CalcProject, show: CalcS
       const hasPlan = (m.shared && vv(m.s)) || Object.values(m.perVar).some(vv)
       if (hasPlan && !istFilled(m.ist) && !istFilled(m.fuelIst)) n++
     } else {
-      const hasPlan = dataset.entries.some(e => e.show_id === show.id && e.position_id === p.id && entryHasValue(e) && !entryAmount(e, project).isZero())
       const m = buildRowModel(dataset, project, show.id, p.id, variants)
-      const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
-      if (hasPlan && istEmpty) n++
+      const hasBasePlan = dataset.entries.some(e => e.show_id === show.id && e.position_id === p.id && (e.kind ?? 'base') !== 'travel' && entryHasValue(e) && !entryAmount(e, project).isZero())
+        || (m.shared ? hasVal(m.sharedVal) : anyRecHasVal(m.perVar))
+      const hasTravelPlan = anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
+        || dataset.entries.some(e => e.show_id === show.id && e.position_id === p.id && e.kind === 'travel' && entryHasValue(e) && !entryAmount(e, project).isZero())
+      const baseMissing = hasBasePlan && !istFilled(m.ist)
+      const travelMissing = hasTravelPlan && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
+      if (baseMissing || travelMissing) n++
     }
   }
   return n
@@ -776,16 +780,18 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const [err, setErr] = useState('')
 
   // Ist fehlt? (Konzert vorbei, Soll geplant, kein Ist erfasst) → Feld rot markieren.
+  // WICHTIG: Grundbetrag und Reise getrennt – jeder Teil hat sein eigenes Ist. Ein erfasstes
+  // Reise-Ist macht ein fehlendes Grundbetrag-Ist NICHT „erledigt" (Abrechnung!).
+  const past = showDatePast(show.show_date)
+  const hasBasePlan = dataset.entries.some(e => e.show_id === show.id && e.position_id === positionId && (e.kind ?? 'base') !== 'travel' && entryHasValue(e) && !entryAmount(e, project).isZero())
+    || (m.shared ? hasVal(m.sharedVal) : anyRecHasVal(m.perVar))
   const hasTravelPlan = anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
-  // Soll vorhanden? Robust am ECHTEN berechneten Soll (wie das Ergebnis), direkt aus den
-  // gespeicherten Buchungen — unabhängig von Varianten-/Shared-Anzeige; plus ungespeicherte Eingaben.
-  const hasSavedPlan = dataset.entries.some(e => e.show_id === show.id && e.position_id === positionId && entryHasValue(e) && !entryAmount(e, project).isZero())
-  const hasEditedPlan = (m.shared ? hasVal(m.sharedVal) : anyRecHasVal(m.perVar)) || hasTravelPlan
-  const hasPlan = hasSavedPlan || hasEditedPlan
-  const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
-  const mustFillIst = showDatePast(show.show_date) && hasPlan && istEmpty
-  const mustFillTravelIst = mustFillIst && hasTravelPlan   // Reise-Ist-Felder ebenfalls rot
-  const [travelOpen, setTravelOpen] = useState(() => variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== '' || (initial.travelFix[v.id] ?? '') !== ''))
+    || dataset.entries.some(e => e.show_id === show.id && e.position_id === positionId && e.kind === 'travel' && entryHasValue(e) && !entryAmount(e, project).isZero())
+  const mustFillIst = past && hasBasePlan && !istFilled(m.ist)                                    // Grundbetrag-Ist fehlt
+  const mustFillTravelIst = past && hasTravelPlan && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)  // Reise-Ist fehlt
+  const [travelOpen, setTravelOpen] = useState(() =>
+    variants.some(v => (initial.travelKm[v.id] ?? '') !== '' || (initial.travelRate[v.id] ?? '') !== '' || (initial.travelFix[v.id] ?? '') !== '')
+    || istFilled(initial.istTravelKm) || istFilled(initial.istTravelRate) || istFilled(initial.istTravelFix))
   // Spezifikation + Name werden PRO SHOW gespeichert (calc_actuals); Positionswert nur als Fallback.
   const actMeta = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
   const [spec, setSpec] = useState(actMeta?.spec ?? positionSpec ?? '')
@@ -901,6 +907,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const cell = { className: 'form-input text-right', style: { fontSize: '0.8rem', padding: '3px 8px', width: '100%', fontVariantNumeric: 'tabular-nums' } as const }
   const tvCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.72rem', padding: '2px 6px', width: '100%', textAlign: 'right' as const } }
   const travelActive = travelOpen || variants.some(v => (m.travelKm[v.id] ?? '') !== '' || (m.travelRate[v.id] ?? '') !== '' || (m.travelFix[v.id] ?? '') !== '')
+    || istFilled(m.istTravelKm) || istFilled(m.istTravelRate) || istFilled(m.istTravelFix)
 
   return (
     <>
