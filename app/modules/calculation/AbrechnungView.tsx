@@ -18,7 +18,7 @@ function Row({ label, soll, ist, indent, bold, headBg }: { label: string; soll: 
   const df = diffStr(soll, ist)
   return (
     <tr style={{ fontWeight: bold ? 600 : 400, background: headBg }}>
-      <td style={{ paddingLeft: indent ? 24 : undefined, color: indent ? '#cbd5e1' : undefined }}>{label}</td>
+      <td style={{ paddingLeft: indent ? 24 : undefined, color: indent ? 'var(--text-muted)' : undefined }}>{label}</td>
       <td className="text-right ab-num">{indent ? Mopt(soll) : M(soll)}</td>
       <td className="text-right ab-num ab-ist">{Mopt(ist)}</td>
       <td className="text-right ab-num" style={{ color: diffColor(df) }}>{diffCell(df)}</td>
@@ -64,8 +64,8 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
 
       <div className="pt-card">
         <div className="pt-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-          <span className="pt-card-title" style={{ fontSize: '0.95rem', color: '#e5e7eb', textTransform: 'none', letterSpacing: 0 }}>Abrechnung</span>
-          <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>{snap.showLabel}</span>
+          <span className="pt-card-title" style={{ fontSize: '0.95rem', color: 'var(--text)', textTransform: 'none', letterSpacing: 0 }}>Abrechnung</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{snap.showLabel}</span>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Variante: {snap.variantName} · {snap.memberCount} Bandmitglieder{snap.lockedAt ? ` · abgerechnet am ${new Date(snap.lockedAt).toLocaleDateString('de-DE')}` : ''}
           </span>
@@ -81,7 +81,7 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
               </tr>
             </thead>
             <tbody>
-              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: '#173a28', color: '#e5e7eb' }}>EINNAHMEN</td></tr>
+              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: 'var(--calc-cat-income)', color: 'var(--text)' }}>EINNAHMEN</td></tr>
               {snap.gageFix != null ? (
                 <>
                   <Row label="Fixgage (Garantie)" soll={snap.gageFix} ist={snap.gageFix} indent />
@@ -93,11 +93,11 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
                 <Row label="Gage (abzgl. Provision)" soll={snap.gageNet} ist={snap.gageNet} />
               )}
               {income.map((c, i) => <CatBlock key={'i' + i} c={c} />)}
-              <Row label="Summe Einnahmen" soll={snap.sumEinnahmen} ist={snap.sumEinnahmenIst} bold headBg="#1a1a1a" />
+              <Row label="Summe Einnahmen" soll={snap.sumEinnahmen} ist={snap.sumEinnahmenIst} bold headBg="var(--calc-row-total)" />
 
-              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: '#26313f', color: '#e5e7eb' }}>AUSGABEN</td></tr>
+              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: 'var(--calc-cat-expense)', color: 'var(--text)' }}>AUSGABEN</td></tr>
               {expense.map((c, i) => <CatBlock key={'e' + i} c={c} />)}
-              <Row label="Summe Ausgaben" soll={snap.sumAusgaben} ist={snap.sumAusgabenIst} bold headBg="#1a1a1a" />
+              <Row label="Summe Ausgaben" soll={snap.sumAusgaben} ist={snap.sumAusgabenIst} bold headBg="var(--calc-row-total)" />
 
               <tr className="ab-sec" style={{ fontWeight: 700, background: 'var(--surface)' }}>
                 <td>ERGEBNIS</td>
