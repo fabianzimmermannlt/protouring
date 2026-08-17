@@ -915,7 +915,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
       <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
         style={{
           opacity: dragging ? 0.35 : 1,
-          background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : undefined),
+          background: dragging ? 'var(--calc-row-drag)' : (dropTarget ? 'var(--calc-row-drop)' :undefined),
           boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined,
           transition: 'background 120ms ease, opacity 120ms ease',
         }}>
@@ -938,7 +938,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   title="Name bearbeiten"
                   className="text-sm"
                   style={{ color: 'var(--text)', background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap', width: `${Math.max(6, nameVal.length + 1)}ch`, minWidth: 60 }}
-                  onFocus={e => { e.target.style.border = '1px solid var(--border-strong)'; e.target.style.background = '#1f2937' }}
+                  onFocus={e => { e.target.style.border = '1px solid var(--border-strong)'; e.target.style.background = 'var(--hover)' }}
                   onBlurCapture={e => { e.target.style.border = '1px solid transparent'; e.target.style.background = 'transparent' }} />
                 {/* Spezifikation + Reise rechtsbündig vor Variante 1 */}
                 <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
@@ -949,7 +949,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   {showTravel && (
                     <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
                       className="shrink-0 inline-flex items-center gap-1 rounded"
-                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : '#cbd5e1', background: travelActive ? 'var(--accent)' : 'transparent', border: `1px solid ${travelActive ? 'var(--accent)' : 'var(--border-strong)'}` }}>
+                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : 'var(--text-subtle)', background:travelActive ? 'var(--accent)' : 'transparent', border: `1px solid ${travelActive ? 'var(--accent)' : 'var(--border-strong)'}` }}>
                       <TruckIcon className="w-3.5 h-3.5" /> Reise
                     </button>
                   )}
@@ -1214,7 +1214,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
 
   return (
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#211f17'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
+      style={{ background: dragging ? 'var(--calc-row-drag)' : (dropTarget ? 'var(--calc-row-drop)' : 'var(--calc-row-vehicle)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
@@ -1465,7 +1465,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   return (
     <>
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: dragging ? '#243044' : (dropTarget ? '#1c2b3a' : '#1a2420'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
+      style={{ background: dragging ? 'var(--calc-row-drag)' : (dropTarget ? 'var(--calc-row-drop)' : 'var(--calc-row-hotel)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
@@ -1486,7 +1486,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
               <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
                 <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
                   className="shrink-0 inline-flex items-center gap-1 rounded"
-                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : '#cbd5e1', background: m.fuelOn ? 'var(--accent)' : 'transparent', border: `1px solid ${m.fuelOn ? 'var(--accent)' : 'var(--border-strong)'}` }}>
+                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : 'var(--text-subtle)', background:m.fuelOn ? 'var(--accent)' : 'transparent', border: `1px solid ${m.fuelOn ? 'var(--accent)' : 'var(--border-strong)'}` }}>
                   ⛽ Sprit
                 </button>
               </div>

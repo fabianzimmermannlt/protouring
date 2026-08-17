@@ -1514,6 +1514,10 @@ body {
   --calc-cat-expense: #e5edf7;  /* Show-Details: Kategorie-Titel AUSGABE */
   --calc-row-overhead: #eef1f6; /* Show-Details: übergeordnet-Umlagezeile */
   --calc-row-fuel: #faf3e0;     /* Show-Details: Sprit-Zeile */
+  --calc-row-vehicle: #f7f5ee;  /* Show-Details: Fahrzeug-Zeile (Transport) */
+  --calc-row-hotel: #eef4f0;    /* Show-Details: Hotel-Zeile (Unterkunft) */
+  --calc-row-drag: #dbe4f0;     /* Zeile beim Ziehen */
+  --calc-row-drop: #d5e6f5;     /* Ziel beim Ablegen */
 }
 html.dark {
   --bg: #141414;
@@ -1543,6 +1547,10 @@ html.dark {
   --calc-cat-expense: #26313f;
   --calc-row-overhead: #20262e;
   --calc-row-fuel: #211f17;
+  --calc-row-vehicle: #211f17;
+  --calc-row-hotel: #1a2420;
+  --calc-row-drag: #243044;
+  --calc-row-drop: #1c2b3a;
 }
 
 html.dark body {
