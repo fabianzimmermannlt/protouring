@@ -688,15 +688,17 @@ function countMissingIst(dataset: CalcDataset, project: CalcProject, show: CalcS
     if (p.is_overhead) continue
     if (p.pos_type === 'hotel') {
       const m = buildHotelModel(dataset, show.id, p.id, variants)
-      const hasPlan = Object.values(m.perVar).some(hv => { const pr = hProd(hv); return pr != null && !pr.isZero() })
+      const hv2 = (v: HVals) => { const pr = hProd(v); return pr != null && !pr.isZero() }
+      const hasPlan = (m.shared && hv2(m.s)) || Object.values(m.perVar).some(hv2)
       if (hasPlan && !istFilled(m.ist)) n++
     } else if (p.pos_type === 'vehicle') {
       const m = buildVehicleModel(dataset, show.id, p.id, variants)
-      const hasPlan = Object.values(m.perVar).some(v => !vAmount(v).isZero() || !fuelAmount(v).isZero())
+      const vv = (v: VVals) => !vAmount(v).isZero() || !fuelAmount(v).isZero()
+      const hasPlan = (m.shared && vv(m.s)) || Object.values(m.perVar).some(vv)
       if (hasPlan && !istFilled(m.ist) && !istFilled(m.fuelIst)) n++
     } else {
+      const hasPlan = dataset.entries.some(e => e.show_id === show.id && e.position_id === p.id && entryHasValue(e) && !entryAmount(e, project).isZero())
       const m = buildRowModel(dataset, project, show.id, p.id, variants)
-      const hasPlan = anyRecHasVal(m.perVar) || anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
       const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
       if (hasPlan && istEmpty) n++
     }
@@ -775,7 +777,11 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
 
   // Ist fehlt? (Konzert vorbei, Soll geplant, kein Ist erfasst) → Feld rot markieren.
   const hasTravelPlan = anyRecHasVal(m.travelKm) || anyRecHasVal(m.travelRate) || anyRecHasVal(m.travelFix)
-  const hasPlan = anyRecHasVal(m.perVar) || hasTravelPlan
+  // Soll vorhanden? Robust am ECHTEN berechneten Soll (wie das Ergebnis), direkt aus den
+  // gespeicherten Buchungen — unabhängig von Varianten-/Shared-Anzeige; plus ungespeicherte Eingaben.
+  const hasSavedPlan = dataset.entries.some(e => e.show_id === show.id && e.position_id === positionId && entryHasValue(e) && !entryAmount(e, project).isZero())
+  const hasEditedPlan = (m.shared ? hasVal(m.sharedVal) : anyRecHasVal(m.perVar)) || hasTravelPlan
+  const hasPlan = hasSavedPlan || hasEditedPlan
   const istEmpty = !istFilled(m.ist) && !istFilled(m.istTravelKm) && !istFilled(m.istTravelRate) && !istFilled(m.istTravelFix)
   const mustFillIst = showDatePast(show.show_date) && hasPlan && istEmpty
   const mustFillTravelIst = mustFillIst && hasTravelPlan   // Reise-Ist-Felder ebenfalls rot
@@ -1139,7 +1145,8 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
   const [err, setErr] = useState('')
   const dirty = hSnap(m) !== savedSnap
   // Ist fehlt? (Konzert vorbei, Hotel geplant, kein Ist erfasst)
-  const hasPlan = Object.values(m.perVar).some(hv => { const p = hProd(hv); return p != null && !p.isZero() })
+  const hHasVal = (v: HVals) => { const p = hProd(v); return p != null && !p.isZero() }
+  const hasPlan = (m.shared && hHasVal(m.s)) || Object.values(m.perVar).some(hHasVal)
   const mustFillIst = showDatePast(show.show_date) && hasPlan && !istFilled(m.ist)
   const saveWho = async () => { try { await setCalcActual(show.id, positionId, { spec: whoVal.trim() || null }); onChanged() } catch { /* still */ } }
   const savePerson = async () => { try { await setCalcActual(show.id, positionId, { person: personVal.trim() || null }); onChanged() } catch { /* still */ } }
@@ -1342,7 +1349,8 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   const [savedSnap, setSavedSnap] = useState(() => vSnapKey(initial))
   const [nameVal, setNameVal] = useState(positionName)
   // Ist fehlt? (Konzert vorbei, Fahrzeug-/Spritkosten geplant, kein Ist erfasst)
-  const hasPlan = Object.values(m.perVar).some(v => !vAmount(v).isZero() || !fuelAmount(v).isZero())
+  const vHasVal = (v: VVals) => !vAmount(v).isZero() || !fuelAmount(v).isZero()
+  const hasPlan = (m.shared && vHasVal(m.s)) || Object.values(m.perVar).some(vHasVal)
   const mustFillIst = showDatePast(show.show_date) && hasPlan && !istFilled(m.ist) && !istFilled(m.fuelIst)
   const vehAct = (dataset.actuals ?? []).find(a => a.show_id === show.id && a.position_id === positionId)
   const [info, setInfo] = useState(vehAct?.person ?? snapshot.person ?? '')
