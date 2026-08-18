@@ -123,9 +123,14 @@ const fileStorage = multer.diskStorage({
   }
 });
 
+// busboy (via multer) dekodiert Dateinamen als latin1 → UTF-8-Umlaute werden falsch
+// (z.B. „Bühne.pdf" → „BÃ¼hne.pdf"). Hier zurück nach UTF-8 korrigieren.
+const fixUtf8Filename = (name) => { try { return Buffer.from(String(name || ''), 'latin1').toString('utf8'); } catch { return name; } };
+
 const fileUpload = multer({
   storage: fileStorage,
-  limits: { fileSize: 100 * 1024 * 1024 } // 100MB max (pro Datei-Limit wird im Endpoint geprüft)
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max (pro Datei-Limit wird im Endpoint geprüft)
+  fileFilter: (req, file, cb) => { file.originalname = fixUtf8Filename(file.originalname); cb(null, true); }
 });
 
 // Legacy Multer für alte /api/uploads Endpoints (wird noch benötigt bis Migration abgeschlossen)
