@@ -127,6 +127,14 @@ const fileStorage = multer.diskStorage({
 // (z.B. „Bühne.pdf" → „BÃ¼hne.pdf"). Hier zurück nach UTF-8 korrigieren.
 const fixUtf8Filename = (name) => { try { return Buffer.from(String(name || ''), 'latin1').toString('utf8'); } catch { return name; } };
 
+// RFC 6266 Content-Disposition: sauberer ASCII-Fallback + korrektes UTF-8 filename*.
+// (Nicht den ASCII-Teil prozent-kodieren – sonst zeigen manche Viewer „B%C3%BChne.pdf".)
+function contentDisposition(type, name) {
+  const raw = String(name || 'datei');
+  const ascii = raw.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'datei';
+  return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(raw)}`;
+}
+
 const fileUpload = multer({
   storage: fileStorage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB max (pro Datei-Limit wird im Endpoint geprüft)
@@ -4267,10 +4275,12 @@ app.get('/api/files/view/:fileId/:filename?', async (req, res) => {
     if (!(await fileVisibleToUser(file, tenant.id, decoded.id, tenant.role, decoded.isSuperadmin))) return res.status(403).json({ error: 'Kein Lesezugriff' })
     const filePath = path.join(__dirname, 'uploads', String(tenant.id), file.entity_type, file.entity_id, file.stored_name)
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Datei fehlt auf Disk' })
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.original_name)}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`)
+    res.setHeader('Content-Disposition', contentDisposition('inline', file.original_name))
     res.setHeader('Content-Type', file.mime_type)
     res.setHeader('X-Content-Type-Options', 'nosniff')
-    res.sendFile(path.resolve(filePath))
+    // Nicht cachen: sonst zeigt der Browser nach dem Umbenennen den alten Content-Disposition-Namen (304-Reuse).
+    res.setHeader('Cache-Control', 'no-store')
+    res.sendFile(path.resolve(filePath), { etag: false, lastModified: false, cacheControl: false })
   } catch (err) {
     console.error('GET /api/files/view error:', err)
     res.status(500).json({ error: 'Fehler beim Laden' })
@@ -4286,9 +4296,10 @@ app.get('/api/files/download/:fileId', authenticateToken, requireTenant, async (
     if (!(await fileVisibleToUser(file, req.tenant.id, req.user.id, req.tenant.role, req.user.isSuperadmin))) return res.status(403).json({ error: 'Access denied' });
     const filePath = path.join(__dirname, 'uploads', String(req.tenant.id), file.entity_type, file.entity_id, file.stored_name);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File missing on disk' });
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.original_name)}"; filename*=UTF-8''${encodeURIComponent(file.original_name)}`);
+    res.setHeader('Content-Disposition', contentDisposition('attachment', file.original_name));
     res.setHeader('Content-Type', file.mime_type);
-    res.sendFile(path.resolve(filePath));
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.resolve(filePath), { etag: false, lastModified: false, cacheControl: false });
   } catch (err) {
     console.error('GET /api/files/download error:', err);
     res.status(500).json({ error: 'Failed to serve file' });
