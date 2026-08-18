@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const multer = require('multer');
+const { PDFDocument } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -126,6 +127,24 @@ const fileStorage = multer.diskStorage({
 // busboy (via multer) dekodiert Dateinamen als latin1 → UTF-8-Umlaute werden falsch
 // (z.B. „Bühne.pdf" → „BÃ¼hne.pdf"). Hier zurück nach UTF-8 korrigieren.
 const fixUtf8Filename = (name) => { try { return Buffer.from(String(name || ''), 'latin1').toString('utf8'); } catch { return name; } };
+
+// Browser (Chrome) zeigen im PDF-Tab den eingebetteten /Title, nicht den Dateinamen.
+// Deshalb den PDF-Titel = Dateiname setzen (beim Upload + Umbenennen). Best effort:
+// bei Fehlern (verschlüsselt/kaputt) bleibt die Datei unverändert.
+const pdfTitleFromName = (name) => String(name || '').replace(/\.pdf$/i, '').trim() || 'Dokument';
+async function syncPdfTitle(filePath, mimeType, name) {
+  try {
+    if (!/pdf/i.test(String(mimeType || '')) && !/\.pdf$/i.test(String(filePath || ''))) return;
+    if (!fs.existsSync(filePath)) return;
+    const bytes = fs.readFileSync(filePath);
+    const pdf = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+    pdf.setTitle(pdfTitleFromName(name));
+    const out = await pdf.save({ useObjectStreams: false });
+    fs.writeFileSync(filePath, Buffer.from(out));
+  } catch (e) {
+    console.warn('[files] PDF-Titel konnte nicht gesetzt werden:', e && e.message);
+  }
+}
 
 // RFC 6266 Content-Disposition: sauberer ASCII-Fallback + korrektes UTF-8 filename*.
 // (Nicht den ASCII-Teil prozent-kodieren – sonst zeigen manche Viewer „B%C3%BChne.pdf".)
@@ -4500,10 +4519,13 @@ app.post('/api/files/:entityType/:entityId', authenticateToken, requireTenant, r
 
     const inserted = [];
     for (const file of req.files) {
+      // PDF-Titel = Dateiname setzen, damit der Browser-Tab den Dateinamen zeigt.
+      await syncPdfTitle(file.path, file.mimetype, file.originalname);
+      const sizeOnDisk = (() => { try { return fs.statSync(file.path).size; } catch { return file.size; } })();
       const result = await db.run(
         `INSERT INTO files (tenant_id, entity_type, entity_id, category, original_name, stored_name, mime_type, size, uploaded_by, gewerk_ids)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.tenant.id, entityType, entityId, category, file.originalname, file.filename, file.mimetype || 'application/octet-stream', file.size, req.user.id, gewerkIdsJson]
+        [req.tenant.id, entityType, entityId, category, file.originalname, file.filename, file.mimetype || 'application/octet-stream', sizeOnDisk, req.user.id, gewerkIdsJson]
       );
       const row = await db.get('SELECT * FROM files WHERE id = ?', [result.lastID]);
       inserted.push(fileFromRow(row));
@@ -4542,6 +4564,12 @@ app.patch('/api/files/:fileId', authenticateToken, requireTenant, requireEditor,
     if (originalName)          await db.run('UPDATE files SET original_name=? WHERE id=?', [originalName, file.id]);
     if (category)              await db.run('UPDATE files SET category=? WHERE id=?',       [category,     file.id]);
     if (gewerkIds !== undefined) await db.run('UPDATE files SET gewerk_ids=? WHERE id=?', [JSON.stringify(gewerkIds), file.id]);
+    // Beim Umbenennen auch den eingebetteten PDF-Titel nachziehen (Browser-Tab).
+    if (originalName && /pdf/i.test(file.mime_type || '')) {
+      const fp = path.join(__dirname, 'uploads', String(req.tenant.id), file.entity_type, file.entity_id, file.stored_name);
+      await syncPdfTitle(fp, file.mime_type, originalName);
+      try { await db.run('UPDATE files SET size=? WHERE id=?', [fs.statSync(fp).size, file.id]); } catch { /* ignore */ }
+    }
     const updated = await db.get('SELECT * FROM files WHERE id=?', [file.id]);
     res.json({ file: fileFromRow(updated) });
   } catch (err) {
