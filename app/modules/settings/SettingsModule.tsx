@@ -66,6 +66,12 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
       case 'artist':
         return <ArtistSettings />
 
+      case 'konto-abo':
+        return <AboSettings />
+
+      case 'konto-rechnungen':
+        return <RechnungenSettings />
+
       case 'profil':
         return <UserProfil />
 
@@ -183,17 +189,12 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
 // ============================================================
 
 type ArtistForm = {
-  company: string; firstName: string; lastName: string
-  address: string; postalCode: string; city: string
-  billingPhone: string; taxId: string; billingEmail: string
   language: string; timezone: string; currency: string
   displayName: string; shortCode: string; homebase: string; genre: string
   website: string; artistEmail: string; artistPhone: string
 }
 
 const ARTIST_FORM_EMPTY: ArtistForm = {
-  company: '', firstName: '', lastName: '', address: '', postalCode: '', city: '',
-  billingPhone: '', taxId: '', billingEmail: '',
   language: 'de-DE', timezone: 'Europe/Berlin', currency: 'EUR',
   displayName: '', shortCode: '', homebase: '', genre: '',
   website: '', artistEmail: '', artistPhone: '',
@@ -206,27 +207,14 @@ function ArtistSettings() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [subPlan] = useState('Starter')
-  const [subStatus] = useState('Trial')
-  const [subNextBilling] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString())
   const originalRef = useRef<ArtistForm>(ARTIST_FORM_EMPTY)
 
   useEffect(() => {
     Promise.all([
       getTenantArtistSettings().catch(() => null),
-      getTenantBilling().catch(() => null),
       getUserFormat().catch(() => null),
-    ]).then(([artist, billing, format]) => {
+    ]).then(([artist, format]) => {
       const data: ArtistForm = {
-        company:      billing?.company    || '',
-        firstName:    billing?.firstName  || '',
-        lastName:     billing?.lastName   || '',
-        address:      billing?.address    || '',
-        postalCode:   billing?.postalCode || '',
-        city:         billing?.city       || '',
-        billingPhone: billing?.phone      || '',
-        taxId:        billing?.taxId      || '',
-        billingEmail: billing?.email      || '',
         language:     format?.language    || 'de-DE',
         timezone:     format?.timezone    || 'Europe/Berlin',
         currency:     format?.currency    || 'EUR',
@@ -266,11 +254,6 @@ function ArtistSettings() {
           homebase: form.homebase, genre: form.genre,
           email: form.artistEmail, phone: form.artistPhone,
           website: form.website, equipmentKuerzel: '',
-        }),
-        updateTenantBilling({
-          company: form.company, firstName: form.firstName, lastName: form.lastName,
-          address: form.address, postalCode: form.postalCode, city: form.city,
-          phone: form.billingPhone, taxId: form.taxId, email: form.billingEmail,
         }),
         updateUserFormat({
           language: form.language, timezone: form.timezone, currency: form.currency,
@@ -330,45 +313,7 @@ function ArtistSettings() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-        {/* Rechnungsanschrift */}
-        <div className="pt-card">
-          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.billingAddress')}</span></div>
-          <div className="pt-card-body space-y-3">
-            <FPField label={t('settings.artist.company')} value={form.company} onChange={v => set('company', v)} placeholder={t('settings.artist.companyPlaceholder')} />
-            <FPField label={t('settings.artist.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
-            <FPField label={t('settings.artist.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
-            <FPField label={t('settings.artist.address')} value={form.address} onChange={v => set('address', v)} placeholder={t('settings.artist.addressPlaceholder')} />
-            <div className="grid gap-2" style={{ gridTemplateColumns: '70px 1fr' }}>
-              <FPField label={t('settings.artist.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} placeholder="12345" />
-              <FPField label={t('settings.artist.city')} value={form.city} onChange={v => set('city', v)} placeholder={t('settings.artist.cityPlaceholder')} />
-            </div>
-            <FPField label={t('settings.artist.phone')} value={form.billingPhone} onChange={v => set('billingPhone', v)} type="tel" placeholder={t('settings.artist.phonePlaceholder')} />
-            <FPField label={t('settings.artist.taxId')} value={form.taxId} onChange={v => set('taxId', v)} placeholder="DE123456789" />
-            <FPField label={t('general.email')} value={form.billingEmail} onChange={v => set('billingEmail', v)} type="email" placeholder={t('settings.artist.emailPlaceholder')} />
-          </div>
-        </div>
-
-        {/* Abo */}
-        <div className="pt-card">
-          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.subscription')}</span></div>
-          <div className="pt-card-body space-y-2">
-            <p className="text-sm font-medium" style={{ color: 'var(--primary-2)' }}>{subPlan}</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
-            </p>
-            <div className="space-y-2 pt-1">
-              <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                {t('settings.artist.upgradePlan')}
-              </button>
-              <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
-                {t('settings.artist.changePayment')}
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Format & Region */}
         <div className="pt-card">
@@ -409,6 +354,189 @@ function ArtistSettings() {
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// ============================================================
+// AboSettings – Rechnungsanschrift + Subscription (Konto)
+// ============================================================
+
+type BillingForm = {
+  company: string; firstName: string; lastName: string
+  address: string; postalCode: string; city: string
+  phone: string; taxId: string; email: string
+}
+
+const BILLING_FORM_EMPTY: BillingForm = {
+  company: '', firstName: '', lastName: '', address: '', postalCode: '', city: '',
+  phone: '', taxId: '', email: '',
+}
+
+function AboSettings() {
+  const t = useT()
+  const [form, setFormState] = useState<BillingForm>(BILLING_FORM_EMPTY)
+  const [isDirty, setIsDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [loading, setLoading] = useState(true)
+  // Subscription ist bisher ein Platzhalter – die echte Abo-Logik kommt später.
+  const [subPlan] = useState('Starter')
+  const [subStatus] = useState('Trial')
+  const [subNextBilling] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString())
+  const originalRef = useRef<BillingForm>(BILLING_FORM_EMPTY)
+
+  useEffect(() => {
+    getTenantBilling().catch(() => null).then(billing => {
+      const data: BillingForm = {
+        company:    billing?.company    || '',
+        firstName:  billing?.firstName  || '',
+        lastName:   billing?.lastName   || '',
+        address:    billing?.address    || '',
+        postalCode: billing?.postalCode || '',
+        city:       billing?.city       || '',
+        phone:      billing?.phone      || '',
+        taxId:      billing?.taxId      || '',
+        email:      billing?.email      || '',
+      }
+      setFormState(data)
+      originalRef.current = data
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const set = (k: keyof BillingForm, v: string) => {
+    const next = { ...form, [k]: v }
+    setFormState(next)
+    setIsDirty((Object.keys(originalRef.current) as (keyof BillingForm)[]).some(key => next[key] !== originalRef.current[key]))
+  }
+
+  const cancelEdit = () => { setFormState({ ...originalRef.current }); setIsDirty(false); setSaveError('') }
+
+  const saveEdit = async (): Promise<boolean> => {
+    setSaving(true); setSaveError('')
+    try {
+      await updateTenantBilling({
+        company: form.company, firstName: form.firstName, lastName: form.lastName,
+        address: form.address, postalCode: form.postalCode, city: form.city,
+        phone: form.phone, taxId: form.taxId, email: form.email,
+      })
+      originalRef.current = { ...form }
+      setIsDirty(false)
+      return true
+    } catch (e) {
+      setSaveError((e as Error).message || t('general.error'))
+      return false
+    } finally { setSaving(false) }
+  }
+
+  useEffect(() => { ;(window as any).__pt_isDirty = isDirty; return () => { ;(window as any).__pt_isDirty = false } }, [isDirty])
+  useEffect(() => { ;(window as any).__pt_save = saveEdit; return () => { ;(window as any).__pt_save = null } })
+
+  if (loading) return (
+    <div className="flex items-center gap-2 text-gray-500 text-sm py-8">
+      <Loader2 className="animate-spin w-4 h-4" /> {t('general.loading')}
+    </div>
+  )
+
+  return (
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header + dirty state */}
+      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
+        <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Abo</h1>
+        {isDirty && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ungespeicherte Änderungen</span>
+            <button onClick={cancelEdit}
+              style={{ padding: '5px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 0, cursor: 'pointer' }}>
+              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
+            </button>
+            <button onClick={saveEdit} disabled={saving}
+              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {t('general.save')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {saveError && (
+        <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', color: 'var(--danger)' }}>
+          <AlertCircle className="w-4 h-4 shrink-0" />{saveError}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Rechnungsanschrift */}
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.billingAddress')}</span></div>
+          <div className="pt-card-body space-y-3">
+            <FPField label={t('settings.artist.company')} value={form.company} onChange={v => set('company', v)} placeholder={t('settings.artist.companyPlaceholder')} />
+            <FPField label={t('settings.artist.firstName')} value={form.firstName} onChange={v => set('firstName', v)} />
+            <FPField label={t('settings.artist.lastName')} value={form.lastName} onChange={v => set('lastName', v)} />
+            <FPField label={t('settings.artist.address')} value={form.address} onChange={v => set('address', v)} placeholder={t('settings.artist.addressPlaceholder')} />
+            <div className="grid gap-2" style={{ gridTemplateColumns: '70px 1fr' }}>
+              <FPField label={t('settings.artist.postalCode')} value={form.postalCode} onChange={v => set('postalCode', v)} placeholder="12345" />
+              <FPField label={t('settings.artist.city')} value={form.city} onChange={v => set('city', v)} placeholder={t('settings.artist.cityPlaceholder')} />
+            </div>
+            <FPField label={t('settings.artist.phone')} value={form.phone} onChange={v => set('phone', v)} type="tel" placeholder={t('settings.artist.phonePlaceholder')} />
+            <FPField label={t('settings.artist.taxId')} value={form.taxId} onChange={v => set('taxId', v)} placeholder="DE123456789" />
+            <FPField label={t('general.email')} value={form.email} onChange={v => set('email', v)} type="email" placeholder={t('settings.artist.emailPlaceholder')} />
+          </div>
+        </div>
+
+        {/* Abo / Subscription */}
+        <div className="pt-card">
+          <div className="pt-card-header"><span className="pt-card-title">{t('settings.artist.subscription')}</span></div>
+          <div className="pt-card-body space-y-2">
+            <p className="text-sm font-medium" style={{ color: 'var(--primary-2)' }}>{subPlan}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('settings.artist.subscriptionStatus')}: {subStatus}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {new Date(subNextBilling).toLocaleDateString('de-DE')} – {subStatus === 'Trial' ? t('settings.artist.trialEnds') : t('settings.artist.nextBilling')}
+            </p>
+            <div className="space-y-2 pt-1">
+              <button className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                {t('settings.artist.upgradePlan')}
+              </button>
+              <button className="w-full px-2 py-1 text-xs rounded transition-colors" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
+                {t('settings.artist.changePayment')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// RechnungenSettings – PDF-Archiv der App-Rechnungen (Konto)
+// ============================================================
+
+function RechnungenSettings() {
+  return (
+    <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className="flex items-center" style={{ minHeight: '32px' }}>
+        <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Rechnungen</h1>
+      </div>
+
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">Rechnungen</span></div>
+        <div className="pt-card-body">
+          <div
+            className="flex flex-col items-center justify-center text-center gap-2"
+            style={{ padding: '40px 16px', border: '1px dashed var(--border-strong)', borderRadius: 0 }}
+          >
+            <CreditCardIcon className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
+            <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Noch keine Rechnungen</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)', maxWidth: 420 }}>
+              Deine ProTouring-Rechnungen werden hier automatisch als PDF abgelegt, sobald die
+              Abo-Abrechnung aktiv ist – mit eigenem Nummernkreis und ohne dein Zutun.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

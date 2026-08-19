@@ -19,6 +19,11 @@ const KONTO: SubItem[] = [
   { id: 'erste-schritte', name: 'Erste Schritte' },
 ]
 
+const KONTO_ACCOUNT: SubItem[] = [
+  { id: 'konto-abo',        name: 'Abo',        adminOnly: true },
+  { id: 'konto-rechnungen', name: 'Rechnungen', adminOnly: true },
+]
+
 const WORKSPACE: SubItem[] = [
   { id: 'artist',      name: 'Artist',           adminOnly: true },
   { id: 'permissions', name: 'Berechtigungen',   editorOnly: true },
@@ -55,6 +60,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
     items.filter(s => (s.adminOnly ? role === 'admin' : s.editorOnly ? isEditor : true))
   const konto = filter(KONTO)
   const workspace = filter(WORKSPACE)
+  const kontoAccount = filter(KONTO_ACCOUNT)
 
   const railButton = (s: SubItem) => (
     <button
@@ -87,6 +93,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
         <div className="w-56 shrink-0 bg-[var(--pane)] border-r border-[var(--border)] overflow-y-auto py-3 px-2 l2-sidebar">
           <div className="px-3 pb-1 text-base font-semibold text-[var(--text)]">Einstellungen</div>
           {konto.length > 0 && <>{groupTitle('Konto')}<div className="space-y-0.5">{konto.map(railButton)}</div></>}
+          {kontoAccount.length > 0 && <>{groupTitle('Konto')}<div className="space-y-0.5">{kontoAccount.map(railButton)}</div></>}
           {workspace.length > 0 && <>{groupTitle('Workspace')}<div className="space-y-0.5">{workspace.map(railButton)}</div></>}
         </div>
 
