@@ -559,7 +559,7 @@ function CategoryTable({ show, dataset, project, category, variants, onChanged, 
     <div>
     <div className="pt-card">
       <div className="pt-card-header flex items-center justify-between"
-        style={{ background: category.kind === 'income' ? 'var(--calc-cat-income)' : 'var(--calc-cat-expense)', borderLeft: `4px solid ${category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)'}` }}>
+        style={{ background: category.kind === 'income' ? 'var(--surface-2)' : 'var(--surface-2)', borderLeft: `4px solid ${category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)'}` }}>
         <span className="pt-card-title" style={{ color: 'var(--text)', letterSpacing: '0.02em' }}>
           <span style={{ fontWeight: 700, color: category.kind === 'income' ? 'var(--pos)' : 'var(--primary-2)' }}>{category.kind === 'income' ? 'EINNAHME' : 'AUSGABE'}</span>
           <span style={{ opacity: 0.55, fontWeight: 400 }}> · </span>{category.name}
@@ -915,7 +915,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
       <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
         style={{
           opacity: dragging ? 0.35 : 1,
-          background: dragging ? 'var(--calc-row-drag)' : (dropTarget ? 'var(--calc-row-drop)' :undefined),
+          background: dragging ? 'var(--surface-3)' : (dropTarget ? 'var(--primary-soft)' :undefined),
           boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined,
           transition: 'background 120ms ease, opacity 120ms ease',
         }}>
@@ -1083,7 +1083,7 @@ function OverheadShowRow({ positionId, showId, name, variantCols, included, incl
     try { await setCalcOverheadShow(positionId, showId, !included); onChanged() } finally { setBusy(false) }
   }
   return (
-    <tr style={{ background: 'var(--calc-row-overhead)' }} title="Übergeordneter Posten – Betrag im Tab Übergeordnet pflegen">
+    <tr style={{ background: 'var(--surface-2)' }} title="Übergeordneter Posten – Betrag im Tab Übergeordnet pflegen">
       <td>
         <div className="flex items-center gap-2">
           <input type="checkbox" checked={included} disabled={busy} onChange={toggle}
@@ -1214,7 +1214,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
 
   return (
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: dragging ? 'var(--calc-row-drag)' : (dropTarget ? 'var(--calc-row-drop)' : 'var(--calc-row-vehicle)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
+      style={{ background: dragging ? 'var(--surface-3)' : (dropTarget ? 'var(--primary-soft)' : 'var(--surface-2)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
@@ -1465,7 +1465,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   return (
     <>
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
-      style={{ background: dragging ? 'var(--calc-row-drag)' : (dropTarget ? 'var(--calc-row-drop)' : 'var(--calc-row-hotel)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
+      style={{ background: dragging ? 'var(--surface-3)' : (dropTarget ? 'var(--primary-soft)' : 'var(--surface-2)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
       <td style={{ verticalAlign: 'top' }}>
         <div className="flex items-start gap-1.5">
           <span draggable onDragStart={onDragStartRow} onDragEnd={onDragEndRow} title="Zum Sortieren ziehen"
@@ -1554,7 +1554,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
     </tr>
 
     {m.fuelOn && (
-      <tr style={{ background: 'var(--calc-row-fuel)' }}>
+      <tr style={{ background: 'var(--surface-2)' }}>
         <td style={{ verticalAlign: 'top' }}>
           <div className="flex items-center gap-1 text-xs" title="Strecke/100 × Verbrauch × €/L"
             style={{ color: 'var(--accent)', paddingLeft: 22, whiteSpace: 'nowrap' }}>

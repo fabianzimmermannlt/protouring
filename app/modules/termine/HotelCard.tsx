@@ -20,7 +20,6 @@ import {
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import HotelModal from './HotelModal'
-import { reorderBtnStyle } from './AnreiseCard'
 
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   einzelzimmer: 'Einzelzimmer',
@@ -111,13 +110,14 @@ export default function HotelCard({
   const openNew = () => { setEditStay(null); setModalOpen(true) }
   const openEdit = (stay: HotelStay) => { setEditStay(stay); setModalOpen(true) }
 
-  // Hotel-Kachel nach oben/unten schieben (optimistisch, revert bei Fehler).
-  const moveStay = async (idx: number, dir: -1 | 1) => {
-    const j = idx + dir
-    if (j < 0 || j >= stays.length) return
+  // Drag & Drop zum Umsortieren der Hotel-Kacheln (optimistisch, revert bei Fehler).
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [overIdx, setOverIdx] = useState<number | null>(null)
+  const doReorder = async (from: number | null, to: number) => {
+    if (from == null || from === to) return
     const reordered = [...stays]
-    const [x] = reordered.splice(idx, 1)
-    reordered.splice(j, 0, x)
+    const [x] = reordered.splice(from, 1)
+    reordered.splice(to, 0, x)
     const snapshot = stays
     setStays(reordered)
     try { await reorderHotelStays(terminId, reordered.map(s => s.id)) }
@@ -271,17 +271,20 @@ export default function HotelCard({
           <div
             key={stay.id}
             className="pt-leg-card"
+            draggable={isAdmin && stays.length > 1}
             onClick={() => isAdmin && openEdit(stay)}
-            style={{ cursor: isAdmin ? 'pointer' : 'default', position: 'relative' }}
+            onDragStart={() => setDragIdx(idx)}
+            onDragOver={e => { if (dragIdx == null) return; e.preventDefault(); if (overIdx !== idx) setOverIdx(idx) }}
+            onDragEnd={() => { setDragIdx(null); setOverIdx(null) }}
+            onDrop={e => { e.preventDefault(); if (dragIdx != null) doReorder(dragIdx, idx); setDragIdx(null); setOverIdx(null) }}
+            style={{
+              cursor: isAdmin ? (stays.length > 1 ? 'grab' : 'pointer') : 'default',
+              opacity: dragIdx === idx ? 0.4 : 1,
+              boxShadow: overIdx === idx && dragIdx != null && dragIdx !== idx ? 'inset 0 2px 0 0 var(--primary-2)' : undefined,
+            }}
           >
-            {isAdmin && stays.length > 1 && (
-              <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1 }}>
-                <button type="button" title="Nach oben" disabled={idx === 0} onClick={() => moveStay(idx, -1)} style={reorderBtnStyle(idx === 0)}>▲</button>
-                <button type="button" title="Nach unten" disabled={idx === stays.length - 1} onClick={() => moveStay(idx, 1)} style={reorderBtnStyle(idx === stays.length - 1)}>▼</button>
-              </div>
-            )}
             {/* Hotel-Name als Headline */}
-            <div className="pt-leg-card-headline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', paddingRight: isAdmin && stays.length > 1 ? 24 : undefined }}>
+            <div className="pt-leg-card-headline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Building2 size={11} style={{ display: 'inline' }} />
               <span>{stay.hotelName || '– kein Hotel gewählt –'}</span>
               {stay.hotelCity && <span style={{ color: 'var(--text-muted)' }}>· {stay.hotelCity}</span>}
@@ -380,7 +383,7 @@ export default function HotelCard({
                             {(() => {
                               const cap = ROOM_CAPACITY[room.roomType]
                               return cap !== null && room.persons.length > cap
-                                ? <span style={{ color: '#dc2626', marginLeft: '0.35rem' }}>⚠ {room.persons.length}/{cap}</span>
+                                ? <span style={{ color: 'var(--danger)', marginLeft: '0.35rem' }}>⚠ {room.persons.length}/{cap}</span>
                                 : null
                             })()}
                           </span>

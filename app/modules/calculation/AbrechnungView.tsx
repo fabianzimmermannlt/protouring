@@ -81,7 +81,7 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
               </tr>
             </thead>
             <tbody>
-              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: 'var(--calc-cat-income)', color: 'var(--text)' }}>EINNAHMEN</td></tr>
+              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: 'var(--surface-2)', color: 'var(--text)' }}>EINNAHMEN</td></tr>
               {snap.gageFix != null ? (
                 <>
                   <Row label="Fixgage (Garantie)" soll={snap.gageFix} ist={snap.gageFix} indent />
@@ -93,11 +93,11 @@ export default function AbrechnungView({ snap }: { snap: AbrechnungSnapshot }) {
                 <Row label="Gage (abzgl. Provision)" soll={snap.gageNet} ist={snap.gageNet} />
               )}
               {income.map((c, i) => <CatBlock key={'i' + i} c={c} />)}
-              <Row label="Summe Einnahmen" soll={snap.sumEinnahmen} ist={snap.sumEinnahmenIst} bold headBg="var(--calc-row-total)" />
+              <Row label="Summe Einnahmen" soll={snap.sumEinnahmen} ist={snap.sumEinnahmenIst} bold headBg="var(--border-strong)" />
 
-              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: 'var(--calc-cat-expense)', color: 'var(--text)' }}>AUSGABEN</td></tr>
+              <tr className="ab-sec"><td colSpan={4} style={{ fontWeight: 700, background: 'var(--surface-2)', color: 'var(--text)' }}>AUSGABEN</td></tr>
               {expense.map((c, i) => <CatBlock key={'e' + i} c={c} />)}
-              <Row label="Summe Ausgaben" soll={snap.sumAusgaben} ist={snap.sumAusgabenIst} bold headBg="var(--calc-row-total)" />
+              <Row label="Summe Ausgaben" soll={snap.sumAusgaben} ist={snap.sumAusgabenIst} bold headBg="var(--border-strong)" />
 
               <tr className="ab-sec" style={{ fontWeight: 700, background: 'var(--surface)' }}>
                 <td>ERGEBNIS</td>

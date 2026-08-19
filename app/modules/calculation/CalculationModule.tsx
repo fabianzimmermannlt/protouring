@@ -449,8 +449,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
 
   // Hintergrund je Zeilentyp: Gesamt-/Ergebnis-Zeilen heben sich farblich ab.
   const rowBgFor = (t: Row['type']): string | undefined => {
-    if (t === 'grand' || t === 'member') return 'var(--calc-row-total)'  // SUMME / ERGEBNIS / je Mitglied
-    if (t === 'catsum') return 'var(--calc-row-cat)'                      // Gesamt <Bereich> – deutlich heller abgesetzt
+    if (t === 'grand' || t === 'member') return 'var(--border-strong)'  // SUMME / ERGEBNIS / je Mitglied
+    if (t === 'catsum') return 'var(--surface-2)'                      // Gesamt <Bereich> – deutlich heller abgesetzt
     return undefined                                                     // Detailzeile
   }
 

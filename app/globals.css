@@ -1508,16 +1508,6 @@ body {
   --success: #16a34a;
   --pos: #16a34a;
   --neg: #dc2626;
-  --calc-row-cat: #e9ebef;    /* Übersicht: Gesamt <Bereich> */
-  --calc-row-total: #d8dde6;  /* Übersicht: SUMME / ERGEBNIS / je Mitglied */
-  --calc-cat-income: #e4f1ea;   /* Show-Details: Kategorie-Titel EINNAHME */
-  --calc-cat-expense: #e5edf7;  /* Show-Details: Kategorie-Titel AUSGABE */
-  --calc-row-overhead: #eef1f6; /* Show-Details: übergeordnet-Umlagezeile */
-  --calc-row-fuel: #faf3e0;     /* Show-Details: Sprit-Zeile */
-  --calc-row-vehicle: #f7f5ee;  /* Show-Details: Fahrzeug-Zeile (Transport) */
-  --calc-row-hotel: #eef4f0;    /* Show-Details: Hotel-Zeile (Unterkunft) */
-  --calc-row-drag: #dbe4f0;     /* Zeile beim Ziehen */
-  --calc-row-drop: #d5e6f5;     /* Ziel beim Ablegen */
 }
 html.dark {
   --bg: #141414;
@@ -1541,16 +1531,6 @@ html.dark {
   --success: #22c55e;
   --pos: #4ade80;
   --neg: #f87171;
-  --calc-row-cat: #3d3d3d;
-  --calc-row-total: #38414d;
-  --calc-cat-income: #173a28;
-  --calc-cat-expense: #26313f;
-  --calc-row-overhead: #20262e;
-  --calc-row-fuel: #211f17;
-  --calc-row-vehicle: #211f17;
-  --calc-row-hotel: #1a2420;
-  --calc-row-drag: #243044;
-  --calc-row-drop: #1c2b3a;
 }
 
 html.dark body {

@@ -465,7 +465,7 @@ export default function AnreiseModal({
                         <span style={{ color: 'var(--text-subtle)' }}> · {freeSeats} frei</span>
                       )}
                       {freeSeats != null && freeSeats < 0 && (
-                        <span style={{ color: '#dc2626' }}> · {Math.abs(freeSeats)} zu viele!</span>
+                        <span style={{ color: 'var(--danger)' }}> · {Math.abs(freeSeats)} zu viele!</span>
                       )}
                     </span>
                     <div className="pt-leg-seat-bar">
@@ -530,7 +530,7 @@ export default function AnreiseModal({
                   ))}
                 </div>
                 {calcError && (
-                  <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '0.25rem' }}>{calcError}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{calcError}</div>
                 )}
               </div>
             </div>
@@ -627,7 +627,7 @@ export default function AnreiseModal({
                   ))}
                 </div>
                 {calcError && (
-                  <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '0.25rem' }}>{calcError}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: '0.25rem' }}>{calcError}</div>
                 )}
               </div>
             </div>
@@ -643,7 +643,7 @@ export default function AnreiseModal({
               <div style={{ position: 'relative' }}>
                 {/* Kompaktanzeige: volle Namen der zugewiesenen Personen */}
                 {selectedMemberIds.size > 0 && (
-                  <div className="text-sm mb-1.5" style={{ color: '#e6edf3' }}>
+                  <div className="text-sm mb-1.5" style={{ color: 'var(--text)' }}>
                     {travelParty
                       .filter(m => selectedMemberIds.has(m.id))
                       .map(m => `${m.firstName} ${m.lastName}`)

@@ -239,7 +239,7 @@ export default function HotelModal({
                   <div key={e.hotel.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(245,197,24,0.25)', borderRadius: '6px', padding: '0.45rem 0.55rem' }}>
                     <Star size={13} fill="#f5c518" color="#f5c518" style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.85rem', color: '#e8e8e8', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.hotel.name}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.hotel.name}</div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{[e.hotel.city, e.distanceKm != null ? `${e.distanceKm} km vom Venue` : null].filter(Boolean).join(' · ')}</div>
                     </div>
                     <button
@@ -382,7 +382,7 @@ export default function HotelModal({
                         <button
                           type="button"
                           onClick={() => removeRoom(idx)}
-                          style={{ padding: '0.4rem', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                          style={{ padding: '0.4rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                           title="Zimmer entfernen"
                         >
                           <Trash2 size={14} />
@@ -397,7 +397,7 @@ export default function HotelModal({
                           <div className="fixed inset-0 z-40" onClick={() => setPersonPickerRoom(null)} />
                         )}
                         {room.memberIds.length > 0 && (
-                          <div className="text-sm mb-1" style={{ color: '#e6edf3' }}>
+                          <div className="text-sm mb-1" style={{ color: 'var(--text)' }}>
                             {travelParty
                               .filter(m => room.memberIds.includes(m.id))
                               .map(m => `${m.firstName} ${m.lastName}`)
@@ -442,7 +442,7 @@ export default function HotelModal({
                     {(() => {
                       const cap = ROOM_CAPACITY[room.roomType]
                       return cap !== null && room.memberIds.length > cap ? (
-                        <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '0.25rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: '0.25rem' }}>
                           ⚠ {room.memberIds.length} Personen für {ROOM_TYPE_LABELS[room.roomType]} (max. {cap})
                         </div>
                       ) : null

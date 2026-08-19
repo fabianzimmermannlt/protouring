@@ -157,7 +157,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
         <div ref={menuRef} style={{
           position: 'fixed', left: pos.left, width: pos.width, zIndex: 1000,
           ...(pos.up ? { bottom: pos.bottom } : { top: pos.top }),
-          background: dark ? '#1e1e1e' : '#fff',
+          background: dark ? 'var(--surface)' : '#fff',
           border: `1px solid ${dark ? 'var(--border)' : '#e5e7eb'}`,
           borderRadius: 0,
           boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.1)',
@@ -203,7 +203,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                       cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
                       borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}`,
                     }}
-                    onMouseOver={e => (e.currentTarget.style.background = dark ? '#1a3a5c' : '#eff6ff')}
+                    onMouseOver={e => (e.currentTarget.style.background = dark ? 'var(--primary-soft)' : '#eff6ff')}
                     onMouseOut={e => (e.currentTarget.style.background = 'none')}
                   >
                     <Plus size={12} /> {createLabel}
@@ -220,7 +220,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                       fontSize: '0.8rem', color: 'var(--danger)', background: 'none', border: 'none',
                       cursor: 'pointer', borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}`,
                     }}
-                    onMouseOver={e => (e.currentTarget.style.background = dark ? '#3b1010' : '#fef2f2')}
+                    onMouseOver={e => (e.currentTarget.style.background = dark ? 'var(--danger-soft)' : '#fef2f2')}
                     onMouseOut={e => (e.currentTarget.style.background = 'none')}
                   >
                     Auswahl entfernen
@@ -239,7 +239,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                       onClick={() => handleSelect(item)}
                       style={{
                         width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                        background: value?.id === item.id ? (dark ? '#1a3a5c' : '#eff6ff') : 'none',
+                        background: value?.id === item.id ? (dark ? 'var(--primary-soft)' : '#eff6ff') : 'none',
                         border: 'none', cursor: 'pointer', borderBottom: `1px solid ${dark ? 'var(--surface)' : '#f9fafb'}`,
                         display: 'block',
                       }}
@@ -256,7 +256,7 @@ export default function SearchableDropdown<T extends { id: string | number }>({
                       padding: '0.3rem 0.65rem', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.03em',
                       textTransform: 'uppercase',
                       color: gold ? 'var(--accent)' : 'var(--text-muted)',
-                      background: gold ? (dark ? '#242015' : '#fffbea') : (dark ? 'var(--surface-2)' : '#f9fafb'),
+                      background: gold ? (dark ? 'var(--surface-2)' : '#fffbea') : (dark ? 'var(--surface-2)' : '#f9fafb'),
                       borderBottom: `1px solid ${dark ? 'var(--border)' : '#f3f4f6'}`,
                     }}>{gold ? '★ ' : ''}{label}</div>
                   )

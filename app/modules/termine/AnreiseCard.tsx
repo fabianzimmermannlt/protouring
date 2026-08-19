@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, type CSSProperties } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Loader2, Car, Train, Plane, MoreHorizontal, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import {
   getTravelLegs,
@@ -13,14 +13,6 @@ import {
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import AnreiseModal from './AnreiseModal'
-
-// Kleiner Hoch/Runter-Button (Kacheln umsortieren) – geteilt mit HotelCard.
-export const reorderBtnStyle = (disabled: boolean): CSSProperties => ({
-  lineHeight: 1, fontSize: 10, padding: '2px 5px',
-  border: '1px solid var(--border-strong)', background: 'var(--surface)',
-  color: 'var(--text-muted)', borderRadius: 4,
-  cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.3 : 1,
-})
 
 interface AnreiseCardProps {
   terminId: number
@@ -94,13 +86,14 @@ export default function AnreiseCard({
   const openNew = () => { setEditLeg(null); setModalOpen(true) }
   const openEdit = (leg: TravelLeg) => { setEditLeg(leg); setModalOpen(true) }
 
-  // Kachel innerhalb dieser Liste nach oben/unten schieben (optimistisch, revert bei Fehler).
-  const moveLeg = async (idx: number, dir: -1 | 1) => {
-    const j = idx + dir
-    if (j < 0 || j >= legs.length) return
+  // Drag & Drop zum Umsortieren der Kacheln (innerhalb dieser Liste), optimistisch.
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [overIdx, setOverIdx] = useState<number | null>(null)
+  const doReorder = async (from: number | null, to: number) => {
+    if (from == null || from === to) return
     const reordered = [...legs]
-    const [x] = reordered.splice(idx, 1)
-    reordered.splice(j, 0, x)
+    const [x] = reordered.splice(from, 1)
+    reordered.splice(to, 0, x)
     const snapshot = allLegs
     setAllLegs(prev => { const q = [...reordered]; return prev.map(l => l.legType === legType ? (q.shift() as TravelLeg) : l) })
     try { await reorderTravelLegs(terminId, reordered.map(l => l.id)) }
@@ -182,17 +175,20 @@ export default function AnreiseCard({
                 <div
                   key={leg.id}
                   className="pt-leg-card"
+                  draggable={isAdmin && legs.length > 1}
                   onClick={() => isAdmin && openEdit(leg)}
-                  style={{ cursor: isAdmin ? 'pointer' : 'default', position: 'relative' }}
+                  onDragStart={() => setDragIdx(idx)}
+                  onDragOver={e => { if (dragIdx == null) return; e.preventDefault(); if (overIdx !== idx) setOverIdx(idx) }}
+                  onDragEnd={() => { setDragIdx(null); setOverIdx(null) }}
+                  onDrop={e => { e.preventDefault(); if (dragIdx != null) doReorder(dragIdx, idx); setDragIdx(null); setOverIdx(null) }}
+                  style={{
+                    cursor: isAdmin ? (legs.length > 1 ? 'grab' : 'pointer') : 'default',
+                    opacity: dragIdx === idx ? 0.4 : 1,
+                    boxShadow: overIdx === idx && dragIdx != null && dragIdx !== idx ? 'inset 0 2px 0 0 var(--primary-2)' : undefined,
+                  }}
                 >
-                  {isAdmin && legs.length > 1 && (
-                    <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1 }}>
-                      <button type="button" title="Nach oben" disabled={idx === 0} onClick={() => moveLeg(idx, -1)} style={reorderBtnStyle(idx === 0)}>▲</button>
-                      <button type="button" title="Nach unten" disabled={idx === legs.length - 1} onClick={() => moveLeg(idx, 1)} style={reorderBtnStyle(idx === legs.length - 1)}>▼</button>
-                    </div>
-                  )}
                   {/* Zeile 1: Transport-Headline */}
-                  <div className="pt-leg-card-headline" style={{ paddingRight: isAdmin && legs.length > 1 ? 24 : undefined }}>
+                  <div className="pt-leg-card-headline">
                     <Icon size={12} />
                     {leg.transportType === 'sonstiges'
                       ? (leg.otherTransport || TRANSPORT_LABEL[leg.transportType])
