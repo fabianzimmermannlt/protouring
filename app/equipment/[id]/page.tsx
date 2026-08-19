@@ -120,20 +120,22 @@ function AddContentModal({ itemId, onDone, onClose }: {
                   <button
                     key={mat.id}
                     onClick={() => selectMaterial(mat)}
-                    className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                    className="w-full text-left px-3 py-2.5 rounded-lg border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--hover)] transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-sm text-gray-900">{mat.bezeichnung}</span>
-                        {mat.marke && <span className="text-xs text-gray-400 ml-2">{mat.marke}</span>}
+                        <span className="font-medium text-sm text-[var(--text)]">{mat.bezeichnung}</span>
+                        {mat.marke && <span className="text-xs text-[var(--text-muted)] ml-2">{mat.marke}</span>}
                       </div>
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                        mat.typ === 'serial' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'
-                      }`}>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={
+                        mat.typ === 'serial'
+                          ? { background: 'var(--primary-soft)', color: 'var(--primary-2)' }
+                          : { background: 'var(--surface-2)', color: 'var(--text-muted)' }
+                      }>
                         {mat.typ === 'serial' ? `${mat.unit_count ?? 0} Einh. frei` : 'Masse'}
                       </span>
                     </div>
-                    {mat.category_name && <p className="text-xs text-gray-400 mt-0.5">{mat.category_name}</p>}
+                    {mat.category_name && <p className="text-xs text-[var(--text-muted)] mt-0.5">{mat.category_name}</p>}
                   </button>
                 ))}
               </div>
@@ -143,9 +145,9 @@ function AddContentModal({ itemId, onDone, onClose }: {
               <button onClick={() => setSelected(null)} className="text-xs text-blue-600 hover:underline mb-3 flex items-center gap-1">
                 <ArrowLeftIcon className="w-3 h-3" /> Zurück zur Auswahl
               </button>
-              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                <p className="font-medium text-gray-900">{selected.bezeichnung}</p>
-                {selected.marke && <p className="text-xs text-gray-500">{selected.marke} {selected.modell ?? ''}</p>}
+              <div className="rounded-lg px-4 py-3 mb-4" style={{ background: 'var(--surface-2)' }}>
+                <p className="font-medium text-[var(--text)]">{selected.bezeichnung}</p>
+                {selected.marke && <p className="text-xs text-[var(--text-muted)]">{selected.marke} {selected.modell ?? ''}</p>}
               </div>
 
               {selected.typ === 'bulk' ? (
@@ -169,15 +171,15 @@ function AddContentModal({ itemId, onDone, onClose }: {
                   ) : (
                     <div className="space-y-1 max-h-60 overflow-y-auto">
                       {units.map(u => (
-                        <label key={u.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                        <label key={u.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--hover)] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={selectedUnitIds.includes(u.id)}
                             onChange={() => toggleUnit(u.id)}
                             className="accent-blue-600"
                           />
-                          <span className="font-mono text-sm font-medium">{u.seriennummer}</span>
-                          {u.notiz && <span className="text-xs text-gray-400">{u.notiz}</span>}
+                          <span className="font-mono text-sm font-medium text-[var(--text)]">{u.seriennummer}</span>
+                          {u.notiz && <span className="text-xs text-[var(--text-muted)]">{u.notiz}</span>}
                         </label>
                       ))}
                     </div>
@@ -187,7 +189,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
                   )}
                 </div>
               )}
-              {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
+              {err && <p className="text-xs mt-2" style={{ color: 'var(--danger)' }}>{err}</p>}
             </div>
           )}
         </div>
