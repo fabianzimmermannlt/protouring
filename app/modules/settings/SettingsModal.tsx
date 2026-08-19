@@ -91,11 +91,14 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
         </div>
 
         {/* Inhalt — gleiche Umgebung wie L2-Content (Venues/Details), damit alle Bereiche einheitlich theme'n */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[var(--pane)] relative">
-          <button onClick={onClose} className="absolute top-4 right-4 z-10 p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-[var(--surface)]">
-            <X className="w-5 h-5" />
-          </button>
-          <div className="l2-content flex-1 overflow-y-auto p-6">
+        <div className="flex-1 flex flex-col min-w-0 bg-[var(--pane)]">
+          {/* Nicht-scrollende Kopfzeile mit Schließen-Button, damit Inhalt nicht darunter durchscrollt */}
+          <div className="shrink-0 flex justify-end px-4 pt-4">
+            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-[var(--surface)]">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="l2-content flex-1 overflow-y-auto px-6 pb-6 pt-2">
             <SettingsModule activeSubTab={subTab} />
           </div>
         </div>
