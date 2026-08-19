@@ -7,8 +7,8 @@ import { getEffectiveRole, isEditorRole, type TenantRole } from '@/lib/api-clien
 import { useEscapeKey } from '@/app/hooks/useEscapeKey'
 
 // Settings als Popup-Overlay (wie Claude). Man bleibt auf der Seite, auf der man arbeitet.
-// Bewusst helle Oberfläche (unabhängig vom App-Theme), damit der SettingsModule-Inhalt
-// konsistent aussieht. Der alte Settings-Bereich bleibt vorerst als Fallback bestehen.
+// Optik = Haupt-Layout (var(--pane), --border, --hover, pt-nav-sub-active), damit Rahmen,
+// Rail und Hover exakt wie im Hauptmenü aussehen – hell wie dunkel, ohne Sonder-Farben.
 
 type SubItem = { id: string; name: string; editorOnly?: boolean; adminOnly?: boolean }
 
@@ -60,8 +60,8 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
     <button
       key={s.id}
       onClick={() => setSubTab(s.id)}
-      className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
-        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+      className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+        subTab === s.id ? 'pt-nav-sub-active' : 'text-[var(--text-muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]'
       }`}
     >
       {s.name}
@@ -79,13 +79,13 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       onClick={onClose}
     >
       <div
-        className="pt-settings-modal bg-white rounded-xl shadow-2xl flex overflow-hidden"
+        className="pt-settings-modal bg-[var(--pane)] border border-[var(--border)] shadow-2xl flex overflow-hidden"
         style={{ width: 'min(1080px, 95vw)', height: 'min(85vh, 780px)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Linke Navigationsleiste */}
-        <div className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto py-3 px-2">
-          <div className="px-3 pb-1 text-base font-semibold text-gray-900">Einstellungen</div>
+        {/* Linke Navigationsleiste – gleiche Optik wie die Haupt-Sidebar */}
+        <div className="w-56 shrink-0 bg-[var(--pane)] border-r border-[var(--border)] overflow-y-auto py-3 px-2 l2-sidebar">
+          <div className="px-3 pb-1 text-base font-semibold text-[var(--text)]">Einstellungen</div>
           {konto.length > 0 && <>{groupTitle('Konto')}<div className="space-y-0.5">{konto.map(railButton)}</div></>}
           {workspace.length > 0 && <>{groupTitle('Workspace')}<div className="space-y-0.5">{workspace.map(railButton)}</div></>}
         </div>
