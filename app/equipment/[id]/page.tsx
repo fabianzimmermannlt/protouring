@@ -120,7 +120,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
                   <button
                     key={mat.id}
                     onClick={() => selectMaterial(mat)}
-                    className="w-full text-left px-3 py-2.5 rounded-lg border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--hover)] transition-colors"
+                    className="w-full text-left px-3 py-2.5 rounded-lg border border-[var(--border)] hover:border-blue-400 hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -171,7 +171,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
                   ) : (
                     <div className="space-y-1 max-h-60 overflow-y-auto">
                       {units.map(u => (
-                        <label key={u.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--hover)] cursor-pointer">
+                        <label key={u.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-[var(--border)] hover:bg-gray-100 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={selectedUnitIds.includes(u.id)}
