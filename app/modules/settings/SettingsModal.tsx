@@ -61,7 +61,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       key={s.id}
       onClick={() => setSubTab(s.id)}
       className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
-        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-300 hover:bg-[var(--surface)] hover:text-white'
+        subTab === s.id ? 'bg-blue-600 text-white font-medium' : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
       }`}
     >
       {s.name}
@@ -69,7 +69,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
   )
 
   const groupTitle = (txt: string) => (
-    <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{txt}</p>
+    <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{txt}</p>
   )
 
   return (
@@ -85,7 +85,7 @@ export default function SettingsModal({ open, initialSubTab = 'profil', onClose 
       >
         {/* Linke Navigationsleiste */}
         <div className="w-56 shrink-0 bg-gray-50 border-r border-gray-200 overflow-y-auto py-3 px-2">
-          <div className="px-3 pb-1 text-base font-semibold text-gray-100">Einstellungen</div>
+          <div className="px-3 pb-1 text-base font-semibold text-gray-900">Einstellungen</div>
           {konto.length > 0 && <>{groupTitle('Konto')}<div className="space-y-0.5">{konto.map(railButton)}</div></>}
           {workspace.length > 0 && <>{groupTitle('Workspace')}<div className="space-y-0.5">{workspace.map(railButton)}</div></>}
         </div>
