@@ -5786,6 +5786,16 @@ app.get('/api/termine/:terminId/travel-legs', authenticateToken, requireTenant, 
   }
 })
 
+// Reihenfolge der Legs setzen (muss VOR der :id-Route stehen, sonst matcht "reorder" als :id)
+app.put('/api/termine/:terminId/travel-legs/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body?.order) ? req.body.order : []
+    let i = 0
+    for (const id of order) await db.run('UPDATE termin_travel_legs SET sort_order=? WHERE id=? AND termin_id=? AND tenant_id=?', [i++, id, req.params.terminId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // POST create leg
 app.post('/api/termine/:terminId/travel-legs', authenticateToken, requireTenant, requireEditor, async (req, res) => {
   try {
@@ -5960,6 +5970,16 @@ app.get('/api/termine/:terminId/hotel-stays', authenticateToken, requireTenant, 
     console.error('hotel-stays GET failed', err)
     res.status(500).json({ error: 'Failed to load hotel stays' })
   }
+})
+
+// Reihenfolge der Hotel-Stays setzen (muss VOR der :id-Route stehen)
+app.put('/api/termine/:terminId/hotel-stays/reorder', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body?.order) ? req.body.order : []
+    let i = 0
+    for (const id of order) await db.run('UPDATE termin_hotel_stays SET sort_order=? WHERE id=? AND termin_id=? AND tenant_id=?', [i++, id, req.params.terminId, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 // POST new stay

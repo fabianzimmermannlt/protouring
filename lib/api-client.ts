@@ -2626,6 +2626,10 @@ export async function deleteTravelLeg(terminId: number, legId: number): Promise<
   await request(`/api/termine/${terminId}/travel-legs/${legId}`, { method: 'DELETE' });
 }
 
+export async function reorderTravelLegs(terminId: number, order: number[]): Promise<void> {
+  await request(`/api/termine/${terminId}/travel-legs/reorder`, { method: 'PUT', body: { order } });
+}
+
 export async function updateTravelLegPersons(terminId: number, legId: number, memberIds: number[]): Promise<TravelLeg> {
   const res = await request<{ leg: Record<string, unknown> }>(`/api/termine/${terminId}/travel-legs/${legId}/persons`, {
     method: 'PUT',
@@ -2801,6 +2805,10 @@ export async function updateHotelStay(terminId: number, stayId: number, data: Ho
 
 export async function deleteHotelStay(terminId: number, stayId: number): Promise<void> {
   await request(`/api/termine/${terminId}/hotel-stays/${stayId}`, { method: 'DELETE' })
+}
+
+export async function reorderHotelStays(terminId: number, order: number[]): Promise<void> {
+  await request(`/api/termine/${terminId}/hotel-stays/reorder`, { method: 'PUT', body: { order } })
 }
 
 export async function syncHotelStayRooms(terminId: number, stayId: number, rooms: HotelRoomDraft[]): Promise<HotelStay> {

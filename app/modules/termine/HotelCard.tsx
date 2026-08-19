@@ -6,6 +6,7 @@ import {
   getHotelStays,
   getTravelParty,
   setTravelPartyNoHotel,
+  reorderHotelStays,
   getTravelLegs,
   getTenantSetting,
   setHotelRecommended,
@@ -19,6 +20,7 @@ import {
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import HotelModal from './HotelModal'
+import { reorderBtnStyle } from './AnreiseCard'
 
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   einzelzimmer: 'Einzelzimmer',
@@ -108,6 +110,19 @@ export default function HotelCard({
 
   const openNew = () => { setEditStay(null); setModalOpen(true) }
   const openEdit = (stay: HotelStay) => { setEditStay(stay); setModalOpen(true) }
+
+  // Hotel-Kachel nach oben/unten schieben (optimistisch, revert bei Fehler).
+  const moveStay = async (idx: number, dir: -1 | 1) => {
+    const j = idx + dir
+    if (j < 0 || j >= stays.length) return
+    const reordered = [...stays]
+    const [x] = reordered.splice(idx, 1)
+    reordered.splice(j, 0, x)
+    const snapshot = stays
+    setStays(reordered)
+    try { await reorderHotelStays(terminId, reordered.map(s => s.id)) }
+    catch { setStays(snapshot) }
+  }
 
   // Empfehlung-Flag am zugewiesenen Hotel umschalten (wirkt auf alle Stays mit demselben Hotel)
   const toggleRecommended = async (stay: HotelStay, e: React.MouseEvent) => {
@@ -252,15 +267,21 @@ export default function HotelCard({
           <div className="pt-leg-empty">Noch keine Hotels erfasst.</div>
         )}
 
-        {!loading && stays.map(stay => (
+        {!loading && stays.map((stay, idx) => (
           <div
             key={stay.id}
             className="pt-leg-card"
             onClick={() => isAdmin && openEdit(stay)}
-            style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+            style={{ cursor: isAdmin ? 'pointer' : 'default', position: 'relative' }}
           >
+            {isAdmin && stays.length > 1 && (
+              <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1 }}>
+                <button type="button" title="Nach oben" disabled={idx === 0} onClick={() => moveStay(idx, -1)} style={reorderBtnStyle(idx === 0)}>▲</button>
+                <button type="button" title="Nach unten" disabled={idx === stays.length - 1} onClick={() => moveStay(idx, 1)} style={reorderBtnStyle(idx === stays.length - 1)}>▼</button>
+              </div>
+            )}
             {/* Hotel-Name als Headline */}
-            <div className="pt-leg-card-headline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <div className="pt-leg-card-headline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', paddingRight: isAdmin && stays.length > 1 ? 24 : undefined }}>
               <Building2 size={11} style={{ display: 'inline' }} />
               <span>{stay.hotelName || '– kein Hotel gewählt –'}</span>
               {stay.hotelCity && <span style={{ color: 'var(--text-muted)' }}>· {stay.hotelCity}</span>}

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { Plus, Loader2, Car, Train, Plane, MoreHorizontal, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
 import {
   getTravelLegs,
   getTravelParty,
+  reorderTravelLegs,
   type TravelLeg,
   type TravelPartyMember,
   type LegType,
@@ -12,6 +13,14 @@ import {
 } from '@/lib/api-client'
 import { renderBoardContent } from '@/app/components/shared/ContentBoard'
 import AnreiseModal from './AnreiseModal'
+
+// Kleiner Hoch/Runter-Button (Kacheln umsortieren) – geteilt mit HotelCard.
+export const reorderBtnStyle = (disabled: boolean): CSSProperties => ({
+  lineHeight: 1, fontSize: 10, padding: '2px 5px',
+  border: '1px solid var(--border-strong)', background: 'var(--surface)',
+  color: 'var(--text-muted)', borderRadius: 4,
+  cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.3 : 1,
+})
 
 interface AnreiseCardProps {
   terminId: number
@@ -85,6 +94,19 @@ export default function AnreiseCard({
   const openNew = () => { setEditLeg(null); setModalOpen(true) }
   const openEdit = (leg: TravelLeg) => { setEditLeg(leg); setModalOpen(true) }
 
+  // Kachel innerhalb dieser Liste nach oben/unten schieben (optimistisch, revert bei Fehler).
+  const moveLeg = async (idx: number, dir: -1 | 1) => {
+    const j = idx + dir
+    if (j < 0 || j >= legs.length) return
+    const reordered = [...legs]
+    const [x] = reordered.splice(idx, 1)
+    reordered.splice(j, 0, x)
+    const snapshot = allLegs
+    setAllLegs(prev => { const q = [...reordered]; return prev.map(l => l.legType === legType ? (q.shift() as TravelLeg) : l) })
+    try { await reorderTravelLegs(terminId, reordered.map(l => l.id)) }
+    catch { setAllLegs(snapshot) }
+  }
+
   const handleSaved = (leg: TravelLeg) => {
     setAllLegs(prev => {
       const idx = prev.findIndex(l => l.id === leg.id)
@@ -152,7 +174,7 @@ export default function AnreiseCard({
           <div className="pt-leg-empty">Noch keine {sectionTitle} eingetragen.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {legs.map(leg => {
+            {legs.map((leg, idx) => {
               const Icon = TRANSPORT_ICON[leg.transportType] ?? Car
               const depStr = formatTime(leg.departureDate, leg.departureTime)
               const arrStr = formatTime(leg.arrivalDate, leg.arrivalTime)
@@ -161,10 +183,16 @@ export default function AnreiseCard({
                   key={leg.id}
                   className="pt-leg-card"
                   onClick={() => isAdmin && openEdit(leg)}
-                  style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                  style={{ cursor: isAdmin ? 'pointer' : 'default', position: 'relative' }}
                 >
+                  {isAdmin && legs.length > 1 && (
+                    <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 4, right: 4, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1 }}>
+                      <button type="button" title="Nach oben" disabled={idx === 0} onClick={() => moveLeg(idx, -1)} style={reorderBtnStyle(idx === 0)}>▲</button>
+                      <button type="button" title="Nach unten" disabled={idx === legs.length - 1} onClick={() => moveLeg(idx, 1)} style={reorderBtnStyle(idx === legs.length - 1)}>▼</button>
+                    </div>
+                  )}
                   {/* Zeile 1: Transport-Headline */}
-                  <div className="pt-leg-card-headline">
+                  <div className="pt-leg-card-headline" style={{ paddingRight: isAdmin && legs.length > 1 ? 24 : undefined }}>
                     <Icon size={12} />
                     {leg.transportType === 'sonstiges'
                       ? (leg.otherTransport || TRANSPORT_LABEL[leg.transportType])
