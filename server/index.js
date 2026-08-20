@@ -761,6 +761,8 @@ async function initDatabase() {
     `ALTER TABLE equipment_items ADD COLUMN location_id INTEGER`,
     `ALTER TABLE equipment_items ADD COLUMN label_id INTEGER REFERENCES equipment_labels(id) ON DELETE SET NULL`,
     `ALTER TABLE equipment_items ADD COLUMN owner_id INTEGER REFERENCES equipment_owners(id) ON DELETE SET NULL`,
+    // Standort: optionales Maximalgewicht (kg) – Überlade-Warnung beim Verladen (v.a. LKW)
+    `ALTER TABLE equipment_locations ADD COLUMN max_weight_kg REAL`,
     // Anzeige-Einstellungen pro Nutzer (getrennt nach Surface Desktop/Mobil), JSON.
     `ALTER TABLE users ADD COLUMN ui_prefs TEXT DEFAULT '{}'`,
     // Carnet: Kontaktperson aufgeteilt + Vertreter-Kontaktperson
@@ -8051,11 +8053,11 @@ app.get('/api/equipment/locations', authenticateToken, requireTenant, async (req
 app.post('/api/equipment/locations', authenticateToken, requireTenant, async (req, res) => {
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { name, kind = 'sonstiges', color = null, sort_order = 0 } = req.body
+    const { name, kind = 'sonstiges', color = null, sort_order = 0, max_weight_kg = null } = req.body
     if (!name || !name.trim()) return res.status(400).json({ error: 'Name ist Pflicht' })
     const result = await db.run(
-      'INSERT INTO equipment_locations (tenant_id, name, kind, color, sort_order) VALUES (?, ?, ?, ?, ?)',
-      [req.tenant.id, name.trim(), kind || 'sonstiges', color, sort_order])
+      'INSERT INTO equipment_locations (tenant_id, name, kind, color, sort_order, max_weight_kg) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.tenant.id, name.trim(), kind || 'sonstiges', color, sort_order, max_weight_kg])
     const row = await db.get('SELECT * FROM equipment_locations WHERE id = ?', [result.lastID])
     res.json({ location: row })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -8065,9 +8067,14 @@ app.put('/api/equipment/locations/:id', authenticateToken, requireTenant, async 
   if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     const { name, kind, color, sort_order } = req.body
+    // max_weight_kg nur ändern, wenn im Request enthalten (null = bewusst löschen), sonst unangetastet lassen.
+    const maxProvided = Object.prototype.hasOwnProperty.call(req.body, 'max_weight_kg')
+    const maxVal = maxProvided ? (req.body.max_weight_kg ?? null) : null
     await db.run(
-      `UPDATE equipment_locations SET name=COALESCE(?,name), kind=COALESCE(?,kind), color=COALESCE(?,color), sort_order=COALESCE(?,sort_order) WHERE id=? AND tenant_id=?`,
-      [name?.trim() ?? null, kind ?? null, color ?? null, sort_order ?? null, req.params.id, req.tenant.id])
+      `UPDATE equipment_locations SET name=COALESCE(?,name), kind=COALESCE(?,kind), color=COALESCE(?,color), sort_order=COALESCE(?,sort_order),
+         max_weight_kg = CASE WHEN ?=1 THEN ? ELSE max_weight_kg END
+       WHERE id=? AND tenant_id=?`,
+      [name?.trim() ?? null, kind ?? null, color ?? null, sort_order ?? null, maxProvided ? 1 : 0, maxVal, req.params.id, req.tenant.id])
     const row = await db.get('SELECT * FROM equipment_locations WHERE id = ? AND tenant_id = ?', [req.params.id, req.tenant.id])
     res.json({ location: row })
   } catch (e) { res.status(500).json({ error: e.message }) }

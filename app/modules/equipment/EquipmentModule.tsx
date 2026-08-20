@@ -243,18 +243,21 @@ function VerladeRow({ item, canMove, selected, onToggleSelect, onLoad }: {
 
 function LocationModal({ loc, onSave, onClose }: {
   loc: EquipmentLocation | null
-  onSave: (data: { name: string; kind: EquipmentLocationKind; color: string | null }) => Promise<void>
+  onSave: (data: { name: string; kind: EquipmentLocationKind; color: string | null; max_weight_kg: number | null }) => Promise<void>
   onClose: () => void
 }) {
   const [name, setName] = useState(loc?.name ?? '')
   const [kind, setKind] = useState<EquipmentLocationKind>(loc?.kind ?? 'lager')
   const [color, setColor] = useState(loc?.color ?? 'var(--primary)')
+  const [maxWeight, setMaxWeight] = useState(loc?.max_weight_kg != null ? String(loc.max_weight_kg) : '')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const handle = async () => {
     if (!name.trim()) { setErr('Name ist Pflicht'); return }
+    const mw = maxWeight.trim()
+    if (mw !== '' && (isNaN(Number(mw)) || Number(mw) < 0)) { setErr('Max. Gewicht muss eine Zahl ≥ 0 sein'); return }
     setSaving(true)
-    try { await onSave({ name: name.trim(), kind, color }); onClose() }
+    try { await onSave({ name: name.trim(), kind, color, max_weight_kg: mw === '' ? null : Number(mw) }); onClose() }
     catch (e: any) { setErr(e.message || 'Fehler'); setSaving(false) }
   }
   return (
@@ -283,6 +286,12 @@ function LocationModal({ loc, onSave, onClose }: {
           <div>
             <label className="form-label">Farbe</label>
             <input type="color" className="h-9 w-16 rounded border border-gray-200 p-0.5" value={color} onChange={e => setColor(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label">Max. Gewicht (kg) <span className="text-gray-400 font-normal">(optional – Überlade-Warnung)</span></label>
+            <input type="number" min={0} step="1" className="form-input" value={maxWeight} onChange={e => setMaxWeight(e.target.value)}
+              placeholder={kind === 'lkw' ? 'z.B. 7500' : 'z.B. Zuladung in kg'} />
+            <p className="text-xs text-gray-400 mt-1">Leer lassen = keine Warnung. Beim Verladen warnt die App, wenn dieses Gewicht überschritten wird.</p>
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
@@ -2878,6 +2887,10 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   // ── Verladen (Logistik) ────────────────────────────────────────────────────────
   const renderVerladen = () => {
     const countAt = (lid: number | null) => items.filter(i => (i.location_id ?? null) === lid).length
+    // Gesamtgewicht der Gegenstände an einem Ort (Leergewicht + Materialgewicht).
+    const weightAt = (lid: number | null) => items.filter(i => (i.location_id ?? null) === lid)
+      .reduce((s, i) => s + (i.weight_empty_kg ?? 0) + (i.material_gewicht ?? 0), 0)
+    const fmtKg = (kg: number) => `${Math.round(kg).toLocaleString('de-DE')} kg`
     const selToId = (v: string): number | null => v === 'none' ? null : Number(v)
     const selName = (v: string): string => v === '' ? '' : v === 'none' ? 'Ohne Standort' : (locations.find(l => String(l.id) === v)?.name ?? '')
     const selIcon = (v: string): string => v === '' || v === 'none' ? '📦' : locKind(locations.find(l => String(l.id) === v)?.kind ?? 'sonstiges').icon
@@ -2932,15 +2945,23 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           {[{ id: 'none', name: 'Ohne Standort', kind: 'sonstiges', color: 'var(--text-muted)' }, ...sortedLocs].map((l: any) => {
             const idNum = l.id === 'none' ? null : l.id
             const c = countAt(idNum)
+            const w = weightAt(idNum)
+            const max = l.id === 'none' ? null : (l.max_weight_kg ?? null)
+            const over = max != null && w > max
             const active = fromLoc === String(l.id)
             const warn = idNum !== null && (l.kind === 'venue' || l.kind === 'buehne') && c > 0
             return (
               <button key={String(l.id)} onClick={() => setFromLoc(String(l.id))}
                 className={`shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'bg-blue-50' : 'bg-white'}`}
-                style={{ minWidth: 128, borderColor: active ? 'var(--primary)' : warn ? '#f59e0b' : (l.color || undefined), borderLeftWidth: 4 }}>
+                style={{ minWidth: 132, borderColor: active ? 'var(--primary)' : over ? 'var(--danger)' : warn ? '#f59e0b' : (l.color || undefined), borderLeftWidth: 4 }}>
                 <div style={{ fontSize: 20, lineHeight: 1 }}>{locKind(l.kind).icon}</div>
                 <div className="text-sm font-medium text-gray-900 truncate mt-1">{l.name}</div>
                 <div className="text-xs text-gray-500" style={{ color: warn ? '#f59e0b' : undefined, fontWeight: warn ? 600 : undefined }}>{warn ? '⚠️ ' : ''}{c} {c === 1 ? 'Gegenstand' : 'Gegenstände'}</div>
+                {(w > 0 || max != null) && (
+                  <div className="text-xs mt-0.5" style={{ color: over ? 'var(--danger)' : 'var(--text-muted)', fontWeight: over ? 700 : 500 }}>
+                    {over ? '⚠️ ' : ''}{fmtKg(w)}{max != null ? ` / ${fmtKg(max)}` : ''}
+                  </div>
+                )}
               </button>
             )
           })}
@@ -2966,6 +2987,28 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
             </select>
           </div>
         </div>
+
+        {/* Überlade-Warnung fürs Ziel (Fahrzeug o.ä. mit Max-Gewicht) */}
+        {(() => {
+          const tid = selToId(toLoc)
+          if (toLoc === '' || tid === null) return null
+          const tLoc = locations.find(l => l.id === tid)
+          const tMax = tLoc?.max_weight_kg ?? null
+          const tW = weightAt(tid)
+          if (tMax == null) return null
+          const over = tW > tMax
+          return (
+            <div className="text-xs rounded-lg px-3 py-2" style={{
+              background: over ? 'var(--danger-soft)' : 'var(--surface-2)',
+              color: over ? 'var(--danger)' : 'var(--text-muted)',
+              border: `1px solid ${over ? 'var(--danger)' : 'var(--border)'}`, fontWeight: over ? 600 : 400,
+            }}>
+              {over
+                ? `⚠️ ${selName(toLoc)} überladen: ${fmtKg(tW)} / ${fmtKg(tMax)} (${fmtKg(tW - tMax)} zu viel)`
+                : `${selName(toLoc)}: ${fmtKg(tW)} / ${fmtKg(tMax)} · noch ${fmtKg(tMax - tW)} frei`}
+            </div>
+          )
+        })()}
 
         {/* Scan-Modus (Bluetooth-Scanner tippt die Case-ID) */}
         {canMove && (
@@ -3021,7 +3064,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-gray-700 truncate">
-                {selIcon(fromLoc)} {selName(fromLoc)} · {fromItems.length}{canMove ? ` → ${selIcon(toLoc)} ${selName(toLoc)}` : ''}
+                {selIcon(fromLoc)} {selName(fromLoc)} · {fromItems.length} · {fmtKg(weightAt(selToId(fromLoc)))}{canMove ? ` → ${selIcon(toLoc)} ${selName(toLoc)}` : ''}
               </span>
               {canMove && (
                 <button onClick={() => move(fromItems.map(i => i.id), toLoc, fromLoc, `${fromItems.length} Gegenstände`)} className="btn btn-primary shrink-0" style={{ fontSize: '0.8rem' }}>Alles laden</button>

@@ -733,6 +733,7 @@ export interface EquipmentLocation {
   kind: EquipmentLocationKind;
   color: string | null;
   sort_order: number;
+  max_weight_kg: number | null;
   item_count?: number;
   created_at: string;
 }
@@ -740,7 +741,7 @@ export async function getEquipmentLocations(): Promise<EquipmentLocation[]> {
   const res = await request<{ locations: EquipmentLocation[] }>('/api/equipment/locations');
   return res.locations;
 }
-export async function createEquipmentLocation(data: { name: string; kind?: EquipmentLocationKind; color?: string | null; sort_order?: number }): Promise<EquipmentLocation> {
+export async function createEquipmentLocation(data: { name: string; kind?: EquipmentLocationKind; color?: string | null; sort_order?: number; max_weight_kg?: number | null }): Promise<EquipmentLocation> {
   const res = await request<{ location: EquipmentLocation }>('/api/equipment/locations', { method: 'POST', body: data });
   return res.location;
 }
