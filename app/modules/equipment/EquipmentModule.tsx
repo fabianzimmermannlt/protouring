@@ -2943,8 +2943,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     }
 
     return (
-      <div className="space-y-4" style={{ maxWidth: 640 }}>
-        <p className="text-sm text-gray-500">Gegenstände von einem Standort zum anderen umladen. Tippe eine Kachel als Quelle, wähle ein Ziel und lade – einzeln oder alles.</p>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-500" style={{ maxWidth: 640 }}>Gegenstände von einem Standort zum anderen umladen. Tippe eine Kachel als Quelle, wähle ein Ziel und lade – einzeln oder alles.</p>
 
         {/* Standort-Kacheln (Übersicht + Quelle wählen); Venue/Bühne mit Restbestand = Warnung */}
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -2974,7 +2974,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         </div>
 
         {/* Von / Nach */}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2" style={{ maxWidth: 640 }}>
           <div className="flex-1 min-w-0">
             <label className="form-label">Von</label>
             <select className="form-select" value={fromLoc} onChange={e => setFromLoc(e.target.value)}>
@@ -3008,6 +3008,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               background: over ? 'var(--danger-soft)' : 'var(--surface-2)',
               color: over ? 'var(--danger)' : 'var(--text-muted)',
               border: `1px solid ${over ? 'var(--danger)' : 'var(--border)'}`, fontWeight: over ? 600 : 400,
+              maxWidth: 640,
             }}>
               {over
                 ? `⚠️ ${selName(toLoc)} überladen: ${fmtKg(tW)} / ${fmtKg(tMax)} (${fmtKg(tW - tMax)} zu viel)`
@@ -3021,13 +3022,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           <button
             onClick={() => { setScanMode(s => !s); if (scanMode) setScanLog([]) }}
             className={`btn ${scanMode ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ display: 'flex', width: '100%', justifyContent: 'center' }}
+            style={{ display: 'flex', width: '100%', maxWidth: 640, justifyContent: 'center' }}
           >
             {scanMode ? '⏹ Scan-Modus beenden' : '📷 Scan-Modus (Bluetooth-Scanner)'}
           </button>
         )}
         {scanMode && canMove && (
-          <div className="rounded-xl p-4" style={{ border: '2px solid var(--primary)', background: 'var(--surface)' }}>
+          <div className="rounded-xl p-4" style={{ border: '2px solid var(--primary)', background: 'var(--surface)', maxWidth: 640 }}>
             <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
               📷 Scannen → {selIcon(toLoc)} {selName(toLoc)}
             </div>
