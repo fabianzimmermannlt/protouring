@@ -225,6 +225,12 @@ function VerladeRow({ item, canMove, selected, onToggleSelect, onLoad }: {
           <div className="font-medium text-gray-900 truncate">{item.bezeichnung}</div>
           <div className="text-xs text-gray-500">{item.case_id}{item.category_name ? ' · ' + item.category_name : ''}{item.gruppe_name ? ' · ' + item.gruppe_name : ''}</div>
         </div>
+        {(() => {
+          const kg = (item.weight_empty_kg ?? 0) + (item.material_gewicht ?? 0)
+          return kg > 0
+            ? <div className="shrink-0 text-right text-sm font-medium text-gray-700 tabular-nums" style={{ minWidth: 56 }}>{Math.round(kg).toLocaleString('de-DE')} kg</div>
+            : null
+        })()}
         {canMove && (
           <>
             {/* Desktop: Button (kein Wischen mit Maus). Wrapper steuert Sichtbarkeit,
