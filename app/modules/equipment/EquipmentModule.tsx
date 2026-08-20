@@ -950,7 +950,7 @@ function AddContentModal({ itemId, onDone, onClose }: {
                 {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-6">Kein Material gefunden</p>}
                 {filtered.map(mat => (
                   <button key={mat.id} onClick={() => selectMaterial(mat)} disabled={saving}
-                    className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50">
+                    className="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-gray-100 transition-colors disabled:opacity-50">
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-medium text-sm text-gray-900">
