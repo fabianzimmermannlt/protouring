@@ -949,7 +949,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                   {showTravel && (
                     <button onClick={() => setTravelOpen(o => !o)} title="Reisekosten (km × Preis)"
                       className="shrink-0 inline-flex items-center gap-1 rounded"
-                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? '#111827' : 'var(--text-subtle)', background:travelActive ? 'var(--accent)' : 'transparent', border: `1px solid ${travelActive ? 'var(--accent)' : 'var(--border-strong)'}` }}>
+                      style={{ fontSize: '0.7rem', padding: '2px 6px', color: travelActive ? 'var(--primary-2)' : 'var(--text-subtle)', background: travelActive ? 'var(--primary-soft)' : 'transparent', border: `1px solid ${travelActive ? 'var(--primary)' : 'var(--border-strong)'}` }}>
                       <TruckIcon className="w-3.5 h-3.5" /> Reise
                     </button>
                   )}
@@ -1486,7 +1486,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
               <div className="flex items-center gap-1.5" style={{ marginLeft: 'auto' }}>
                 <button onClick={toggleFuel} title="Sprit-Zeile (Strecke/100 × Verbrauch × €/L)"
                   className="shrink-0 inline-flex items-center gap-1 rounded"
-                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? '#111827' : 'var(--text-subtle)', background:m.fuelOn ? 'var(--accent)' : 'transparent', border: `1px solid ${m.fuelOn ? 'var(--accent)' : 'var(--border-strong)'}` }}>
+                  style={{ fontSize: '0.7rem', padding: '2px 6px', color: m.fuelOn ? 'var(--primary-2)' : 'var(--text-subtle)', background: m.fuelOn ? 'var(--primary-soft)' : 'transparent', border: `1px solid ${m.fuelOn ? 'var(--primary)' : 'var(--border-strong)'}` }}>
                   ⛽ Sprit
                 </button>
               </div>
