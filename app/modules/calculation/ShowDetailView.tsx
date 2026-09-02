@@ -60,12 +60,17 @@ function markRowDirty(key: string, dirty: boolean) {
 const hv = (v: unknown) => v != null && v !== ''
 const entryHasValue = (e: CalcEntry): boolean => hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price)
 
-// Werte einer Position in ALLE aktiven, nicht gesperrten Shows kopieren (mit Warnung).
+// Werte einer Position in ALLE aktiven, nicht gesperrten Shows kopieren (immer mit Sicherheitsabfrage).
 async function copyRowToAllShows(dataset: CalcDataset, showId: string, positionId: string, entries: CalcEntryInput[], onDone: () => void): Promise<boolean> {
   if (entries.length === 0) { alert('Keine Werte in dieser Zeile zum Kopieren.'); return false }
   const hasVals = (sid: string) => dataset.entries.some(e => e.show_id === sid && e.position_id === positionId && (hv(e.amount) || hv(e.quantity) || hv(e.distance_km) || hv(e.rental_price) || hv(e.nights)))
-  const others = dataset.shows.filter(s => s.is_active && !s.locked && s.id !== showId && hasVals(s.id))
-  if (others.length && !confirm(`${others.length} weitere Show(s) haben in dieser Position bereits Werte.\n\nMit den Werten dieser Show überschreiben?`)) return false
+  const targets = dataset.shows.filter(s => s.is_active && !s.locked && s.id !== showId)
+  if (targets.length === 0) { alert('Keine anderen (aktiven, entsperrten) Shows zum Kopieren vorhanden.'); return false }
+  const withVals = targets.filter(s => hasVals(s.id))
+  const msg = withVals.length
+    ? `Werte dieser Zeile in ${targets.length} andere Show(s) kopieren?\n\n${withVals.length} davon haben hier bereits Werte und werden überschrieben.`
+    : `Werte dieser Zeile in ${targets.length} andere Show(s) kopieren?`
+  if (!confirm(msg)) return false
   await copyCalcEntriesToShows(positionId, entries)
   onDone()
   return true
