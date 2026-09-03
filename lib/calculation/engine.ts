@@ -269,11 +269,17 @@ export function buildOverview(data: CalcDataset, opts: OverviewOptions = {}): Ov
     if (ids.size > 0) fixedShareByPosition.set(pos, sum.div(ids.size))
   })
 
+  // Weggehakte Zeilen: (show, position, variant) → wird für diese Variante NICHT berechnet.
+  const rowExcluded = new Set<string>()
+  ;(data.rowExclude ?? []).forEach(rx => rowExcluded.add(`${rx.show_id}|${rx.position_id}|${rx.variant_id}`))
+
   // Variable Buchungen je (show, position) – Variantenfilter pro Show (Regel 3).
   const variableByShowPosition = new Map<string, Map<string, Decimal>>()
   for (const e of data.entries) {
     if (e.show_id == null) continue
-    if (!variantMatches(e, variantForShow(e.show_id))) continue
+    const vForShow = variantForShow(e.show_id)
+    if (!variantMatches(e, vForShow)) continue
+    if (vForShow != null && rowExcluded.has(`${e.show_id}|${e.position_id}|${vForShow}`)) continue  // weggehakt
     let byPos = variableByShowPosition.get(e.show_id)
     if (!byPos) { byPos = new Map(); variableByShowPosition.set(e.show_id, byPos) }
     const prev = byPos.get(e.position_id) ?? new Decimal(0)

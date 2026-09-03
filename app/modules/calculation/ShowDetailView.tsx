@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
 import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon, LinkIcon, TruckIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import {
-  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
+  createCalcPosition, updateCalcPosition, deleteCalcPosition, replaceCalcEntries, copyCalcEntriesToShows, setCalcActual, setCalcRowExcluded, setCalcOverheadShow, getActiveFunctions, saveFunctionCatalog,
   getVehicles, createVehicle, lockCalcShow, unlockCalcShow, type Vehicle, type CalcEntryInput,
 } from '@/lib/api-client'
 import { buildAbrechnung, type AbrechnungSnapshot } from '@/lib/calculation/abrechnung'
@@ -804,6 +804,15 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
   const saveSpec = async () => { try { await setCalcActual(show.id, positionId, { spec: spec.trim() || null }); onChanged() } catch { /* still */ } }
   const [person, setPerson] = useState(actMeta?.person ?? positionPerson ?? '')
   const savePerson = async () => { try { await setCalcActual(show.id, positionId, { person: person.trim() || null }); onChanged() } catch { /* still */ } }
+  // Zeile pro Variante weghaken (nicht berechnen; Wert bleibt erhalten).
+  const isExcluded = (vid: string) => (dataset.rowExclude ?? []).some(rx => rx.show_id === show.id && rx.position_id === positionId && rx.variant_id === vid)
+  const [excludeBusy, setExcludeBusy] = useState(false)
+  const toggleExcluded = async (vid: string) => {
+    if (show.locked || excludeBusy) return
+    setExcludeBusy(true)
+    try { await setCalcRowExcluded(show.id, positionId, vid, !isExcluded(vid)); onChanged() }
+    catch { /* still */ } finally { setExcludeBusy(false) }
+  }
   const [nameVal, setNameVal] = useState(positionName)
   const saveName = async () => {
     const nn = nameVal.trim()
@@ -969,8 +978,12 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
           </div>
         </td>
 
-        {variants.map((v, idx) => (
+        {variants.map((v, idx) => {
+          const ex = isExcluded(v.id)
+          return (
           <td key={v.id} className="text-right" style={{ padding: '4px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+              <div style={{ flex: 1, minWidth: 0, opacity: ex ? 0.4 : 1 }}>
             {m.shared ? (
               idx === 0 ? (
                 <input inputMode="decimal" {...cell} data-calc-col={v.id} data-fkey={`s|${positionId}|base|shared`} onKeyDown={e => gridTabDown(e, v.id)}
@@ -997,8 +1010,18 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
                 onChange={e => { const val = e.target.value; setM(p => ({ ...p, perVar: { ...p.perVar, [v.id]: val } })) }}
                 placeholder="0" style={{ ...cell.style }} />
             )}
+              </div>
+              {!show.locked && (
+                <input type="checkbox" checked={!ex} disabled={excludeBusy} onChange={() => toggleExcluded(v.id)}
+                  title={ex
+                    ? `„${positionName}" wird in Variante „${v.name}" NICHT berechnet – Haken setzen zum Mitrechnen`
+                    : `Haken entfernen: „${positionName}" in Variante „${v.name}" nicht berechnen`}
+                  style={{ width: 13, height: 13, flexShrink: 0, cursor: excludeBusy ? 'wait' : 'pointer', accentColor: 'var(--primary)' }} />
+              )}
+            </div>
           </td>
-        ))}
+          )
+        })}
 
         <td className="text-right" style={{ padding: '4px 8px' }}>
           <input inputMode="decimal" className="form-input text-right" data-calc-col="ist" data-fkey={`i|${show.id}|${positionId}|amount`} onKeyDown={e => gridTabDown(e, 'ist')}

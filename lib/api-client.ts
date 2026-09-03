@@ -997,6 +997,11 @@ export async function copyCalcEntriesToShows(positionId: string, entries: CalcEn
   return request<{ count: number }>(`/api/calc/positions/${positionId}/copy-to-shows`, { method: 'POST', body: { entries } })
 }
 
+/** Zeile (Position) für Show+Variante weghaken (excluded=true) oder wieder aktivieren. */
+export async function setCalcRowExcluded(showId: string, positionId: string, variantId: string, excluded: boolean): Promise<void> {
+  await request(`/api/calc/shows/${showId}/positions/${positionId}/exclude/${variantId}`, { method: 'PUT', body: { excluded } })
+}
+
 export interface CalcActualInput { amount?: Num; travel_km?: Num; travel_rate?: Num; travel_fix?: Num; fuel_amount?: Num; spec?: string | null; person?: string | null; note?: string | null }
 export async function setCalcActual(showId: string, positionId: string, data: CalcActualInput): Promise<void> {
   await request(`/api/calc/shows/${showId}/actuals/${positionId}`, { method: 'PUT', body: data })

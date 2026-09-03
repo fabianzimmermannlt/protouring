@@ -75,6 +75,13 @@ CREATE TABLE IF NOT EXISTS calc_overhead_exclude (
   show_id TEXT NOT NULL REFERENCES calc_shows(id) ON DELETE CASCADE,
   PRIMARY KEY (position_id, show_id)
 );
+-- Weggehakte Zeile: Position wird in dieser Show + Variante NICHT berechnet (Wert bleibt erhalten).
+CREATE TABLE IF NOT EXISTS calc_row_exclude (
+  show_id TEXT NOT NULL REFERENCES calc_shows(id) ON DELETE CASCADE,
+  position_id TEXT NOT NULL REFERENCES calc_positions(id) ON DELETE CASCADE,
+  variant_id TEXT NOT NULL REFERENCES calc_variants(id) ON DELETE CASCADE,
+  PRIMARY KEY (show_id, position_id, variant_id)
+);
 CREATE TABLE IF NOT EXISTS calc_entries (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL REFERENCES calc_projects(id) ON DELETE CASCADE,
@@ -221,6 +228,7 @@ function rowsToDataset(rows) {
     entries: rows.entries,
     actuals: rows.actuals || [],
     overheadExclude: rows.overheadExclude || [],
+    rowExclude: rows.rowExclude || [],
     formulas: rows.formulas || [],
     overheadLines: rows.overheadLines || [],
   }
@@ -242,11 +250,14 @@ async function loadDataset(db, projectId) {
     `SELECT oe.position_id, oe.show_id FROM calc_overhead_exclude oe
        JOIN calc_positions p ON p.id = oe.position_id
        JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id=?`, [projectId])
+  const rowExclude = await db.all(
+    `SELECT rx.show_id, rx.position_id, rx.variant_id FROM calc_row_exclude rx
+       JOIN calc_shows s ON s.id = rx.show_id WHERE s.project_id=?`, [projectId])
   const formulas = await db.all(`SELECT fkey, formula, result FROM calc_formulas WHERE project_id=?`, [projectId])
   const overheadLines = await db.all(
     `SELECT ol.* FROM calc_overhead_lines ol JOIN calc_positions p ON p.id = ol.position_id
        JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id=? ORDER BY ol.sort_order`, [projectId])
-  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals, overheadExclude, formulas, overheadLines })
+  return rowsToDataset({ project, variants, shows, categories, positions, entries, actuals, overheadExclude, rowExclude, formulas, overheadLines })
 }
 
 /** Projektliste eines Tenants (Kurzform). */

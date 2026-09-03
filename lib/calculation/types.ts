@@ -87,6 +87,14 @@ export interface CalcOverheadExclude {
   show_id: string
 }
 
+/** Weggehakt: diese Zeile (Position) wird in dieser Show + Variante NICHT berechnet.
+ * Der eingetragene Wert bleibt erhalten – nur die Summenbildung überspringt sie. */
+export interface CalcRowExclude {
+  show_id: string
+  position_id: string
+  variant_id: string
+}
+
 export interface CalcEntry {
   id: string
   show_id?: string | null      // NULL = Fixkosten
@@ -142,6 +150,8 @@ export interface CalcDataset {
   actuals?: CalcActual[]
   /** Show-Ausnahmen für übergeordnete Posten (optional; leer = jeder Posten gilt für alle aktiven Shows). */
   overheadExclude?: CalcOverheadExclude[]
+  /** Weggehakte Zeilen (show_id, position_id, variant_id) – werden nicht berechnet. */
+  rowExclude?: CalcRowExclude[]
   /** Gemerkte Formeln je Betragsfeld (optional). Nur zur Wiederanzeige/Bearbeitung; der Wert selbst liegt in entries/actuals. */
   formulas?: CalcFormula[]
   /** Unterzeilen übergeordneter Sammelposten (optional). Postensumme = Σ dieser Zeilen. */

@@ -41,6 +41,12 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
   const sr = ov.shows.find(s => s.showId === show.id)
   const variantName = dataset.variants.find(v => v.id === variantId)?.name ?? '—'
 
+  // Weggehakte Zeilen dieser Show+Variante: weder Soll noch Ist einbeziehen.
+  const excludedPos = new Set(
+    (dataset.rowExclude ?? [])
+      .filter(rx => rx.show_id === show.id && rx.variant_id === variantId)
+      .map(rx => rx.position_id))
+
   const catsSorted = [...dataset.categories].sort((a, b) => a.sort_order - b.sort_order)
   // Volles Ist einer Position = Ist-Betrag + Ist-Reise (km×€/km + Fixpreis).
   const nz = (v: unknown) => v != null && String(v) !== ''
@@ -60,6 +66,7 @@ export function buildAbrechnung(dataset: CalcDataset, show: CalcShow, variantId:
     const positions: AbrechnungPosition[] = []
     let istSum = D(0)
     posInCat.forEach(p => {
+      if (excludedPos.has(p.id)) return   // weggehakt → nicht in der Abrechnung
       const soll = sr?.positionAmount.get(p.id)
       // Übergeordnete Posten können pro Show nicht erfasst werden → ihr kalkulierter
       // (umgelegter) Wert gilt zugleich als Ist, damit das Ist-Ergebnis stimmt.

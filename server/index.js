@@ -8832,6 +8832,27 @@ app.put('/api/calc/positions/:id/overhead-shows/:showId', authenticateToken, req
   }
 });
 
+// Zeile weghaken/aktivieren pro Show + Variante. excluded=true → nicht berechnen (Wert bleibt).
+app.put('/api/calc/shows/:showId/positions/:positionId/exclude/:variantId', authenticateToken, requireTenant, requireEditor, async (req, res) => {
+  try {
+    const owner = await calcShowTenant(req.params.showId);
+    if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Show nicht gefunden' });
+    if (owner.locked) return res.status(409).json({ error: 'Show ist gesperrt' });
+    const excluded = req.body?.excluded === true;
+    if (excluded) {
+      await db.run('INSERT OR IGNORE INTO calc_row_exclude (show_id,position_id,variant_id) VALUES (?,?,?)',
+        [req.params.showId, req.params.positionId, req.params.variantId]);
+    } else {
+      await db.run('DELETE FROM calc_row_exclude WHERE show_id=? AND position_id=? AND variant_id=?',
+        [req.params.showId, req.params.positionId, req.params.variantId]);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[calc] toggle row exclude:', e);
+    res.status(500).json({ error: 'Fehler beim Weghaken der Zeile' });
+  }
+});
+
 // ── Übergeordnete Posten: Unterzeilen (Sammelposten) ─────────────────────────
 const CalcDec = require('decimal.js');
 async function calcPosOwner(positionId) {
@@ -9073,6 +9094,10 @@ app.post('/api/calc/projects/:id/duplicate', authenticateToken, requireTenant, r
 
     for (const oe of await db.all('SELECT oe.* FROM calc_overhead_exclude oe JOIN calc_positions p ON p.id = oe.position_id JOIN calc_categories c ON c.id = p.category_id WHERE c.project_id = ?', [oldPid])) {
       if (posMap[oe.position_id] && showMap[oe.show_id]) await db.run('INSERT OR IGNORE INTO calc_overhead_exclude (position_id,show_id) VALUES (?,?)', [posMap[oe.position_id], showMap[oe.show_id]]);
+    }
+
+    for (const rx of await db.all('SELECT rx.* FROM calc_row_exclude rx JOIN calc_shows s ON s.id = rx.show_id WHERE s.project_id = ?', [oldPid])) {
+      if (showMap[rx.show_id] && posMap[rx.position_id] && varMap[rx.variant_id]) await db.run('INSERT OR IGNORE INTO calc_row_exclude (show_id,position_id,variant_id) VALUES (?,?,?)', [showMap[rx.show_id], posMap[rx.position_id], varMap[rx.variant_id]]);
     }
 
     res.json({ id: newPid, name: newName });
