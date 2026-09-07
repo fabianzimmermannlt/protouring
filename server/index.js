@@ -8958,7 +8958,9 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
     // Nur übergebene Felder ändern (Merge) – so kann man Ist ODER Spez./Name einzeln speichern.
     const existing = await db.get('SELECT * FROM calc_actuals WHERE show_id = ? AND position_id = ?', [req.params.showId, req.params.positionId]);
     const num = (key, col) => req.body?.[key] !== undefined ? calcText(req.body[key]) : (existing ? existing[col] : null);
-    const txt = (key, col) => req.body?.[key] !== undefined ? (req.body[key] ? String(req.body[key]).trim() || null : null) : (existing ? existing[col] : null);
+    // Name/Spez.: übergebener Wert (auch leer!) = bewusst pro Show gesetzt. '' = bewusst leer
+    // (unterdrückt den Positions-Fallback), null = nie gesetzt (Positions-Fallback greift).
+    const txt = (key, col) => req.body?.[key] !== undefined ? String(req.body[key] ?? '').trim() : (existing ? existing[col] : null);
     const amount = num('amount', 'amount');
     const travelKm = num('travel_km', 'travel_km');
     const travelRate = num('travel_rate', 'travel_rate');
@@ -8967,7 +8969,9 @@ app.put('/api/calc/shows/:showId/actuals/:positionId', authenticateToken, requir
     const spec = txt('spec', 'spec');
     const person = txt('person', 'person');
     const note = req.body?.note !== undefined ? (req.body.note ?? null) : (existing ? existing.note : null);
-    const allEmpty = amount == null && travelKm == null && travelRate == null && travelFix == null && fuelAmount == null && !spec && !person && (note == null || note === '');
+    // Zeile nur löschen, wenn wirklich NICHTS gesetzt ist. Ein bewusst leeres Name/Spez.
+    // ('' statt null) hält die Zeile, damit der Fallback in dieser Show unterdrückt bleibt.
+    const allEmpty = amount == null && travelKm == null && travelRate == null && travelFix == null && fuelAmount == null && spec == null && person == null && (note == null || note === '');
     if (allEmpty) {
       if (existing) await db.run('DELETE FROM calc_actuals WHERE id = ?', [existing.id]);
       return res.json({ ok: true });
