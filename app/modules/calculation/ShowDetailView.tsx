@@ -1240,6 +1240,16 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
 
   const hCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.7rem', padding: '2px 4px', width: '100%', textAlign: 'right' as const } }
 
+  // Zeile pro Variante weghaken (nicht berechnen; Wert bleibt erhalten).
+  const isExcluded = (vid: string) => (dataset.rowExclude ?? []).some(rx => rx.show_id === show.id && rx.position_id === positionId && rx.variant_id === vid)
+  const [excludeBusy, setExcludeBusy] = useState(false)
+  const toggleExcluded = async (vid: string) => {
+    if (show.locked || excludeBusy) return
+    setExcludeBusy(true)
+    try { await setCalcRowExcluded(show.id, positionId, vid, !isExcluded(vid)); onChanged() }
+    catch { /* still */ } finally { setExcludeBusy(false) }
+  }
+
   return (
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
       style={{ background: dragging ? 'var(--surface-3)' : (dropTarget ? 'var(--primary-soft)' : 'var(--surface-2)'), opacity: dragging ? 0.35 : 1, boxShadow: dropTarget ? 'inset 0 2px 0 0 var(--primary-2)' : undefined }}>
@@ -1278,8 +1288,11 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
         const val = valsFor(v.id)
         const prod = hProd(val)
         const mirror = m.shared && idx > 0
+        const ex = isExcluded(v.id)
         return (
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+              <div style={{ flex: 1, minWidth: 0, opacity: ex ? 0.4 : 1 }}>
             {mirror ? (
               <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: 'var(--text-subtle)', fontSize: 12 }}>
@@ -1299,6 +1312,15 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
               </div>
             )}
             <div className="text-right" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{prod != null ? formatMoney(prod) : ''}</div>
+              </div>
+              {!show.locked && (
+                <input type="checkbox" checked={!ex} disabled={excludeBusy} onChange={() => toggleExcluded(v.id)}
+                  title={ex
+                    ? `„${positionName}" wird in Variante „${v.name}" NICHT berechnet – Haken setzen zum Mitrechnen`
+                    : `Haken entfernen: „${positionName}" in Variante „${v.name}" nicht berechnen`}
+                  style={{ width: 13, height: 13, flexShrink: 0, marginTop: 3, cursor: excludeBusy ? 'wait' : 'pointer', accentColor: 'var(--primary)' }} />
+              )}
+            </div>
           </td>
         )
       })}
@@ -1490,6 +1512,16 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
   const vCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.75rem', padding: '2px 5px', width: '100%', textAlign: 'right' as const } }
   const tvCell = { className: 'form-input', inputMode: 'decimal' as const, style: { fontSize: '0.72rem', padding: '2px 6px', width: '100%', textAlign: 'right' as const } }
 
+  // Zeile pro Variante weghaken (nicht berechnen; Wert bleibt erhalten).
+  const isExcluded = (vid: string) => (dataset.rowExclude ?? []).some(rx => rx.show_id === show.id && rx.position_id === positionId && rx.variant_id === vid)
+  const [excludeBusy, setExcludeBusy] = useState(false)
+  const toggleExcluded = async (vid: string) => {
+    if (show.locked || excludeBusy) return
+    setExcludeBusy(true)
+    try { await setCalcRowExcluded(show.id, positionId, vid, !isExcluded(vid)); onChanged() }
+    catch { /* still */ } finally { setExcludeBusy(false) }
+  }
+
   return (
     <>
     <tr onDragOver={e => e.preventDefault()} onDragEnter={onDragEnterRow} onDrop={onDropRow}
@@ -1537,8 +1569,11 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       {variants.map((v, idx) => {
         const val = valsFor(v.id)
         const mirror = m.shared && idx > 0
+        const ex = isExcluded(v.id)
         return (
           <td key={v.id} style={{ padding: '4px 8px', verticalAlign: 'top' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+              <div style={{ flex: 1, minWidth: 0, opacity: ex ? 0.4 : 1 }}>
             {mirror ? (
               <div title="Verknüpft mit Variante 1 (🔗 klicken zum Auflösen)"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, minHeight: 24, color: 'var(--text-subtle)', fontSize: 12 }}>
@@ -1553,6 +1588,15 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
               </div>
             )}
             <div className="text-right" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{formatMoney(cellTotal(val))}</div>
+              </div>
+              {!show.locked && (
+                <input type="checkbox" checked={!ex} disabled={excludeBusy} onChange={() => toggleExcluded(v.id)}
+                  title={ex
+                    ? `„${positionName}" wird in Variante „${v.name}" NICHT berechnet – Haken setzen zum Mitrechnen`
+                    : `Haken entfernen: „${positionName}" in Variante „${v.name}" nicht berechnen`}
+                  style={{ width: 13, height: 13, flexShrink: 0, marginTop: 3, cursor: excludeBusy ? 'wait' : 'pointer', accentColor: 'var(--primary)' }} />
+              )}
+            </div>
           </td>
         )
       })}
