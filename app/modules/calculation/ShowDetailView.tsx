@@ -870,6 +870,7 @@ function PositionRow({ show, dataset, project, positionId, positionName, positio
       const t = istTravelRes(); if (t) sum = sum.plus(t)
       return sum
     }
+    if (isExcluded(defaultVar)) return sum   // weggehakt in dieser Variante → zählt 0
     const baseStr = m.shared ? m.sharedVal : (m.perVar[defaultVar] ?? '')
     const b = norm(baseStr); if (b != null) { try { sum = sum.plus(b) } catch { /* ignore */ } }
     const t = travelRes(defaultVar); if (t) sum = sum.plus(t)
@@ -1210,6 +1211,7 @@ function HotelRow({ show, dataset, positionId, positionName, who, showSpec, show
   const valsFor = (vid: string): HVals => (m.shared ? m.s : (m.perVar[vid] ?? emptyH()))
   const rowResult = (): Decimal => {
     if (defaultVar === 'ist') { const b = norm(m.ist); if (b != null) { try { return new Decimal(b) } catch { /* */ } } return new Decimal(0) }
+    if (isExcluded(defaultVar)) return new Decimal(0)   // weggehakt in dieser Variante → 0
     return hProd(valsFor(defaultVar)) ?? new Decimal(0)
   }
 
@@ -1465,6 +1467,7 @@ function VehicleRow({ show, dataset, positionId, positionName, snapshot, showSpe
       const f = norm(m.fuelIst); if (f != null) { try { r = r.plus(f) } catch { /* */ } }
       return r
     }
+    if (isExcluded(defaultVar)) return new Decimal(0)   // weggehakt in dieser Variante → 0
     return cellTotal(valsFor(defaultVar))
   }
 
