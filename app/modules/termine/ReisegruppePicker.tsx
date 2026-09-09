@@ -36,7 +36,17 @@ function AvailIcon({ status }: { status: TravelPartyPickerContact['availabilityS
 
 export default function ReisegruppePicker({ terminId, onClose, onAdded }: ReisegruppePickerProps) {
   const { layout } = useLayout()
-  const dark = true // App fest Dark-Mode
+  // Echtes Theme (nicht fest Dark): sonst greifen im Hellmodus die Dunkel-Farben
+  // und z.B. „bereits hinzugefügt"-Zeilen werden unlesbar (dunkel auf dunkel).
+  const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
+  useEffect(() => {
+    const el = document.documentElement
+    const update = () => setDark(el.classList.contains('dark'))
+    update()
+    const obs = new MutationObserver(update)
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
 
   const [contacts, setContacts] = useState<TravelPartyPickerContact[]>([])
   const [loading, setLoading] = useState(true)
