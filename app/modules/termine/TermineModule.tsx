@@ -14,6 +14,7 @@ import VenueModal from '../venues/VenueModal'
 import { QuickCreateVenueModal } from '@/app/components/shared/modals/QuickCreateVenueModal'
 import { VenueDetailContent } from '../venues/VenueDetail'
 import { PartnerDetailContent } from '../partners/PartnerDetail'
+import { useDirtyGuard } from '@/app/hooks/useDirtyGuard'
 import PartnerModal from '../partners/PartnerModal'
 import { QuickCreatePartnerModal } from '@/app/components/shared/modals/QuickCreatePartnerModal'
 import TerminPartnersCard from './TerminPartnersCard'
@@ -196,16 +197,6 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(originalRef.current)
 
-  // Nav guard
-  useEffect(() => {
-    ;(window as any).__pt_isDirty = isDirty
-  }, [isDirty])
-
-  // Always-fresh save reference
-  useEffect(() => {
-    ;(window as any).__pt_save = saveEdit
-  })
-
   const f = (key: keyof TerminFormData, value: string | boolean | number | null | undefined) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
@@ -229,6 +220,10 @@ function VeranstaltungCard({ termin, isAdmin, onUpdated }: {
       setSaving(false)
     }
   }
+
+  // Ungespeicherte Änderungen an den globalen Nav-Guard melden (gemeinsame Registry,
+  // damit sich mehrere Karten – z.B. Veranstaltung + Venue – nicht gegenseitig überschreiben).
+  useDirtyGuard('termine-veranstaltung', isDirty, saveEdit)
 
   return (
     <div className="pt-card">

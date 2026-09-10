@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useDirtyGuard } from '@/app/hooks/useDirtyGuard'
 import { AlertCircle, Save, Loader2, Building2, MapPin, Phone, X, ArrowLeft, Plus, UserCircle, Mail, Trash2, Check, Pencil, GripVertical } from 'lucide-react'
 import {
   isEditorRole, getEffectiveRole,
@@ -137,15 +138,8 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
 
   const handleBack = () => { if (isDirty) setShowDirtyDialog(true); else onBack?.() }
 
-  useEffect(() => {
-    ;(window as any).__pt_isDirty = isDirty
-    return () => { ;(window as any).__pt_isDirty = false }
-  }, [isDirty])
-
-  useEffect(() => {
-    ;(window as any).__pt_save = saveEdit
-    return () => { ;(window as any).__pt_save = null }
-  })
+  // Ungespeicherte Änderungen an den globalen Nav-Guard + beforeunload melden.
+  useDirtyGuard('partner-detail', isDirty, saveEdit)
 
   const ro = !isEditor
   const titleColor = 'var(--text)'  // App ist fest Dark-Mode → Titel immer hell (auch mobil, wo isL2 false ist)

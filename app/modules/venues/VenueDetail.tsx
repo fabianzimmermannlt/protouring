@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useT } from '@/app/lib/i18n/LanguageContext'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { useDirtyGuard } from '@/app/hooks/useDirtyGuard'
 import {
   Upload, Trash2, X, AlertCircle, Plus, Save, Check, Pencil, GripVertical,
   File as FileIcon, Globe, MapPin, Users, Ruler, ChevronDown, ChevronUp, ChevronRight, Navigation,
@@ -369,6 +370,10 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
       setSaving(false)
     }
   }
+
+  // Ungespeicherte Venue-Änderungen an den globalen Nav-Guard + beforeunload melden,
+  // damit auch ein Seitenwechsel (nicht nur der interne Zurück-Button) warnt.
+  useDirtyGuard('venue-detail', isDirty, saveEdit)
 
   const handleBack = () => { if (isDirty) setShowDirtyDialog(true); else onBack?.() }
 
