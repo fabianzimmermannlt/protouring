@@ -1539,20 +1539,32 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
   const selectedTerminIdRef = useRef(selectedTerminId)
   useEffect(() => { selectedTerminIdRef.current = selectedTerminId }, [selectedTerminId])
 
+  // Guard: bei ungespeicherten Änderungen (window.__pt_isDirty) erst fragen, bevor die
+  // interne Ansicht/das Detail wechselt (Submenü, Zurück, anderer Termin). Sonst gingen
+  // Eingaben verloren. Der Dialog bietet Speichern/Verwerfen/Abbrechen.
+  const [confirmNav, setConfirmNav] = useState<{ proceed: () => void } | null>(null)
+  const guardRef = useRef<(proceed: () => void) => void>(() => {})
+  guardRef.current = (proceed: () => void) => {
+    if ((window as any).__pt_isDirty) setConfirmNav({ proceed })
+    else proceed()
+  }
+
   const getTab = () =>
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('tab') || 'events'
       : 'events'
 
   const selectTermin = useCallback((id: number, view?: string) => {
-    const tab = getTab()
-    const defaultView = tab === 'events' ? 'details2' : 'details'
-    const v = view || defaultView
-    setSelectedTerminId(id)
-    setSelectedView(v)
-    history.pushState(null, '', `/?tab=${tab}&id=${id}&view=${v}`)
-    window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: true, view: v } }))
-    window.dispatchEvent(new CustomEvent('advancing-view-changed', { detail: { view: v } }))
+    guardRef.current(() => {
+      const tab = getTab()
+      const defaultView = tab === 'events' ? 'details2' : 'details'
+      const v = view || defaultView
+      setSelectedTerminId(id)
+      setSelectedView(v)
+      history.pushState(null, '', `/?tab=${tab}&id=${id}&view=${v}`)
+      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: true, view: v } }))
+      window.dispatchEvent(new CustomEvent('advancing-view-changed', { detail: { view: v } }))
+    })
   }, [])
 
   useEffect(() => {
@@ -1561,16 +1573,20 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
       selectTermin(id, view)
     }
     const onGoBack = () => {
-      setSelectedTerminId(null)
-      history.pushState(null, '', `/?tab=${getTab()}`)
-      window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
+      guardRef.current(() => {
+        setSelectedTerminId(null)
+        history.pushState(null, '', `/?tab=${getTab()}`)
+        window.dispatchEvent(new CustomEvent('termine-view-changed', { detail: { inDetail: false } }))
+      })
     }
     const onSetView = (e: Event) => {
       const v = (e as CustomEvent<{ view: string }>).detail?.view
       if (!v) return
-      setSelectedView(v)
-      const id = selectedTerminIdRef.current
-      if (id) history.pushState(null, '', `/?tab=${getTab()}&id=${id}&view=${v}`)
+      guardRef.current(() => {
+        setSelectedView(v)
+        const id = selectedTerminIdRef.current
+        if (id) history.pushState(null, '', `/?tab=${getTab()}&id=${id}&view=${v}`)
+      })
     }
     const onPopState = () => {
       const p = new URLSearchParams(window.location.search)
@@ -1856,6 +1872,26 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
 
     return (
       <div className="module-content">
+        {confirmNav && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 0, padding: '24px', maxWidth: '360px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+              <h3 style={{ color: 'var(--text)', fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>Ungespeicherte Änderungen</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>Möchtest du die Änderungen speichern oder verwerfen?</p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setConfirmNav(null)}
+                  style={{ padding: '8px 16px', fontSize: '13px', color: 'var(--text-muted)', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 0, cursor: 'pointer' }}>Abbrechen</button>
+                <button onClick={() => { const p = confirmNav.proceed; setConfirmNav(null); p() }}
+                  style={{ padding: '8px 16px', fontSize: '13px', color: 'var(--text-muted)', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 0, cursor: 'pointer' }}>Verwerfen</button>
+                <button onClick={async () => {
+                  const save = (window as any).__pt_save as (() => Promise<boolean>) | null
+                  if (save) { const ok = await save(); if (ok === false) return }
+                  const p = confirmNav.proceed; setConfirmNav(null); p()
+                }}
+                  style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer' }}>Speichern</button>
+              </div>
+            </div>
+          </div>
+        )}
         {!isL3 && (
           <div className="hidden md:block">
             <TerminDetailHeader
