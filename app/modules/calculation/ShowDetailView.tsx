@@ -296,8 +296,8 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
     const statusTxt = show.locked ? (snap.lockedAt ? 'abgerechnet am ' + new Date(snap.lockedAt).toLocaleDateString('de-DE') : 'abgerechnet') : 'Vorschau (noch nicht abgeschlossen)'
     const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${esc(showFileBase(snap, istOnly))}</title><style>
       @page{size:A4 portrait;margin:16mm}
-      *{box-sizing:border-box}
-      body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;margin:0}
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       h1{font-size:16px;margin:0 0 2px}
       .meta{color:#555;margin:0 0 12px;font-size:10px}
       table{border-collapse:collapse;width:100%}
@@ -307,7 +307,7 @@ export default function ShowDetailView({ show, dataset, onChanged, onBack, onPre
       td.pos{text-align:left}
       td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
       td .ind{padding-left:14px;color:#444}
-      tr.sec td{background:var(--border);color:#fff;font-weight:bold;letter-spacing:.04em}
+      tr.sec td{background:#444;color:#fff;font-weight:bold;letter-spacing:.04em}
       tr.cat td{background:#f1f1f1;font-weight:bold}
       tr.sum td{background:#dde6f0;font-weight:bold}
       tr.res td{background:#dde6f0;border-top:2px solid #000;font-weight:bold;font-size:12px}

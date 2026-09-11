@@ -497,8 +497,8 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
     }).join('')
     const html = `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>${escHtml(fileBase)}</title><style>
       @page{size:A4 landscape;margin:12mm}
-      *{box-sizing:border-box}
-      body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10px;margin:0}
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10px;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
       h1{font-size:15px;margin:0 0 2px}
       .meta{color:#555;margin:0 0 10px}
       table{border-collapse:collapse;width:100%}
@@ -506,7 +506,7 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
       th{background:#ececec;text-align:right}
       th.pos,td.pos{text-align:left}
       td.num{text-align:right;font-variant-numeric:tabular-nums}
-      tr.sec td{background:var(--border);color:#fff;font-weight:bold;letter-spacing:.04em}
+      tr.sec td{background:#444;color:#fff;font-weight:bold;letter-spacing:.04em}
       tr.catsum td{background:#f1f1f1;font-weight:bold}
       tr.grand td{background:#dde6f0;font-weight:bold}
       .note{color:#777;font-style:italic;font-size:9px}
