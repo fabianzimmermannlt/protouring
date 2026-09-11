@@ -337,7 +337,12 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
   const [variantByShow, setVariantByShow] = useState<Record<string, string>>(() => mkVariants(defaultVariant))
   const [scenario, setScenario] = useState<number>(Number(dataset.project.scenario_factor) || 1)
   const [useVVK, setUseVVK] = useState(false)
-  const [hideZero, setHideZero] = useState(false)
+  // Anzeige-/Export-Einstellungen (Zahnrad), lokal gemerkt.
+  const [hideZero, setHideZero] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem('pt_calc_ov_hidezero') === '1')
+  const [showMember, setShowMember] = useState(() => typeof window === 'undefined' ? true : window.localStorage.getItem('pt_calc_ov_member') !== '0')
+  const [printOpen, setPrintOpen] = useState(false)
+  useEffect(() => { if (typeof window !== 'undefined') window.localStorage.setItem('pt_calc_ov_hidezero', hideZero ? '1' : '0') }, [hideZero])
+  useEffect(() => { if (typeof window !== 'undefined') window.localStorage.setItem('pt_calc_ov_member', showMember ? '1' : '0') }, [showMember])
 
   const overview = useMemo(
     () => buildOverview(dataset, { variantByShow, variantId: defaultVariant, scenarioFactor: scenario, useVVK, memberCount: dataset.project.member_count }),
@@ -440,9 +445,9 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
 
     out.push({ type: 'grand', label: 'ERGEBNIS', perShow: viewShows.map(s => s.ergebnis), total: totals.ergebnis })
     const mc = dataset.project.member_count || 1
-    out.push({ type: 'member', label: `Ergebnis je Bandmitglied (${mc})`, perShow: viewShows.map(s => s.ergebnis.div(mc)), total: totals.jeBandmitglied })
+    if (showMember) out.push({ type: 'member', label: `Ergebnis je Bandmitglied (${mc})`, perShow: viewShows.map(s => s.ergebnis.div(mc)), total: totals.jeBandmitglied })
     return out
-  }, [overview, viewShows, totals, hideZero, dataset])
+  }, [overview, viewShows, totals, hideZero, showMember, dataset])
 
   const money = (v: Decimal, dashZero = false) => (dashZero && v.isZero() ? '–' : formatMoney(v))
   const neg = (v: Decimal): CSSProperties | undefined => (v.isNegative() ? { color: 'var(--neg)' } : undefined)
@@ -556,13 +561,28 @@ function OverviewMatrix({ dataset }: { dataset: CalcDataset }) {
           Aktive Shows: <span style={{ color: 'var(--text)' }}>{overview.activeShowCount}</span>
         </div>
         <div className="flex items-center gap-2 ml-auto">
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setPrintOpen(o => !o)} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem' }} title="Anzeige-/Export-Einstellungen" aria-label="Anzeige-/Export-Einstellungen">⚙️</button>
+            {printOpen && (
+              <>
+                <div onClick={() => setPrintOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                <div style={{ position: 'absolute', right: 0, top: '115%', zIndex: 50, width: 250, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, boxShadow: '0 10px 28px rgba(0,0,0,.55)' }}>
+                  <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text)' }}>Anzeige / Export</div>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer select-none mb-2" style={{ color: 'var(--text)' }}>
+                    <input type="checkbox" checked={hideZero} onChange={e => setHideZero(e.target.checked)} />
+                    Nullzeilen ausblenden
+                  </label>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text)' }}>
+                    <input type="checkbox" checked={showMember} onChange={e => setShowMember(e.target.checked)} />
+                    Zeile „Ergebnis je Bandmitglied"
+                  </label>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={exportCsv} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} title="Übersicht als CSV (Excel) herunterladen">CSV</button>
           <button onClick={exportPdf} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }} title="Übersicht als PDF drucken/speichern">PDF</button>
         </div>
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: 'var(--text-muted)' }}>
-          <input type="checkbox" checked={hideZero} onChange={e => setHideZero(e.target.checked)} />
-          Nullzeilen ausblenden
-        </label>
       </div>
 
       <p className="text-xs mb-3" style={{ color: 'var(--text-subtle)' }}>
