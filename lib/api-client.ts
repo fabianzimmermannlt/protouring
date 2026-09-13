@@ -947,7 +947,7 @@ export async function createCalcPosition(categoryId: string, name: string, spec?
 }
 
 /** Übergeordneter Posten: Soll-/Ist-Betrag + Anteil (Prozent) auf diese Kalkulation setzen. */
-export async function setCalcOverhead(positionId: string, data: { amount?: Num; ist_amount?: Num; allocation_pct?: Num }): Promise<void> {
+export async function setCalcOverhead(positionId: string, data: { amount?: Num; ist_amount?: Num; allocation_pct?: Num; variants?: { variant_id: string; amount: Num }[] }): Promise<void> {
   await request(`/api/calc/positions/${positionId}/overhead`, { method: 'PUT', body: data })
 }
 

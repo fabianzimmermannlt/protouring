@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import Decimal from 'decimal.js'
-import { TrashIcon, PlusIcon, ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, PlusIcon, ChevronRightIcon, ChevronDownIcon, LinkIcon } from '@heroicons/react/24/outline'
 import {
   createCalcPosition, updateCalcPosition, deleteCalcPosition,
   setCalcOverhead, setCalcOverheadShow,
@@ -43,8 +43,8 @@ export default function OverheadView({ dataset, projectId, onChanged }: { datase
     () => dataset.positions.filter(p => p.is_overhead).slice().sort((a, b) => a.sort_order - b.sort_order),
     [dataset])
   const categories = useMemo(() => dataset.categories.slice().sort((a, b) => a.sort_order - b.sort_order), [dataset])
+  const variants = useMemo(() => dataset.variants.slice().sort((a, b) => a.sort_order - b.sort_order), [dataset])
 
-  const amountOf = (posId: string) => dataset.entries.find(e => e.position_id === posId && e.show_id == null)
   const linesOf = (posId: string) => (dataset.overheadLines ?? []).filter(l => l.position_id === posId).slice().sort((a, b) => a.sort_order - b.sort_order)
   const excluded = (posId: string, showId: string) =>
     (dataset.overheadExclude ?? []).some(x => x.position_id === posId && x.show_id === showId)
@@ -85,18 +85,29 @@ export default function OverheadView({ dataset, projectId, onChanged }: { datase
       ) : (
         <div className="space-y-2">
           {items.map(item => {
-            const e = amountOf(item.id)
+            // Alle „übergeordnet"-Buchungen (show_id NULL) dieses Postens: eine NULL-Variante
+            // (verknüpft, hält auch den Ist) und optional je-Variante-Buchungen.
+            const es = dataset.entries.filter(x => x.position_id === item.id && x.show_id == null)
+            const nullE = es.find(x => x.variant_id == null)
+            const varEs = es.filter(x => x.variant_id != null)
+            const shared = varEs.length === 0
+            const perVarSoll: Record<string, string> = {}
+            varEs.forEach(x => { if (x.variant_id) perVarSoll[x.variant_id] = x.amount != null ? String(x.amount) : '' })
             const n = includedCount(item.id)
             const pctRaw = item.allocation_pct != null && item.allocation_pct !== '' ? String(item.allocation_pct) : '100'
             const pct = D(pctRaw)
-            const effective = D(e?.amount).times(pct).div(100)
+            // Umlage-Label nur im verknüpften Modus sinnvoll (per Variante variiert es).
+            const effective = D(nullE?.amount).times(pct).div(100)
             const share = n > 0 ? effective.div(n) : new Decimal(0)
-            const pctNote = pct.eq(100) ? '' : ` · ${pct.toString()} % von ${formatMoney(D(e?.amount))}`
+            const pctNote = pct.eq(100) ? '' : ` · ${pct.toString()} % von ${formatMoney(D(nullE?.amount))}`
+            const shareLabel = !shared
+              ? (n > 0 ? `pro Variante · je Show (${n})` : 'keine Show angehakt')
+              : (n > 0 ? `${formatMoney(share)} je Show (${n})${pctNote}` : 'keine Show angehakt')
             return (
               <OverheadRow key={item.id} item={item} catName={catName(item.category_id)}
-                soll={e?.amount != null ? String(e.amount) : ''} ist={e?.ist_amount != null ? String(e.ist_amount) : ''} pct={pctRaw}
-                lines={linesOf(item.id)}
-                shareLabel={n > 0 ? `${formatMoney(share)} je Show (${n})${pctNote}` : 'keine Show angehakt'}
+                soll={nullE?.amount != null ? String(nullE.amount) : ''} ist={nullE?.ist_amount != null ? String(nullE.ist_amount) : ''} pct={pctRaw}
+                lines={linesOf(item.id)} shared={shared} perVarSoll={perVarSoll} variants={variants}
+                shareLabel={shareLabel}
                 activeShows={activeShows} isExcluded={sid => excluded(item.id, sid)} onChanged={onChanged}
                 dragging={dragId === item.id} dropTarget={dragOverId === item.id}
                 onDragStartRow={() => setDragId(item.id)} onDragEnterRow={() => { if (dragId && dragId !== item.id) setDragOverId(item.id) }}
@@ -111,9 +122,10 @@ export default function OverheadView({ dataset, projectId, onChanged }: { datase
   )
 }
 
-function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeShows, isExcluded, onChanged, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
+function OverheadRow({ item, catName, soll, ist, pct, lines, shared: sharedProp, perVarSoll, variants, shareLabel, activeShows, isExcluded, onChanged, dragging, dropTarget, onDragStartRow, onDragEnterRow, onDragEndRow, onDropRow }: {
   item: { id: string; name: string }
-  catName: string; soll: string; ist: string; pct: string; lines: CalcOverheadLine[]; shareLabel: string
+  catName: string; soll: string; ist: string; pct: string; lines: CalcOverheadLine[]
+  shared: boolean; perVarSoll: Record<string, string>; variants: { id: string; name: string }[]; shareLabel: string
   activeShows: CalcDataset['shows']
   isExcluded: (showId: string) => boolean
   onChanged: () => void
@@ -121,15 +133,41 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
   onDragStartRow: () => void; onDragEnterRow: () => void; onDragEndRow: () => void; onDropRow: () => void
 }) {
   const hasLines = lines.length > 0
+  const multiVariant = variants.length > 1
   const [name, setName] = useState(item.name)
   const [sollV, setSollV] = useState(soll)
   const [istV, setIstV] = useState(ist)
   const [pctV, setPctV] = useState(pct)
+  const [shared, setShared] = useState(sharedProp)
+  const [perVar, setPerVar] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {}
+    variants.forEach(v => { m[v.id] = perVarSoll[v.id] ?? '' })
+    return m
+  })
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(hasLines)
 
   const saveName = async () => { const nn = name.trim(); if (!nn || nn === item.name) { setName(item.name); return } try { await updateCalcPosition(item.id, { name: nn }); onChanged() } catch { setName(item.name) } }
-  const saveAmount = async () => { try { await setCalcOverhead(item.id, { amount: norm(sollV), ist_amount: norm(istV), allocation_pct: norm(pctV) ?? '100' }); onChanged() } catch { /* still */ } }
+  const saveAmount = async () => {
+    try {
+      if (shared || !multiVariant) await setCalcOverhead(item.id, { amount: norm(sollV), ist_amount: norm(istV), allocation_pct: norm(pctV) ?? '100' })
+      else await setCalcOverhead(item.id, { variants: variants.map(v => ({ variant_id: v.id, amount: norm(perVar[v.id] ?? '') })), ist_amount: norm(istV), allocation_pct: norm(pctV) ?? '100' })
+      onChanged()
+    } catch { /* still */ }
+  }
+  // Verknüpfung umschalten: verknüpft ↔ pro Variante (Wert bleibt erhalten).
+  const toggleLink = async () => {
+    if (shared) {
+      const next: Record<string, string> = {}
+      variants.forEach(v => { next[v.id] = (perVar[v.id] ?? '') || sollV })
+      setPerVar(next); setShared(false)
+      try { await setCalcOverhead(item.id, { variants: variants.map(v => ({ variant_id: v.id, amount: norm(next[v.id]) })), ist_amount: norm(istV), allocation_pct: norm(pctV) ?? '100' }); onChanged() } catch { /* still */ }
+    } else {
+      const first = variants.map(v => perVar[v.id]).find(x => (x ?? '') !== '') ?? sollV
+      setSollV(first); setShared(true)
+      try { await setCalcOverhead(item.id, { amount: norm(first), ist_amount: norm(istV), allocation_pct: norm(pctV) ?? '100' }); onChanged() } catch { /* still */ }
+    }
+  }
   const savePct = async () => { try { await setCalcOverhead(item.id, { allocation_pct: norm(pctV) ?? '100' }); onChanged() } catch { /* still */ } }
   const toggleShow = async (showId: string, included: boolean) => { setBusy(true); try { await setCalcOverheadShow(item.id, showId, included); onChanged() } finally { setBusy(false) } }
   const del = async () => {
@@ -179,10 +217,26 @@ function OverheadRow({ item, catName, soll, ist, pct, lines, shareLabel, activeS
           </>
         ) : (
           <>
-            <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Soll
-              <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|soll`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
-                value={sollV} onChange={e => setSollV(e.target.value)} onBlur={saveAmount} placeholder="0" />
-            </label>
+            {multiVariant && (
+              <button onClick={toggleLink} type="button" className="shrink-0" title={shared ? 'Verknüpft: ein Betrag für alle Varianten. Klicken → pro Variante.' : 'Pro Variante. Klicken → ein gemeinsamer Betrag.'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: shared ? 'var(--text-subtle)' : 'var(--primary-2)' }}>
+                <LinkIcon className="w-4 h-4" />
+              </button>
+            )}
+            {(shared || !multiVariant) ? (
+              <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Soll
+                <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|soll`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6 }}
+                  value={sollV} onChange={e => setSollV(e.target.value)} onBlur={saveAmount} placeholder="0" />
+              </label>
+            ) : (
+              variants.map(v => (
+                <label key={v.id} className="text-xs" style={{ color: 'var(--text-muted)' }} title={`Soll – Variante „${v.name}"`}>
+                  {v.name}
+                  <input inputMode="decimal" className="form-input text-right" style={{ fontSize: '0.85rem', padding: '3px 8px', width: 90, marginLeft: 4, color: 'var(--primary-3)' }}
+                    value={perVar[v.id] ?? ''} onChange={e => setPerVar(p => ({ ...p, [v.id]: e.target.value }))} onBlur={saveAmount} placeholder="0" />
+                </label>
+              ))
+            )}
             <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Ist
               <input inputMode="decimal" className="form-input text-right" data-fkey={`oh|${item.id}|ist`} style={{ fontSize: '0.85rem', padding: '3px 8px', width: 110, marginLeft: 6, color: 'var(--accent)' }}
                 value={istV} onChange={e => setIstV(e.target.value)} onBlur={saveAmount} placeholder="0" />

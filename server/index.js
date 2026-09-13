@@ -8788,16 +8788,37 @@ app.put('/api/calc/positions/:id/overhead', authenticateToken, requireTenant, re
       'SELECT p.id AS project_id, p.tenant_id AS tenant_id FROM calc_positions pos JOIN calc_categories c ON c.id = pos.category_id JOIN calc_projects p ON p.id = c.project_id WHERE pos.id = ?',
       [req.params.id]);
     if (!owner || owner.tenant_id !== req.tenant.id) return res.status(404).json({ error: 'Position nicht gefunden' });
-    // Buchung nur anfassen, wenn Betrag oder Ist im Request stehen (reines Prozent-Update darf nichts löschen)
-    if (req.body?.amount !== undefined || req.body?.ist_amount !== undefined) {
-      const amount = calcText(req.body?.amount);
+    // Buchung nur anfassen, wenn Betrag/Ist/Varianten im Request stehen (reines Prozent-Update darf nichts löschen)
+    if (req.body?.amount !== undefined || req.body?.ist_amount !== undefined || req.body?.variants !== undefined) {
       const ist = calcText(req.body?.ist_amount);
+      const variants = Array.isArray(req.body?.variants) ? req.body.variants : null;
       await db.run('DELETE FROM calc_entries WHERE position_id = ? AND show_id IS NULL', [req.params.id]);
-      if (amount != null || ist != null) {
-        await db.run(
-          `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
-           VALUES (?,?,?,?,?,?,?,?)`,
-          [crypto.randomUUID(), owner.project_id, null, req.params.id, null, amount, 'base', ist]);
+      if (variants) {
+        // Pro Variante: je ein Soll-Eintrag (variant_id gesetzt). Ist ist EIN Wert → separater NULL-Eintrag.
+        for (const v of variants) {
+          const amt = calcText(v?.amount);
+          if (amt != null && v?.variant_id) {
+            await db.run(
+              `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
+               VALUES (?,?,?,?,?,?,?,?)`,
+              [crypto.randomUUID(), owner.project_id, null, req.params.id, v.variant_id, amt, 'base', null]);
+          }
+        }
+        if (ist != null) {
+          await db.run(
+            `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
+             VALUES (?,?,?,?,?,?,?,?)`,
+            [crypto.randomUUID(), owner.project_id, null, req.params.id, null, null, 'base', ist]);
+        }
+      } else {
+        // Verknüpft: ein Betrag für alle Varianten (variant_id NULL) + Ist auf demselben Eintrag.
+        const amount = calcText(req.body?.amount);
+        if (amount != null || ist != null) {
+          await db.run(
+            `INSERT INTO calc_entries (id,project_id,show_id,position_id,variant_id,amount,kind,ist_amount)
+             VALUES (?,?,?,?,?,?,?,?)`,
+            [crypto.randomUUID(), owner.project_id, null, req.params.id, null, amount, 'base', ist]);
+        }
       }
     }
     // Anteil auf diese Kalkulation (Prozent), Default 100
