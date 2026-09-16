@@ -24,6 +24,34 @@ function stripHtml(html) {
     .trim();
 }
 
+// Inline-Formatierungs-Tags, die beim Zeilen-Split über Balancing erhalten bleiben müssen.
+const INLINE_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'span', 'mark', 'sub', 'sup', 'small']);
+
+// Tags, die über einen Zeilenumbruch (<br>) gehen, zerreißen beim Split in Zeilen.
+// balanceLines schließt am Zeilenende alle noch offenen Inline-Tags und öffnet sie
+// am Anfang der nächsten Zeile erneut – so bleibt Fett/Unterstrichen je Zeile intakt.
+function balanceLines(lines) {
+  const open = []; // { tag, full } der aktuell offenen Inline-Tags
+  return lines.map(line => {
+    let out = open.map(t => t.full).join('') + line;
+    const re = /<(\/?)([a-z0-9]+)\b[^>]*?(\/?)>/gi;
+    let m;
+    while ((m = re.exec(line)) !== null) {
+      const closing = m[1] === '/';
+      const tag = m[2].toLowerCase();
+      const selfClosing = m[3] === '/';
+      if (!INLINE_TAGS.has(tag) || selfClosing) continue;
+      if (closing) {
+        for (let i = open.length - 1; i >= 0; i--) { if (open[i].tag === tag) { open.splice(i, 1); break; } }
+      } else {
+        open.push({ tag, full: m[0] });
+      }
+    }
+    out += open.map(t => `</${t.tag}>`).reverse().join('');
+    return out;
+  });
+}
+
 function normalizeContent(html) {
   if (!html) return [];
   let s = html
@@ -35,34 +63,60 @@ function normalizeContent(html) {
     .replace(/<div>/gi, '')
     .replace(/<p>/gi, '')
     .replace(/\n{3,}/g, '\n\n');
-  const lines = s.split('\n');
+  const lines = balanceLines(s.split('\n'));
   while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
   return lines;
 }
 
+// Inline-Text säubern: Tags weg, Entities dekodieren – aber NICHT trimmen
+// (sonst gingen Leerzeichen zwischen formatierten Segmenten verloren).
+function cleanInline(s) {
+  return (s || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 /**
- * Parse a line into segments: [{text, bold}]
- * Handles <b>, <strong>, <i>, <em> tags (i/em rendered normal – pdfkit needs TTF for italic).
+ * Parse a line into segments: [{text, bold, underline, strike}]
+ * Behandelt <b>/<strong>, <u>/<ins>, <s>/<strike>/<del>. i/em wird normal
+ * gerendert (pdfkit bräuchte für Kursiv eine TTF).
  */
 function parseSegments(html) {
   const segments = [];
-  const re = /<(\/?)(?:b|strong|i|em)\b[^>]*>/gi;
-  let bold = false;
-  let last = 0;
-  let match;
+  const re = /<(\/?)([a-z0-9]+)\b[^>]*>/gi;
+  let bold = 0, underline = 0, strike = 0; // Tiefenzähler (robust gegen Re-Open aus balanceLines)
+  let last = 0, match;
+  const push = (raw) => {
+    const text = cleanInline(raw);
+    if (text) segments.push({ text, bold: bold > 0, underline: underline > 0, strike: strike > 0 });
+  };
   while ((match = re.exec(html)) !== null) {
-    if (match.index > last) {
-      segments.push({ text: stripHtml(html.slice(last, match.index)), bold });
-    }
+    if (match.index > last) push(html.slice(last, match.index));
     const closing = match[1] === '/';
-    const tag = match[0].replace(/<\/?/, '').replace(/>.*/, '').toLowerCase();
-    if (tag === 'b' || tag === 'strong') bold = !closing;
+    const tag = match[2].toLowerCase();
+    const d = closing ? -1 : 1;
+    if (tag === 'b' || tag === 'strong') bold = Math.max(0, bold + d);
+    else if (tag === 'u' || tag === 'ins') underline = Math.max(0, underline + d);
+    else if (tag === 's' || tag === 'strike' || tag === 'del') strike = Math.max(0, strike + d);
     last = re.lastIndex;
   }
-  if (last < html.length) {
-    segments.push({ text: stripHtml(html.slice(last)), bold });
-  }
-  return segments.filter(s => s.text);
+  if (last < html.length) push(html.slice(last));
+  return trimSegs(segments.filter(s => s.text));
+}
+
+// Führende/abschließende Leerzeichen an den Segment-Rändern entfernen (Ausrichtung),
+// die inneren Segment-Grenzen aber unangetastet lassen.
+function trimSegs(segs) {
+  if (!segs.length) return segs;
+  segs[0] = { ...segs[0], text: segs[0].text.replace(/^\s+/, '') };
+  const li = segs.length - 1;
+  segs[li] = { ...segs[li], text: segs[li].text.replace(/\s+$/, '') };
+  return segs.filter(s => s.text);
 }
 
 // ── Core renderer ─────────────────────────────────────────────────────────────
@@ -79,27 +133,29 @@ const SIZE_TITLE = 18;
 const SIZE_LABEL = 7;
 const LINE_H = 15;
 
-function drawSegments(doc, segments, x, y, rightAligned = false) {
-  if (rightAligned) {
-    // measure total width, then draw right-to-left
-    const total = segments.reduce((acc, seg) => {
-      doc.font(seg.bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_BODY);
-      return acc + doc.widthOfString(seg.text);
-    }, 0);
-    let cx = x - total;
-    for (const seg of segments) {
-      doc.font(seg.bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_BODY);
-      doc.text(seg.text, cx, y, { continued: false, lineBreak: false });
-      cx += doc.widthOfString(seg.text);
+// Zeichnet formatierte Segmente ab (x,y). opts.baseBold macht die ganze Zeile fett
+// (z.B. linke Zeitspalte), inline <b> erzwingt zusätzlich Fett; <u>/<s> als Optionen.
+// endX (rechtsbündig): Segmente enden bündig bei endX.
+function drawSegments(doc, segments, x, y, opts = {}) {
+  const { baseBold = false, color = '#111827', endX = null } = opts;
+  const fontFor = (seg) => (baseBold || seg.bold) ? FONT_BOLD : FONT_REG;
+  const widths = segments.map(seg => {
+    doc.font(fontFor(seg)).fontSize(SIZE_BODY);
+    return doc.widthOfString(seg.text);
+  });
+  let cx = endX != null ? endX - widths.reduce((a, b) => a + b, 0) : x;
+  segments.forEach((seg, i) => {
+    const w = widths[i];
+    doc.font(fontFor(seg)).fontSize(SIZE_BODY).fillColor(color);
+    // Unterstreichen/Durchstreichen zeichnen wir selbst als Linie – die pdfkit-Optionen
+    // werfen bei manueller Positionierung (lineBreak:false) einen NaN-Fehler.
+    doc.text(seg.text, cx, y, { continued: false, lineBreak: false });
+    if (seg.underline || seg.strike) {
+      const ly = seg.underline ? y + SIZE_BODY + 1.5 : y + SIZE_BODY * 0.62;
+      doc.save().moveTo(cx, ly).lineTo(cx + w, ly).lineWidth(0.6).strokeColor(color).stroke().restore();
     }
-  } else {
-    let cx = x;
-    for (const seg of segments) {
-      doc.font(seg.bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_BODY);
-      doc.text(seg.text, cx, y, { continued: false, lineBreak: false });
-      cx += doc.widthOfString(seg.text);
-    }
-  }
+    cx += w;
+  });
 }
 
 function generateSchedulePdf(schedule) {
@@ -188,17 +244,15 @@ function generateSchedulePdf(schedule) {
       }
 
       // Zwei-Spalten-Zeile mit -//-
-      // Linke Spalte RECHTSBÜNDIG zu tabX, rechte Spalte linksbündig ab tabX+4
+      // Linke Spalte (Zeit) fett grau ab MARGIN_H, rechte Spalte rechtsbündig bis rightColEnd.
+      // Inline-Formatierung (Fett/Unterstrichen/…) bleibt in beiden Spalten erhalten.
       if (line.includes('-//-')) {
         const idx = line.indexOf('-//-');
-        const leftText  = stripHtml(line.slice(0, idx)).trim();
-        const rightText = stripHtml(line.slice(idx + 4)).trim();
+        const leftSegs  = parseSegments(line.slice(0, idx));
+        const rightSegs = parseSegments(line.slice(idx + 4));
         const lineY = y;
-        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor('#6b7280')
-          .text(leftText, MARGIN_H, lineY, { lineBreak: false });
-        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor('#111827');
-        const rw = doc.widthOfString(rightText);
-        doc.text(rightText, rightColEnd - rw, lineY, { lineBreak: false });
+        drawSegments(doc, leftSegs, MARGIN_H, lineY, { baseBold: true, color: '#6b7280' });
+        drawSegments(doc, rightSegs, MARGIN_H, lineY, { color: '#111827', endX: rightColEnd });
         y = lineY + LINE_H + 4;
         continue;
       }
@@ -211,8 +265,7 @@ function generateSchedulePdf(schedule) {
 
       // Normal line
       const segs = parseSegments(line);
-      doc.fillColor('#111827');
-      drawSegments(doc, segs, MARGIN_H, y);
+      drawSegments(doc, segs, MARGIN_H, y, { color: '#111827' });
       y += LINE_H;
     }
 
@@ -220,4 +273,4 @@ function generateSchedulePdf(schedule) {
   });
 }
 
-module.exports = { generateSchedulePdf };
+module.exports = { generateSchedulePdf, _internal: { balanceLines, parseSegments, normalizeContent } };

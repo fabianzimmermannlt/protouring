@@ -18,6 +18,34 @@ import ContentBoardModal from './ContentBoardModal'
 // überall gleich ist.
 // ============================================================
 
+// Inline-Formatierungs-Tags, die über einen Zeilenumbruch (<br>) hinweg beim Split
+// in Zeilen sonst zerreißen (Fett/Unterstrichen ginge ab Zeile 2 verloren).
+const INLINE_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'span', 'mark', 'sub', 'sup', 'small'])
+
+// Schließt am Zeilenende alle offenen Inline-Tags und öffnet sie in der nächsten
+// Zeile erneut, damit jede Zeile für dangerouslySetInnerHTML in sich geschlossen ist.
+function balanceLines(lines: string[]): string[] {
+  const open: { tag: string; full: string }[] = []
+  return lines.map(line => {
+    let out = open.map(t => t.full).join('') + line
+    const re = /<(\/?)([a-z0-9]+)\b[^>]*?(\/?)>/gi
+    let m: RegExpExecArray | null
+    while ((m = re.exec(line)) !== null) {
+      const closing = m[1] === '/'
+      const tag = m[2].toLowerCase()
+      const selfClosing = m[3] === '/'
+      if (!INLINE_TAGS.has(tag) || selfClosing) continue
+      if (closing) {
+        for (let i = open.length - 1; i >= 0; i--) { if (open[i].tag === tag) { open.splice(i, 1); break } }
+      } else {
+        open.push({ tag, full: m[0] })
+      }
+    }
+    out += open.map(t => `</${t.tag}>`).reverse().join('')
+    return out
+  })
+}
+
 export function renderBoardContent(html: string) {
   if (!html) return null
 
@@ -31,7 +59,7 @@ export function renderBoardContent(html: string) {
     .replace(/<p>/gi, '')
     .replace(/\n{3,}/g, '\n\n')
 
-  const lines = normalized.split('\n')
+  const lines = balanceLines(normalized.split('\n'))
   while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop()
 
   return lines.map((lineHtml, i) => {
