@@ -206,10 +206,11 @@ function generateSchedulePdf(schedule) {
     // ── Content ──
     const lines = normalizeContent(schedule.content);
 
-    // Erster Pass: breiteste linke UND rechte Seite messen
+    // Erster Pass: breiteste linke UND rechte Seite messen (beide in normaler Schrift,
+    // da die Spalten nicht mehr automatisch fett sind).
     let maxLeftW = 0;
     let maxRightW = 0;
-    doc.font(FONT_BOLD).fontSize(SIZE_BODY);
+    doc.font(FONT_REG).fontSize(SIZE_BODY);
     for (const line of lines) {
       if (line.includes('-//-')) {
         const sep = line.indexOf('-//-');
@@ -244,14 +245,14 @@ function generateSchedulePdf(schedule) {
       }
 
       // Zwei-Spalten-Zeile mit -//-
-      // Linke Spalte (Zeit) fett ab MARGIN_H, rechte Spalte rechtsbündig bis rightColEnd.
-      // Einheitliche Schriftfarbe Schwarz; Inline-Formatierung bleibt in beiden Spalten erhalten.
+      // Linke Spalte links ab MARGIN_H, rechte Spalte rechtsbündig bis rightColEnd.
+      // Einheitlich Schwarz + normale Schrift; fett nur dort, wo per <b> markiert.
       if (line.includes('-//-')) {
         const idx = line.indexOf('-//-');
         const leftSegs  = parseSegments(line.slice(0, idx));
         const rightSegs = parseSegments(line.slice(idx + 4));
         const lineY = y;
-        drawSegments(doc, leftSegs, MARGIN_H, lineY, { baseBold: true, color: '#111827' });
+        drawSegments(doc, leftSegs, MARGIN_H, lineY, { color: '#111827' });
         drawSegments(doc, rightSegs, MARGIN_H, lineY, { color: '#111827', endX: rightColEnd });
         y = lineY + LINE_H + 4;
         continue;
