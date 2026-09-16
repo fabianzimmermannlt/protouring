@@ -243,10 +243,19 @@ function showToInput(s: CalcShow): CalcShowInput {
   }
 }
 
-/** '12,5' | '12.5' → '12.5' ; '' → null */
-const norm = (v: string): string | null => { const t = v.trim().replace(',', '.'); return t === '' ? null : t }
-const pctToRatio = (v: string): string | null => { const t = norm(v); return t == null ? null : new Decimal(t).div(100).toString() }
-const ratioToPct = (v: unknown): string => (v == null || v === '') ? '' : new Decimal(String(v)).times(100).toDecimalPlaces(4).toString()
+/** '12,5' | '12.5' → '12.5' ; '' oder ungültig → null (nie ein kaputter String → kein Decimal-Crash) */
+const norm = (v: string): string | null => {
+  const t = v.trim().replace(/,/g, '.')
+  if (t === '') return null
+  try { return new Decimal(t).isFinite() ? t : null } catch { return null }
+}
+const pctToRatio = (v: string): string | null => {
+  const t = norm(v); if (t == null) return null
+  try { return new Decimal(t).div(100).toString() } catch { return null }
+}
+const ratioToPct = (v: unknown): string => (v == null || v === '') ? '' : new Decimal(String(v)).times(100).toDecimalPlaces(4).toString().replace('.', ',')
+// Gespeicherter Zahl-String (Punkt-Dezimal) → Anzeige mit deutschem Komma. '' bleibt ''.
+const de = (v: unknown): string => (v == null || v === '') ? '' : String(v).replace('.', ',')
 
 export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
   projectId: string; show: CalcShow | null; onClose: () => void; onSaved: () => void; shows?: CalcShow[]
@@ -254,13 +263,13 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
   const [f, setF] = useState<FormState>(() => ({
     show_date: show?.show_date ?? '', city: show?.city ?? '', venue: show?.venue ?? '',
     deal_type: show?.deal_type ?? 'vs',
-    guarantee: show?.guarantee != null ? String(show.guarantee) : '',
+    guarantee: de(show?.guarantee),
     commissionPct: ratioToPct(show?.commission),
     deal_sharePct: ratioToPct(show?.deal_share),
-    break_even: show?.break_even != null && String(show.break_even) !== '0' ? String(show.break_even) : '',
+    break_even: show?.break_even != null && String(show.break_even) !== '0' ? de(show.break_even) : '',
     capacity: show?.capacity != null ? String(show.capacity) : '',
     vvk: show?.vvk != null ? String(show.vvk) : '',
-    ticket_price: show?.ticket_price != null ? String(show.ticket_price) : '',
+    ticket_price: de(show?.ticket_price),
     is_active: show ? show.is_active : true, note: show?.note ?? '',
   }))
   const [saving, setSaving] = useState(false)
@@ -288,10 +297,11 @@ export function ShowFormModal({ projectId, show, onClose, onSaved, shows }: {
   const noGuarantee = f.deal_type === 'door'   // Door / nur Deal: keine Garantie
   const dealInfo = dealTicketThresholds({
     dealType: f.deal_type,
-    guarantee: f.guarantee || '0',
+    // norm() → Punkt-Dezimal oder null; nie ein kaputter String → dealTicketThresholds/Decimal crasht nicht.
+    guarantee: norm(f.guarantee) ?? '0',
     deal_share: pctToRatio(f.deal_sharePct) ?? '0',
-    break_even: f.break_even || '0',
-    ticket_price: f.ticket_price || '0',
+    break_even: norm(f.break_even) ?? '0',
+    ticket_price: norm(f.ticket_price) ?? '0',
     capacity: f.capacity.trim() ? parseInt(f.capacity, 10) : null,
     vvk: f.vvk.trim() ? parseInt(f.vvk, 10) : null,
   })

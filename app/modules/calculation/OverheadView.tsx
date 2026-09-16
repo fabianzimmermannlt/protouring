@@ -20,6 +20,8 @@ import { formatMoney, formatDate } from '@/lib/calculation/format'
 
 const norm = (v: string): string | null => formulaNorm(v)   // Betragsfelder: "=236+44" → "280"
 const D = (v: unknown): Decimal => { try { return new Decimal(v == null || v === '' ? 0 : (v as string)) } catch { return new Decimal(0) } }
+// Gespeicherter Zahl-String (Punkt-Dezimal) → Anzeige mit deutschem Komma. '' bleibt ''.
+const de = (v: unknown): string => (v == null || v === '') ? '' : String(v).replace('.', ',')
 
 function Grip({ dragging }: { dragging?: boolean }) {
   return (
@@ -92,20 +94,21 @@ export default function OverheadView({ dataset, projectId, onChanged }: { datase
             const varEs = es.filter(x => x.variant_id != null)
             const shared = varEs.length === 0
             const perVarSoll: Record<string, string> = {}
-            varEs.forEach(x => { if (x.variant_id) perVarSoll[x.variant_id] = x.amount != null ? String(x.amount) : '' })
+            varEs.forEach(x => { if (x.variant_id) perVarSoll[x.variant_id] = de(x.amount) })
             const n = includedCount(item.id)
+            // pctRaw bleibt intern Punkt-Dezimal (für D()); an die Anzeige geht Komma (de()).
             const pctRaw = item.allocation_pct != null && item.allocation_pct !== '' ? String(item.allocation_pct) : '100'
             const pct = D(pctRaw)
             // Umlage-Label nur im verknüpften Modus sinnvoll (per Variante variiert es).
             const effective = D(nullE?.amount).times(pct).div(100)
             const share = n > 0 ? effective.div(n) : new Decimal(0)
-            const pctNote = pct.eq(100) ? '' : ` · ${pct.toString()} % von ${formatMoney(D(nullE?.amount))}`
+            const pctNote = pct.eq(100) ? '' : ` · ${pct.toString().replace('.', ',')} % von ${formatMoney(D(nullE?.amount))}`
             const shareLabel = !shared
               ? (n > 0 ? `pro Variante · je Show (${n})` : 'keine Show angehakt')
               : (n > 0 ? `${formatMoney(share)} je Show (${n})${pctNote}` : 'keine Show angehakt')
             return (
               <OverheadRow key={item.id} item={item} catName={catName(item.category_id)}
-                soll={nullE?.amount != null ? String(nullE.amount) : ''} ist={nullE?.ist_amount != null ? String(nullE.ist_amount) : ''} pct={pctRaw}
+                soll={de(nullE?.amount)} ist={de(nullE?.ist_amount)} pct={de(pctRaw)}
                 lines={linesOf(item.id)} shared={shared} perVarSoll={perVarSoll} variants={variants}
                 shareLabel={shareLabel}
                 activeShows={activeShows} isExcluded={sid => excluded(item.id, sid)} onChanged={onChanged}
@@ -313,8 +316,8 @@ function LineRow({ line, onChanged, dragging, dropTarget, onDragStartLine, onDra
   onDragStartLine: () => void; onDragEnterLine: () => void; onDragEndLine: () => void; onDropLine: () => void
 }) {
   const [label, setLabel] = useState(line.label ?? '')
-  const [amount, setAmount] = useState(line.amount != null ? String(line.amount) : '')
-  const [ist, setIst] = useState(line.ist_amount != null ? String(line.ist_amount) : '')
+  const [amount, setAmount] = useState(de(line.amount))
+  const [ist, setIst] = useState(de(line.ist_amount))
   const [busy, setBusy] = useState(false)
 
   const saveLabel = async () => { if ((label ?? '') === (line.label ?? '')) return; try { await updateOverheadLine(line.id, { label: label.trim() || null }); onChanged() } catch { /* still */ } }

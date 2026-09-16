@@ -27,7 +27,9 @@ import SearchableDropdown from '@/app/components/shared/SearchableDropdown'
 // Betragsfelder akzeptieren Formeln ("=236+44"). Auswertung + Persistenz zentral
 // in lib/calculation/formula.ts (auch von OverheadView genutzt).
 const norm = (v: string): string | null => formulaNorm(v)
-const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString()
+const numStr = (d: Decimal): string => d.toDecimalPlaces(4).toString().replace('.', ',')
+// Gespeicherter Zahl-String (Punkt-Dezimal) → Anzeige mit deutschem Komma. '' bleibt ''.
+const de = (v: unknown): string => (v == null || v === '') ? '' : String(v).replace('.', ',')
 
 // UI-Präferenz (Name/Spezifikation-Häkchen) projektweit merken – gilt für alle
 // Shows und übersteht das Verlassen/Wiederkommen (localStorage).
@@ -750,24 +752,24 @@ function buildRowModel(dataset: CalcDataset, project: CalcProject, showId: strin
   const travelFix: Record<string, string> = {}
   const tNull = travelE.find(e => e.variant_id == null)
   if (tNull) variants.forEach(v => {
-    travelKm[v.id] = tNull.quantity != null ? String(tNull.quantity) : ''
-    travelRate[v.id] = tNull.unit_price != null ? String(tNull.unit_price) : ''
-    travelFix[v.id] = tNull.amount != null ? String(tNull.amount) : ''
+    travelKm[v.id] = de(tNull.quantity)
+    travelRate[v.id] = de(tNull.unit_price)
+    travelFix[v.id] = de(tNull.amount)
   })
   travelE.filter(e => e.variant_id != null).forEach(e => {
     if (!e.variant_id) return
-    travelKm[e.variant_id] = e.quantity != null ? String(e.quantity) : ''
-    travelRate[e.variant_id] = e.unit_price != null ? String(e.unit_price) : ''
-    travelFix[e.variant_id] = e.amount != null ? String(e.amount) : ''
+    travelKm[e.variant_id] = de(e.quantity)
+    travelRate[e.variant_id] = de(e.unit_price)
+    travelFix[e.variant_id] = de(e.amount)
   })
 
   const act = (dataset.actuals ?? []).find(a => a.show_id === showId && a.position_id === positionId)
   return {
     shared, sharedVal, perVar, travelKm, travelRate, travelFix,
-    ist: act?.amount != null ? String(act.amount) : '',
-    istTravelKm: act?.travel_km != null ? String(act.travel_km) : '',
-    istTravelRate: act?.travel_rate != null ? String(act.travel_rate) : '',
-    istTravelFix: act?.travel_fix != null ? String(act.travel_fix) : '',
+    ist: de(act?.amount),
+    istTravelKm: de(act?.travel_km),
+    istTravelRate: de(act?.travel_rate),
+    istTravelFix: de(act?.travel_fix),
   }
 }
 
@@ -1150,9 +1152,9 @@ function buildHotelModel(dataset: CalcDataset, showId: string, positionId: strin
   const nullE = es.filter(e => e.variant_id == null)
   const varE = es.filter(e => e.variant_id != null)
   const toVals = (e?: CalcEntry): HVals => ({
-    rooms: e?.quantity != null ? String(e.quantity) : '',
-    nights: e?.nights != null ? String(e.nights) : '',
-    price: e?.unit_price != null ? String(e.unit_price) : '',
+    rooms: de(e?.quantity),
+    nights: de(e?.nights),
+    price: de(e?.unit_price),
   })
   const s = nullE.length ? toVals(nullE[0]) : emptyH()
   const perVar: Record<string, HVals> = {}
@@ -1160,7 +1162,7 @@ function buildHotelModel(dataset: CalcDataset, showId: string, positionId: strin
   varE.forEach(e => { if (e.variant_id) perVar[e.variant_id] = toVals(e) })
   const ist = (() => {
     const a = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
-    return a?.amount != null ? String(a.amount) : ''
+    return de(a?.amount)
   })()
   return { shared: varE.length === 0, s, perVar, ist }
 }
@@ -1379,21 +1381,21 @@ function buildVehicleModel(dataset: CalcDataset, showId: string, positionId: str
   const veVar = es.filter(e => e.kind === 'vehicle' && e.variant_id != null)
   const fuVar = es.filter(e => e.kind === 'fuel' && e.variant_id != null)
   const mk = (ve?: CalcEntry, fu?: CalcEntry): VVals => ({
-    rental: ve?.rental_price != null ? String(ve.rental_price) : '',
-    km: ve?.distance_km != null ? String(ve.distance_km) : (fu?.distance_km != null ? String(fu.distance_km) : ''),
-    included: ve?.included_km != null ? String(ve.included_km) : '',
-    extra: ve?.price_extra_km != null ? String(ve.price_extra_km) : '',
-    cons: fu?.quantity != null ? String(fu.quantity) : '',
-    price: fu?.unit_price != null ? String(fu.unit_price) : '',
+    rental: de(ve?.rental_price),
+    km: ve?.distance_km != null ? de(ve.distance_km) : de(fu?.distance_km),
+    included: de(ve?.included_km),
+    extra: de(ve?.price_extra_km),
+    cons: de(fu?.quantity),
+    price: de(fu?.unit_price),
   })
   const s = (veNull || fuNull) ? mk(veNull, fuNull) : emptyV()
   const perVar: Record<string, VVals> = {}
   variants.forEach(v => { perVar[v.id] = (veNull || fuNull) ? { ...s } : emptyV() })
-  veVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), rental: e.rental_price != null ? String(e.rental_price) : '', km: e.distance_km != null ? String(e.distance_km) : '', included: e.included_km != null ? String(e.included_km) : '', extra: e.price_extra_km != null ? String(e.price_extra_km) : '' } })
-  fuVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), cons: e.quantity != null ? String(e.quantity) : '', price: e.unit_price != null ? String(e.unit_price) : '', km: perVar[e.variant_id]?.km || (e.distance_km != null ? String(e.distance_km) : '') } })
+  veVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), rental: de(e.rental_price), km: de(e.distance_km), included: de(e.included_km), extra: de(e.price_extra_km) } })
+  fuVar.forEach(e => { if (e.variant_id) perVar[e.variant_id] = { ...(perVar[e.variant_id] ?? emptyV()), cons: de(e.quantity), price: de(e.unit_price), km: perVar[e.variant_id]?.km || de(e.distance_km) } })
   const actIst = (dataset.actuals ?? []).find(x => x.show_id === showId && x.position_id === positionId)
-  const ist = actIst?.amount != null ? String(actIst.amount) : ''
-  const fuelIst = actIst?.fuel_amount != null ? String(actIst.fuel_amount) : ''
+  const ist = de(actIst?.amount)
+  const fuelIst = de(actIst?.fuel_amount)
   // Sprit-Zeile auch aktiv, wenn (nur) ein Ist-Spritwert vorliegt – sonst wäre er unsichtbar.
   return { shared: veVar.length === 0 && fuVar.length === 0, s, perVar, ist, fuelIst, fuelOn: !!(fuNull || fuVar.length || fuelIst) }
 }
