@@ -14,6 +14,7 @@ import {
   logout,
   superadminGetUsers, superadminSetPassword, superadminDeleteUser,
   superadminGetTenants, superadminExtendTrial, superadminSetModules,
+  superadminSetTenantStatus, superadminDeleteTenant,
   ADDON_MODULES,
   CURRENT_TENANT_KEY,
   type MyTermin, type SuperadminUser, type SuperadminTenant, type AddonModuleId,
@@ -273,6 +274,13 @@ function SuperadminConsole() {
   const [extendDays, setExtendDays] = useState('30')
   const [extending, setExtending] = useState(false)
   const [extendError, setExtendError] = useState('')
+  const [statusBusyId, setStatusBusyId] = useState<number | null>(null)
+
+  // Artist-Hard-Delete-Modal
+  const [delTenant, setDelTenant] = useState<SuperadminTenant | null>(null)
+  const [delTenantConfirm, setDelTenantConfirm] = useState('')
+  const [deletingTenant, setDeletingTenant] = useState(false)
+  const [delTenantError, setDelTenantError] = useState('')
 
   // PW-Modal
   const [pwTarget, setPwTarget] = useState<SuperadminUser | null>(null)
@@ -306,6 +314,27 @@ function SuperadminConsole() {
       setExtendTarget(null)
     } catch (e: any) { setExtendError(e.message) }
     finally { setExtending(false) }
+  }
+
+  const handleToggleArchive = async (t: SuperadminTenant) => {
+    const next = t.status === 'suspended' ? 'active' : 'suspended'
+    setStatusBusyId(t.id); setError('')
+    try {
+      await superadminSetTenantStatus(t.id, next)
+      setTenants(prev => prev.map(x => x.id === t.id ? { ...x, status: next } : x))
+    } catch (e: any) { setError(e.message) }
+    finally { setStatusBusyId(null) }
+  }
+
+  const handleDeleteTenant = async () => {
+    if (!delTenant || delTenantConfirm !== delTenant.name) { setDelTenantError('Name stimmt nicht'); return }
+    setDeletingTenant(true); setDelTenantError('')
+    try {
+      await superadminDeleteTenant(delTenant.id)
+      setTenants(prev => prev.filter(x => x.id !== delTenant.id))
+      setDelTenant(null); setDelTenantConfirm('')
+    } catch (e: any) { setDelTenantError(e.message) }
+    finally { setDeletingTenant(false) }
   }
 
   const load = () => {
@@ -404,7 +433,7 @@ function SuperadminConsole() {
                           {ADDON_MODULES.map(m => (
                             <th key={m.id} className="text-center px-3 py-2.5 text-xs text-gray-400 font-medium w-20">{m.label}</th>
                           ))}
-                          <th className="px-4 py-2.5 w-32" />
+                          <th className="px-4 py-2.5" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
@@ -419,7 +448,9 @@ function SuperadminConsole() {
                                 <p className="text-xs text-gray-500">{t.userCount} User</p>
                               </td>
                               <td className="px-4 py-2.5 text-xs">
-                                {t.status === 'trial' ? (
+                                {t.status === 'suspended' ? (
+                                  <span className="text-gray-400 font-medium">Archiviert</span>
+                                ) : t.status === 'trial' ? (
                                   expired
                                     ? <span className="text-red-400 font-medium">Trial abgelaufen</span>
                                     : <span className="text-yellow-400">Trial: {daysLeft}d</span>
@@ -454,13 +485,31 @@ function SuperadminConsole() {
                                   </td>
                                 )
                               })}
-                              <td className="px-4 py-2.5 text-right">
-                                <button
-                                  onClick={() => { setExtendTarget(t); setExtendDays('30'); setExtendError('') }}
-                                  className="text-xs px-2.5 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded-lg"
-                                >
-                                  Trial verlängern
-                                </button>
+                              <td className="px-4 py-2.5">
+                                <div className="flex gap-1.5 justify-end flex-wrap">
+                                  <button
+                                    onClick={() => { setExtendTarget(t); setExtendDays('30'); setExtendError('') }}
+                                    className="text-xs px-2.5 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-300 rounded-lg"
+                                  >
+                                    Trial
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleArchive(t)}
+                                    disabled={statusBusyId === t.id}
+                                    className="text-xs px-2.5 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg disabled:opacity-50 flex items-center gap-1"
+                                    title={t.status === 'suspended' ? 'Artist wieder aktivieren' : 'Artist archivieren (Daten bleiben erhalten)'}
+                                  >
+                                    {statusBusyId === t.id && <Loader2 size={12} className="animate-spin" />}
+                                    {t.status === 'suspended' ? 'Reaktivieren' : 'Archivieren'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setDelTenant(t); setDelTenantConfirm(''); setDelTenantError('') }}
+                                    className="text-xs px-2.5 py-1.5 bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded-lg"
+                                    title="Artist endgültig löschen"
+                                  >
+                                    Löschen
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           )
@@ -630,6 +679,44 @@ function SuperadminConsole() {
               >
                 {pwSaving && <Loader2 size={12} className="animate-spin" />}
                 Setzen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Artist-Hard-Delete-Modal */}
+      {delTenant && (
+        <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={() => setDelTenant(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-semibold">Artist endgültig löschen</h3>
+            <p className="text-sm text-gray-400">
+              <span className="text-white">{delTenant.name}</span> wird mit <span className="text-white">allen Daten</span> gelöscht:
+              Events, Venues, Equipment, Kalkulationen, Dateien und Mitgliedschaften.
+            </p>
+            <div className="p-3 bg-red-950/50 border border-red-900 rounded-lg text-xs text-red-400">
+              Unwiderruflich. Wenn du den Artist nur pausieren willst, nutze stattdessen „Archivieren".
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Zur Bestätigung Artist-Namen eintippen: <span className="font-mono text-gray-300">{delTenant.name}</span></label>
+              <input
+                type="text"
+                autoFocus
+                value={delTenantConfirm}
+                onChange={e => setDelTenantConfirm(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            {delTenantError && <p className="text-xs text-red-400">{delTenantError}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setDelTenant(null)} className="text-sm px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg">Abbrechen</button>
+              <button
+                onClick={handleDeleteTenant}
+                disabled={deletingTenant || delTenantConfirm !== delTenant.name}
+                className="text-sm px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded-lg disabled:opacity-50 flex items-center gap-1"
+              >
+                {deletingTenant && <Loader2 size={12} className="animate-spin" />}
+                Endgültig löschen
               </button>
             </div>
           </div>

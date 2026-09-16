@@ -3774,6 +3774,18 @@ export async function superadminSetModules(tenantId: number, modules: AddonModul
   })
 }
 
+/** Artist archivieren ('suspended') oder reaktivieren ('active') – Soft-Delete, reversibel. */
+export async function superadminSetTenantStatus(tenantId: number, status: 'active' | 'suspended'): Promise<void> {
+  await request(`/api/superadmin/tenants/${tenantId}/status`, {
+    method: 'PUT', body: { status }, skipTenant: true,
+  })
+}
+
+/** Artist endgültig löschen (Hard-Delete, unwiderruflich). */
+export async function superadminDeleteTenant(tenantId: number): Promise<void> {
+  await request(`/api/superadmin/tenants/${tenantId}`, { method: 'DELETE', skipTenant: true })
+}
+
 /** Prüft ob ein Addon-Modul für den aktuellen Tenant aktiviert ist */
 export function isTenantModuleEnabled(moduleId: AddonModuleId): boolean {
   // TODO(calculation): Vorerst ohne Add-on-Gating sichtbar (Phase 2, „sofort

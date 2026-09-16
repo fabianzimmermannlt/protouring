@@ -2449,6 +2449,12 @@ const requireTenant = async (req, res, next) => {
       return res.status(403).json({ error: 'Account deactivated', deactivated: true, tenantName: membership.name });
     }
 
+    // Archivierter Artist (Superadmin-Soft-Delete): Zugriff für normale User gesperrt.
+    // Superadmins sind oben schon durchgelassen und können reaktivieren.
+    if (membership.status === 'suspended') {
+      return res.status(403).json({ error: 'Artist archiviert', archived: true, tenantName: membership.name });
+    }
+
     req.tenant = membership;
     next();
   } catch (err) {
@@ -2642,10 +2648,10 @@ app.post('/api/auth/login', async (req, res) => {
       const tenantQuery = tenantSlug
         ? `SELECT t.id, t.name, t.slug, t.status, t.modules_enabled, ut.role FROM user_tenants ut
            JOIN tenants t ON ut.tenant_id = t.id
-           WHERE ut.user_id = ? AND t.slug = ? AND ut.status = 'active'`
+           WHERE ut.user_id = ? AND t.slug = ? AND ut.status = 'active' AND t.status != 'suspended'`
         : `SELECT t.id, t.name, t.slug, t.status, t.modules_enabled, ut.role FROM user_tenants ut
            JOIN tenants t ON ut.tenant_id = t.id
-           WHERE ut.user_id = ? AND ut.status = 'active'`;
+           WHERE ut.user_id = ? AND ut.status = 'active' AND t.status != 'suspended'`;
 
       tenants = tenantSlug
         ? await db.all(tenantQuery, [user.id, tenantSlug])
@@ -3353,12 +3359,15 @@ app.get('/api/tenants/:slug', authenticateToken, async (req, res) => {
 
 app.get('/api/users/tenants', authenticateToken, async (req, res) => {
   try {
+    // Archivierte Artists (status='suspended') für normale User ausblenden;
+    // Superadmins sehen ihre eigenen Memberships weiterhin vollständig.
+    const showAll = req.user.isSuperadmin ? 1 : 0;
     const tenants = await db.all(`
       SELECT t.id, t.name, t.slug, t.status, ut.role, ut.last_login_at
       FROM user_tenants ut JOIN tenants t ON ut.tenant_id = t.id
-      WHERE ut.user_id = ? AND ut.status = 'active'
+      WHERE ut.user_id = ? AND ut.status = 'active' AND (t.status != 'suspended' OR ? = 1)
       ORDER BY ut.last_login_at DESC
-    `, [req.user.id]);
+    `, [req.user.id, showAll]);
     res.json({ tenants });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get tenants' });
@@ -10670,6 +10679,63 @@ app.put('/api/superadmin/tenants/:id/trial', authenticateToken, requireSuperadmi
     await db.run(`UPDATE tenant_subscriptions SET status='trial', current_period_end=${newDate} WHERE tenant_id=?`, [req.params.id])
     const updated = await db.get('SELECT trial_ends_at FROM tenants WHERE id=?', [req.params.id])
     res.json({ trialEndsAt: updated.trial_ends_at })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// PUT /api/superadmin/tenants/:id/status — Artist archivieren ('suspended') / reaktivieren ('active')
+// Archivieren = Soft-Delete: Daten bleiben erhalten, normale User haben aber keinen Zugriff mehr
+// und der Artist verschwindet aus ihren Listen. Jederzeit reversibel.
+app.put('/api/superadmin/tenants/:id/status', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const { status } = req.body
+    if (!['active', 'suspended'].includes(status)) {
+      return res.status(400).json({ error: "status muss 'active' oder 'suspended' sein" })
+    }
+    const tenant = await db.get('SELECT id FROM tenants WHERE id=?', [req.params.id])
+    if (!tenant) return res.status(404).json({ error: 'Tenant nicht gefunden' })
+    await db.run(`UPDATE tenants SET status=?, updated_at=datetime('now') WHERE id=?`, [status, req.params.id])
+    res.json({ status })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
+
+// DELETE /api/superadmin/tenants/:id — Artist endgültig löschen (Hard-Delete, unwiderruflich).
+// ON DELETE CASCADE räumt die tenant-gebundenen Tabellen; die wenigen Tabellen mit
+// tenant_id aber ohne Cascade-FK werden vorher explizit geleert, damit nichts verwaist.
+app.delete('/api/superadmin/tenants/:id', authenticateToken, requireSuperadmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id)
+    const tenant = await db.get('SELECT id, name FROM tenants WHERE id=?', [id])
+    if (!tenant) return res.status(404).json({ error: 'Tenant nicht gefunden' })
+
+    await db.run('BEGIN TRANSACTION')
+    try {
+      // Tabellen mit tenant_id OHNE ON DELETE CASCADE → explizit löschen (Kind vor Eltern,
+      // da foreign_keys=ON). Der Rest wird durch den Cascade beim Tenant-Delete abgeräumt.
+      await db.run('DELETE FROM termin_travel_leg_persons WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM termin_travel_legs WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM termin_hotel_room_persons WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM termin_hotel_rooms WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM termin_hotel_stays WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM chat_messages WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM tenant_settings WHERE tenant_id=?', [id])
+      await db.run('DELETE FROM files WHERE tenant_id=?', [id])
+      // Tenant selbst → CASCADE räumt Events, Venues, Equipment, Kalkulationen, Memberships …
+      await db.run('DELETE FROM tenants WHERE id=?', [id])
+      await db.run('COMMIT')
+    } catch (err) {
+      await db.run('ROLLBACK')
+      throw err
+    }
+
+    // Physische Uploads dieses Tenants entfernen (best effort, außerhalb der Transaktion).
+    try {
+      const dir = path.join(__dirname, 'uploads', String(id))
+      fs.rmSync(dir, { recursive: true, force: true })
+    } catch (e) {
+      console.warn('Upload-Verzeichnis konnte nicht entfernt werden:', e.message)
+    }
+
+    res.json({ ok: true })
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
