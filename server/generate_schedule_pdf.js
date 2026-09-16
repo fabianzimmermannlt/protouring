@@ -244,14 +244,14 @@ function generateSchedulePdf(schedule) {
       }
 
       // Zwei-Spalten-Zeile mit -//-
-      // Linke Spalte (Zeit) fett grau ab MARGIN_H, rechte Spalte rechtsbündig bis rightColEnd.
-      // Inline-Formatierung (Fett/Unterstrichen/…) bleibt in beiden Spalten erhalten.
+      // Linke Spalte (Zeit) fett ab MARGIN_H, rechte Spalte rechtsbündig bis rightColEnd.
+      // Einheitliche Schriftfarbe Schwarz; Inline-Formatierung bleibt in beiden Spalten erhalten.
       if (line.includes('-//-')) {
         const idx = line.indexOf('-//-');
         const leftSegs  = parseSegments(line.slice(0, idx));
         const rightSegs = parseSegments(line.slice(idx + 4));
         const lineY = y;
-        drawSegments(doc, leftSegs, MARGIN_H, lineY, { baseBold: true, color: '#6b7280' });
+        drawSegments(doc, leftSegs, MARGIN_H, lineY, { baseBold: true, color: '#111827' });
         drawSegments(doc, rightSegs, MARGIN_H, lineY, { color: '#111827', endX: rightColEnd });
         y = lineY + LINE_H + 4;
         continue;
