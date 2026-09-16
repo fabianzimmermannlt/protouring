@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { MapPin, Loader2 } from 'lucide-react'
 import { buildPhotonUrl } from '@/lib/photon'
 import { buildGeoapifyUrl, parseGeoapifyFeature, type GeoapifyFeature } from '@/lib/geoapify'
@@ -64,6 +65,18 @@ export function NameAddressAutocomplete({
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)   // Input-Wrapper: Ankerpunkt für den Dropdown
+  const menuRef = useRef<HTMLUListElement>(null)    // Dropdown im Portal (außerhalb containerRef)
+  // Der Dropdown wird per Portal an <body> gerendert (position: fixed), damit ihn der
+  // scrollende .modal-body (overflow:auto) nicht abschneidet / hinter die Buttonzeile schiebt.
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  const updateMenuPos = useCallback(() => {
+    const el = anchorRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width })
+  }, [])
 
   const search = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setSuggestions([]); setOpen(false); return }
@@ -153,13 +166,27 @@ export function NameAddressAutocomplete({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      // Klicks im Input-Container ODER im Portal-Dropdown zählen als „innen".
+      if (containerRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Position des Portal-Dropdowns aktuell halten (Öffnen, neue Treffer, Scrollen, Resize).
+  useEffect(() => {
+    if (!open || suggestions.length === 0) return
+    updateMenuPos()
+    const onMove = () => updateMenuPos()
+    window.addEventListener('scroll', onMove, true)   // capture: auch der scrollende Modal-Body
+    window.addEventListener('resize', onMove)
+    return () => {
+      window.removeEventListener('scroll', onMove, true)
+      window.removeEventListener('resize', onMove)
+    }
+  }, [open, suggestions.length, updateMenuPos])
 
   const labelClass = variant === 'modal'
     ? 'form-label'
@@ -172,7 +199,7 @@ export function NameAddressAutocomplete({
   return (
     <div ref={containerRef} className="relative">
       <label className={labelClass}>{label}{required && <span className="req-star" style={{ marginLeft: '2px' }}>*</span>}</label>
-      <div className="relative">
+      <div className="relative" ref={anchorRef}>
         <input
           type="text"
           value={value}
@@ -186,8 +213,12 @@ export function NameAddressAutocomplete({
         )}
       </div>
 
-      {open && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm">
+      {open && suggestions.length > 0 && menuPos && typeof document !== 'undefined' && createPortal(
+        <ul
+          ref={menuRef}
+          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-56 overflow-y-auto text-sm"
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width, zIndex: 1000 }}
+        >
           {suggestions.map((f, i) => (
             <li
               key={i}
@@ -198,7 +229,8 @@ export function NameAddressAutocomplete({
               <span className="leading-snug text-gray-700 dark:text-gray-200">{formatSuggestion(f)}</span>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body,
       )}
     </div>
   )
