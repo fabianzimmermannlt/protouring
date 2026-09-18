@@ -1988,6 +1988,7 @@ export function L3Layout({
               <div className="flex items-center gap-0.5">
                 {[
                   { id: 'overview',     label: t('contacts.sub.overview') },
+                  ...(isEditor ? [{ id: 'crew-booking', label: 'Crew-Buchung' }] : []),
                   ...(isEditor ? [{ id: 'conditions',   label: t('contacts.sub.conditions') }] : []),
                 ].map(tab => (
                   <button key={tab.id}
@@ -2045,19 +2046,6 @@ export function L3Layout({
                   >
                     Übersicht
                   </button>
-                  {/* Crew-Buchung — nur wenn kein Detail offen */}
-                  {!termineInDetail && isEditor && (
-                    <button
-                      onClick={() => { onSubTabChange?.('crew-booking') }}
-                      className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                        activeSubTab === 'crew-booking'
-                          ? 'bg-gray-100 text-gray-900 font-medium'
-                          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                      }`}
-                    >
-                      Crew-Buchung
-                    </button>
-                  )}
                   {/* Detail-Tabs — nur wenn Event offen */}
                   {detailTabs.map(v => (
                     <button

@@ -75,6 +75,7 @@ const SETTINGS_WORKSPACE: SubItem[] = [
 
 const CONTACTS_SUBS: SubItem[] = [
   { id: 'overview',     name: 'Übersicht' },
+  { id: 'crew-booking', name: 'Crew-Buchung',      editorOnly: true },
   { id: 'conditions',   name: 'Konditionen',       editorOnly: true },
 ]
 
@@ -330,32 +331,6 @@ export function L2Layout({
     activeSubTab ? (SUB_LABELS[activeSubTab] ?? activeSubTab) : null,
   ].filter(Boolean)
 
-  // ── Termine sub-nav (event-driven) ─────────────────────────────────────────
-  const renderTermineSubs = () => (
-    <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5">
-      <button
-        onClick={() => guardDirtyNav(() => { handleNav('events'); window.dispatchEvent(new CustomEvent('termine-go-to-list')); onSubTabChange?.('') })}
-        className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-          activeTab === 'events' && !activeSubTab && !termineInDetail
-            ? 'pt-nav-sub-active'
-            : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
-        }`}
-      >
-        Übersicht
-      </button>
-      <button
-        onClick={() => guardDirtyNav(() => { handleNav('events'); onSubTabChange?.('crew-booking') })}
-        className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-          activeTab === 'events' && activeSubTab === 'crew-booking'
-            ? 'pt-nav-sub-active'
-            : 'l2-nav-sub-item hover:text-[var(--text)] hover:bg-[var(--hover)]'
-        }`}
-      >
-        Crew-Buchung
-      </button>
-    </div>
-  )
-
   // ── Nav item renderer ───────────────────────────────────────────────────────
   const renderNavItem = (
     item: { id: string; name: string; icon: React.ComponentType<{ className?: string }> },
@@ -363,7 +338,7 @@ export function L2Layout({
   ) => {
     const isActive = activeTab === item.id
     const subs = getVisibleSubs(item.id)
-    const hasSubNav = subs.length > 0 || item.id === 'events'
+    const hasSubNav = subs.length > 0
 
     const isExpanded = expandedItems.has(item.id)
 
@@ -396,8 +371,6 @@ export function L2Layout({
             />
           )}
         </button>
-
-        {isExpanded && item.id === 'events' && renderTermineSubs()}
 
         {isExpanded && item.id !== 'appointments' && hasSubNav && (
           <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5">
