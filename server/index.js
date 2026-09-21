@@ -1533,6 +1533,9 @@ async function initDatabase() {
 
   // Migrations: equipment_materials typ-Spalte
   try { await db.run(`ALTER TABLE equipment_materials ADD COLUMN typ TEXT DEFAULT 'bulk'`) } catch {}
+  // Archiv: archiviertes Material bleibt erhalten, ist aber standardmäßig ausgeblendet
+  // (auch in Pack-/Carnet-/Verlade-Auswahl). Wiederherstellbar durch Nullen der Spalte.
+  try { await db.run(`ALTER TABLE equipment_materials ADD COLUMN archived_at DATETIME`) } catch {}
 
   // Einheiten für Serienartikel (eine Zeile pro physisches Gerät)
   await db.run(`
@@ -9378,6 +9381,10 @@ app.delete('/api/equipment/items/:id', authenticateToken, requireTenant, async (
 // GET /api/equipment/materials
 app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req, res) => {
   try {
+    // Standard: nur aktives Material. ?archived=1 liefert ausschließlich archiviertes.
+    const archivedFilter = req.query.archived === '1'
+      ? 'em.archived_at IS NOT NULL'
+      : 'em.archived_at IS NULL'
     const rows = await db.all(
       `SELECT em.*,
         ec.name AS category_name,
@@ -9388,11 +9395,24 @@ app.get('/api/equipment/materials', authenticateToken, requireTenant, async (req
         (SELECT COALESCE(SUM(anzahl),0) FROM equipment_case_contents WHERE material_id = em.id AND material_unit_id IS NULL) AS anzahl_gepackt
        FROM equipment_materials em
        LEFT JOIN equipment_categories ec ON ec.id = em.category_id
-       WHERE em.tenant_id = ?
+       WHERE em.tenant_id = ? AND ${archivedFilter}
        ORDER BY em.bezeichnung`,
       [req.tenant.id]
     )
     res.json({ materials: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/equipment/materials/:id/archive — archivieren ({archived:true}) / wiederherstellen ({archived:false})
+app.put('/api/equipment/materials/:id/archive', authenticateToken, requireTenant, async (req, res) => {
+  if (!['admin','agency','tourmanagement'].includes(req.tenant.role)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const archived = req.body?.archived !== false
+    await db.run(
+      `UPDATE equipment_materials SET archived_at = ${archived ? "datetime('now')" : 'NULL'}, updated_at=datetime('now') WHERE id=? AND tenant_id=?`,
+      [req.params.id, req.tenant.id]
+    )
+    res.json({ ok: true, archived })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

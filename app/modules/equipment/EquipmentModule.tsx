@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ChevronRightIcon, ChevronDownIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, Cog6ToothIcon, ExclamationTriangleIcon, PrinterIcon, PhotoIcon, SwatchIcon } from '@heroicons/react/24/outline'
-import { WrenchScrewdriverIcon, ArchiveBoxIcon, TagIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+import { WrenchScrewdriverIcon, ArchiveBoxIcon, ArchiveBoxArrowDownIcon, ArrowUturnLeftIcon, TagIcon, DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { parseCSV, col } from '@/lib/csvParser'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
@@ -11,7 +11,7 @@ import {
   getEquipmentLocations, createEquipmentLocation, updateEquipmentLocation, deleteEquipmentLocation, moveEquipmentItems, type EquipmentLocation, type EquipmentLocationKind,
   getEquipmentLabels, createEquipmentLabel, updateEquipmentLabel, deleteEquipmentLabel, type EquipmentLabel,
   getEquipmentItems, createEquipmentItem, updateEquipmentItem, deleteEquipmentItem,
-  getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial,
+  getEquipmentMaterials, createEquipmentMaterial, updateEquipmentMaterial, deleteEquipmentMaterial, archiveEquipmentMaterial,
   getMaterialUnits, createMaterialUnit, deleteMaterialUnit,
   getEquipmentItemDetail, getCaseContents, addToCaseContents, updateCaseContent, removeCaseContent,
   initEquipmentKuerzel, getEquipmentSettings, updateEquipmentSettings,
@@ -2075,6 +2075,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
   const [labels, setLabels] = useState<EquipmentLabel[]>([])
   const [items, setItems] = useState<EquipmentItem[]>([])
   const [materials, setMaterials] = useState<EquipmentMaterial[]>([])
+  const [archivedMaterials, setArchivedMaterials] = useState<EquipmentMaterial[]>([])
+  const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [kuerzel, setKuerzel] = useState('')
@@ -2139,11 +2141,12 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     const scrollY = silent ? window.scrollY : 0
     if (!silent) setLoading(true)
     try {
-      const [k, cats, itms, mats, settings, carnetsData, ownersData, locs, labs] = await Promise.all([
+      const [k, cats, itms, mats, archMats, settings, carnetsData, ownersData, locs, labs] = await Promise.all([
         initEquipmentKuerzel(),
         getEquipmentCategories(),
         getEquipmentItems(),
         getEquipmentMaterials(),
+        getEquipmentMaterials({ archived: true }),
         getEquipmentSettings(),
         getCarnets(),
         getEquipmentOwners(),
@@ -2156,6 +2159,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       setLabels(labs)
       setItems(itms)
       setMaterials(mats)
+      setArchivedMaterials(archMats)
       setCarnetEnabled(settings.carnet_ata_enabled)
       setLabelSettings({ label_tour_name: settings.label_tour_name, label_use_artist_name: settings.label_use_artist_name, label_logo_path: settings.label_logo_path })
       setCarnets(carnetsData)
@@ -2437,7 +2441,8 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
 
   // ── Material ─────────────────────────────────────────────────────────────────
   const sortedMaterials = useMemo(() => {
-    const filtered = materials.filter(m =>
+    const source = showArchived ? archivedMaterials : materials
+    const filtered = source.filter(m =>
       !search || (m.bezeichnung ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (m.marke ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (m.modell ?? '').toLowerCase().includes(search.toLowerCase())
@@ -2453,7 +2458,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       const cmp = av < bv ? -1 : av > bv ? 1 : 0
       return matSortDir === 'asc' ? cmp : -cmp
     })
-  }, [materials, search, matSortKey, matSortDir])
+  }, [materials, archivedMaterials, showArchived, search, matSortKey, matSortDir])
 
   const CSV_HEADERS = ['Mat-ID', 'Bezeichnung', 'Marke', 'Modell', 'Typ', 'Kategorie', 'Ursprungsland', 'Gewicht_kg', 'Zollwert', 'Waehrung', 'Anschaffungsdatum', 'Notiz']
 
@@ -2531,7 +2536,7 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
     }
 
     const bulkDelete = async () => {
-      if (!confirm(`${selectedMatIds.size} Material-Einträge wirklich löschen?`)) return
+      if (!confirm(`${selectedMatIds.size} Material-Einträge endgültig löschen?`)) return
       for (const id of Array.from(selectedMatIds)) {
         await deleteEquipmentMaterial(id)
       }
@@ -2539,9 +2544,25 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
       load(true)
     }
 
+    const bulkArchive = async () => {
+      for (const id of Array.from(selectedMatIds)) {
+        await archiveEquipmentMaterial(id, true)
+      }
+      setSelectedMatIds(new Set())
+      load(true)
+    }
+
+    const bulkRestore = async () => {
+      for (const id of Array.from(selectedMatIds)) {
+        await archiveEquipmentMaterial(id, false)
+      }
+      setSelectedMatIds(new Set())
+      load(true)
+    }
+
     return (
     <div className="space-y-4">
-      {canEdit && (
+      {canEdit && !showArchived && (
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <button onClick={() => setMatModal({ open: true, mat: null })} className="btn btn-primary">
@@ -2549,9 +2570,9 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
               Neues Material
             </button>
             {someSelected && (
-              <button onClick={bulkDelete} className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50">
-                <TrashIcon className="w-4 h-4" />
-                {selectedMatIds.size} löschen
+              <button onClick={bulkArchive} className="btn btn-ghost text-gray-600 hover:text-gray-800 hover:bg-gray-100">
+                <ArchiveBoxArrowDownIcon className="w-4 h-4" />
+                {selectedMatIds.size} archivieren
               </button>
             )}
           </div>
@@ -2567,10 +2588,41 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
           </div>
         </div>
       )}
+
+      {canEdit && showArchived && someSelected && (
+        <div className="flex items-center gap-3">
+          <button onClick={bulkRestore} className="btn btn-ghost text-gray-700 hover:text-gray-900 hover:bg-gray-100">
+            <ArrowUturnLeftIcon className="w-4 h-4" />
+            {selectedMatIds.size} wiederherstellen
+          </button>
+          <button onClick={bulkDelete} className="btn btn-ghost text-red-600 hover:text-red-700 hover:bg-red-50">
+            <TrashIcon className="w-4 h-4" />
+            endgültig löschen
+          </button>
+        </div>
+      )}
+
+      {/* Aktiv / Archiv umschalten */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => { setShowArchived(false); setSelectedMatIds(new Set()) }}
+          className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${!showArchived ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}
+        >
+          Aktiv{materials.length ? ` (${materials.length})` : ''}
+        </button>
+        <button
+          onClick={() => { setShowArchived(true); setSelectedMatIds(new Set()) }}
+          className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1.5 ${showArchived ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}
+        >
+          <ArchiveBoxIcon className="w-4 h-4" />
+          Archiv{archivedMaterials.length ? ` (${archivedMaterials.length})` : ''}
+        </button>
+      </div>
+
       <input
         type="text"
         className="search-input"
-        placeholder="Material durchsuchen…"
+        placeholder={showArchived ? 'Archiv durchsuchen…' : 'Material durchsuchen…'}
         value={search}
         onChange={e => setSearch(e.target.value)}
       />
@@ -2581,9 +2633,13 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
         </div>
       ) : sortedMaterials.length === 0 ? (
         <div className="text-center py-12">
-          <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Noch kein Material angelegt</p>
-          {canEdit && (
+          {showArchived ? <ArchiveBoxIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" /> : <WrenchScrewdriverIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />}
+          <p className="text-sm text-gray-500">
+            {showArchived
+              ? (search ? 'Kein archiviertes Material gefunden' : 'Kein archiviertes Material')
+              : (search ? 'Kein Material gefunden' : 'Noch kein Material angelegt')}
+          </p>
+          {canEdit && !showArchived && !search && (
             <button onClick={() => setMatModal({ open: true, mat: null })}
               className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
               + Erstes Material anlegen
@@ -2664,16 +2720,35 @@ export default function EquipmentModule({ activeSubTab }: { activeSubTab?: strin
                     <td>
                       {canEdit && (
                         <div className="flex gap-1 justify-end">
-                          <button onClick={() => setMatModal({ open: true, mat })} className="p-1 text-gray-400 hover:text-blue-600">
-                            <PencilIcon className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={async () => {
-                            if (!confirm(`${mat.bezeichnung} wirklich löschen?`)) return
-                            await deleteEquipmentMaterial(mat.id)
-                            load(true)
-                          }} className="p-1 text-gray-400 hover:text-red-600">
-                            <TrashIcon className="w-3.5 h-3.5" />
-                          </button>
+                          {showArchived ? (
+                            <>
+                              <button onClick={async () => {
+                                await archiveEquipmentMaterial(mat.id, false)
+                                load(true)
+                              }} className="p-1 text-gray-400 hover:text-green-600" title="Wiederherstellen">
+                                <ArrowUturnLeftIcon className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={async () => {
+                                if (!confirm(`„${mat.bezeichnung}" endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return
+                                await deleteEquipmentMaterial(mat.id)
+                                load(true)
+                              }} className="p-1 text-gray-400 hover:text-red-600" title="Endgültig löschen">
+                                <TrashIcon className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => setMatModal({ open: true, mat })} className="p-1 text-gray-400 hover:text-blue-600" title="Bearbeiten">
+                                <PencilIcon className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={async () => {
+                                await archiveEquipmentMaterial(mat.id, true)
+                                load(true)
+                              }} className="p-1 text-gray-400 hover:text-gray-700" title="Archivieren">
+                                <ArchiveBoxArrowDownIcon className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </td>

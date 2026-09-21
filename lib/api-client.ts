@@ -1059,6 +1059,7 @@ export interface EquipmentMaterial {
   gewicht_kg: number | null;
   anschaffungsdatum: string | null;
   notiz: string | null;
+  archived_at?: string | null;    // gesetzt = archiviert
   created_at: string;
   updated_at: string;
 }
@@ -1112,9 +1113,15 @@ export interface EquipmentCaseContent {
   seriennummer: string | null; // nur bei serial
 }
 
-export async function getEquipmentMaterials(): Promise<EquipmentMaterial[]> {
-  const res = await request<{ materials: EquipmentMaterial[] }>('/api/equipment/materials');
+export async function getEquipmentMaterials(opts?: { archived?: boolean }): Promise<EquipmentMaterial[]> {
+  const qs = opts?.archived ? '?archived=1' : '';
+  const res = await request<{ materials: EquipmentMaterial[] }>(`/api/equipment/materials${qs}`);
   return res.materials;
+}
+
+/** Material archivieren (true) oder wiederherstellen (false). */
+export async function archiveEquipmentMaterial(id: number, archived: boolean): Promise<void> {
+  await request(`/api/equipment/materials/${id}/archive`, { method: 'PUT', body: { archived } });
 }
 
 export async function createEquipmentMaterial(data: Partial<EquipmentMaterial>): Promise<EquipmentMaterial> {
