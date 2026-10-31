@@ -17,6 +17,7 @@ import { FeedbackButton } from '@/app/components/shared/FeedbackButton'
 import FeedbackPage from './modules/feedback/FeedbackPage'
 import EquipmentModule from './modules/equipment/EquipmentModule'
 import CalculationModule from './modules/calculation/CalculationModule'
+import BookingModule from './modules/booking/BookingModule'
 import { MobileBottomNav } from '@/app/components/shared/Navigation/MobileBottomNav'
 import { LayoutProvider, useLayout } from '@/app/components/shared/Navigation/LayoutContext'
 import { LanguageProvider } from '@/app/lib/i18n/LanguageContext'
@@ -28,7 +29,7 @@ import LandingPage from '@/app/components/landing/LandingPage'
 function ProTouringAppInner() {
   const router = useRouter()
 
-  const VALID_TABS = ['desk','events','contacts','venues','partners','hotels','vehicles','templates','equipment','calculation','settings','feedback']
+  const VALID_TABS = ['desk','events','contacts','venues','partners','hotels','vehicles','templates','equipment','calculation','booking','settings','feedback']
 
   const STORAGE_TAB = 'pt_tab'
   const STORAGE_SUB = 'pt_sub'
@@ -172,6 +173,7 @@ function ProTouringAppInner() {
     if (tabId === 'settings') defaultSub = 'profil'
     else if (tabId === 'contacts') defaultSub = 'overview'
     else if (tabId === 'equipment') defaultSub = 'items'
+    else if (tabId === 'booking') defaultSub = 'contracts'
     setActiveSubTab(defaultSub)
     sessionStorage.setItem(STORAGE_TAB, tabId)
     sessionStorage.setItem(STORAGE_SUB, defaultSub)
@@ -190,6 +192,7 @@ function ProTouringAppInner() {
 
       {activeTab === 'equipment' && <EquipmentModule activeSubTab={activeSubTab} />}
       {activeTab === 'calculation' && <CalculationModule />}
+      {activeTab === 'booking' && <BookingModule activeSubTab={activeSubTab} />}
       {activeTab === 'settings' && <SettingsModule activeSubTab={activeSubTab} />}
       {activeTab === 'feedback' && <FeedbackPage />}
     </>

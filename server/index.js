@@ -2046,6 +2046,73 @@ async function initDatabase() {
     if (rows.length) console.log(`✅ Migration: ${rows.length} Status-Werte → Standorte übernommen`)
   } catch (e) { console.error('[migrate standort_status→locations]', e.message) }
 
+  // ── Add-on „Booking": Vertragsbausteine (versioniert), Verträge, Deal-Felder ──
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS booking_clauses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      archived_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS booking_clause_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      clause_id INTEGER NOT NULL,
+      version INTEGER NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (clause_id) REFERENCES booking_clauses(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS booking_contracts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      contract_no TEXT,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      termin_id INTEGER,
+      event_title TEXT,
+      event_date TEXT,
+      event_city TEXT,
+      event_venue TEXT,
+      partner_name TEXT,
+      partner_address TEXT,
+      partner_email TEXT,
+      currency TEXT DEFAULT 'EUR',
+      deal_type TEXT DEFAULT 'guarantee',
+      guarantee TEXT,
+      deal_share TEXT,
+      break_even TEXT,
+      vvk TEXT,
+      ticket_price TEXT,
+      deposit TEXT,
+      payment_terms TEXT,
+      notes TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS booking_contract_clauses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      contract_id INTEGER NOT NULL,
+      clause_id INTEGER,
+      version_id INTEGER,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      version INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
+    );
+  `);
+
   console.log('✅ Database initialized');
 }
 
@@ -9718,6 +9785,228 @@ app.put('/api/tenant/billing', authenticateToken, requireTenant, async (req, res
       [req.tenant.id]
     )
     res.json({ billing: row })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Add-on „Booking": Vertragsbausteine (versioniert), Verträge, Vertrags-PDF
+// ═══════════════════════════════════════════════════════════════════════════
+const bookingCanEdit = (req) => ['admin','agency','tourmanagement'].includes(req.tenant.role)
+
+// GET /api/booking/clauses — Bausteine inkl. aktueller Version
+app.get('/api/booking/clauses', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const archived = req.query.archived === '1'
+    const rows = await db.all(
+      `SELECT c.*, (
+         SELECT v.version FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY v.version DESC LIMIT 1
+       ) AS latest_version, (
+         SELECT v.body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY v.version DESC LIMIT 1
+       ) AS latest_body, (
+         SELECT COUNT(*) FROM booking_clause_versions v WHERE v.clause_id=c.id
+       ) AS version_count
+       FROM booking_clauses c
+       WHERE c.tenant_id=? AND c.archived_at IS ${archived ? 'NOT NULL' : 'NULL'}
+       ORDER BY c.sort_order, c.title`,
+      [req.tenant.id]
+    )
+    res.json({ clauses: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/clauses/:id/versions — Versionshistorie eines Bausteins
+app.get('/api/booking/clauses/:id/versions', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT id, version, body, created_at FROM booking_clause_versions
+       WHERE clause_id=? AND tenant_id=? ORDER BY version DESC`,
+      [req.params.id, req.tenant.id]
+    )
+    res.json({ versions: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/booking/clauses — neuer Baustein (legt Version 1 an)
+app.post('/api/booking/clauses', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { title, body = '' } = req.body
+    if (!title) return res.status(400).json({ error: 'Titel ist Pflicht' })
+    const r = await db.run(
+      `INSERT INTO booking_clauses (tenant_id, title) VALUES (?,?)`,
+      [req.tenant.id, title]
+    )
+    await db.run(
+      `INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)`,
+      [req.tenant.id, r.lastID, 1, body, req.user.id]
+    )
+    res.json({ ok: true, id: r.lastID })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/clauses/:id — Titel ändern und/oder NEUE Version anlegen (alte bleibt erhalten)
+app.put('/api/booking/clauses/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const { title, body, newVersion } = req.body
+    const clause = await db.get('SELECT id FROM booking_clauses WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!clause) return res.status(404).json({ error: 'Baustein nicht gefunden' })
+    if (title != null) {
+      await db.run(`UPDATE booking_clauses SET title=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?`, [title, req.params.id, req.tenant.id])
+    }
+    // Neue Version nur anlegen, wenn Body übergeben und als neue Version markiert (bzw. geändert)
+    if (body != null && newVersion) {
+      const last = await db.get('SELECT COALESCE(MAX(version),0) AS v FROM booking_clause_versions WHERE clause_id=?', [req.params.id])
+      await db.run(
+        `INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, last.v + 1, body, req.user.id]
+      )
+    }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/clauses/:id/archive — archivieren / wiederherstellen
+app.put('/api/booking/clauses/:id/archive', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const archived = req.body?.archived !== false
+    await db.run(
+      `UPDATE booking_clauses SET archived_at = ${archived ? "datetime('now')" : 'NULL'}, updated_at=datetime('now') WHERE id=? AND tenant_id=?`,
+      [req.params.id, req.tenant.id]
+    )
+    res.json({ ok: true, archived })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/booking/clauses/:id
+app.delete('/api/booking/clauses/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM booking_clauses WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/contracts — Vertragsliste
+app.get('/api/booking/contracts', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT * FROM booking_contracts WHERE tenant_id=? ORDER BY created_at DESC`,
+      [req.tenant.id]
+    )
+    res.json({ contracts: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/contracts/:id — Vertrag inkl. Bausteine
+app.get('/api/booking/contracts/:id', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, req.tenant.id])
+    res.json({ contract: { ...contract, clauses } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes']
+
+// Bausteine eines Vertrags neu setzen (Snapshot aus gewählten Baustein-Versionen)
+async function setContractClauses(tenantId, contractId, clauseIds) {
+  await db.run('DELETE FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [contractId, tenantId])
+  if (!Array.isArray(clauseIds)) return
+  let order = 0
+  for (const cid of clauseIds) {
+    const v = await db.get(
+      `SELECT id AS version_id, version, body FROM booking_clause_versions WHERE clause_id=? AND tenant_id=? ORDER BY version DESC LIMIT 1`,
+      [cid, tenantId]
+    )
+    const c = await db.get('SELECT title FROM booking_clauses WHERE id=? AND tenant_id=?', [cid, tenantId])
+    if (!v || !c) continue
+    await db.run(
+      `INSERT INTO booking_contract_clauses (tenant_id, contract_id, clause_id, version_id, title, body, version, sort_order)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [tenantId, contractId, cid, v.version_id, c.title, v.body, v.version, order++]
+    )
+  }
+}
+
+// POST /api/booking/contracts — neuer Vertrag
+app.post('/api/booking/contracts', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const b = req.body || {}
+    if (!b.title) return res.status(400).json({ error: 'Titel ist Pflicht' })
+    const cols = CONTRACT_FIELDS.filter(f => b[f] !== undefined)
+    const r = await db.run(
+      `INSERT INTO booking_contracts (tenant_id, contract_no, created_by${cols.length ? ', ' + cols.join(', ') : ''})
+       VALUES (?,?,?${cols.length ? ', ' + cols.map(() => '?').join(', ') : ''})`,
+      [req.tenant.id, generateId('V'), req.user.id, ...cols.map(f => b[f] === '' ? null : b[f])]
+    )
+    if (b.clauseIds) await setContractClauses(req.tenant.id, r.lastID, b.clauseIds)
+    res.json({ ok: true, id: r.lastID })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/contracts/:id — Vertrag aktualisieren
+app.put('/api/booking/contracts/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const b = req.body || {}
+    const exists = await db.get('SELECT id FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!exists) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const cols = CONTRACT_FIELDS.filter(f => b[f] !== undefined)
+    if (cols.length) {
+      await db.run(
+        `UPDATE booking_contracts SET ${cols.map(c => `${c}=?`).join(', ')}, updated_at=datetime('now') WHERE id=? AND tenant_id=?`,
+        [...cols.map(f => b[f] === '' ? null : b[f]), req.params.id, req.tenant.id]
+      )
+    }
+    if (b.clauseIds !== undefined) await setContractClauses(req.tenant.id, req.params.id, b.clauseIds)
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/booking/contracts/:id
+app.delete('/api/booking/contracts/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/contracts/:id/pdf — Vertrag als PDF
+app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
+  try {
+    // Token via Header ODER Query (für window.open), wie beim Schedule-PDF
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token
+    let decoded
+    try { decoded = jwt.verify(token, JWT_SECRET) } catch { return res.status(401).json({ error: 'Nicht autorisiert' }) }
+    const tenantSlug = req.query.tenant || req.headers['x-tenant-slug']
+    const tenant = await db.get('SELECT * FROM tenants WHERE slug=?', [tenantSlug])
+    if (!tenant) return res.status(404).json({ error: 'Tenant nicht gefunden' })
+    // Zugriff: Superadmin oder Mitglied des Tenants
+    if (!decoded.isSuperadmin) {
+      const m = await db.get(`SELECT 1 FROM user_tenants WHERE user_id=? AND tenant_id=? AND status='active'`, [decoded.id, tenant.id])
+      if (!m) return res.status(403).json({ error: 'Kein Zugriff' })
+    }
+    const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, tenant.id])
+    if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
+    const { generateContractPdf } = require('./generate_contract_pdf')
+    const pdf = await generateContractPdf({
+      contract, clauses,
+      artist: {
+        name: tenant.billing_company || tenant.display_name || tenant.name,
+        firstName: tenant.billing_first_name, lastName: tenant.billing_last_name,
+        address: tenant.billing_address, postalCode: tenant.billing_postal_code,
+        city: tenant.billing_city, taxId: tenant.billing_tax_id, email: tenant.billing_email,
+      },
+    })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="Vertrag_${contract.contract_no || contract.id}.pdf"`)
+    res.send(pdf)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

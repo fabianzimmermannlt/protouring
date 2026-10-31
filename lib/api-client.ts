@@ -3197,6 +3197,7 @@ export const PERMISSION_CATALOG: PermDef[] = [
   { key: 'templates', label: 'Vorlagen',  group: 'Bereiche', default: [..._ALL_ROLES], configurable: true },
   { key: 'equipment', label: 'Equipment', group: 'Bereiche', default: ['admin'], configurable: true },
   { key: 'calculation', label: 'Kalkulation', group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency'], configurable: true },
+  { key: 'booking',     label: 'Booking',     group: 'Bereiche', default: ['admin', 'tourmanagement', 'agency'], configurable: true },
   // fixe Bereiche (nicht in der Matrix konfigurierbar)
   { key: 'desk',      label: 'Schreibtisch',   group: 'Bereiche', default: [..._ALL_ROLES] },
   { key: 'settings',  label: 'Einstellungen',  group: 'Bereiche', default: [..._ALL_ROLES] },
@@ -3244,7 +3245,7 @@ export function setRolePermsOverrides(obj: Record<string, string[]>) {
 }
 
 /** Bereiche mit eigenem „Bearbeiten"-Recht (Sehen/Bearbeiten-Trennung in der Matrix) */
-export const EDIT_AREAS = ['events', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'templates', 'equipment', 'calculation'] as const
+export const EDIT_AREAS = ['events', 'contacts', 'venues', 'partners', 'hotels', 'vehicles', 'templates', 'equipment', 'calculation', 'booking'] as const
 
 /** Standard-Bearbeiten-Rollen (wenn <bereich>.edit nicht konfiguriert ist) */
 const EDIT_DEFAULT: TenantRole[] = ['admin', 'agency', 'tourmanagement']
@@ -3750,6 +3751,7 @@ export function getIcalUrl(token: string): string {
 export const ADDON_MODULES = [
   { id: 'equipment', label: 'Equipment' },
   { id: 'calculation', label: 'Kalkulation' },
+  { id: 'booking', label: 'Booking' },
 ] as const
 export type AddonModuleId = typeof ADDON_MODULES[number]['id']
 
@@ -3799,6 +3801,7 @@ export function isTenantModuleEnabled(moduleId: AddonModuleId): boolean {
   // sichtbar"). Später wie Equipment über tenant.modules_enabled gaten und diese
   // Zeile entfernen. Siehe DECISIONS ADR-105.
   if (moduleId === 'calculation') return true
+  if (moduleId === 'booking') return true   // Phase 1: vorerst sichtbar (wie Kalkulation)
   if (typeof window === 'undefined') return false
   const raw = localStorage.getItem(CURRENT_TENANT_KEY)
   if (!raw) return false
@@ -3806,6 +3809,119 @@ export function isTenantModuleEnabled(moduleId: AddonModuleId): boolean {
     const tenant = JSON.parse(raw)
     return Array.isArray(tenant.modules_enabled) && tenant.modules_enabled.includes(moduleId)
   } catch { return false }
+}
+
+// ── Add-on „Booking" ───────────────────────────────────────────────────────────
+
+export interface BookingClause {
+  id: number
+  tenant_id: number
+  title: string
+  sort_order: number
+  archived_at?: string | null
+  latest_version?: number
+  latest_body?: string
+  version_count?: number
+}
+
+export interface BookingClauseVersion {
+  id: number
+  version: number
+  body: string
+  created_at: string
+}
+
+export interface BookingContractClause {
+  id: number
+  contract_id: number
+  clause_id: number | null
+  version_id: number | null
+  title: string
+  body: string
+  version: number | null
+  sort_order: number
+}
+
+export interface BookingContract {
+  id: number
+  tenant_id: number
+  contract_no: string | null
+  title: string
+  status: string
+  termin_id: number | null
+  event_title: string | null
+  event_date: string | null
+  event_city: string | null
+  event_venue: string | null
+  partner_name: string | null
+  partner_address: string | null
+  partner_email: string | null
+  currency: string | null
+  deal_type: string | null
+  guarantee: string | null
+  deal_share: string | null
+  break_even: string | null
+  vvk: string | null
+  ticket_price: string | null
+  deposit: string | null
+  payment_terms: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  clauses?: BookingContractClause[]
+}
+
+export type BookingContractInput = Partial<Omit<BookingContract, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'clauses'>> & { clauseIds?: number[] }
+
+export async function getBookingClauses(opts?: { archived?: boolean }): Promise<BookingClause[]> {
+  const res = await request<{ clauses: BookingClause[] }>(`/api/booking/clauses${opts?.archived ? '?archived=1' : ''}`)
+  return res.clauses
+}
+export async function getBookingClauseVersions(id: number): Promise<BookingClauseVersion[]> {
+  const res = await request<{ versions: BookingClauseVersion[] }>(`/api/booking/clauses/${id}/versions`)
+  return res.versions
+}
+export async function createBookingClause(data: { title: string; body?: string }): Promise<number> {
+  const res = await request<{ id: number }>('/api/booking/clauses', { method: 'POST', body: data })
+  return res.id
+}
+/** Titel ändern und/oder (newVersion:true) eine neue Version des Texts anlegen. */
+export async function updateBookingClause(id: number, data: { title?: string; body?: string; newVersion?: boolean }): Promise<void> {
+  await request(`/api/booking/clauses/${id}`, { method: 'PUT', body: data })
+}
+export async function archiveBookingClause(id: number, archived: boolean): Promise<void> {
+  await request(`/api/booking/clauses/${id}/archive`, { method: 'PUT', body: { archived } })
+}
+export async function deleteBookingClause(id: number): Promise<void> {
+  await request(`/api/booking/clauses/${id}`, { method: 'DELETE' })
+}
+
+export async function getBookingContracts(): Promise<BookingContract[]> {
+  const res = await request<{ contracts: BookingContract[] }>('/api/booking/contracts')
+  return res.contracts
+}
+export async function getBookingContract(id: number): Promise<BookingContract> {
+  const res = await request<{ contract: BookingContract }>(`/api/booking/contracts/${id}`)
+  return res.contract
+}
+export async function createBookingContract(data: BookingContractInput): Promise<number> {
+  const res = await request<{ id: number }>('/api/booking/contracts', { method: 'POST', body: data })
+  return res.id
+}
+export async function updateBookingContract(id: number, data: BookingContractInput): Promise<void> {
+  await request(`/api/booking/contracts/${id}`, { method: 'PUT', body: data })
+}
+export async function deleteBookingContract(id: number): Promise<void> {
+  await request(`/api/booking/contracts/${id}`, { method: 'DELETE' })
+}
+/** Öffnet das Vertrags-PDF in einem neuen Tab (Token/Tenant als Query, wie beim Schedule-PDF). */
+export function openBookingContractPdf(id: number): void {
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  const params = new URLSearchParams()
+  if (token) params.set('token', token)
+  if (tenant?.slug) params.set('tenant', tenant.slug)
+  if (typeof window !== 'undefined') window.open(`${API_BASE}/api/booking/contracts/${id}/pdf?${params}`, '_blank')
 }
 
 // ── Carnets ──────────────────────────────────────────────────────────────────

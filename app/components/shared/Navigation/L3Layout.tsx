@@ -21,6 +21,7 @@ import {
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
   CalculatorIcon,
+  DocumentTextIcon,
   ViewColumnsIcon,
   XMarkIcon,
   EllipsisHorizontalIcon,
@@ -95,6 +96,7 @@ const RAIL_NAV = [
 const MODULE_NAV = [
   { id: 'equipment', name: 'Equipment', icon: WrenchScrewdriverIcon },
   { id: 'calculation', name: 'Kalkulation', icon: CalculatorIcon },
+  { id: 'booking', name: 'Booking', icon: DocumentTextIcon },
 ]
 
 // ─── Context panel definitions ────────────────────────────────────────────────

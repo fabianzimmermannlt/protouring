@@ -18,6 +18,7 @@ import {
   ChatBubbleLeftRightIcon,
   WrenchScrewdriverIcon,
   CalculatorIcon,
+  DocumentTextIcon,
   ViewColumnsIcon,
 } from '@heroicons/react/24/outline'
 import {
@@ -90,9 +91,15 @@ const EQUIPMENT_SUBS: SubItem[] = [
   { id: 'carnets',     name: 'Carnets' },
 ]
 
+const BOOKING_SUBS: SubItem[] = [
+  { id: 'contracts', name: 'Verträge' },
+  { id: 'bausteine', name: 'Bausteine' },
+]
+
 const SUB_ITEMS: Record<string, SubItem[]> = {
   contacts:  CONTACTS_SUBS,
   equipment: EQUIPMENT_SUBS,
+  booking:   BOOKING_SUBS,
 }
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -110,6 +117,7 @@ const MAIN_NAV = [
 const MODULE_NAV = [
   { id: 'equipment', name: 'Equipment', icon: WrenchScrewdriverIcon },
   { id: 'calculation', name: 'Kalkulation', icon: CalculatorIcon },
+  { id: 'booking', name: 'Booking', icon: DocumentTextIcon },
 ]
 
 // ─── Breadcrumb labels ────────────────────────────────────────────────────────
@@ -117,11 +125,11 @@ const MODULE_NAV = [
 const TAB_LABELS: Record<string, string> = {
   desk: 'Schreibtisch', appointments: 'Termine', contacts: 'Kontakte',
   venues: 'Venues', partners: 'Partner', hotels: 'Hotels',
-  vehicles: 'Fahrzeuge', equipment: 'Equipment', calculation: 'Kalkulation',
+  vehicles: 'Fahrzeuge', equipment: 'Equipment', calculation: 'Kalkulation', booking: 'Booking',
 }
 
 const SUB_LABELS: Record<string, string> = {}
-;[...CONTACTS_SUBS, ...EQUIPMENT_SUBS, ...SETTINGS_KONTO, ...SETTINGS_WORKSPACE].forEach(
+;[...CONTACTS_SUBS, ...EQUIPMENT_SUBS, ...BOOKING_SUBS, ...SETTINGS_KONTO, ...SETTINGS_WORKSPACE].forEach(
   s => { SUB_LABELS[s.id] = s.name }
 )
 
@@ -289,6 +297,7 @@ export function L2Layout({
       let defaultSub: string | undefined
       if (id === 'contacts') defaultSub = 'overview'
       else if (id === 'equipment') defaultSub = 'items'
+      else if (id === 'booking') defaultSub = 'contracts'
       // Klick auf aktiven Tab → zurück zur Liste
       if (id === 'events') window.dispatchEvent(new CustomEvent('termine-go-to-list'))
       if (id === 'contacts') window.dispatchEvent(new CustomEvent('contact-show-list'))
