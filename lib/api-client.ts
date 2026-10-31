@@ -3867,6 +3867,8 @@ export interface BookingContract {
   deposit: string | null
   payment_terms: string | null
   notes: string | null
+  actual_tickets: string | null
+  actual_revenue: string | null
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
@@ -3917,12 +3919,55 @@ export async function deleteBookingContract(id: number): Promise<void> {
 }
 /** Öffnet das Vertrags-PDF in einem neuen Tab (Token/Tenant als Query, wie beim Schedule-PDF). */
 export function openBookingContractPdf(id: number): void {
+  openBookingPdf(`contracts/${id}`)
+}
+
+function openBookingPdf(path: string): void {
   const token = getAuthToken()
   const tenant = getCurrentTenant()
   const params = new URLSearchParams()
   if (token) params.set('token', token)
   if (tenant?.slug) params.set('tenant', tenant.slug)
-  if (typeof window !== 'undefined') window.open(`${API_BASE}/api/booking/contracts/${id}/pdf?${params}`, '_blank')
+  if (typeof window !== 'undefined') window.open(`${API_BASE}/api/booking/${path}/pdf?${params}`, '_blank')
+}
+
+export interface BookingSettlement { revenue: number; due: number; deposit: number; remaining: number }
+export async function getBookingSettlement(contractId: number): Promise<BookingSettlement> {
+  const res = await request<{ settlement: BookingSettlement }>(`/api/booking/contracts/${contractId}/settlement`)
+  return res.settlement
+}
+
+export interface BookingInvoice {
+  id: number
+  contract_id: number | null
+  seq: number | null
+  invoice_no: string | null
+  kind: 'deposit' | 'final'
+  status: string
+  issue_date: string | null
+  service_date: string | null
+  currency: string | null
+  tax_rate: string | null
+  total_net: string | null
+  deposit_net: string | null
+  description: string | null
+  recipient_name: string | null
+  event_title: string | null
+  event_date: string | null
+  created_at: string
+}
+export async function getBookingInvoices(contractId?: number): Promise<BookingInvoice[]> {
+  const res = await request<{ invoices: BookingInvoice[] }>(`/api/booking/invoices${contractId ? `?contractId=${contractId}` : ''}`)
+  return res.invoices
+}
+export async function createBookingInvoice(data: { contractId: number; kind: 'deposit' | 'final'; tax_rate?: string; service_date?: string }): Promise<{ id: number; invoice_no: string }> {
+  return await request<{ id: number; invoice_no: string }>('/api/booking/invoices', { method: 'POST', body: data })
+}
+export async function deleteBookingInvoice(id: number): Promise<void> {
+  await request(`/api/booking/invoices/${id}`, { method: 'DELETE' })
+}
+export function openBookingInvoicePdf(id: number): void {
+  openBookingPdf(`invoices/${id}`)
 }
 
 // ── Carnets ──────────────────────────────────────────────────────────────────

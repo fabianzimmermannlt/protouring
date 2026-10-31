@@ -93,6 +93,7 @@ const EQUIPMENT_SUBS: SubItem[] = [
 
 const BOOKING_SUBS: SubItem[] = [
   { id: 'contracts', name: 'Verträge' },
+  { id: 'rechnungen', name: 'Rechnungen' },
   { id: 'bausteine', name: 'Bausteine' },
 ]
 

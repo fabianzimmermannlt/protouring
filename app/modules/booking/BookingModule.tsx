@@ -5,9 +5,13 @@ import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, Arch
 import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
+  getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
   getTermine, getEffectiveRole, canEdit as canEditArea,
-  type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type Termin,
+  type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type Termin,
 } from '@/lib/api-client'
+
+const nnum2 = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+const eur2 = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
 
 const DEAL_TYPES: { id: string; label: string }[] = [
   { id: 'guarantee', label: 'Festgage' },
@@ -32,10 +36,11 @@ export const STATUS_LABEL: Record<string, string> = {
 
 export default function BookingModule({ activeSubTab }: { activeSubTab?: string }) {
   const canEdit = canEditArea('booking', getEffectiveRole())
-  const sub = activeSubTab === 'bausteine' ? 'bausteine' : 'contracts'
   return (
     <div className="p-5">
-      {sub === 'bausteine' ? <BausteineTab canEdit={canEdit} /> : <ContractsTab canEdit={canEdit} />}
+      {activeSubTab === 'bausteine' ? <BausteineTab canEdit={canEdit} />
+        : activeSubTab === 'rechnungen' ? <InvoicesTab />
+        : <ContractsTab canEdit={canEdit} />}
     </div>
   )
 }
@@ -406,6 +411,61 @@ function ContractModal({ contract, onClose, onSaved }: { contract: BookingContra
           <button onClick={save} disabled={saving || !f.title?.trim()} className="btn btn-primary">{saving ? 'Speichern…' : 'Speichern'}</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Rechnungen (add-on-weite Übersicht über alle Events)
+// ═══════════════════════════════════════════════════════════════════════════
+function InvoicesTab() {
+  const canEdit = canEditArea('booking', getEffectiveRole())
+  const [invoices, setInvoices] = useState<BookingInvoice[]>([])
+  const [loading, setLoading] = useState(true)
+  const load = useCallback(() => { setLoading(true); getBookingInvoices().then(setInvoices).catch(() => {}).finally(() => setLoading(false)) }, [])
+  useEffect(() => { load() }, [load])
+
+  const gross = (iv: BookingInvoice) => {
+    const r = nnum2(iv.tax_rate) / 100
+    const net = Math.max(0, nnum2(iv.total_net) - nnum2(iv.deposit_net))
+    return net * (1 + r)
+  }
+
+  return (
+    <div className="space-y-4" style={{ maxWidth: 960 }}>
+      <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Rechnungen</h2>
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Alle Anzahlungs- und Schlussrechnungen über alle Events. Erstellt werden sie im jeweiligen Event unter „Booking".</p>
+      {loading ? (
+        <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
+      ) : invoices.length === 0 ? (
+        <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Rechnungen</div>
+      ) : (
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead><tr>
+              <th>Nr.</th><th>Art</th><th>Datum</th><th>Empfänger</th><th>Veranstaltung</th><th className="text-right">Betrag (brutto)</th><th style={{ width: 80 }}></th>
+            </tr></thead>
+            <tbody>
+              {invoices.map(iv => (
+                <tr key={iv.id} className="hoverable">
+                  <td className="font-mono text-xs">{iv.invoice_no}</td>
+                  <td>{iv.kind === 'deposit' ? 'Anzahlung' : 'Schluss'}</td>
+                  <td>{iv.issue_date}</td>
+                  <td>{iv.recipient_name || '—'}</td>
+                  <td>{[iv.event_title, iv.event_date ? new Date(iv.event_date).toLocaleDateString('de-DE') : null].filter(Boolean).join(' · ') || '—'}</td>
+                  <td className="text-right font-medium">{eur2(gross(iv), iv.currency || 'EUR')}</td>
+                  <td>
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => openBookingInvoicePdf(iv.id)} className="p-1 text-gray-400 hover:text-blue-600" title="PDF"><DocumentArrowDownIcon className="w-4 h-4" /></button>
+                      {canEdit && <button onClick={async () => { if (!confirm(`Rechnung ${iv.invoice_no} löschen?`)) return; await deleteBookingInvoice(iv.id); load() }} className="p-1 text-gray-400 hover:text-red-600" title="Löschen"><TrashIcon className="w-4 h-4" /></button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
