@@ -1,8 +1,8 @@
 'use client'
 
-import { getEffectiveRole, canDo, can, CAN_SEE_KALENDER, isEditorRole } from '@/lib/api-client'
+import { getEffectiveRole, canDo, can, CAN_SEE_KALENDER, isEditorRole, isTenantModuleEnabled } from '@/lib/api-client'
 
-export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'briefing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist' | 'setlist' | 'files'
+export type TermineDetailView = 'details' | 'details2' | 'venue' | 'partner' | 'communication' | 'travel' | 'schedule' | 'catering' | 'hospitality' | 'advancing' | 'briefing' | 'agreements' | 'travelparty' | 'advance-sheet' | 'guestlist' | 'setlist' | 'files' | 'booking'
 export type TermineListFilter = 'aktuell' | 'vergangen' | 'alle'
 export type TermineListView = 'list' | 'calendar'
 
@@ -114,6 +114,7 @@ export function TermineSubNavigation({
     ...(isEditor ? [{ id: 'advancing', label: 'Advancing', short: 'Advancing' }] : []),
     { id: 'briefing',      label: 'Briefing',      short: 'Briefing' },
     ...(isEditor ? [{ id: 'advance-sheet', label: 'Advance Sheet', short: 'Advance' }] : []),
+    ...(isEditor && isTenantModuleEnabled('booking') ? [{ id: 'booking', label: 'Booking', short: 'Booking' }] : []),
   ] as { id: string; label: string; short: string }[]
 
   return (

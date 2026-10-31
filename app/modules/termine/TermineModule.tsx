@@ -34,6 +34,7 @@ import SonstigesCard from './SonstigesCard'
 import VenueInfoSection from './VenueInfoSection'
 import ReisegruppeView from './ReisegruppeView'
 import AdvanceSheetView from './AdvanceSheetView'
+import EventBookingView from '../booking/EventBookingView'
 import GaestelisteView from './GaestelisteView'
 import SetlistView from './SetlistView'
 import TerminFilesView from './TerminFilesView'
@@ -65,6 +66,7 @@ import {
   isEditorRole,
   canDo,
   can,
+  isTenantModuleEnabled,
   CAN_CREATE_TERMIN,
   CAN_SEE_GEBUCHT,
   CAN_SEE_FILES_TERMIN,
@@ -1090,6 +1092,7 @@ function TerminDetailHeader({
     { id: 'advancing',      label: 'Advancing' },
     { id: 'briefing',       label: 'Briefing' },
     { id: 'advance-sheet',  label: 'Advance Sheet' },
+    ...(isTenantModuleEnabled('booking') ? [{ id: 'booking', label: 'Booking' }] : []),
   ]).filter(t => can('event.' + t.id))
 
   const changeView = (view: string) => {
@@ -1945,6 +1948,8 @@ export default function TerminePage({ activeSubTab = '' }: { activeSubTab?: stri
           <ReisegruppeView terminId={selectedTermin.id} isAdmin={isEditor} />
         ) : selectedView === 'advance-sheet' ? (
           <AdvanceSheetView terminId={selectedTermin.id} />
+        ) : selectedView === 'booking' ? (
+          <EventBookingView terminId={selectedTermin.id} termin={selectedTermin} isAdmin={isAdmin} />
         ) : selectedView === 'guestlist' ? (
           <GaestelisteView key={selectedTermin.id} terminId={selectedTermin.id} />
         ) : selectedView === 'setlist' ? (

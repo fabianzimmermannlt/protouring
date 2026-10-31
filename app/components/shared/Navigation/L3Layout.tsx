@@ -2025,6 +2025,7 @@ export function L3Layout({
                       { id: 'agreements',  label: 'Agreements' },
                       { id: 'travelparty', label: 'Reisegruppe' },
                       { id: 'briefing',    label: 'Briefing' },
+                      ...(isEditor && isTenantModuleEnabled('booking') ? [{ id: 'booking', label: 'Booking' }] : []),
                     ]
                   : [
                       { id: 'details', label: 'Details' },

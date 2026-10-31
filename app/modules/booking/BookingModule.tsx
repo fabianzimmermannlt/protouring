@@ -15,7 +15,20 @@ const DEAL_TYPES: { id: string; label: string }[] = [
   { id: 'plus', label: 'Garantie plus Deal' },
   { id: 'door', label: 'Door Deal' },
 ]
-const STATUS_LABEL: Record<string, string> = { draft: 'Entwurf', sent: 'Versendet', signed: 'Unterschrieben', done: 'Abgeschlossen' }
+// Pipeline-Status eines Bookings (ein Gig durchläuft diese Reihenfolge).
+export const BOOKING_STATUSES: { id: string; label: string }[] = [
+  { id: 'enquiry',   label: 'Angefragt' },
+  { id: 'hold',      label: 'Option' },
+  { id: 'confirmed', label: 'Bestätigt' },
+  { id: 'contract',  label: 'Vertrag' },
+  { id: 'invoiced',  label: 'Rechnung' },
+  { id: 'settled',   label: 'Abgerechnet' },
+]
+export const STATUS_LABEL: Record<string, string> = {
+  ...Object.fromEntries(BOOKING_STATUSES.map(s => [s.id, s.label])),
+  // Fallbacks für evtl. alte Werte aus Phase 1
+  draft: 'Entwurf', sent: 'Versendet', signed: 'Unterschrieben', done: 'Abgeschlossen',
+}
 
 export default function BookingModule({ activeSubTab }: { activeSubTab?: string }) {
   const canEdit = canEditArea('booking', getEffectiveRole())
@@ -238,7 +251,7 @@ function ContractsTab({ canEdit }: { canEdit: boolean }) {
 function ContractModal({ contract, onClose, onSaved }: { contract: BookingContract | null; onClose: () => void; onSaved: () => void }) {
   const isEdit = !!contract
   const [f, setF] = useState<BookingContractInput>(() => ({
-    title: contract?.title ?? '', status: contract?.status ?? 'draft',
+    title: contract?.title ?? '', status: contract?.status ?? 'confirmed',
     termin_id: contract?.termin_id ?? null,
     event_title: contract?.event_title ?? '', event_date: contract?.event_date ?? '', event_city: contract?.event_city ?? '', event_venue: contract?.event_venue ?? '',
     partner_name: contract?.partner_name ?? '', partner_address: contract?.partner_address ?? '', partner_email: contract?.partner_email ?? '',
@@ -311,8 +324,8 @@ function ContractModal({ contract, onClose, onSaved }: { contract: BookingContra
             </div>
             <div>
               <label className="form-label">Status</label>
-              <select className="form-select" value={f.status ?? 'draft'} onChange={e => set({ status: e.target.value })}>
-                {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              <select className="form-select" value={f.status ?? 'confirmed'} onChange={e => set({ status: e.target.value })}>
+                {BOOKING_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
             </div>
             <div>

@@ -3217,6 +3217,7 @@ export const PERMISSION_CATALOG: PermDef[] = [
   { key: 'event.advancing',     label: 'Advancing',     group: 'Event-Unterbereiche', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
   { key: 'event.briefing',      label: 'Briefing',      group: 'Event-Unterbereiche', default: [..._ALL_ROLES], configurable: true },
   { key: 'event.advance-sheet', label: 'Advance Sheet', group: 'Event-Unterbereiche', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
+  { key: 'event.booking',       label: 'Booking',       group: 'Event-Unterbereiche', default: ['admin', 'agency', 'tourmanagement'], configurable: true },
   // ── Funktionen ──
   { key: 'CAN_SEE_KALENDER',       label: 'Kalender-Ansicht',        group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus'], configurable: true },
   { key: 'CAN_SEE_GEBUCHT',        label: 'Gebucht-Spalte',          group: 'Funktionen', default: ['admin', 'tourmanagement', 'agency', 'artist', 'crew_plus', 'crew'], configurable: true },
