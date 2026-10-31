@@ -3872,6 +3872,16 @@ export interface BookingContract {
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
+  ticket_sales?: BookingTicketSale[]
+}
+
+export interface BookingTicketSale {
+  id?: number
+  vendor?: string | null
+  tickets?: string | null
+  revenue?: string | null
+  refund_amount?: string | null
+  refund_pct?: string | null
 }
 
 export type BookingContractInput = Partial<Omit<BookingContract, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'clauses'>> & { clauseIds?: number[] }
@@ -3916,6 +3926,10 @@ export async function updateBookingContract(id: number, data: BookingContractInp
 }
 export async function deleteBookingContract(id: number): Promise<void> {
   await request(`/api/booking/contracts/${id}`, { method: 'DELETE' })
+}
+/** Ticket-Händler-Zeilen eines Bookings ersetzen (für die Abrechnung). */
+export async function setBookingTicketSales(contractId: number, sales: BookingTicketSale[]): Promise<void> {
+  await request(`/api/booking/contracts/${contractId}/ticket-sales`, { method: 'PUT', body: { sales } })
 }
 /** Öffnet das Vertrags-PDF in einem neuen Tab (Token/Tenant als Query, wie beim Schedule-PDF). */
 export function openBookingContractPdf(id: number): void {

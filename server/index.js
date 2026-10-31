@@ -2111,6 +2111,19 @@ async function initDatabase() {
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS booking_ticket_sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      contract_id INTEGER NOT NULL,
+      vendor TEXT,
+      tickets TEXT,
+      revenue TEXT,
+      refund_amount TEXT,
+      refund_pct TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS booking_invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
@@ -9931,21 +9944,57 @@ app.get('/api/booking/contracts/:id', authenticateToken, requireTenant, async (r
     const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
     const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, req.tenant.id])
-    res.json({ contract: { ...contract, clauses } })
+    const ticket_sales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, req.tenant.id])
+    res.json({ contract: { ...contract, clauses, ticket_sales } })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/contracts/:id/ticket-sales — Händler-Zeilen ersetzen
+app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const exists = await db.get('SELECT id FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!exists) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const rows = Array.isArray(req.body?.sales) ? req.body.sales : []
+    await db.run('DELETE FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    let order = 0
+    for (const s of rows) {
+      await db.run(
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, tickets, revenue, refund_amount, refund_pct, sort_order)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, s.vendor || null,
+         s.tickets === '' ? null : s.tickets ?? null, s.revenue === '' ? null : s.revenue ?? null,
+         s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null, order++]
+      )
+    }
+    res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
 const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue']
 
-// Deal-Berechnung (Netto-Honorar) aus Vertrag + Ist-Zahlen. Spiegelt die Kalkulation,
+const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+
+// Netto-Einnahmen nach Refund je Händler-Zeile (Refund absolut ODER prozentual).
+function bookingVendorNet(s) {
+  const rev = bnum(s.revenue)
+  const refund = (s.refund_amount != null && s.refund_amount !== '') ? bnum(s.refund_amount) : rev * bnum(s.refund_pct) / 100
+  return rev - refund
+}
+
+// Einnahmen-Basis: Summe der Händler-Zeilen (falls vorhanden), sonst actual_revenue bzw. Tickets×Preis.
+function bookingRevenue(c, sales) {
+  if (Array.isArray(sales) && sales.length) return sales.reduce((a, s) => a + bookingVendorNet(s), 0)
+  if (c.actual_revenue != null && c.actual_revenue !== '') return bnum(c.actual_revenue)
+  return bnum(c.actual_tickets) * bnum(c.ticket_price)
+}
+
+// Deal-Berechnung (Netto-Honorar) aus Vertrag + Ist-Einnahmen. Spiegelt die Kalkulation,
 // ist aber bewusst eigenständig (Booking ohne Kalkulation nutzbar).
-function bookingComputeDue(c) {
-  const n = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
-  const revenue = (c.actual_revenue != null && c.actual_revenue !== '')
-    ? n(c.actual_revenue)
-    : n(c.actual_tickets) * n(c.ticket_price)
-  let share = n(c.deal_share); if (share > 1) share = share / 100
-  const be = n(c.break_even), g = n(c.guarantee)
+function bookingComputeDue(c, sales) {
+  const revenue = bookingRevenue(c, sales)
+  let share = bnum(c.deal_share); if (share > 1) share = share / 100
+  const be = bnum(c.break_even), g = bnum(c.guarantee)
   const over = Math.max(0, revenue - be) * share
   switch (c.deal_type) {
     case 'vs':   return Math.max(g, over)
@@ -10061,10 +10110,10 @@ app.get('/api/booking/contracts/:id/settlement', authenticateToken, requireTenan
   try {
     const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     if (!c) return res.status(404).json({ error: 'Nicht gefunden' })
-    const n = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
-    const revenue = (c.actual_revenue != null && c.actual_revenue !== '') ? n(c.actual_revenue) : n(c.actual_tickets) * n(c.ticket_price)
-    const due = bookingComputeDue(c)
-    const deposit = n(c.deposit)
+    const sales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    const revenue = bookingRevenue(c, sales)
+    const due = bookingComputeDue(c, sales)
+    const deposit = bnum(c.deposit)
     res.json({ settlement: { revenue, due, deposit, remaining: Math.max(0, due - deposit) } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -10088,8 +10137,9 @@ app.post('/api/booking/invoices', authenticateToken, requireTenant, async (req, 
     const { contractId, kind = 'final', tax_rate = '19', service_date } = req.body || {}
     const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [contractId, req.tenant.id])
     if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const salesRows = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=?', [contractId, req.tenant.id])
     const n = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
-    const due = bookingComputeDue(c)
+    const due = bookingComputeDue(c, salesRows)
     const deposit = n(c.deposit)
     let total_net, deposit_net, description
     if (kind === 'deposit') {

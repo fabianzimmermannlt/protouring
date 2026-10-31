@@ -5,15 +5,21 @@ import { DocumentArrowDownIcon, ArrowRightIcon, TrashIcon, PlusIcon } from '@her
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses,
-  getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
-  type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice, type Termin,
+  getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf, setBookingTicketSales,
+  type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice, type BookingTicketSale, type Termin,
 } from '@/lib/api-client'
 
 const nnum = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
+// Netto-Einnahmen nach Refund je Händler-Zeile (Refund absolut ODER prozentual).
+function vendorNet(s: BookingTicketSale) {
+  const rev = nnum(s.revenue)
+  const refund = (s.refund_amount != null && s.refund_amount !== '') ? nnum(s.refund_amount) : rev * nnum(s.refund_pct) / 100
+  return rev - refund
+}
+function salesRevenue(sales: BookingTicketSale[]) { return sales.reduce((a, s) => a + vendorNet(s), 0) }
 // Deal-Berechnung (Netto-Honorar) – spiegelt die Serverlogik für die Live-Vorschau.
-function computeDue(f: { deal_type?: string | null; guarantee?: unknown; deal_share?: unknown; break_even?: unknown; ticket_price?: unknown; actual_tickets?: unknown; actual_revenue?: unknown }) {
-  const revenue = (f.actual_revenue != null && f.actual_revenue !== '') ? nnum(f.actual_revenue) : nnum(f.actual_tickets) * nnum(f.ticket_price)
+function computeDue(f: { deal_type?: string | null; guarantee?: unknown; deal_share?: unknown; break_even?: unknown }, revenue: number) {
   let share = nnum(f.deal_share); if (share > 1) share = share / 100
   const over = Math.max(0, revenue - nnum(f.break_even)) * share
   const g = nnum(f.guarantee)
@@ -94,8 +100,8 @@ function BookingWorkspace({ booking, isAdmin, onChanged }: { booking: BookingCon
     vvk: booking.vvk ?? '', ticket_price: booking.ticket_price ?? '', deposit: booking.deposit ?? '',
     payment_terms: booking.payment_terms ?? '', notes: booking.notes ?? '',
     partner_name: booking.partner_name ?? '', partner_address: booking.partner_address ?? '', partner_email: booking.partner_email ?? '',
-    actual_tickets: booking.actual_tickets ?? '', actual_revenue: booking.actual_revenue ?? '',
   })
+  const [sales, setSales] = useState<BookingTicketSale[]>(booking.ticket_sales?.length ? booking.ticket_sales : [])
   const [clauses, setClauses] = useState<BookingClause[]>([])
   const [selected, setSelected] = useState<number[]>((booking.clauses ?? []).map(c => c.clause_id).filter((x): x is number => x != null))
   const [saving, setSaving] = useState(false)
@@ -115,6 +121,7 @@ function BookingWorkspace({ booking, isAdmin, onChanged }: { booking: BookingCon
     setSaving(true)
     try {
       await updateBookingContract(booking.id, { ...f, ...patch, clauseIds: selected })
+      await setBookingTicketSales(booking.id, sales)
       setSavedMsg(true); setTimeout(() => setSavedMsg(false), 1500)
       onChanged()
     } catch { /* ignore */ }
@@ -126,17 +133,27 @@ function BookingWorkspace({ booking, isAdmin, onChanged }: { booking: BookingCon
   const setStatus = (id: string) => { set({ status: id }); persist({ status: id }) }
   const toggleClause = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
-  const due = computeDue(f)
+  const revenue = salesRevenue(sales)
+  const ticketsTotal = sales.reduce((a, s) => a + nnum(s.tickets), 0)
+  const refundTotal = sales.reduce((a, s) => a + (nnum(s.revenue) - vendorNet(s)), 0)
+  const due = computeDue(f, revenue)
   const deposit = nnum(f.deposit)
   const remaining = Math.max(0, due - deposit)
   const cur = f.currency || 'EUR'
+
+  const addVendor = () => setSales(prev => [...prev, { vendor: '', tickets: '', revenue: '', refund_pct: '', refund_amount: '' }])
+  const setSale = (i: number, patch: Partial<BookingTicketSale>) => setSales(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s))
+  const removeSale = (i: number) => setSales(prev => prev.filter((_, idx) => idx !== i))
+
+  const persistSales = () => setBookingTicketSales(booking.id, sales)
 
   // Rechnung erstellen: erst aktuellen Stand speichern (Beträge werden serverseitig daraus berechnet), dann anlegen.
   const createInv = async (kind: 'deposit' | 'final') => {
     setInvBusy(true)
     try {
       await updateBookingContract(booking.id, { ...f, clauseIds: selected })
-      await createBookingInvoice({ contractId: booking.id, kind, tax_rate: taxRate, service_date: (f as { event_date?: string }).event_date || booking.event_date || undefined })
+      await persistSales()
+      await createBookingInvoice({ contractId: booking.id, kind, tax_rate: taxRate, service_date: booking.event_date || undefined })
       loadInvoices(); onChanged()
     } catch { /* ignore */ }
     setInvBusy(false)
@@ -237,12 +254,35 @@ function BookingWorkspace({ booking, isAdmin, onChanged }: { booking: BookingCon
       {/* Abrechnung (nach der Show) */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>ABRECHNUNG (nach der Show)</legend>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {num('Verkaufte Tickets (Ist)', 'actual_tickets')}
-          {num('Tatsächliche Einnahmen', 'actual_revenue', 'optional – sonst Tickets × Preis')}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Ticket-Händler &amp; Verkäufe</span>
+          {isAdmin && <button onClick={addVendor} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Händler</button>}
         </div>
+        {sales.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Händler erfasst. „Händler" hinzufügen, um Verkäufe (und evtl. Refunds) einzutragen.</p>
+        ) : (
+          <div className="space-y-2">
+            {/* Kopfzeile (Desktop) */}
+            <div className="hidden sm:grid gap-2 text-[10px] font-semibold uppercase tracking-wide px-1" style={{ gridTemplateColumns: '1fr 70px 110px 70px 110px 110px 28px', color: 'var(--text-muted)' }}>
+              <span>Händler</span><span className="text-right">Tickets</span><span className="text-right">Einnahmen</span><span className="text-right">Refund&nbsp;%</span><span className="text-right">Refund&nbsp;€</span><span className="text-right">Netto</span><span></span>
+            </div>
+            {sales.map((s, i) => (
+              <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 70px 110px 70px 110px 110px 28px' }}>
+                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Eventim" value={s.vendor ?? ''} onChange={e => setSale(i, { vendor: e.target.value })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="0" value={s.tickets ?? ''} onChange={e => setSale(i, { tickets: e.target.value })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="0,00" value={s.revenue ?? ''} onChange={e => setSale(i, { revenue: e.target.value })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="0" value={s.refund_pct ?? ''} onChange={e => setSale(i, { refund_pct: e.target.value })} title="Refund in % der Einnahmen" />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="0,00" value={s.refund_amount ?? ''} onChange={e => setSale(i, { refund_amount: e.target.value })} title="Refund als fester Betrag (überschreibt %)" />
+                <span className="text-sm text-right" style={{ color: 'var(--text)' }}>{eur(vendorNet(s), cur)}</span>
+                {isAdmin && <button onClick={() => removeSale(i)} className="p-1 text-gray-400 hover:text-red-600" title="Zeile entfernen"><TrashIcon className="w-4 h-4" /></button>}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="mt-3 rounded-lg p-3 text-sm" style={{ background: 'var(--hover)' }}>
-          <div className="flex justify-between py-0.5"><span style={{ color: 'var(--text-muted)' }}>Einnahmen (Basis)</span><span style={{ color: 'var(--text)' }}>{eur((f.actual_revenue != null && f.actual_revenue !== '') ? nnum(f.actual_revenue) : nnum(f.actual_tickets) * nnum(f.ticket_price), cur)}</span></div>
+          <div className="flex justify-between py-0.5"><span style={{ color: 'var(--text-muted)' }}>Tickets gesamt</span><span style={{ color: 'var(--text)' }}>{ticketsTotal.toLocaleString('de-DE')}</span></div>
+          {refundTotal > 0 && <div className="flex justify-between py-0.5"><span style={{ color: 'var(--text-muted)' }}>Refunds gesamt</span><span style={{ color: 'var(--text)' }}>− {eur(refundTotal, cur)}</span></div>}
+          <div className="flex justify-between py-0.5"><span style={{ color: 'var(--text-muted)' }}>Einnahmen netto (Basis)</span><span style={{ color: 'var(--text)' }}>{eur(revenue, cur)}</span></div>
           <div className="flex justify-between py-0.5"><span style={{ color: 'var(--text-muted)' }}>Honorar (Deal)</span><span style={{ color: 'var(--text)', fontWeight: 600 }}>{eur(due, cur)}</span></div>
           {deposit > 0 && <div className="flex justify-between py-0.5"><span style={{ color: 'var(--text-muted)' }}>abzgl. Anzahlung</span><span style={{ color: 'var(--text)' }}>− {eur(deposit, cur)}</span></div>}
           <div className="flex justify-between py-0.5 border-t mt-1 pt-1" style={{ borderColor: 'var(--border)' }}><span style={{ color: 'var(--text-muted)' }}>Restbetrag (netto)</span><span style={{ color: 'var(--text)', fontWeight: 700 }}>{eur(remaining, cur)}</span></div>
