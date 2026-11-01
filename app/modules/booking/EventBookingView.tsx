@@ -8,7 +8,7 @@ import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   setBookingTicketSales, setBookingCostLines, getBookingSettings,
-  getVenue, getPartner, getTerminPartners, getPartnerTypes,
+  getVenue, updateVenue, getPartner, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
 } from '@/lib/api-client'
@@ -158,6 +158,22 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     loadInvoices()
   }, [loadInvoices, termin.id])
 
+  // Kapazität: eine Quelle = der Venue-Datensatz. Beim Laden aus dem Venue vorbefüllen
+  // (wenn im Booking noch leer); Änderungen hier werden beim Speichern in den Venue
+  // zurückgeschrieben → keine doppelte Pflege. (siehe venueCapRef-Write-back)
+  const venueCapRef = useRef<{ id: string; capacity: string } | null>(null)
+  useEffect(() => {
+    if (!termin.venueId) return
+    let alive = true
+    getVenue(String(termin.venueId)).then(v => {
+      if (!alive) return
+      venueCapRef.current = { id: String(termin.venueId), capacity: v.capacity || '' }
+      if (!(f.capacity ?? '').toString().trim() && v.capacity) set({ capacity: v.capacity })
+    }).catch(() => {})
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termin.venueId])
+
   const set = (patch: Partial<BookingContractInput>) => setF(prev => ({ ...prev, ...patch }))
   const cur = f.currency || 'EUR'
   const deductOwn = f.deduct_own_shop === '1'
@@ -190,6 +206,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
+    // Kapazität in den Venue-Datensatz zurückschreiben (eine Quelle, keine Dopplung).
+    const capNow = ((patch.capacity ?? f.capacity) ?? '').toString().trim()
+    if (venueCapRef.current && capNow && capNow !== venueCapRef.current.capacity) {
+      try {
+        const v = await getVenue(venueCapRef.current.id)
+        await updateVenue(venueCapRef.current.id, { ...v, capacity: capNow })
+        venueCapRef.current.capacity = capNow
+      } catch { /* Venue-Sync ist best effort */ }
+    }
   }
   // ── Auto-Save (debounced) – kein „Speichern"-Knopf mehr nötig ──────────────
   const firstRun = useRef(true)
@@ -364,7 +389,11 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERANSTALTUNG</legend>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {In('Kapazität', 'capacity', 'z.B. 2200')}
+          <div>
+            <label className="form-label">Kapazität</label>
+            <input className="form-input" inputMode="decimal" disabled={!isAdmin} value={(f.capacity as string) ?? ''} onChange={e => set({ capacity: e.target.value })} placeholder="z.B. 2200" />
+            {termin.venueId ? <p className="text-xs mt-0.5" style={{ color: 'var(--text-subtle)' }}>Wird im Venue-Datensatz gespeichert</p> : null}
+          </div>
           <div><label className="form-label">Einlass</label><input type="time" className="form-input" disabled={!isAdmin} value={f.doors_time ?? ''} onChange={e => set({ doors_time: e.target.value })} /></div>
           <div><label className="form-label">Beginn</label><input type="time" className="form-input" disabled={!isAdmin} value={f.show_time ?? ''} onChange={e => set({ show_time: e.target.value })} /></div>
         </div>
