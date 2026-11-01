@@ -10361,10 +10361,23 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
     }
     const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, tenant.id])
     if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
-    const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
+    // Klauseln LIVE aus der Baustein-Bibliothek (aktuellste Version, nicht archiviert),
+    // damit sich der Vertrag bei Änderungen/Neu-Seed automatisch anpasst (kein eingefrorener Snapshot).
+    const clauses = await db.all(
+      `SELECT c.title,
+              (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body
+       FROM booking_clauses c
+       WHERE c.tenant_id=? AND c.archived_at IS NULL
+       ORDER BY c.sort_order, c.id`, [tenant.id])
+    const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
+    const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
     const bset = await getBookingSettings(tenant.id)
     const { generateContractPdf } = require('./generate_contract_pdf')
-    const pdf = await generateContractPdf({ contract, clauses, artist: resolveIssuer(contract, bset, tenant), logoPath: tenant.label_logo_path })
+    const pdf = await generateContractPdf({
+      contract: { ...contract, logoPath: tenant.label_logo_path },
+      clauses, ticketSales, costLines, settings: bset,
+      artist: resolveIssuer(contract, bset, tenant),
+    })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="Vertrag_${contract.contract_no || contract.id}.pdf"`)
     res.send(pdf)

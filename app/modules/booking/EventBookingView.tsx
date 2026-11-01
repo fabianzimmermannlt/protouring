@@ -140,7 +140,6 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   })
   const [showPicker, setShowPicker] = useState(false)
   const [clauses, setClauses] = useState<BookingClause[]>([])
-  const [selected, setSelected] = useState<number[]>((booking.clauses ?? []).map(c => c.clause_id).filter((x): x is number => x != null))
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
@@ -184,7 +183,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
       ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
-    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), clauseIds: selected })
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
   }
@@ -203,11 +202,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // bewusst auf die editierbaren Zustände hören:
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, parties, channels, costs, tiers, selected])
+  }, [f, parties, channels, costs, tiers])
 
   const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
-  const toggleClause = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
   // Kanäle / Nebenkosten
   const addChannel = () => setChannels(p => [...p, { vendor: '', art: 'vvk', money_with: 'promoter', tickets: '', price: '', revenue: '' }])
@@ -397,17 +395,20 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       {/* Vertrag */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERTRAG</legend>
-        {clauses.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Bausteine – unter Booking → Bausteine anlegen.</p>
+        {clauses.filter(c => !c.archived_at).length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Bausteine – unter Booking → Bausteine anlegen (oder „FKP-Standard laden").</p>
         ) : (
-          <div className="space-y-1 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 180, overflowY: 'auto' }}>
-            {clauses.map(c => (
-              <label key={c.id} className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-[var(--hover)]">
-                <input type="checkbox" disabled={!isAdmin} checked={selected.includes(c.id)} onChange={() => toggleClause(c.id)} className="accent-blue-600" />
-                <span className="text-sm" style={{ color: 'var(--text)' }}>{c.title}</span><span className="text-xs" style={{ color: 'var(--text-muted)' }}>v{c.latest_version ?? 1}</span>
-              </label>
-            ))}
-          </div>
+          <>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Diese Bausteine (§§) erscheinen im Vertrag – immer der aktuelle Stand aus <strong>Booking → Bausteine</strong>. Variable Deal-Werte (Gage, Ticketpreise, Refundierung) werden automatisch eingesetzt.</p>
+            <div className="space-y-0.5 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 160, overflowY: 'auto' }}>
+              {clauses.filter(c => !c.archived_at).map((c, i) => (
+                <div key={c.id} className="flex items-center gap-2 px-2 py-0.5 text-sm" style={{ color: 'var(--text)' }}>
+                  <span style={{ color: 'var(--text-subtle)', minWidth: 28 }}>§ {i + 1}</span>
+                  <span>{c.title}</span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
         <div className="mt-3">
           <label className="form-label">Individualvereinbarungen (haben Vorrang)</label>
