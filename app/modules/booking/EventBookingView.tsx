@@ -42,6 +42,15 @@ const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFract
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
 const DEAL_BASE = [{ id: 'gross', label: '% vom Netto-Ticketumsatz' }, { id: 'netprofit', label: '% vom Nettogewinn (nach Kosten)' }]
+const PARTY_ROLES = [
+  { id: 'agency', label: 'Vertretung / Agentur' },
+  { id: 'promoter', label: 'Veranstalter' },
+  { id: 'co_promoter', label: 'Mitveranstalter' },
+  { id: 'venue', label: 'Venue' },
+  { id: 'other', label: 'Sonstige' },
+]
+const roleLabel = (id?: string) => PARTY_ROLES.find(r => r.id === id)?.label ?? 'Beteiligte/r'
+interface Party { role: string; name: string; address: string; email: string; taxid: string }
 
 export default function EventBookingView({ terminId, termin, isAdmin }: { terminId: number; termin: Termin; isAdmin: boolean }) {
   const [booking, setBooking] = useState<BookingContract | null>(null)
@@ -114,6 +123,14 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     if (booking.threshold2 && booking.pct2) base.push({ from: booking.threshold2, pct: booking.pct2 })
     return base
   })
+  const [parties, setParties] = useState<Party[]>(() => {
+    try { const p = booking.parties ? JSON.parse(booking.parties) : null; if (Array.isArray(p) && p.length) return p.map((x: Partial<Party>) => ({ role: x.role ?? 'other', name: x.name ?? '', address: x.address ?? '', email: x.email ?? '', taxid: x.taxid ?? '' })) } catch { /* */ }
+    const list: Party[] = []
+    if (booking.rep_name) list.push({ role: 'agency', name: booking.rep_name, address: booking.rep_address ?? '', email: '', taxid: '' })
+    if (booking.partner_name) list.push({ role: 'promoter', name: booking.partner_name, address: booking.partner_address ?? '', email: booking.partner_email ?? '', taxid: '' })
+    return list
+  })
+  const [expandedParty, setExpandedParty] = useState<Set<number>>(new Set())
   const [clauses, setClauses] = useState<BookingClause[]>([])
   const [selected, setSelected] = useState<number[]>((booking.clauses ?? []).map(c => c.clause_id).filter((x): x is number => x != null))
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
@@ -138,7 +155,17 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const nextStatus = curIdx >= 0 && curIdx < BOOKING_STATUSES.length - 1 ? BOOKING_STATUSES[curIdx + 1] : null
 
   const saveEverything = async (patch: Partial<BookingContractInput> = {}) => {
-    await updateBookingContract(booking.id, { ...f, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), clauseIds: selected })
+    // Agentur/Veranstalter aus der Parteien-Liste in die Bestandsfelder spiegeln (PDF/Rechnung).
+    const agency = parties.find(p => p.role === 'agency')
+    const promoter = parties.find(p => p.role === 'promoter') || parties.find(p => p.role === 'co_promoter')
+    const venue = parties.find(p => p.role === 'venue')
+    const sync: Partial<BookingContractInput> = {
+      parties: JSON.stringify(parties.filter(p => p.name || p.address)),
+      rep_name: agency?.name ?? '', rep_address: agency?.address ?? '',
+      partner_name: promoter?.name ?? '', partner_address: promoter?.address ?? '', partner_email: promoter?.email ?? '',
+      ...(venue ? { event_venue: venue.name, venue_address: venue.address } : {}),
+    }
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), clauseIds: selected })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
   }
@@ -161,6 +188,18 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
   const rmTier = (i: number) => setTiers(p => p.filter((_, idx) => idx !== i))
+  // Parteien
+  const addParty = (role = 'other') => { setParties(p => { setExpandedParty(new Set([p.length])); return [...p, { role, name: '', address: '', email: '', taxid: '' }] }) }
+  const setParty = (i: number, patch: Partial<Party>) => setParties(p => p.map((x, idx) => idx === i ? { ...x, ...patch } : x))
+  const rmParty = (i: number) => setParties(p => p.filter((_, idx) => idx !== i))
+  const toggleParty = (i: number) => setExpandedParty(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n })
+  const fillFromEvent = async () => {
+    const built: Party[] = []
+    if (settings?.rep_name) built.push({ role: 'agency', name: settings.rep_name, address: settings.rep_address ?? '', email: '', taxid: '' })
+    try { if (termin.partnerId) { const p = await getPartner(String(termin.partnerId)); built.push({ role: 'promoter', name: p.companyName || '', address: [p.street, [p.postalCode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join('\n'), email: p.email || '', taxid: p.taxId || '' }) } } catch { /* */ }
+    try { if (termin.venueId) { const v = await getVenue(String(termin.venueId)); built.push({ role: 'venue', name: v.name || '', address: [v.street, [v.postalCode, v.city].filter(Boolean).join(' '), v.country].filter(Boolean).join('\n'), email: '', taxid: '' }) } } catch { /* */ }
+    if (built.length) { setParties(built); setExpandedParty(new Set()) }
+  }
 
   const createInv = async (kind: 'deposit' | 'final') => {
     setInvBusy(true)
@@ -208,16 +247,38 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>PARTEIEN</legend>
         <div className="flex items-center justify-between mb-2 gap-3">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kette z. B.: Artist → Vertretung (Agentur) → Vertragspartner (lokaler Veranstalter) → Venue. Felder optional.</p>
-          {isAdmin && <button onClick={async () => { const p = await partiesFromEvent(termin, settings); set(p); }} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}>Aus Event übernehmen</button>}
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kette, z. B.: Artist → Vertretung → Veranstalter → Venue. Zeile antippen zum Auf-/Zuklappen.</p>
+          {isAdmin && <div className="flex gap-2"><button onClick={fillFromEvent} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}>Aus Event</button><button onClick={() => addParty('promoter')} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Partei</button></div>}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label className="form-label">Vertretung / Agentur</label><input className="form-input" disabled={!isAdmin} value={f.rep_name ?? ''} onChange={e => set({ rep_name: e.target.value })} placeholder="z. B. FKP Scorpio" /></div>
-          <div><label className="form-label">Adresse Vertretung</label><input className="form-input" disabled={!isAdmin} value={f.rep_address ?? ''} onChange={e => set({ rep_address: e.target.value })} /></div>
-          <div><label className="form-label">Vertragspartner (Veranstalter)</label><input className="form-input" disabled={!isAdmin} value={f.partner_name ?? ''} onChange={e => set({ partner_name: e.target.value })} placeholder="z. B. Friendly Fire B.V." /></div>
-          <div><label className="form-label">E-Mail Veranstalter</label><input className="form-input" disabled={!isAdmin} value={f.partner_email ?? ''} onChange={e => set({ partner_email: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className="form-label">Adresse Veranstalter</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.partner_address ?? ''} onChange={e => set({ partner_address: e.target.value })} /></div>
-        </div>
+        {parties.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Parteien. „Aus Event" übernimmt Veranstalter + Venue automatisch.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {parties.map((p, i) => {
+              const open = expandedParty.has(i)
+              return (
+                <div key={i} className="border rounded-lg" style={{ borderColor: 'var(--border)' }}>
+                  <button onClick={() => toggleParty(i)} className="w-full flex items-center gap-2 px-3 py-2 text-left" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>{roleLabel(p.role)}</span>
+                    <span className="text-sm truncate" style={{ color: 'var(--text)', fontWeight: 500 }}>{p.name || <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>— ohne Namen —</span>}</span>
+                    <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>{open ? '▲' : '▼'}</span>
+                  </button>
+                  {open && (
+                    <div className="px-3 pb-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                      <div><label className="form-label">Rolle</label>
+                        <select className="form-select" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>{PARTY_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></div>
+                      <div><label className="form-label">Name / Firma</label><input className="form-input" disabled={!isAdmin} value={p.name} onChange={e => setParty(i, { name: e.target.value })} /></div>
+                      <div><label className="form-label">E-Mail</label><input className="form-input" disabled={!isAdmin} value={p.email} onChange={e => setParty(i, { email: e.target.value })} /></div>
+                      <div><label className="form-label">USt-IdNr./St-Nr.</label><input className="form-input" disabled={!isAdmin} value={p.taxid} onChange={e => setParty(i, { taxid: e.target.value })} /></div>
+                      <div className="sm:col-span-2"><label className="form-label">Adresse</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={p.address} onChange={e => setParty(i, { address: e.target.value })} /></div>
+                      {isAdmin && <div className="sm:col-span-2 flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Partei entfernen</button></div>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </fieldset>
 
       {/* Deal */}

@@ -3893,6 +3893,7 @@ export interface BookingContract {
   rep_address?: string | null
   venue_address?: string | null
   individual_terms?: string | null
+  parties?: string | null   // JSON: [{role,name,address,email,taxid}, …]
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
