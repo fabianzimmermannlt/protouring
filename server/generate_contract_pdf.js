@@ -74,6 +74,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       datum: dateDE(c.event_date) || '—',
       partner: c.partner_name || '—',
       artist: artistName,
+      agentur: c.rep_name || 'die den Artist vertretende Gesellschaft',
     };
 
     const ensureSpace = (need) => { if (doc.y > PAGE_H - MARGIN - need) doc.addPage(); };
