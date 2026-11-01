@@ -85,6 +85,8 @@ function generateContractPdf({ contract: c, clauses = [], artist = {} }) {
       [artist.postalCode, artist.city].filter(Boolean).join(' '),
       artist.taxId ? `USt-IdNr./St.-Nr.: ${artist.taxId}` : null,
       artist.email,
+      c.rep_name ? `vertreten durch ${c.rep_name}` : null,
+      c.rep_name ? c.rep_address : null,
     ];
     const leftEndY = (() => { party(MARGIN, 'KÜNSTLER / AUFTRAGNEHMER', artistLines); return doc.y; })();
     const partnerLines = [c.partner_name, c.partner_address, c.partner_email];
@@ -143,6 +145,16 @@ function generateContractPdf({ contract: c, clauses = [], artist = {} }) {
           .text(fillPlaceholders(cl.body, placeholders) || ' ', MARGIN, doc.y, { width: CONTENT_W, lineGap: 2 });
         doc.moveDown(0.8);
       });
+    }
+
+    // ── Individualvereinbarungen (haben Vorrang) ──
+    if (c.individual_terms) {
+      if (doc.y > PAGE_H - MARGIN - 90) doc.addPage();
+      doc.font(FONT_BOLD).fontSize(10.5).fillColor('#111827').text('Individualvereinbarungen', MARGIN, doc.y, { width: CONTENT_W });
+      doc.font(FONT_REG).fontSize(8).fillColor('#6b7280').text('(haben gemäß Schlussbestimmungen Vorrang vor den vorstehenden Bausteinen)', MARGIN, doc.y, { width: CONTENT_W });
+      doc.moveDown(0.2);
+      doc.font(FONT_REG).fontSize(10).fillColor('#1f2937').text(String(c.individual_terms), MARGIN, doc.y, { width: CONTENT_W, lineGap: 2 });
+      doc.moveDown(0.8);
     }
 
     // ── Notizen ──

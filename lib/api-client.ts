@@ -3888,6 +3888,10 @@ export interface BookingContract {
   issuer_taxid?: string | null
   issuer_email?: string | null
   issuer_phone?: string | null
+  rep_name?: string | null
+  rep_address?: string | null
+  venue_address?: string | null
+  individual_terms?: string | null
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
@@ -3950,6 +3954,11 @@ export async function archiveBookingClause(id: number, archived: boolean): Promi
 }
 export async function deleteBookingClause(id: number): Promise<void> {
   await request(`/api/booking/clauses/${id}`, { method: 'DELETE' })
+}
+/** FKP-Standardbausteine für den aktuellen Tenant anlegen (überspringt vorhandene Titel). */
+export async function seedFkpClauses(): Promise<number> {
+  const res = await request<{ created: number }>('/api/booking/clauses/seed-fkp', { method: 'POST' })
+  return res.created
 }
 
 export async function getBookingContracts(): Promise<BookingContract[]> {

@@ -65,7 +65,9 @@ export default function EventBookingView({ terminId, termin, isAdmin }: { termin
 function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: BookingContract; settings: BookingSettings | null; isAdmin: boolean; onChanged: () => void }) {
   const [f, setF] = useState<BookingContractInput>(() => ({
     status: booking.status, currency: booking.currency ?? 'EUR',
+    rep_name: booking.rep_name ?? '', rep_address: booking.rep_address ?? '',
     partner_name: booking.partner_name ?? '', partner_address: booking.partner_address ?? '', partner_email: booking.partner_email ?? '',
+    individual_terms: booking.individual_terms ?? '',
     deal_type: booking.deal_type ?? 'vs', deal_base: booking.deal_base ?? 'gross',
     guarantee: booking.guarantee ?? '', pct1: booking.pct1 ?? '', threshold2: booking.threshold2 ?? '', pct2: booking.pct2 ?? '',
     promoter_costs: booking.promoter_costs ?? '', deposit: booking.deposit ?? '', payment_terms: booking.payment_terms ?? '',
@@ -166,13 +168,16 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
         {isAdmin && nextStatus && <button onClick={goNext} className="btn btn-primary ml-2" style={{ padding: '6px 12px' }}>{nextStatus.label} <ArrowRightIcon className="w-4 h-4" /></button>}
       </div>
 
-      {/* Veranstalter */}
+      {/* Parteien */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
-        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERANSTALTER</legend>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>PARTEIEN</legend>
+        <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Kette z. B.: Artist → Vertretung (Agentur) → Vertragspartner (lokaler Veranstalter) → Venue. Felder optional – leer lassen, was nicht zutrifft.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label className="form-label">Name / Firma</label><input className="form-input" disabled={!isAdmin} value={f.partner_name ?? ''} onChange={e => set({ partner_name: e.target.value })} /></div>
-          <div><label className="form-label">E-Mail</label><input className="form-input" disabled={!isAdmin} value={f.partner_email ?? ''} onChange={e => set({ partner_email: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label className="form-label">Adresse</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.partner_address ?? ''} onChange={e => set({ partner_address: e.target.value })} /></div>
+          <div><label className="form-label">Vertretung / Agentur</label><input className="form-input" disabled={!isAdmin} value={f.rep_name ?? ''} onChange={e => set({ rep_name: e.target.value })} placeholder="z. B. FKP Scorpio" /></div>
+          <div><label className="form-label">Adresse Vertretung</label><input className="form-input" disabled={!isAdmin} value={f.rep_address ?? ''} onChange={e => set({ rep_address: e.target.value })} /></div>
+          <div><label className="form-label">Vertragspartner (Veranstalter)</label><input className="form-input" disabled={!isAdmin} value={f.partner_name ?? ''} onChange={e => set({ partner_name: e.target.value })} placeholder="z. B. Friendly Fire B.V." /></div>
+          <div><label className="form-label">E-Mail Veranstalter</label><input className="form-input" disabled={!isAdmin} value={f.partner_email ?? ''} onChange={e => set({ partner_email: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label className="form-label">Adresse Veranstalter</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.partner_address ?? ''} onChange={e => set({ partner_address: e.target.value })} /></div>
         </div>
       </fieldset>
 
@@ -210,6 +215,10 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
             ))}
           </div>
         )}
+        <div className="mt-3">
+          <label className="form-label">Individualvereinbarungen (haben Vorrang)</label>
+          <textarea className="form-input" rows={3} disabled={!isAdmin} value={f.individual_terms ?? ''} onChange={e => set({ individual_terms: e.target.value })} placeholder="Abweichungen/Zusätze, die mit der Gegenpartei vereinbart wurden – z. B. handschriftliche Änderungen aus der Verhandlung." />
+        </div>
         <button onClick={() => openBookingContractPdf(booking.id)} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />Vertrag-PDF</button>
       </fieldset>
 

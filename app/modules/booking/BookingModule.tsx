@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import {
-  getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions,
+  getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
   getBookingSettings, updateBookingSettings,
@@ -68,7 +68,10 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Vertragsbausteine</h2>
         {canEdit && !showArchived && (
-          <button onClick={() => setModal({ clause: null })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
+          <div className="flex gap-2">
+            <button onClick={async () => { if (!confirm('FKP-Standardbausteine anlegen? (bereits vorhandene Titel werden übersprungen)')) return; const n = await seedFkpClauses(); alert(`${n} Baustein(e) angelegt.`); load() }} className="btn btn-ghost">FKP-Standard laden</button>
+            <button onClick={() => setModal({ clause: null })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
+          </div>
         )}
       </div>
       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>

@@ -2177,7 +2177,8 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN art TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN money_with TEXT`); } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
-  for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone']) {
+  for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
+    'rep_name','rep_address','venue_address','individual_terms']) {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
@@ -9916,6 +9917,41 @@ app.post('/api/booking/clauses', authenticateToken, requireTenant, async (req, r
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Standard-Vertragsbausteine (an den FKP „Konzertvertrag / Local Contract" angelehnt).
+// Bewusst als anpassbarer Entwurf – Titel + Struktur fix, Volltext vom Nutzer finalisierbar.
+// Platzhalter: {{artist}} {{partner}} {{venue}} {{stadt}} {{datum}} {{gage}} {{deal}} {{ticketpreis}} {{anzahlung}}
+const FKP_STANDARD_CLAUSES = [
+  { title: 'Gegenstand des Vertrags', body: 'Gegenstand dieses Vertrags ist der Auftritt von {{artist}} beim Konzert am {{datum}} in {{stadt}}, {{venue}}. Veranstalter dieses Konzerts ist {{partner}}. Einlass und Beginn sowie weitere Details ergeben sich aus diesem Vertrag und seinen Anlagen (u. a. Stage Rider / Artist Rider), die integraler Bestandteil dieses Vertrags sind.' },
+  { title: 'Pflichten des Artists', body: 'Der Artist tritt beim Konzert mit seiner Auftrittsproduktion auf. Der Artist ist in Gestaltung, Durchführung und Präsentation der Auftrittsproduktion frei und nicht an Weisungen des Veranstalters oder Dritter gebunden. Der Artist stellt – soweit verfügbar – Promotionmaterial auf nicht-exklusiver Basis zur Verfügung (insbesondere Fotos inkl. Urheberrechtsnachweisen, Informationen, Biografien, Texte sowie Audio-/audiovisuelle Inhalte) ausschließlich zur Bewerbung des Konzerts.' },
+  { title: 'Pflichten des Veranstalters', body: 'Der Veranstalter stellt auf eigene Kosten die für die Durchführung des Konzerts erforderlichen Leistungen bereit, insbesondere P.A.- und Lichttechnik (soweit nicht von der Auftrittsproduktion umfasst), Beauftragung eines Sicherheits- und Ordnungsdienstes sowie Catering. Der Veranstalter holt alle erforderlichen Erlaubnisse und Genehmigungen rechtzeitig ein und trägt die damit verbundenen Kosten und Abgaben (u. a. GEMA, KSK, Ausländersteuer, soweit einschlägig).' },
+  { title: 'Vergütung', body: 'Der Artist erhält eine Produktionskostengarantie von {{gage}} zzgl. gesetzlicher Umsatzsteuer, abgerechnet nach dem vereinbarten Deal ({{deal}}). Eine etwaige Beteiligung/Refundierung sowie Nebenkosten (z. B. Buyouts) werden gemäß Abrechnung berücksichtigt. Eine Anzahlung in Höhe von {{anzahlung}} zzgl. USt ist gegen Rechnung im Voraus zu leisten; der Restbetrag ist unmittelbar nach dem Konzert gegen Rechnung zahlbar. Zahlungen erfolgen auf das vom Artist benannte Konto.' },
+  { title: 'Ticketing & Einnahmeszenario', body: 'Die Ticketpreise und das Einnahmeszenario werden zwischen den Parteien gesondert vereinbart (siehe Abrechnung). Der Grundpreis beträgt {{ticketpreis}}. Der Veranstalter legt den Artist bzw. dessen Vertretung als Mitveranstalter im Ticketsystem frei. Herstellung und Ausgabe von Hardtickets bedürfen der vorherigen schriftlichen Zustimmung des Artists. Dem Veranstalter stehen kostenfrei mindestens 20 und maximal 3 % der Zutrittsberechtigungen als Freikarten zu; darüber hinaus bedarf es der vorherigen schriftlichen Zustimmung des Artists.' },
+  { title: 'Ticketverkauf & Abrechnung', body: 'Der Veranstalter führt den Ticketverkauf ordnungsgemäß durch und legt auf Anforderung die Original-Abschlussrapporte sowie – bei zugelassenen Hardtickets – Original-Lieferschein und Original-Resttickets vor. Die Abrechnung erfolgt unverzüglich nach dem Konzert auf Basis der tatsächlich erzielten Einnahmen.' },
+  { title: 'Marketing', body: 'Der Veranstalter bewirbt das Konzert auf eigene Kosten in angemessenem Umfang (u. a. Online, Social Media, ggf. Out-of-Home). Der Artist bzw. dessen Vertretung kann Einblick in den Marketingplan verlangen. Die Verwendung von Name und Logo des Artists ist ausschließlich zur Bewerbung dieses Konzerts gestattet.' },
+  { title: 'Höhere Gewalt / Absage', body: 'Kann das Konzert aufgrund höherer Gewalt oder aus einem von keiner Partei zu vertretenden Grund nicht stattfinden, informieren sich die Parteien unverzüglich und stimmen das weitere Vorgehen ab. Ansprüche wegen Nichtdurchführung sind in diesen Fällen – vorbehaltlich zwingender gesetzlicher Regelungen – ausgeschlossen. Bei Open-Air-Veranstaltungen stellen wetterbedingte Absagen regelmäßig kein unvorhersehbares Ereignis dar.' },
+  { title: 'Haftung und Freistellung', body: 'Die Haftung der Parteien ist – vorbehaltlich der folgenden Regelungen – ausgeschlossen. Unberührt bleibt die Haftung für Vorsatz und grobe Fahrlässigkeit, für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit sowie nach dem Produkthaftungsgesetz. Bei einfacher Fahrlässigkeit wird nur bei Verletzung wesentlicher Vertragspflichten und begrenzt auf den vertragstypischen, vorhersehbaren Schaden gehaftet. Der Veranstalter stellt den Artist von Ansprüchen Dritter frei, die aus der Durchführung der Veranstaltung entstehen.' },
+  { title: 'Verhaltensregeln', body: 'Rassistische, sexistische, homophobe, faschistische oder sonst diskriminierende oder gewaltverherrlichende Inhalte und Verhaltensweisen sind im Rahmen der Veranstaltung untersagt. Die Parteien wirken auf einen diskriminierungsfreien, sicheren Veranstaltungsrahmen hin.' },
+  { title: 'Geheimhaltung', body: 'Die Parteien behandeln die Inhalte dieses Vertrags sowie alle im Zusammenhang mit der Zusammenarbeit erlangten Informationen vertraulich und machen sie Dritten nicht zugänglich, soweit dies nicht zur Durchführung des Konzerts erforderlich oder gesetzlich geboten ist.' },
+  { title: 'Schlussbestimmungen', body: 'Änderungen und Ergänzungen dieses Vertrags bedürfen der Textform. Individualvereinbarungen haben stets Vorrang. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Vertrag im Übrigen wirksam. Dieser Vertrag unterliegt dem Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts (CISG) und des Kollisionsrechts. Gerichtsstand ist – soweit zulässig – der Sitz der den Artist vertretenden Gesellschaft.' },
+]
+
+// POST /api/booking/clauses/seed-fkp — FKP-Standardbausteine anlegen (überspringt bereits vorhandene Titel)
+app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const existing = await db.all('SELECT title FROM booking_clauses WHERE tenant_id=?', [req.tenant.id])
+    const have = new Set(existing.map(e => (e.title || '').trim().toLowerCase()))
+    let created = 0, order = existing.length
+    for (const c of FKP_STANDARD_CLAUSES) {
+      if (have.has(c.title.trim().toLowerCase())) continue
+      const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order) VALUES (?,?,?)', [req.tenant.id, c.title, order++])
+      await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)', [req.tenant.id, r.lastID, 1, c.body, req.user.id])
+      created++
+    }
+    res.json({ ok: true, created })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // PUT /api/booking/clauses/:id — Titel ändern und/oder NEUE Version anlegen (alte bleibt erhalten)
 app.put('/api/booking/clauses/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
@@ -10058,7 +10094,8 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
 
 const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
   'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
-  'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone']
+  'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
+  'rep_name','rep_address','venue_address','individual_terms']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 
