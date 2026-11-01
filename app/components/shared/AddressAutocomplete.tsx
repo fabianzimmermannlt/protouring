@@ -188,13 +188,10 @@ export function NameAddressAutocomplete({
     }
   }, [open, suggestions.length, updateMenuPos])
 
-  const labelClass = variant === 'modal'
-    ? 'form-label'
-    : 'block text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-0.5'
-
-  const inputClass = variant === 'modal'
-    ? 'form-input w-full'
-    : 'w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-white'
+  // Inline-Variante nutzt die gleichen Detail-Feld-Klassen wie alle anderen Felder
+  // (konsistentes, theme-fähiges Aussehen; kein abweichender Rahmen / keine Rundung).
+  const labelClass = variant === 'modal' ? 'form-label' : 'detail-label'
+  const inputClass = variant === 'modal' ? 'form-input w-full' : 'detail-input w-full'
 
   return (
     <div ref={containerRef} className="relative">
