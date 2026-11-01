@@ -205,11 +205,13 @@ const ARTIST_FORM_EMPTY: ArtistForm = {
 function ArtistSettings() {
   const t = useT()
   const [form, setFormState] = useState<ArtistForm>(ARTIST_FORM_EMPTY)
-  const [isDirty, setIsDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
   const [loading, setLoading] = useState(true)
   const originalRef = useRef<ArtistForm>(ARTIST_FORM_EMPTY)
+  const formRef = useRef<ArtistForm>(ARTIST_FORM_EMPTY)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  formRef.current = form
 
   useEffect(() => {
     Promise.all([
@@ -239,54 +241,67 @@ function ArtistSettings() {
   }, [])
 
   const set = (k: keyof ArtistForm, v: string) => {
-    const next = { ...form, [k]: v }
-    setFormState(next)
-    const dirty = (Object.keys(originalRef.current) as (keyof ArtistForm)[])
-      .some(key => next[key] !== originalRef.current[key])
-    setIsDirty(dirty)
+    setFormState(prev => ({ ...prev, [k]: v }))
   }
 
-  const cancelEdit = () => {
-    setFormState({ ...originalRef.current })
-    setIsDirty(false)
+  // Schreibt den aktuellen Formularstand weg (Artist + Format/Region).
+  const saveNow = async (data: ArtistForm): Promise<boolean> => {
     setSaveError('')
-  }
-
-  const saveEdit = async (): Promise<boolean> => {
-    setSaving(true); setSaveError('')
     try {
       await Promise.all([
         updateTenantArtistSettings({
-          displayName: form.displayName, shortCode: form.shortCode,
-          homebase: form.homebase, genre: form.genre,
-          email: form.artistEmail, phone: form.artistPhone,
-          website: form.website, equipmentKuerzel: '',
-          artistStreet: form.artistStreet, artistPostalCode: form.artistPostalCode,
-          artistCity: form.artistCity, artistCountry: form.artistCountry, artistTaxId: form.artistTaxId,
+          displayName: data.displayName, shortCode: data.shortCode,
+          homebase: data.homebase, genre: data.genre,
+          email: data.artistEmail, phone: data.artistPhone,
+          website: data.website, equipmentKuerzel: '',
+          artistStreet: data.artistStreet, artistPostalCode: data.artistPostalCode,
+          artistCity: data.artistCity, artistCountry: data.artistCountry, artistTaxId: data.artistTaxId,
         }),
         updateUserFormat({
-          language: form.language, timezone: form.timezone, currency: form.currency,
+          language: data.language, timezone: data.timezone, currency: data.currency,
         }),
       ])
-      originalRef.current = { ...form }
-      setIsDirty(false)
+      originalRef.current = { ...data }
       window.dispatchEvent(new CustomEvent('artistUpdated'))
       return true
     } catch (e) {
       setSaveError((e as Error).message || t('general.error'))
       return false
-    } finally { setSaving(false) }
+    }
   }
 
+  // Auto-Save: 800 ms nach der letzten Änderung automatisch speichern.
+  const isDirty = (Object.keys(originalRef.current) as (keyof ArtistForm)[])
+    .some(key => form[key] !== originalRef.current[key])
+  useEffect(() => {
+    if (loading || !isDirty) return
+    setAutoState('pending')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      setAutoState('saving')
+      const ok = await saveNow(formRef.current)
+      setAutoState(ok ? 'saved' : 'error')
+    }, 800)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, loading])
+
+  // Dirty-Guard: bei Navigation offene Änderungen sofort flushen.
   useEffect(() => {
     ;(window as any).__pt_isDirty = isDirty
     return () => { ;(window as any).__pt_isDirty = false }
   }, [isDirty])
 
   useEffect(() => {
-    ;(window as any).__pt_save = saveEdit
+    ;(window as any).__pt_save = async () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      setAutoState('saving')
+      const ok = await saveNow(formRef.current)
+      setAutoState(ok ? 'saved' : 'error')
+      return ok
+    }
     return () => { ;(window as any).__pt_save = null }
-  })
+  }, [])
 
   if (loading) return (
     <div className="flex items-center gap-2 text-gray-500 text-sm py-8">
@@ -297,22 +312,17 @@ function ArtistSettings() {
   return (
     <div className="module-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      {/* Header + dirty state */}
+      {/* Header + Auto-Save-Status */}
       <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
         <h1 style={{ color: 'var(--text)', fontSize: '17px', fontWeight: 600 }}>Artist</h1>
-        {isDirty && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>Ungespeicherte Änderungen</span>
-            <button onClick={cancelEdit}
-              style={{ padding: '5px 12px', fontSize: '13px', color: '#b0b0b0', background: 'none', border: '1px solid #555', borderRadius: 0, cursor: 'pointer' }}>
-              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
-            </button>
-            <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-              {t('general.save')}
-            </button>
-          </div>
+        {autoState !== 'idle' && (
+          <span className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: autoState === 'error' ? 'var(--danger)' : 'var(--text-muted)' }}>
+            {(autoState === 'saving' || autoState === 'pending') && <Loader2 className="w-3 h-3 animate-spin" />}
+            {autoState === 'saving' || autoState === 'pending' ? 'Speichert automatisch…'
+              : autoState === 'saved' ? '✓ Automatisch gespeichert'
+              : autoState === 'error' ? '⚠ Speichern fehlgeschlagen'
+              : ''}
+          </span>
         )}
       </div>
 
