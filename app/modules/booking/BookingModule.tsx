@@ -6,10 +6,10 @@ import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
-  getBookingSettings, updateBookingSettings, getTenantBilling,
+  getBookingSettings, updateBookingSettings, getTenantArtistSettings,
   getEquipmentSettings, uploadEquipmentLogo, deleteEquipmentLogo, API_BASE,
   getTermine, getEffectiveRole, canEdit as canEditArea,
-  type TenantBilling,
+  type TenantArtistSettings,
   type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type BookingSettings, type Termin,
 } from '@/lib/api-client'
 
@@ -482,20 +482,21 @@ function InvoicesTab() {
 // ═══════════════════════════════════════════════════════════════════════════
 function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
   const [s, setS] = useState<BookingSettings | null>(null)
-  const [billing, setBilling] = useState<TenantBilling | null>(null)
+  const [artist, setArtist] = useState<TenantArtistSettings | null>(null)
   const [logoPath, setLogoPath] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
   useEffect(() => {
     getBookingSettings().then(setS).catch(() => {})
-    getTenantBilling().then(setBilling).catch(() => {})
+    getTenantArtistSettings().then(setArtist).catch(() => {})
     getEquipmentSettings().then(st => setLogoPath(st.label_logo_path ?? null)).catch(() => {})
   }, [])
   const logoUrl = logoPath ? `${API_BASE}/uploads/${(logoPath.split('/uploads/')[1] ?? '')}` : null
   const onLogo = async (file: File | undefined) => { if (!file) return; try { const r = await uploadEquipmentLogo(file); setLogoPath(r.label_logo_path) } catch { /* */ } }
   const removeLogo = async () => { try { await deleteEquipmentLogo(); setLogoPath(null) } catch { /* */ } }
   if (!s) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
-  const billingComplete = !!(billing && (billing.company || billing.lastName) && billing.address && billing.city)
+  const artistName = artist?.displayName || artist?.name || ''
+  const artistComplete = !!(artist && artistName && artist.artistStreet && artist.artistCity)
   const set = (p: Partial<BookingSettings>) => setS(prev => prev ? { ...prev, ...p } : prev)
   const save = async () => { setSaving(true); try { const r = await updateBookingSettings(s); setS(r); setMsg('Gespeichert.'); setTimeout(() => setMsg(''), 1500) } catch { /* */ } setSaving(false) }
   const Fld = (label: string, key: keyof BookingSettings, ph = '') => (
@@ -551,20 +552,20 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>RECHNUNGSSTELLER (Standard)</legend>
         <select className="form-select" disabled={!canEdit} value={s.issuer_mode || 'tenant'} onChange={e => set({ issuer_mode: e.target.value })} style={{ maxWidth: 360 }}>
-          <option value="tenant">Band / Artist (Rechnungsanschrift aus Konto)</option>
+          <option value="tenant">Band / Artist (Anschrift aus Artist-Einstellungen)</option>
           <option value="custom">Abweichend (z. B. Agentur)</option>
         </select>
         {s.issuer_mode !== 'custom' && (
           <div className="mt-3 rounded p-3 text-sm" style={{ background: 'var(--hover)' }}>
-            {billingComplete ? (
+            {artistComplete ? (
               <>
-                <div className="font-medium" style={{ color: 'var(--text)' }}>{billing?.company || [billing?.firstName, billing?.lastName].filter(Boolean).join(' ')}</div>
-                <div style={{ color: 'var(--text-muted)' }}>{[billing?.address, [billing?.postalCode, billing?.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>
-                {billing?.taxId && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>USt-IdNr./St-Nr.: {billing.taxId}</div>}
-                <div className="mt-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>Aus Einstellungen → Konto → Rechnungsanschrift. Dort bearbeiten.</div>
+                <div className="font-medium" style={{ color: 'var(--text)' }}>{artistName}</div>
+                <div style={{ color: 'var(--text-muted)' }}>{[artist?.artistStreet, [artist?.artistPostalCode, artist?.artistCity].filter(Boolean).join(' '), artist?.artistCountry].filter(Boolean).join(', ')}</div>
+                {artist?.artistTaxId && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>USt-IdNr./St-Nr.: {artist.artistTaxId}</div>}
+                <div className="mt-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>Aus Einstellungen → Artist → Anschrift. Dort bearbeiten.</div>
               </>
             ) : (
-              <div style={{ color: 'var(--accent)' }}>⚠ Keine vollständige Rechnungsanschrift hinterlegt – der Artist erscheint auf Vertrag/Rechnung nur mit Namen. Bitte unter <strong>Einstellungen → Konto → Rechnungsanschrift</strong> ausfüllen (Firma, Straße, PLZ, Ort, USt-IdNr.).</div>
+              <div style={{ color: 'var(--accent)' }}>⚠ Keine vollständige Artist-Anschrift hinterlegt – der Artist erscheint auf Vertrag/Rechnung nur mit Namen. Bitte unter <strong>Einstellungen → Artist → Anschrift</strong> ausfüllen (Straße, PLZ, Ort, USt-IdNr.).</div>
             )}
           </div>
         )}

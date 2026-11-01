@@ -192,12 +192,14 @@ type ArtistForm = {
   language: string; timezone: string; currency: string
   displayName: string; shortCode: string; homebase: string; genre: string
   website: string; artistEmail: string; artistPhone: string
+  artistStreet: string; artistPostalCode: string; artistCity: string; artistCountry: string; artistTaxId: string
 }
 
 const ARTIST_FORM_EMPTY: ArtistForm = {
   language: 'de-DE', timezone: 'Europe/Berlin', currency: 'EUR',
   displayName: '', shortCode: '', homebase: '', genre: '',
   website: '', artistEmail: '', artistPhone: '',
+  artistStreet: '', artistPostalCode: '', artistCity: '', artistCountry: '', artistTaxId: '',
 }
 
 function ArtistSettings() {
@@ -225,6 +227,11 @@ function ArtistSettings() {
         website:      artist?.website     || '',
         artistEmail:  artist?.email       || '',
         artistPhone:  artist?.phone       || '',
+        artistStreet:     artist?.artistStreet     || '',
+        artistPostalCode: artist?.artistPostalCode || '',
+        artistCity:       artist?.artistCity       || '',
+        artistCountry:    artist?.artistCountry    || '',
+        artistTaxId:      artist?.artistTaxId      || '',
       }
       setFormState(data)
       originalRef.current = data
@@ -254,6 +261,8 @@ function ArtistSettings() {
           homebase: form.homebase, genre: form.genre,
           email: form.artistEmail, phone: form.artistPhone,
           website: form.website, equipmentKuerzel: '',
+          artistStreet: form.artistStreet, artistPostalCode: form.artistPostalCode,
+          artistCity: form.artistCity, artistCountry: form.artistCountry, artistTaxId: form.artistTaxId,
         }),
         updateUserFormat({
           language: form.language, timezone: form.timezone, currency: form.currency,
@@ -343,6 +352,25 @@ function ArtistSettings() {
             <FPField label={t('settings.artist.homebase')} value={form.homebase} onChange={v => set('homebase', v)} placeholder={t('settings.artist.homebasePlaceholder')} />
             <FPField label={t('settings.artist.genre')} value={form.genre} onChange={v => set('genre', v)} placeholder={t('settings.artist.genrePlaceholder')} />
           </div>
+        </div>
+      </div>
+
+      {/* Anschrift des Artists – erscheint als Rechnungssteller auf Vertrag, Abrechnung & Rechnung (Booking) */}
+      <div className="pt-card">
+        <div className="pt-card-header"><span className="pt-card-title">Anschrift</span></div>
+        <div className="pt-card-body space-y-3">
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+            Diese Anschrift des Artists erscheint im Booking als Absender/Rechnungssteller auf Vertrag, Abrechnung und Rechnung.
+          </p>
+          <FPField label="Straße & Nr." value={form.artistStreet} onChange={v => set('artistStreet', v)} placeholder="z. B. Musikerweg 12" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <FPField label="PLZ" value={form.artistPostalCode} onChange={v => set('artistPostalCode', v)} placeholder="12345" />
+            <div className="md:col-span-2">
+              <FPField label="Ort" value={form.artistCity} onChange={v => set('artistCity', v)} placeholder="Berlin" />
+            </div>
+          </div>
+          <FPField label="Land" value={form.artistCountry} onChange={v => set('artistCountry', v)} placeholder="Deutschland" />
+          <FPField label="USt-IdNr. / Steuernummer" value={form.artistTaxId} onChange={v => set('artistTaxId', v)} placeholder="DE123456789" />
         </div>
       </div>
 

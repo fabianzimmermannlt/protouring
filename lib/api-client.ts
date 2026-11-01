@@ -568,6 +568,12 @@ export interface TenantArtistSettings {
   phone: string;
   website: string;
   equipmentKuerzel: string;
+  // Artist-/Band-Anschrift (unabhängig vom Abo-Inhaber; Rechnungssteller im Booking)
+  artistStreet: string;
+  artistPostalCode: string;
+  artistCity: string;
+  artistCountry: string;
+  artistTaxId: string;
 }
 
 export async function getTenantArtistSettings(): Promise<TenantArtistSettings> {
@@ -583,6 +589,11 @@ export async function getTenantArtistSettings(): Promise<TenantArtistSettings> {
     phone:             s.phone             ?? '',
     website:           s.website           ?? '',
     equipmentKuerzel:  s.equipment_kuerzel ?? '',
+    artistStreet:      s.artist_street      ?? '',
+    artistPostalCode:  s.artist_postal_code ?? '',
+    artistCity:        s.artist_city        ?? '',
+    artistCountry:     s.artist_country     ?? '',
+    artistTaxId:       s.artist_tax_id      ?? '',
   };
 }
 
@@ -599,6 +610,11 @@ export async function updateTenantArtistSettings(data: Omit<TenantArtistSettings
     phone:             s.phone             ?? '',
     website:           s.website           ?? '',
     equipmentKuerzel:  s.equipment_kuerzel ?? '',
+    artistStreet:      s.artist_street      ?? '',
+    artistPostalCode:  s.artist_postal_code ?? '',
+    artistCity:        s.artist_city        ?? '',
+    artistCountry:     s.artist_country     ?? '',
+    artistTaxId:       s.artist_tax_id      ?? '',
   };
 }
 

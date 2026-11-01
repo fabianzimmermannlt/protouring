@@ -717,6 +717,12 @@ async function initDatabase() {
     `ALTER TABLE tenants ADD COLUMN short_code TEXT DEFAULT ''`,
     `ALTER TABLE tenants ADD COLUMN homebase TEXT DEFAULT ''`,
     `ALTER TABLE tenants ADD COLUMN genre TEXT DEFAULT ''`,
+    // tenants: Artist-Anschrift (Adresse der Band/des Artists – unabhängig vom Abo-Inhaber)
+    `ALTER TABLE tenants ADD COLUMN artist_street TEXT DEFAULT ''`,
+    `ALTER TABLE tenants ADD COLUMN artist_postal_code TEXT DEFAULT ''`,
+    `ALTER TABLE tenants ADD COLUMN artist_city TEXT DEFAULT ''`,
+    `ALTER TABLE tenants ADD COLUMN artist_country TEXT DEFAULT ''`,
+    `ALTER TABLE tenants ADD COLUMN artist_tax_id TEXT DEFAULT ''`,
     // tenants: Rechnungsanschrift
     `ALTER TABLE tenants ADD COLUMN billing_company TEXT DEFAULT ''`,
     `ALTER TABLE tenants ADD COLUMN billing_first_name TEXT DEFAULT ''`,
@@ -7963,7 +7969,7 @@ app.get('/api/me/tenants', authenticateToken, async (req, res) => {
 app.get('/api/tenant/settings', authenticateToken, requireTenant, async (req, res) => {
   try {
     const row = await db.get(
-      'SELECT name, display_name, short_code, homebase, genre, email, phone, website, equipment_kuerzel FROM tenants WHERE id = ?',
+      'SELECT name, display_name, short_code, homebase, genre, email, phone, website, equipment_kuerzel, artist_street, artist_postal_code, artist_city, artist_country, artist_tax_id FROM tenants WHERE id = ?',
       [req.tenant.id]
     )
     res.json({ settings: row })
@@ -7976,7 +7982,8 @@ app.put('/api/tenant/settings', authenticateToken, requireTenant, async (req, re
     return res.status(403).json({ error: 'Nur Admins dürfen Artist-Einstellungen ändern' })
   }
   try {
-    const { displayName = '', shortCode = '', homebase = '', genre = '', email = '', phone = '', website = '', equipmentKuerzel } = req.body
+    const { displayName = '', shortCode = '', homebase = '', genre = '', email = '', phone = '', website = '', equipmentKuerzel,
+            artistStreet, artistPostalCode, artistCity, artistCountry, artistTaxId } = req.body
 
     // equipmentKuerzel validieren (3 Zeichen, beginnt mit Buchstabe, alphanumerisch)
     if (equipmentKuerzel !== undefined && equipmentKuerzel !== null && equipmentKuerzel !== '') {
@@ -8001,8 +8008,25 @@ app.put('/api/tenant/settings', authenticateToken, requireTenant, async (req, re
       )
     }
 
+    // Artist-Anschrift (unabhängig vom Abo-Inhaber). Nur gesetzte Felder überschreiben,
+    // damit ein Teil-Request bestehende Werte nicht löscht.
+    await db.run(
+      `UPDATE tenants SET
+         artist_street      = COALESCE(?, artist_street),
+         artist_postal_code = COALESCE(?, artist_postal_code),
+         artist_city        = COALESCE(?, artist_city),
+         artist_country     = COALESCE(?, artist_country),
+         artist_tax_id      = COALESCE(?, artist_tax_id),
+         updated_at = datetime('now')
+       WHERE id = ?`,
+      [
+        artistStreet ?? null, artistPostalCode ?? null, artistCity ?? null,
+        artistCountry ?? null, artistTaxId ?? null, req.tenant.id,
+      ]
+    )
+
     const row = await db.get(
-      'SELECT name, display_name, short_code, homebase, genre, email, phone, website, equipment_kuerzel FROM tenants WHERE id = ?',
+      'SELECT name, display_name, short_code, homebase, genre, email, phone, website, equipment_kuerzel, artist_street, artist_postal_code, artist_city, artist_country, artist_tax_id FROM tenants WHERE id = ?',
       [req.tenant.id]
     )
     res.json({ settings: row })
@@ -10062,11 +10086,19 @@ app.put('/api/booking/settings', authenticateToken, requireTenant, async (req, r
 
 // Rechnungssteller bestimmen: Vertrag-Override → Booking-Settings → Tenant-Rechnungsanschrift.
 function resolveIssuer(contract, settings, tenant) {
+  // Rechnungssteller = Artist/Band. Primär die Artist-Anschrift (unabhängig vom Abo-Inhaber),
+  // je Feld Fallback auf die Abo-/Rechnungsdaten (billing_*), damit bestehende Tenants ohne
+  // gepflegte Artist-Adresse weiterhin korrekte PDFs erhalten.
   const fromTenant = {
-    name: tenant.billing_company || tenant.display_name || tenant.name,
-    firstName: tenant.billing_first_name, lastName: tenant.billing_last_name,
-    address: tenant.billing_address, postalCode: tenant.billing_postal_code,
-    city: tenant.billing_city, taxId: tenant.billing_tax_id, email: tenant.billing_email, phone: tenant.billing_phone,
+    name: tenant.display_name || tenant.name || tenant.billing_company,
+    firstName: '', lastName: '',
+    address: tenant.artist_street || tenant.billing_address || '',
+    postalCode: tenant.artist_postal_code || tenant.billing_postal_code || '',
+    city: tenant.artist_city || tenant.billing_city || '',
+    country: tenant.artist_country || '',
+    taxId: tenant.artist_tax_id || tenant.billing_tax_id || '',
+    email: tenant.email || tenant.billing_email || '',
+    phone: tenant.phone || tenant.billing_phone || '',
   }
   const custom = (o) => ({ name: o.issuer_name, address: o.issuer_address, postalCode: '', city: '', taxId: o.issuer_taxid, email: o.issuer_email, phone: o.issuer_phone })
   if (contract && contract.issuer_mode === 'custom' && contract.issuer_name) return custom(contract)
