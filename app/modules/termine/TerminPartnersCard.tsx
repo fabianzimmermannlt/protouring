@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, X, Loader2, ArrowLeftRight } from 'lucide-react'
+import { Plus, X, Loader2, ArrowLeftRight, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   getTerminPartners, addTerminPartner, removeTerminPartner,
   getPartners,
@@ -117,13 +117,16 @@ export default function TerminPartnersCard({
   const [adding, setAdding]             = useState(false)
   const [swappingId, setSwappingId]     = useState<number | null>(null)
   const [removingId, setRemovingId]     = useState<number | null>(null)
+  const [expanded, setExpanded]         = useState<Set<number>>(new Set())
 
   useEffect(() => {
     getTerminPartners(terminId)
-      .then(setLinks)
+      .then(l => { setLinks(l); if (l.length === 1) setExpanded(new Set([l[0].id])) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [terminId])
+
+  const toggle = (id: number) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const handleSelect = async (partner: Partner) => {
     setShowPicker(false)
@@ -169,40 +172,55 @@ export default function TerminPartnersCard({
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Ein vollständiger Partner-Block pro Eintrag */}
-      {links.map(link => (
-        <div key={link.id}>
-          <PartnerDetailContent
-            partnerId={String(link.partner_id)}
-            headerRight={isAdmin ? (
-              <>
-                <button
-                  onClick={() => { setSwappingLink(link); setShowPicker(true) }}
-                  disabled={swappingId === link.id || removingId === link.id}
-                  title="Partner wechseln"
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary-2)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                >
-                  {swappingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowLeftRight size={12} />}
-                  Wechseln
-                </button>
-                <button
-                  onClick={() => handleRemove(link)}
-                  disabled={removingId === link.id || swappingId === link.id}
-                  title="Verknüpfung aufheben"
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-                >
-                  {removingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-                  Entfernen
-                </button>
-              </>
-            ) : undefined}
-          />
-        </div>
-      ))}
+      {/* Pro Partner eine Akkordeon-Zeile: eingeklappt nur Firma/Rolle/Ort, aufgeklappt die Details */}
+      {links.map(link => {
+        const open = expanded.has(link.id)
+        const sub = [link.role || link.partner_type, link.contact_person, link.city].filter(Boolean).join(' · ')
+        return (
+          <div key={link.id} style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+            <div className="flex items-center gap-2 px-3 py-2.5">
+              <button onClick={() => toggle(link.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                {open ? <ChevronDown size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} /> : <ChevronRight size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
+                <span className="truncate">
+                  <span className="font-medium" style={{ color: 'var(--text)' }}>{link.company_name || 'Partner'}</span>
+                  {sub && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{'  —  ' + sub}</span>}
+                </span>
+              </button>
+              {isAdmin && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => { setSwappingLink(link); setShowPicker(true) }}
+                    disabled={swappingId === link.id || removingId === link.id}
+                    title="Partner wechseln"
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary-2)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    {swappingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowLeftRight size={12} />}
+                    Wechseln
+                  </button>
+                  <button
+                    onClick={() => handleRemove(link)}
+                    disabled={removingId === link.id || swappingId === link.id}
+                    title="Verknüpfung aufheben"
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', fontSize: 11, color: 'var(--text-muted)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--danger)')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+                  >
+                    {removingId === link.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                    Entfernen
+                  </button>
+                </div>
+              )}
+            </div>
+            {open && (
+              <div style={{ borderTop: '1px solid var(--border)' }}>
+                <PartnerDetailContent partnerId={String(link.partner_id)} />
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {/* Leer-State */}
       {links.length === 0 && (
