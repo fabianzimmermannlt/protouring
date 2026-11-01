@@ -6,9 +6,9 @@ import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   setBookingTicketSales, setBookingCostLines, getBookingSettings,
-  getVenue, getPartner, getPartners, getTerminPartners,
+  getVenue, getPartner, getTerminPartners,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
-  type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner,
+  type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
 } from '@/lib/api-client'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
 import { PartnerPickerModal } from '@/app/components/shared/modals/PartnerPickerModal'
@@ -137,10 +137,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [clauses, setClauses] = useState<BookingClause[]>([])
   const [selected, setSelected] = useState<number[]>((booking.clauses ?? []).map(c => c.clause_id).filter((x): x is number => x != null))
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
+  const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [saving, setSaving] = useState(false); const [savedMsg, setSavedMsg] = useState(false); const [invBusy, setInvBusy] = useState(false)
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
-  useEffect(() => { getBookingClauses().then(setClauses).catch(() => {}); loadInvoices() }, [loadInvoices])
+  useEffect(() => {
+    getBookingClauses().then(setClauses).catch(() => {})
+    getTerminPartners(termin.id).then(setEventPartners).catch(() => {})
+    loadInvoices()
+  }, [loadInvoices, termin.id])
 
   const set = (patch: Partial<BookingContractInput>) => setF(prev => ({ ...prev, ...patch }))
   const cur = f.currency || 'EUR'
@@ -202,32 +207,27 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       return [...prev, { role: 'promoter', name: p.companyName || '', address: addrFromPartner(p), email: p.email || '', taxid: p.taxId || '', partner_id: Number(p.id) }]
     })
   }
-  // Parteien aus dem Event übernehmen: alle verknüpften Event-Partner + Venue + (Default-)Vertretung.
-  // MERGE – bestehende bleiben erhalten; Dubletten (gleicher Partner/Name) werden übersprungen.
-  const fillFromEvent = async () => {
-    const [eventPartners, allPartners] = await Promise.all([
-      getTerminPartners(termin.id).catch(() => []),
-      getPartners().catch(() => [] as Partner[]),
-    ])
-    const byId = new Map(allPartners.map(p => [Number(p.id), p]))
-    setParties(prev => {
-      const next = [...prev]
-      const hasPartner = (id: number) => next.some(x => x.partner_id === id)
-      const hasName = (n: string) => next.some(x => (x.name || '').trim().toLowerCase() === n.trim().toLowerCase())
-      if (settings?.rep_name && !hasName(settings.rep_name)) next.push({ role: 'agency', name: settings.rep_name, address: settings.rep_address ?? '', email: '', taxid: '' })
-      for (const link of eventPartners) {
-        if (hasPartner(link.partner_id)) continue
-        const master = byId.get(link.partner_id)
-        next.push({ role: 'promoter', name: link.company_name || master?.companyName || '', address: master ? addrFromPartner(master) : [link.city].filter(Boolean).join(''), email: link.email || master?.email || '', taxid: master?.taxId || '', partner_id: link.partner_id })
-      }
-      return next
-    })
+  // Einen verknüpften Event-Partner als Partei übernehmen (Adresse strukturiert aus Stammsatz).
+  const addEventPartner = async (link: TerminPartner) => {
+    if (parties.some(x => x.partner_id === link.partner_id)) return
+    let address = [link.city].filter(Boolean).join(''), email = link.email || '', taxid = ''
+    try { const m = await getPartner(String(link.partner_id)); address = addrFromPartner(m); email = m.email || email; taxid = m.taxId || '' } catch { /* */ }
+    setParties(prev => prev.some(x => x.partner_id === link.partner_id) ? prev
+      : [...prev, { role: 'promoter', name: link.company_name || '', address, email, taxid, partner_id: link.partner_id }])
+  }
+  // Das Event-Venue als Partei übernehmen.
+  const addEventVenue = async () => {
+    if (!termin.venueId || parties.some(x => x.role === 'venue')) return
     try {
-      if (termin.venueId) {
-        const v = await getVenue(String(termin.venueId))
-        setParties(prev => prev.some(x => x.role === 'venue') ? prev : [...prev, { role: 'venue', name: v.name || termin.venueName || '', address: [v.street, [v.postalCode, v.city].filter(Boolean).join(' '), v.country].filter(Boolean).join('\n'), email: '', taxid: '' }])
-      }
+      const v = await getVenue(String(termin.venueId))
+      setParties(prev => prev.some(x => x.role === 'venue') ? prev
+        : [...prev, { role: 'venue', name: v.name || termin.venueName || '', address: [v.street, [v.postalCode, v.city].filter(Boolean).join(' '), v.country].filter(Boolean).join('\n'), email: '', taxid: '' }])
     } catch { /* */ }
+  }
+  const onEventSelect = (value: string) => {
+    if (value === '__venue') { addEventVenue(); return }
+    const link = eventPartners.find(l => String(l.id) === value)
+    if (link) addEventPartner(link)
   }
 
   const createInv = async (kind: 'deposit' | 'final') => {
@@ -259,7 +259,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   )
 
   return (
-    <div className="space-y-5" style={{ maxWidth: 860 }}>
+    <div className="space-y-5">
       {/* Statusband */}
       <div className="flex items-center gap-1.5 flex-wrap">
         {BOOKING_STATUSES.map((s, i) => (
@@ -275,12 +275,23 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       {/* Parteien */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>PARTEIEN</legend>
-        <div className="flex items-center justify-between mb-2 gap-3">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kette, z. B.: Artist → Vertretung → Veranstalter → Venue. Adressen kommen aus den Stammdaten.</p>
-          {isAdmin && <div className="flex gap-2"><button onClick={fillFromEvent} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}>Aus Event</button><button onClick={() => setShowPicker(true)} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Partner wählen</button></div>}
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kette, z. B.: Artist → Vertretung → Veranstalter → Venue. Name/Adresse kommen aus den Stammdaten (dort pflegen).</p>
+          {isAdmin && (
+            <div className="flex gap-2 items-center">
+              <select className="detail-input" style={{ width: 'auto', minWidth: 190 }} value="" onChange={e => { if (e.target.value) onEventSelect(e.target.value) }}>
+                <option value="">+ Aus Event übernehmen…</option>
+                {eventPartners.filter(l => !parties.some(x => x.partner_id === l.partner_id)).map(l => (
+                  <option key={l.id} value={String(l.id)}>{[l.company_name, l.role || l.partner_type].filter(Boolean).join(' — ')}</option>
+                ))}
+                {termin.venueId && !parties.some(x => x.role === 'venue') && <option value="__venue">Venue: {termin.venueName || 'Venue'}</option>}
+              </select>
+              <button onClick={() => setShowPicker(true)} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Partner wählen</button>
+            </div>
+          )}
         </div>
         {parties.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Parteien. „Aus Event" übernimmt verknüpfte Partner + Venue automatisch, „Partner wählen" fügt aus den Stammdaten hinzu.</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Parteien. Über „Aus Event übernehmen" einen verknüpften Partner/das Venue wählen, oder „Partner wählen" aus den Stammdaten.</p>
         ) : (
           <div className="space-y-1.5">
             {parties.map((p, i) => (
@@ -295,14 +306,19 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   </span>
                 }
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="detail-label">Rolle</label>
-                    <select className="detail-input" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>{PARTY_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></div>
-                  <div><label className="detail-label">Name / Firma</label><input className="detail-input" disabled={!isAdmin} value={p.name} onChange={e => setParty(i, { name: e.target.value })} /></div>
-                  <div><label className="detail-label">E-Mail</label><input className="detail-input" disabled={!isAdmin} value={p.email} onChange={e => setParty(i, { email: e.target.value })} /></div>
-                  <div><label className="detail-label">USt-IdNr./St-Nr.</label><input className="detail-input" disabled={!isAdmin} value={p.taxid} onChange={e => setParty(i, { taxid: e.target.value })} /></div>
-                  <div className="sm:col-span-2"><label className="detail-label">Adresse {p.partner_id ? '(aus Stammdaten)' : ''}</label><textarea className="detail-input" rows={2} disabled={!isAdmin} value={p.address} onChange={e => setParty(i, { address: e.target.value })} /></div>
-                  {isAdmin && <div className="sm:col-span-2 flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Entfernen</button></div>}
+                <div className="space-y-3">
+                  <div style={{ maxWidth: 260 }}>
+                    <label className="detail-label">Rolle</label>
+                    <select className="detail-input" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>{PARTY_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select>
+                  </div>
+                  {/* Read-only Stammdaten-Ausschnitt – Adresse etc. wird im Partner/Venue gepflegt, nicht hier */}
+                  <div className="text-sm rounded p-3" style={{ background: 'var(--hover)', color: 'var(--text)' }}>
+                    <div className="font-medium">{p.name || '—'}</div>
+                    {p.address && <div className="whitespace-pre-line" style={{ color: 'var(--text-muted)' }}>{p.address}</div>}
+                    {(p.email || p.taxid) && <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{[p.email, p.taxid && `USt-IdNr./St-Nr.: ${p.taxid}`].filter(Boolean).join('  ·  ')}</div>}
+                    <div className="mt-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>{p.partner_id ? 'Aus Partner-Stammdaten – dort bearbeiten.' : 'Aus Stammdaten/Einstellungen übernommen.'}</div>
+                  </div>
+                  {isAdmin && <div className="flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Entfernen</button></div>}
                 </div>
               </AccordionSection>
             ))}
