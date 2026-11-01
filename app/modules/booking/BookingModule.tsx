@@ -6,8 +6,9 @@ import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
+  getBookingSettings, updateBookingSettings,
   getTermine, getEffectiveRole, canEdit as canEditArea,
-  type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type Termin,
+  type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type BookingSettings, type Termin,
 } from '@/lib/api-client'
 
 const nnum2 = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
@@ -40,6 +41,7 @@ export default function BookingModule({ activeSubTab }: { activeSubTab?: string 
     <div className="p-5">
       {activeSubTab === 'bausteine' ? <BausteineTab canEdit={canEdit} />
         : activeSubTab === 'rechnungen' ? <InvoicesTab />
+        : activeSubTab === 'einstellungen' ? <BookingSettingsTab canEdit={canEdit} />
         : <ContractsTab canEdit={canEdit} />}
     </div>
   )
@@ -466,6 +468,59 @@ function InvoicesTab() {
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Booking-Einstellungen (USt-Defaults, Rechnungssteller, Nummernkreis)
+// ═══════════════════════════════════════════════════════════════════════════
+function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
+  const [s, setS] = useState<BookingSettings | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  useEffect(() => { getBookingSettings().then(setS).catch(() => {}) }, [])
+  if (!s) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
+  const set = (p: Partial<BookingSettings>) => setS(prev => prev ? { ...prev, ...p } : prev)
+  const save = async () => { setSaving(true); try { const r = await updateBookingSettings(s); setS(r); setMsg('Gespeichert.'); setTimeout(() => setMsg(''), 1500) } catch { /* */ } setSaving(false) }
+  const Fld = (label: string, key: keyof BookingSettings, ph = '') => (
+    <div><label className="form-label">{label}</label><input className="form-input" disabled={!canEdit} value={(s[key] as string) ?? ''} onChange={e => set({ [key]: e.target.value })} placeholder={ph} /></div>
+  )
+  return (
+    <div className="space-y-4" style={{ maxWidth: 680 }}>
+      <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Booking-Einstellungen</h2>
+
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>UMSATZSTEUER (Vorbelegung)</legend>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Fld('Tickets %', 'ticket_vat')}{Fld('Ticketgebühr %', 'fee_vat')}{Fld('Künstleranteil %', 'artist_vat')}{Fld('Nebenkosten %', 'service_vat')}
+        </div>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Hinweis: USt-Sätze bitte mit Steuerberater abstimmen (z. B. 7 % künstlerische Leistung, 19 % Dienstleistungen). Reverse-Charge/Kleinunternehmer folgt in der Compliance-Phase.</p>
+      </fieldset>
+
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>RECHNUNGSNUMMER</legend>
+        <div style={{ maxWidth: 200 }}>{Fld('Präfix', 'number_prefix', 'RE')}</div>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Format: {(s.number_prefix || 'RE')}-JJJJ-0001 (fortlaufend je Artist).</p>
+      </fieldset>
+
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>RECHNUNGSSTELLER (Standard)</legend>
+        <select className="form-select" disabled={!canEdit} value={s.issuer_mode || 'tenant'} onChange={e => set({ issuer_mode: e.target.value })} style={{ maxWidth: 360 }}>
+          <option value="tenant">Band / Artist (Rechnungsanschrift aus Konto)</option>
+          <option value="custom">Abweichend (z. B. Agentur)</option>
+        </select>
+        {s.issuer_mode === 'custom' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            {Fld('Name / Firma', 'issuer_name')}{Fld('USt-IdNr./St-Nr.', 'issuer_taxid')}
+            <div className="sm:col-span-2"><label className="form-label">Adresse</label><textarea className="form-input" rows={2} disabled={!canEdit} value={s.issuer_address ?? ''} onChange={e => set({ issuer_address: e.target.value })} /></div>
+            {Fld('E-Mail', 'issuer_email')}{Fld('Telefon', 'issuer_phone')}
+          </div>
+        )}
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Pro Event im Booking-Reiter überschreibbar (falls z. B. mal die Agentur direkt abrechnet).</p>
+      </fieldset>
+
+      {canEdit && <div className="flex items-center gap-3"><button onClick={save} disabled={saving} className="btn btn-primary">{saving ? 'Speichern…' : 'Speichern'}</button>{msg && <span className="text-sm" style={{ color: 'var(--pos, green)' }}>✓ {msg}</span>}</div>}
     </div>
   )
 }

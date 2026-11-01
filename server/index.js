@@ -2147,10 +2147,43 @@ async function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS booking_cost_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      contract_id INTEGER NOT NULL,
+      label TEXT,
+      net TEXT,
+      vat TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS booking_settings (
+      tenant_id INTEGER PRIMARY KEY,
+      ticket_vat TEXT DEFAULT '7',
+      fee_vat TEXT DEFAULT '7',
+      artist_vat TEXT DEFAULT '7',
+      service_vat TEXT DEFAULT '19',
+      number_prefix TEXT DEFAULT 'RE',
+      issuer_mode TEXT DEFAULT 'tenant',   -- 'tenant' | 'custom'
+      issuer_name TEXT, issuer_address TEXT, issuer_taxid TEXT, issuer_email TEXT, issuer_phone TEXT,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    );
   `);
   // Abrechnung: Ist-Zahlen am Booking (nachträglich ergänzbar)
   try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN actual_tickets TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN actual_revenue TEXT`); } catch {}
+  // Ticketkanäle: Art + „Geld liegt bei"
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN art TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN money_with TEXT`); } catch {}
+  // Erweiterte Deal-/Abrechnungsfelder am Vertrag
+  for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone']) {
+    try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
+  }
+  // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
+  for (const col of ['tax_amount','gross_amount','deductions_gross']) {
+    try { await db.run(`ALTER TABLE booking_invoices ADD COLUMN ${col} TEXT`); } catch {}
+  }
 
   console.log('✅ Database initialized');
 }
@@ -9945,9 +9978,61 @@ app.get('/api/booking/contracts/:id', authenticateToken, requireTenant, async (r
     if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
     const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, req.tenant.id])
     const ticket_sales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, req.tenant.id])
-    res.json({ contract: { ...contract, clauses, ticket_sales } })
+    const cost_lines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, req.tenant.id])
+    res.json({ contract: { ...contract, clauses, ticket_sales, cost_lines } })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
+
+// PUT /api/booking/contracts/:id/cost-lines — Nebenkosten-Zeilen ersetzen
+app.put('/api/booking/contracts/:id/cost-lines', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const exists = await db.get('SELECT id FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!exists) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const rows = Array.isArray(req.body?.lines) ? req.body.lines : []
+    await db.run('DELETE FROM booking_cost_lines WHERE contract_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    let order = 0
+    for (const l of rows) {
+      await db.run(`INSERT INTO booking_cost_lines (tenant_id, contract_id, label, net, vat, sort_order) VALUES (?,?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, l.label || null, l.net === '' ? null : l.net ?? null, l.vat === '' ? null : l.vat ?? null, order++])
+    }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/settings — Booking-Einstellungen (USt-Defaults, Rechnungssteller, Nummernkreis)
+async function getBookingSettings(tenantId) {
+  let s = await db.get('SELECT * FROM booking_settings WHERE tenant_id=?', [tenantId])
+  if (!s) { await db.run('INSERT INTO booking_settings (tenant_id) VALUES (?)', [tenantId]); s = await db.get('SELECT * FROM booking_settings WHERE tenant_id=?', [tenantId]) }
+  return s
+}
+app.get('/api/booking/settings', authenticateToken, requireTenant, async (req, res) => {
+  try { res.json({ settings: await getBookingSettings(req.tenant.id) }) } catch (e) { res.status(500).json({ error: e.message }) }
+})
+app.put('/api/booking/settings', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await getBookingSettings(req.tenant.id)
+    const cols = ['ticket_vat','fee_vat','artist_vat','service_vat','number_prefix','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone']
+    const set = cols.filter(c => req.body[c] !== undefined)
+    if (set.length) await db.run(`UPDATE booking_settings SET ${set.map(c => `${c}=?`).join(', ')} WHERE tenant_id=?`, [...set.map(c => req.body[c]), req.tenant.id])
+    res.json({ settings: await getBookingSettings(req.tenant.id) })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// Rechnungssteller bestimmen: Vertrag-Override → Booking-Settings → Tenant-Rechnungsanschrift.
+function resolveIssuer(contract, settings, tenant) {
+  const fromTenant = {
+    name: tenant.billing_company || tenant.display_name || tenant.name,
+    firstName: tenant.billing_first_name, lastName: tenant.billing_last_name,
+    address: tenant.billing_address, postalCode: tenant.billing_postal_code,
+    city: tenant.billing_city, taxId: tenant.billing_tax_id, email: tenant.billing_email, phone: tenant.billing_phone,
+  }
+  const custom = (o) => ({ name: o.issuer_name, address: o.issuer_address, postalCode: '', city: '', taxId: o.issuer_taxid, email: o.issuer_email, phone: o.issuer_phone })
+  if (contract && contract.issuer_mode === 'custom' && contract.issuer_name) return custom(contract)
+  if (settings && settings.issuer_mode === 'custom' && settings.issuer_name) return custom(settings)
+  return fromTenant
+}
 
 // PUT /api/booking/contracts/:id/ticket-sales — Händler-Zeilen ersetzen
 app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTenant, async (req, res) => {
@@ -9960,9 +10045,9 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
     let order = 0
     for (const s of rows) {
       await db.run(
-        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, tickets, revenue, refund_amount, refund_pct, sort_order)
-         VALUES (?,?,?,?,?,?,?,?)`,
-        [req.tenant.id, req.params.id, s.vendor || null,
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, revenue, refund_amount, refund_pct, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, s.vendor || null, s.art || null, s.money_with || null,
          s.tickets === '' ? null : s.tickets ?? null, s.revenue === '' ? null : s.revenue ?? null,
          s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null, order++]
       )
@@ -9971,7 +10056,9 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue']
+const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
+  'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
+  'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 
@@ -10088,16 +10175,9 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
     const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, tenant.id])
     if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
     const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
+    const bset = await getBookingSettings(tenant.id)
     const { generateContractPdf } = require('./generate_contract_pdf')
-    const pdf = await generateContractPdf({
-      contract, clauses,
-      artist: {
-        name: tenant.billing_company || tenant.display_name || tenant.name,
-        firstName: tenant.billing_first_name, lastName: tenant.billing_last_name,
-        address: tenant.billing_address, postalCode: tenant.billing_postal_code,
-        city: tenant.billing_city, taxId: tenant.billing_tax_id, email: tenant.billing_email,
-      },
-    })
+    const pdf = await generateContractPdf({ contract, clauses, artist: resolveIssuer(contract, bset, tenant) })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="Vertrag_${contract.contract_no || contract.id}.pdf"`)
     res.send(pdf)
@@ -10129,38 +10209,29 @@ app.get('/api/booking/invoices', authenticateToken, requireTenant, async (req, r
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-// POST /api/booking/invoices  { contractId, kind:'deposit'|'final', tax_rate?, service_date? }
-// Beträge werden serverseitig aus dem Vertrag/Deal berechnet (eine Quelle der Wahrheit).
+// POST /api/booking/invoices
+// { contractId, kind, total_net, tax_amount, gross_amount, deductions_gross?, deposit_net?, tax_rate?, description?, service_date? }
+// Beträge kommen aus dem getesteten Client-Rechenkern (computeSettlement); der Server
+// vergibt nur die fortlaufende Nummer und speichert die Momentaufnahme.
 app.post('/api/booking/invoices', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { contractId, kind = 'final', tax_rate = '19', service_date } = req.body || {}
-    const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [contractId, req.tenant.id])
+    const b = req.body || {}
+    const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [b.contractId, req.tenant.id])
     if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
-    const salesRows = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=?', [contractId, req.tenant.id])
-    const n = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
-    const due = bookingComputeDue(c, salesRows)
-    const deposit = n(c.deposit)
-    let total_net, deposit_net, description
-    if (kind === 'deposit') {
-      if (deposit <= 0) return res.status(400).json({ error: 'Keine Anzahlung im Deal hinterlegt' })
-      total_net = deposit; deposit_net = 0
-      description = 'Anzahlung / Vorauszahlung gemäß Vereinbarung'
-    } else {
-      total_net = due; deposit_net = deposit
-      description = 'Honorar gemäß Vereinbarung / Abrechnung'
-    }
-    // fortlaufende Nummer je Tenant (MVP: MAX+1; strikte GoBD-Lückenlosigkeit folgt in Compliance-Phase)
+    const kind = b.kind === 'deposit' ? 'deposit' : 'final'
+    const bset = await getBookingSettings(req.tenant.id)
     const row = await db.get('SELECT COALESCE(MAX(seq),0) AS m FROM booking_invoices WHERE tenant_id=?', [req.tenant.id])
     const seq = row.m + 1
     const year = new Date().getFullYear()
-    const invoice_no = `RE-${year}-${String(seq).padStart(4, '0')}`
-    const recipient_address = c.partner_address || ''
+    const invoice_no = `${bset.number_prefix || 'RE'}-${year}-${String(seq).padStart(4, '0')}`
+    const description = b.description || (kind === 'deposit' ? 'Anzahlung / Vorauszahlung gemäß Vereinbarung' : 'Honorar / Abrechnung gemäß Vereinbarung')
     const r = await db.run(
-      `INSERT INTO booking_invoices (tenant_id, contract_id, seq, invoice_no, kind, status, issue_date, service_date, currency, tax_rate, total_net, deposit_net, description, recipient_name, recipient_address, event_title, event_date, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [req.tenant.id, contractId, seq, invoice_no, kind, 'issued', new Date().toISOString().slice(0, 10), service_date || c.event_date || null,
-       c.currency || 'EUR', String(tax_rate), String(total_net), String(deposit_net), description, c.partner_name || '', recipient_address, c.event_title || '', c.event_date || null, req.user.id]
+      `INSERT INTO booking_invoices (tenant_id, contract_id, seq, invoice_no, kind, status, issue_date, service_date, currency, tax_rate, total_net, tax_amount, gross_amount, deductions_gross, deposit_net, description, recipient_name, recipient_address, event_title, event_date, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [req.tenant.id, b.contractId, seq, invoice_no, kind, 'issued', new Date().toISOString().slice(0, 10), b.service_date || c.event_date || null,
+       c.currency || 'EUR', String(b.tax_rate ?? ''), String(b.total_net ?? 0), String(b.tax_amount ?? 0), String(b.gross_amount ?? 0), String(b.deductions_gross ?? 0), String(b.deposit_net ?? 0),
+       description, c.partner_name || '', c.partner_address || '', c.event_title || '', c.event_date || null, req.user.id]
     )
     res.json({ ok: true, id: r.lastID, invoice_no })
   } catch (e) { res.status(500).json({ error: e.message }) }
@@ -10189,16 +10260,10 @@ app.get('/api/booking/invoices/:id/pdf', async (req, res) => {
     }
     const inv = await db.get('SELECT * FROM booking_invoices WHERE id=? AND tenant_id=?', [req.params.id, tenant.id])
     if (!inv) return res.status(404).json({ error: 'Rechnung nicht gefunden' })
+    const contract = inv.contract_id ? await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [inv.contract_id, tenant.id]) : null
+    const bset = await getBookingSettings(tenant.id)
     const { generateInvoicePdf } = require('./generate_invoice_pdf')
-    const pdf = await generateInvoicePdf({
-      invoice: inv,
-      issuer: {
-        name: tenant.billing_company || tenant.display_name || tenant.name,
-        firstName: tenant.billing_first_name, lastName: tenant.billing_last_name,
-        address: tenant.billing_address, postalCode: tenant.billing_postal_code,
-        city: tenant.billing_city, taxId: tenant.billing_tax_id, email: tenant.billing_email, phone: tenant.billing_phone,
-      },
-    })
+    const pdf = await generateInvoicePdf({ invoice: inv, issuer: resolveIssuer(contract, bset, tenant) })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="${inv.invoice_no || 'Rechnung'}.pdf"`)
     res.send(pdf)

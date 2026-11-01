@@ -25,11 +25,11 @@ function generateInvoicePdf({ invoice: inv, issuer = {} }) {
     doc.on('error', reject);
 
     const cur = inv.currency || 'EUR';
-    const r = num(inv.tax_rate) / 100;
     const totalNet = num(inv.total_net);
-    const depNet = num(inv.deposit_net);
-    const payNet = Math.max(0, totalNet - depNet);
-    const isFinalWithDeposit = inv.kind === 'final' && depNet > 0;
+    const taxAmt = num(inv.tax_amount);
+    const grossAmt = num(inv.gross_amount) || (totalNet + taxAmt);
+    const deductions = num(inv.deductions_gross);
+    const payable = grossAmt - deductions;
     const titleMap = { deposit: 'Anzahlungsrechnung', final: 'Rechnung' };
     const issuerName = issuer.name || [issuer.firstName, issuer.lastName].filter(Boolean).join(' ') || '—';
 
@@ -80,25 +80,19 @@ function generateInvoicePdf({ invoice: inv, issuer = {} }) {
       doc.moveDown(opts.big ? 0.5 : 0.35);
     };
 
-    if (isFinalWithDeposit) {
-      line('Honorar netto', money(totalNet, cur));
-      line(`zzgl. ${num(inv.tax_rate).toLocaleString('de-DE')} % USt`, money(totalNet * r, cur), { muted: true });
-      line('Gesamt brutto', money(totalNet * (1 + r), cur), { bold: true });
+    line('Rechnungsbetrag netto', money(totalNet, cur));
+    line('zzgl. USt', money(taxAmt, cur), { muted: true });
+    line('Gesamt brutto', money(grossAmt, cur), { bold: true });
+    if (deductions > 0) {
       doc.moveDown(0.2);
-      line('abzgl. Anzahlung netto', '− ' + money(depNet, cur), { muted: true });
-      line('abzgl. USt auf Anzahlung', '− ' + money(depNet * r, cur), { muted: true });
+      line('abzgl. Anzahlung / Auszahlungen (brutto)', '− ' + money(deductions, cur), { muted: true });
       doc.moveDown(0.2);
       doc.moveTo(sumX, doc.y).lineTo(sumX + 260, doc.y).lineWidth(0.5).strokeColor('#d1d5db').stroke();
       doc.moveDown(0.3);
-      line('Restbetrag netto', money(payNet, cur));
-      line(`zzgl. ${num(inv.tax_rate).toLocaleString('de-DE')} % USt`, money(payNet * r, cur), { muted: true });
-      line('Zahlbetrag', money(payNet * (1 + r), cur), { bold: true, big: true });
+      line('Zahlbetrag', money(payable, cur), { bold: true, big: true });
     } else {
-      line('Netto', money(totalNet, cur));
-      line(`zzgl. ${num(inv.tax_rate).toLocaleString('de-DE')} % USt`, money(totalNet * r, cur), { muted: true });
-      doc.moveTo(sumX, doc.y).lineTo(sumX + 260, doc.y).lineWidth(0.5).strokeColor('#d1d5db').stroke();
-      doc.moveDown(0.3);
-      line('Zahlbetrag', money(totalNet * (1 + r), cur), { bold: true, big: true });
+      doc.moveDown(0.1);
+      line('Zahlbetrag', money(payable, cur), { bold: true, big: true });
     }
 
     // ── Fußzeile ──

@@ -3869,19 +3869,62 @@ export interface BookingContract {
   notes: string | null
   actual_tickets: string | null
   actual_revenue: string | null
+  // Erweiterte Deal-/Abrechnungsfelder
+  deal_base?: string | null
+  promoter_costs?: string | null
+  pct1?: string | null
+  threshold2?: string | null
+  pct2?: string | null
+  ticket_vat?: string | null
+  fee_per_ticket?: string | null
+  fee_vat?: string | null
+  fee_band_split_pct?: string | null
+  artist_vat?: string | null
+  ticketing_payout_gross?: string | null
+  deduct_own_shop?: string | null
+  issuer_mode?: string | null
+  issuer_name?: string | null
+  issuer_address?: string | null
+  issuer_taxid?: string | null
+  issuer_email?: string | null
+  issuer_phone?: string | null
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
   ticket_sales?: BookingTicketSale[]
+  cost_lines?: BookingCostLine[]
 }
 
 export interface BookingTicketSale {
   id?: number
   vendor?: string | null
+  art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
+  money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
   revenue?: string | null
   refund_amount?: string | null
   refund_pct?: string | null
+}
+
+export interface BookingCostLine {
+  id?: number
+  label?: string | null
+  net?: string | null
+  vat?: string | null
+}
+
+export interface BookingSettings {
+  ticket_vat?: string | null
+  fee_vat?: string | null
+  artist_vat?: string | null
+  service_vat?: string | null
+  number_prefix?: string | null
+  issuer_mode?: string | null       // 'tenant' | 'custom'
+  issuer_name?: string | null
+  issuer_address?: string | null
+  issuer_taxid?: string | null
+  issuer_email?: string | null
+  issuer_phone?: string | null
 }
 
 export type BookingContractInput = Partial<Omit<BookingContract, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'clauses'>> & { clauseIds?: number[] }
@@ -3927,9 +3970,21 @@ export async function updateBookingContract(id: number, data: BookingContractInp
 export async function deleteBookingContract(id: number): Promise<void> {
   await request(`/api/booking/contracts/${id}`, { method: 'DELETE' })
 }
-/** Ticket-Händler-Zeilen eines Bookings ersetzen (für die Abrechnung). */
+/** Ticket-Kanäle eines Bookings ersetzen (für die Abrechnung). */
 export async function setBookingTicketSales(contractId: number, sales: BookingTicketSale[]): Promise<void> {
   await request(`/api/booking/contracts/${contractId}/ticket-sales`, { method: 'PUT', body: { sales } })
+}
+/** Nebenkosten-Zeilen eines Bookings ersetzen. */
+export async function setBookingCostLines(contractId: number, lines: BookingCostLine[]): Promise<void> {
+  await request(`/api/booking/contracts/${contractId}/cost-lines`, { method: 'PUT', body: { lines } })
+}
+export async function getBookingSettings(): Promise<BookingSettings> {
+  const res = await request<{ settings: BookingSettings }>('/api/booking/settings')
+  return res.settings
+}
+export async function updateBookingSettings(data: BookingSettings): Promise<BookingSettings> {
+  const res = await request<{ settings: BookingSettings }>('/api/booking/settings', { method: 'PUT', body: data })
+  return res.settings
 }
 /** Öffnet das Vertrags-PDF in einem neuen Tab (Token/Tenant als Query, wie beim Schedule-PDF). */
 export function openBookingContractPdf(id: number): void {
@@ -3963,6 +4018,9 @@ export interface BookingInvoice {
   currency: string | null
   tax_rate: string | null
   total_net: string | null
+  tax_amount: string | null
+  gross_amount: string | null
+  deductions_gross: string | null
   deposit_net: string | null
   description: string | null
   recipient_name: string | null
@@ -3974,7 +4032,11 @@ export async function getBookingInvoices(contractId?: number): Promise<BookingIn
   const res = await request<{ invoices: BookingInvoice[] }>(`/api/booking/invoices${contractId ? `?contractId=${contractId}` : ''}`)
   return res.invoices
 }
-export async function createBookingInvoice(data: { contractId: number; kind: 'deposit' | 'final'; tax_rate?: string; service_date?: string }): Promise<{ id: number; invoice_no: string }> {
+export async function createBookingInvoice(data: {
+  contractId: number; kind: 'deposit' | 'final'
+  total_net: number; tax_amount: number; gross_amount: number
+  deductions_gross?: number; deposit_net?: number; description?: string; service_date?: string
+}): Promise<{ id: number; invoice_no: string }> {
   return await request<{ id: number; invoice_no: string }>('/api/booking/invoices', { method: 'POST', body: data })
 }
 export async function deleteBookingInvoice(id: number): Promise<void> {

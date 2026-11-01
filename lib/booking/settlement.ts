@@ -1,0 +1,98 @@
+// Abrechnungs-Rechenkern für das Booking-Add-on (reine Funktion, unit-testbar).
+// Abgeleitet aus echten Konzertabrechnungen (KA): Ticketing (Kanäle, gemischte USt),
+// Ticket-Systemgebühr („Refundierung") mit Band-Split, Deal (Garantie „vs" %, Basis
+// Brutto-Ticketnetto oder Nettogewinn, optional 2. Schwelle), Nebenkosten (eigene USt),
+// sowie Verrechnung von Ticketing-Payout und bereits bei der Band liegenden Shop-Einnahmen.
+
+export interface SettlementChannel {
+  name?: string | null
+  art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
+  money_with?: string | null   // 'promoter' | 'band'
+  tickets?: string | null
+  revenue?: string | null      // Bruttoeinnahme dieses Kanals (inkl. Ticket-USt)
+}
+export interface SettlementCost {
+  label?: string | null
+  net?: string | null
+  vat?: string | null          // eigener USt-Satz (z.B. 19)
+}
+export interface SettlementInput {
+  channels: SettlementChannel[]
+  costs: SettlementCost[]
+  ticketVat?: string | null         // USt auf Tickets (z.B. 7)
+  feePerTicket?: string | null      // Ticket-Systemgebühr je Ticket (brutto), „Refundierung"
+  feeVat?: string | null            // USt auf die Gebühr (z.B. 7)
+  feeBandSplitPct?: string | null   // Anteil der Band an der Gebühr (netto), z.B. 50
+  artistVat?: string | null         // USt auf den Künstleranteil (z.B. 7)
+  dealBase?: string | null          // 'gross' (Netto-Ticketumsatz) | 'netprofit' (nach Kosten)
+  promoterCosts?: string | null     // Veranstalterkosten (nur bei 'netprofit')
+  guarantee?: string | null         // Produktionskostengarantie
+  pct1?: string | null              // % ab erster Karte
+  threshold2?: string | null        // Nettoeinnahme-Schwelle für pct2
+  pct2?: string | null              // % ab Schwelle
+  ticketingPayoutGross?: string | null  // bereits vom Ticketanbieter an die Band ausgezahlt (brutto)
+  deductOwnShop?: boolean           // Einnahmen aus eigenem Shop (money_with='band') verrechnen
+  depositNet?: string | null        // bereits berechnete Anzahlung (netto)
+  depositVat?: string | null        // USt-Satz der Anzahlung (für die Abzugsdarstellung)
+}
+
+export interface SettlementResult {
+  totalTickets: number
+  ticketGross: number; ticketVatAmt: number; ticketNet: number
+  feeTotalGross: number; feeVatAmt: number; feeNet: number; bandFeeShareNet: number
+  dealBaseAmt: number; dealShareNet: number; artistShareNet: number
+  costsNet: number; costsVat: number
+  rechnungNet: number; rechnungVat: number; rechnungGross: number
+  ownShopGross: number; ticketingPayout: number
+  depositGross: number
+  payableGross: number   // offener Betrag an die Band nach allen Verrechnungen
+}
+
+const n = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+
+export function computeSettlement(inp: SettlementInput): SettlementResult {
+  const ticketVat = n(inp.ticketVat), feeVat = n(inp.feeVat), artistVat = n(inp.artistVat)
+  const channels = inp.channels || [], costs = inp.costs || []
+
+  const totalTickets = channels.reduce((a, c) => a + n(c.tickets), 0)
+  const ticketGross = channels.reduce((a, c) => a + n(c.revenue), 0)
+  const ticketNet = ticketGross / (1 + ticketVat / 100)
+  const ticketVatAmt = ticketGross - ticketNet
+
+  const feeTotalGross = n(inp.feePerTicket) * totalTickets
+  const feeNet = feeTotalGross / (1 + feeVat / 100)
+  const feeVatAmt = feeTotalGross - feeNet
+  const bandFeeShareNet = feeNet * n(inp.feeBandSplitPct) / 100
+
+  const dealBaseAmt = inp.dealBase === 'netprofit' ? (ticketNet - n(inp.promoterCosts)) : ticketNet
+  const pct1 = n(inp.pct1), pct2 = n(inp.pct2), th2 = n(inp.threshold2)
+  let share: number
+  if (th2 > 0 && pct2 > 0) {
+    share = dealBaseAmt <= th2 ? dealBaseAmt * pct1 / 100 : (th2 * pct1 / 100 + (dealBaseAmt - th2) * pct2 / 100)
+  } else {
+    share = dealBaseAmt * pct1 / 100
+  }
+  const dealShareNet = Math.max(n(inp.guarantee), share)   // „vs" – das Höhere gewinnt
+  const artistShareNet = dealShareNet + bandFeeShareNet
+
+  const costsNet = costs.reduce((a, c) => a + n(c.net), 0)
+  const costsVat = costs.reduce((a, c) => a + n(c.net) * n(c.vat) / 100, 0)
+
+  const rechnungNet = artistShareNet + costsNet
+  const rechnungVat = artistShareNet * artistVat / 100 + costsVat
+  const rechnungGross = rechnungNet + rechnungVat
+
+  const ownShopGross = inp.deductOwnShop ? channels.filter(c => c.money_with === 'band').reduce((a, c) => a + n(c.revenue), 0) : 0
+  const ticketingPayout = n(inp.ticketingPayoutGross)
+  const depositGross = n(inp.depositNet) * (1 + n(inp.depositVat) / 100)
+  const payableGross = rechnungGross - ticketingPayout - ownShopGross - depositGross
+
+  return {
+    totalTickets, ticketGross, ticketVatAmt, ticketNet,
+    feeTotalGross, feeVatAmt, feeNet, bandFeeShareNet,
+    dealBaseAmt, dealShareNet, artistShareNet,
+    costsNet, costsVat,
+    rechnungNet, rechnungVat, rechnungGross,
+    ownShopGross, ticketingPayout, depositGross, payableGross,
+  }
+}

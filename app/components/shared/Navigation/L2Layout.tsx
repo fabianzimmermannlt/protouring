@@ -95,6 +95,7 @@ const BOOKING_SUBS: SubItem[] = [
   { id: 'contracts', name: 'Verträge' },
   { id: 'rechnungen', name: 'Rechnungen' },
   { id: 'bausteine', name: 'Bausteine' },
+  { id: 'einstellungen', name: 'Einstellungen', editorOnly: true },
 ]
 
 const SUB_ITEMS: Record<string, SubItem[]> = {
