@@ -10374,6 +10374,17 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
        FROM booking_clauses c
        WHERE c.tenant_id=? AND c.archived_at IS NULL
        ORDER BY c.sort_order, c.id`, [tenant.id])
+    // Reihenfolge robust erzwingen: Standard-§§ immer in der festen FKP-Vorlagen-
+    // Reihenfolge (Vertragsgegenstand zuerst), unabhängig vom sort_order der DB –
+    // damit kein erneutes „FKP-Standard laden" nötig ist. Eigene Bausteine folgen
+    // danach in ihrer gespeicherten Reihenfolge.
+    const FKP_ORDER = new Map(FKP_STANDARD_CLAUSES.map((cc, i) => [cc.title.trim().toLowerCase(), i]))
+    clauses.forEach((cl, i) => { cl.__pos = i })
+    clauses.sort((a, b) => {
+      const ka = FKP_ORDER.has((a.title || '').trim().toLowerCase()) ? FKP_ORDER.get((a.title || '').trim().toLowerCase()) : 1000 + a.__pos
+      const kb = FKP_ORDER.has((b.title || '').trim().toLowerCase()) ? FKP_ORDER.get((b.title || '').trim().toLowerCase()) : 1000 + b.__pos
+      return ka - kb
+    })
     const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
     const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
     const bset = await getBookingSettings(tenant.id)
