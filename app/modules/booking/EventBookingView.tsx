@@ -52,8 +52,11 @@ const PARTY_ROLES = [
   { id: 'other', label: 'Sonstige' },
 ]
 const roleLabel = (id?: string) => PARTY_ROLES.find(r => r.id === id)?.label ?? 'Beteiligte/r'
-interface Party { role: string; name: string; address: string; email: string; taxid: string; partner_id?: number }
-const addrFromPartner = (p: Partner) => [p.street, [p.postalCode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join('\n')
+interface Party { role: string; name: string; street: string; postalCode: string; city: string; country: string; email: string; taxid: string; partner_id?: number }
+// Adresse für PDF/Rechnung aus den strukturierten Feldern zusammensetzen.
+const composeAddr = (p: { street?: string; postalCode?: string; city?: string; country?: string }) =>
+  [p.street, [p.postalCode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join('\n')
+const emptyParty = (role = 'promoter'): Party => ({ role, name: '', street: '', postalCode: '', city: '', country: '', email: '', taxid: '' })
 
 export default function EventBookingView({ terminId, termin, isAdmin }: { terminId: number; termin: Termin; isAdmin: boolean }) {
   const [booking, setBooking] = useState<BookingContract | null>(null)
@@ -127,10 +130,16 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return base
   })
   const [parties, setParties] = useState<Party[]>(() => {
-    try { const p = booking.parties ? JSON.parse(booking.parties) : null; if (Array.isArray(p) && p.length) return p.map((x: Partial<Party>) => ({ role: x.role ?? 'other', name: x.name ?? '', address: x.address ?? '', email: x.email ?? '', taxid: x.taxid ?? '' })) } catch { /* */ }
+    const norm = (x: Partial<Party> & { address?: string }): Party => ({
+      role: x.role ?? 'other', name: x.name ?? '',
+      // strukturierte Felder; Legacy-Einzelstring landet als Fallback in „Straße"
+      street: x.street ?? x.address ?? '', postalCode: x.postalCode ?? '', city: x.city ?? '', country: x.country ?? '',
+      email: x.email ?? '', taxid: x.taxid ?? '', partner_id: x.partner_id,
+    })
+    try { const p = booking.parties ? JSON.parse(booking.parties) : null; if (Array.isArray(p) && p.length) return p.map(norm) } catch { /* */ }
     const list: Party[] = []
-    if (booking.rep_name) list.push({ role: 'agency', name: booking.rep_name, address: booking.rep_address ?? '', email: '', taxid: '' })
-    if (booking.partner_name) list.push({ role: 'promoter', name: booking.partner_name, address: booking.partner_address ?? '', email: booking.partner_email ?? '', taxid: '' })
+    if (booking.rep_name) list.push(norm({ role: 'agency', name: booking.rep_name, address: booking.rep_address ?? '' }))
+    if (booking.partner_name) list.push(norm({ role: 'promoter', name: booking.partner_name, address: booking.partner_address ?? '', email: booking.partner_email ?? '' }))
     return list
   })
   const [showPicker, setShowPicker] = useState(false)
@@ -168,10 +177,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     const promoter = parties.find(p => p.role === 'promoter') || parties.find(p => p.role === 'co_promoter')
     const venue = parties.find(p => p.role === 'venue')
     const sync: Partial<BookingContractInput> = {
-      parties: JSON.stringify(parties.filter(p => p.name || p.address)),
-      rep_name: agency?.name ?? '', rep_address: agency?.address ?? '',
-      partner_name: promoter?.name ?? '', partner_address: promoter?.address ?? '', partner_email: promoter?.email ?? '',
-      ...(venue ? { event_venue: venue.name, venue_address: venue.address } : {}),
+      parties: JSON.stringify(parties.filter(p => p.name || p.street || p.city)),
+      rep_name: agency?.name ?? '', rep_address: agency ? composeAddr(agency) : '',
+      partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
+      ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
     await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), clauseIds: selected })
     await setBookingTicketSales(booking.id, channels)
@@ -204,16 +213,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     setShowPicker(false)
     setParties(prev => {
       if (prev.some(x => x.partner_id === Number(p.id))) return prev
-      return [...prev, { role: 'promoter', name: p.companyName || '', address: addrFromPartner(p), email: p.email || '', taxid: p.taxId || '', partner_id: Number(p.id) }]
+      return [...prev, { role: 'promoter', name: p.companyName || '', street: p.street || '', postalCode: p.postalCode || '', city: p.city || '', country: p.country || '', email: p.email || '', taxid: p.taxId || '', partner_id: Number(p.id) }]
     })
   }
   // Einen verknüpften Event-Partner als Partei übernehmen (Adresse strukturiert aus Stammsatz).
   const addEventPartner = async (link: TerminPartner) => {
     if (parties.some(x => x.partner_id === link.partner_id)) return
-    let address = [link.city].filter(Boolean).join(''), email = link.email || '', taxid = ''
-    try { const m = await getPartner(String(link.partner_id)); address = addrFromPartner(m); email = m.email || email; taxid = m.taxId || '' } catch { /* */ }
-    setParties(prev => prev.some(x => x.partner_id === link.partner_id) ? prev
-      : [...prev, { role: 'promoter', name: link.company_name || '', address, email, taxid, partner_id: link.partner_id }])
+    const party: Party = { role: 'promoter', name: link.company_name || '', street: '', postalCode: '', city: link.city || '', country: '', email: link.email || '', taxid: '', partner_id: link.partner_id }
+    try { const m = await getPartner(String(link.partner_id)); party.street = m.street || ''; party.postalCode = m.postalCode || ''; party.city = m.city || party.city; party.country = m.country || ''; party.email = m.email || party.email; party.taxid = m.taxId || '' } catch { /* */ }
+    setParties(prev => prev.some(x => x.partner_id === link.partner_id) ? prev : [...prev, party])
   }
   // Das Event-Venue als Partei übernehmen.
   const addEventVenue = async () => {
@@ -221,7 +229,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     try {
       const v = await getVenue(String(termin.venueId))
       setParties(prev => prev.some(x => x.role === 'venue') ? prev
-        : [...prev, { role: 'venue', name: v.name || termin.venueName || '', address: [v.street, [v.postalCode, v.city].filter(Boolean).join(' '), v.country].filter(Boolean).join('\n'), email: '', taxid: '' }])
+        : [...prev, { role: 'venue', name: v.name || termin.venueName || '', street: v.street || '', postalCode: v.postalCode || '', city: v.city || '', country: v.country || '', email: '', taxid: '' }])
     } catch { /* */ }
   }
   const onEventSelect = (value: string) => {
@@ -306,19 +314,18 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   </span>
                 }
               >
-                <div className="space-y-3">
-                  <div style={{ maxWidth: 260 }}>
-                    <label className="detail-label">Rolle</label>
-                    <select className="detail-input" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>{PARTY_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select>
-                  </div>
-                  {/* Read-only Stammdaten-Ausschnitt – Adresse etc. wird im Partner/Venue gepflegt, nicht hier */}
-                  <div className="text-sm rounded p-3" style={{ background: 'var(--hover)', color: 'var(--text)' }}>
-                    <div className="font-medium">{p.name || '—'}</div>
-                    {p.address && <div className="whitespace-pre-line" style={{ color: 'var(--text-muted)' }}>{p.address}</div>}
-                    {(p.email || p.taxid) && <div className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{[p.email, p.taxid && `USt-IdNr./St-Nr.: ${p.taxid}`].filter(Boolean).join('  ·  ')}</div>}
-                    <div className="mt-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>{p.partner_id ? 'Aus Partner-Stammdaten – dort bearbeiten.' : 'Aus Stammdaten/Einstellungen übernommen.'}</div>
-                  </div>
-                  {isAdmin && <div className="flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Entfernen</button></div>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div><label className="detail-label">Rolle</label>
+                    <select className="detail-input" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>{PARTY_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></div>
+                  <div><label className="detail-label">Name / Firma</label><input className="detail-input" disabled={!isAdmin} value={p.name} onChange={e => setParty(i, { name: e.target.value })} /></div>
+                  <div><label className="detail-label">Straße</label><input className="detail-input" disabled={!isAdmin} value={p.street} onChange={e => setParty(i, { street: e.target.value })} /></div>
+                  <div><label className="detail-label">PLZ</label><input className="detail-input" disabled={!isAdmin} value={p.postalCode} onChange={e => setParty(i, { postalCode: e.target.value })} /></div>
+                  <div><label className="detail-label">Ort</label><input className="detail-input" disabled={!isAdmin} value={p.city} onChange={e => setParty(i, { city: e.target.value })} /></div>
+                  <div><label className="detail-label">Land</label><input className="detail-input" disabled={!isAdmin} value={p.country} onChange={e => setParty(i, { country: e.target.value })} /></div>
+                  <div><label className="detail-label">E-Mail</label><input className="detail-input" disabled={!isAdmin} value={p.email} onChange={e => setParty(i, { email: e.target.value })} /></div>
+                  <div><label className="detail-label">USt-IdNr./St-Nr.</label><input className="detail-input" disabled={!isAdmin} value={p.taxid} onChange={e => setParty(i, { taxid: e.target.value })} /></div>
+                  {p.partner_id && <div className="sm:col-span-2 lg:col-span-3 text-[11px]" style={{ color: 'var(--text-subtle)' }}>Aus Partner-Stammdaten übernommen – Änderungen hier gelten nur für diesen Vertrag.</div>}
+                  {isAdmin && <div className="sm:col-span-2 lg:col-span-3 flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Entfernen</button></div>}
                 </div>
               </AccordionSection>
             ))}
