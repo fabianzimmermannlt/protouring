@@ -7,7 +7,7 @@ import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
-  setBookingTicketSales, setBookingCostLines, getBookingSettings,
+  setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
   getVenue, updateVenue, getPartner, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
@@ -144,6 +144,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   })
   const [showPicker, setShowPicker] = useState(false)
   const [clauses, setClauses] = useState<BookingClause[]>([])
+  // Pro-Vertrag Baustein-Overrides: Häkchen (included) + eigener Text. Fehlt ein Eintrag → an + Bibliothekstext.
+  const [clauseOv, setClauseOv] = useState<Record<number, { included: boolean; body: string }>>(() => {
+    const m: Record<number, { included: boolean; body: string }> = {}
+    for (const r of (booking.clauses ?? [])) {
+      if (r.clause_id != null) m[r.clause_id] = { included: r.included !== 0, body: r.body || '' }
+    }
+    return m
+  })
+  const [editingClause, setEditingClause] = useState<number | null>(null)
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
@@ -206,6 +215,11 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
+    // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
+    const ovList = Object.entries(clauseOv)
+      .filter(([, v]) => !v.included || (v.body || '').trim())
+      .map(([cid, v]) => ({ clause_id: Number(cid), included: v.included ? 1 : 0, body: v.body || '' }))
+    await setBookingClauseOverrides(booking.id, ovList)
     // Kapazität in den Venue-Datensatz zurückschreiben (eine Quelle, keine Dopplung).
     const capNow = ((patch.capacity ?? f.capacity) ?? '').toString().trim()
     if (venueCapRef.current && capNow && capNow !== venueCapRef.current.capacity) {
@@ -231,7 +245,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // bewusst auf die editierbaren Zustände hören:
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, parties, channels, costs, tiers])
+  }, [f, parties, channels, costs, tiers, clauseOv])
 
   const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
@@ -445,14 +459,47 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Bausteine – unter Booking → Bausteine anlegen (oder „FKP-Standard laden").</p>
         ) : (
           <>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Diese Bausteine (§§) erscheinen im Vertrag – immer der aktuelle Stand aus <strong>Booking → Bausteine</strong>. Variable Deal-Werte (Gage, Ticketpreise, Refundierung) werden automatisch eingesetzt.</p>
-            <div className="space-y-0.5 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 160, overflowY: 'auto' }}>
-              {clauses.filter(c => !c.archived_at).map((c, i) => (
-                <div key={c.id} className="flex items-center gap-2 px-2 py-0.5 text-sm" style={{ color: 'var(--text)' }}>
-                  <span style={{ color: 'var(--text-subtle)', minWidth: 28 }}>§ {i + 1}</span>
-                  <span>{c.title}</span>
-                </div>
-              ))}
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Häkchen = Baustein im Vertrag enthalten. Mit <strong>Bearbeiten</strong> passt du den Text nur für <strong>diesen Vertrag</strong> an (die Bibliothek bleibt unverändert). Ohne Anpassung gilt immer der aktuelle Stand aus <strong>Booking → Bausteine</strong>. Variable Deal-Werte werden automatisch eingesetzt.</p>
+            <div className="space-y-0.5 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 280, overflowY: 'auto' }}>
+              {clauses.filter(c => !c.archived_at).map((c, i) => {
+                const ov = clauseOv[c.id]
+                const included = ov ? ov.included : true
+                const override = ov?.body ?? ''
+                const edited = !!override.trim()
+                const isEditing = editingClause === c.id
+                return (
+                  <div key={c.id} className="px-1 py-0.5 text-sm" style={{ color: 'var(--text)' }}>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" disabled={!isAdmin} checked={included}
+                        onChange={e => setClauseOv(p => ({ ...p, [c.id]: { included: e.target.checked, body: p[c.id]?.body ?? '' } }))} />
+                      <span style={{ color: 'var(--text-subtle)', minWidth: 28 }}>§ {i + 1}</span>
+                      <span style={{ opacity: included ? 1 : 0.45, textDecoration: included ? 'none' : 'line-through' }}>{c.title}</span>
+                      {edited && <span className="text-xs" style={{ color: 'var(--accent)' }}>• angepasst</span>}
+                      {isAdmin && included && (
+                        <button type="button" onClick={() => setEditingClause(isEditing ? null : c.id)} className="btn btn-ghost ml-auto" style={{ padding: '2px 8px' }}>
+                          {isEditing ? 'Fertig' : 'Bearbeiten'}
+                        </button>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="mt-1 pl-6">
+                        <textarea className="form-input" rows={6} disabled={!isAdmin}
+                          value={override || (c.latest_body ?? '')}
+                          onChange={e => setClauseOv(p => ({ ...p, [c.id]: { included: p[c.id]?.included ?? true, body: e.target.value } }))}
+                          placeholder="Text dieses Bausteins für diesen Vertrag …" />
+                        <div className="flex items-center gap-3 mt-1">
+                          {edited && (
+                            <button type="button" onClick={() => setClauseOv(p => ({ ...p, [c.id]: { included: p[c.id]?.included ?? true, body: '' } }))} className="text-xs" style={{ color: 'var(--danger)' }}>
+                              Auf Bibliothekstext zurücksetzen
+                            </button>
+                          )}
+                          <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>Variable Werte (Deal, Preise …) werden im PDF ergänzt.</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </>
         )}

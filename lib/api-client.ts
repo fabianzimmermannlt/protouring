@@ -3857,7 +3857,10 @@ export interface BookingContractClause {
   body: string
   version: number | null
   sort_order: number
+  included?: number   // 1 = im Vertrag enthalten, 0 = ausgeschlossen (Häkchen)
 }
+
+export interface BookingClauseOverride { clause_id: number; included: number; body: string }
 
 export interface BookingContract {
   id: number
@@ -4015,6 +4018,10 @@ export async function setBookingTicketSales(contractId: number, sales: BookingTi
 /** Nebenkosten-Zeilen eines Bookings ersetzen. */
 export async function setBookingCostLines(contractId: number, lines: BookingCostLine[]): Promise<void> {
   await request(`/api/booking/contracts/${contractId}/cost-lines`, { method: 'PUT', body: { lines } })
+}
+/** Pro-Vertrag Baustein-Overrides (Häkchen + eigener Text) ersetzen. Nur Abweichungen senden. */
+export async function setBookingClauseOverrides(contractId: number, overrides: BookingClauseOverride[]): Promise<void> {
+  await request(`/api/booking/contracts/${contractId}/clause-overrides`, { method: 'PUT', body: { overrides } })
 }
 export async function getBookingSettings(): Promise<BookingSettings> {
   const res = await request<{ settings: BookingSettings }>('/api/booking/settings')

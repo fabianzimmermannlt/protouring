@@ -2183,6 +2183,14 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN art TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN money_with TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN price TEXT`); } catch {}
+  // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
+  try {
+    await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
+    // Einmalig beim Umstieg auf das Override-Modell: alte Voll-Snapshots entfernen, damit
+    // bestehende Verträge den aktuellen (exakten) Bibliothekstext live nutzen. Overrides setzt
+    // der Nutzer danach pro Vertrag neu. Läuft nur einmal (ALTER wirft bei erneutem Boot).
+    await db.run(`DELETE FROM booking_contract_clauses`);
+  } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
   for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
     'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
@@ -10175,6 +10183,34 @@ app.get('/api/booking/contracts/:id', authenticateToken, requireTenant, async (r
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// PUT /api/booking/contracts/:id/clause-overrides — pro Vertrag: Häkchen (included) + Text-Override je Baustein.
+// Gespeichert werden nur Abweichungen vom Standard (ausgeschlossen ODER eigener Text); fehlt eine Zeile,
+// gilt: eingeschlossen + aktueller Bibliothekstext (live).
+app.put('/api/booking/contracts/:id/clause-overrides', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const contractId = req.params.id
+    const own = await db.get('SELECT id FROM booking_contracts WHERE id=? AND tenant_id=?', [contractId, req.tenant.id])
+    if (!own) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const list = Array.isArray(req.body?.overrides) ? req.body.overrides : []
+    await db.run('DELETE FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [contractId, req.tenant.id])
+    let order = 0
+    for (const o of list) {
+      const cid = o?.clause_id
+      if (cid == null) continue
+      const included = (o.included === 0 || o.included === false) ? 0 : 1
+      const body = typeof o.body === 'string' ? o.body : ''
+      if (included === 1 && !body.trim()) continue   // Standard (an + Bibliothekstext) braucht keine Zeile
+      const c = await db.get('SELECT title FROM booking_clauses WHERE id=? AND tenant_id=?', [cid, req.tenant.id])
+      await db.run(
+        `INSERT INTO booking_contract_clauses (tenant_id, contract_id, clause_id, title, body, included, sort_order) VALUES (?,?,?,?,?,?,?)`,
+        [req.tenant.id, contractId, cid, c?.title || '', body, included, order++]
+      )
+    }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // PUT /api/booking/contracts/:id/cost-lines — Nebenkosten-Zeilen ersetzen
 app.put('/api/booking/contracts/:id/cost-lines', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
@@ -10378,12 +10414,18 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
     if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
     // Klauseln LIVE aus der Baustein-Bibliothek (aktuellste Version, nicht archiviert),
     // damit sich der Vertrag bei Änderungen/Neu-Seed automatisch anpasst (kein eingefrorener Snapshot).
-    const clauses = await db.all(
-      `SELECT c.title,
+    const clausesRaw = await db.all(
+      `SELECT c.id, c.title,
               (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body
        FROM booking_clauses c
        WHERE c.tenant_id=? AND c.archived_at IS NULL
        ORDER BY c.sort_order, c.id`, [tenant.id])
+    // Pro-Vertrag Overrides: Häkchen aus → Baustein weglassen; eigener Text → statt Bibliothekstext.
+    const ovRows = await db.all('SELECT clause_id, included, body FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [req.params.id, tenant.id])
+    const ov = new Map(ovRows.map(o => [o.clause_id, o]))
+    const clauses = clausesRaw
+      .filter(c => { const o = ov.get(c.id); return !o || o.included !== 0 })
+      .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
     // Reihenfolge robust erzwingen: Standard-§§ immer in der festen FKP-Vorlagen-
     // Reihenfolge (Vertragsgegenstand zuerst), unabhängig vom sort_order der DB –
     // damit kein erneutes „FKP-Standard laden" nötig ist. Eigene Bausteine folgen
