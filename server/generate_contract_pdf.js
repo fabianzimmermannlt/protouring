@@ -159,6 +159,55 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     // Refundierung = Ticketsystem-Gebühr; nur Vorverkaufskanäle (Abendkasse/Eigener Shop haben keine).
     const refundRows = feePer ? (ticketSales || []).filter(s => (s.art || 'vvk') === 'vvk').map(s => [s.vendor || 'Ticketsystem', feePer]) : [];
 
+    // Key-Value-Block (Label links, Wert rechts fett).
+    const drawKV = (title, pairs) => {
+      const rows = pairs.filter(p => p && p[1] != null && p[1] !== '');
+      if (!rows.length) return;
+      ensureSpace(30 + rows.length * 14);
+      if (title) { doc.font(FONT_ITALIC).fontSize(9).fillColor('#374151').text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.15); }
+      const labelW = 210;
+      for (const [k, v] of rows) {
+        const y = doc.y;
+        doc.font(FONT_REG).fontSize(9.5).fillColor('#6b7280').text(k, MARGIN + 6, y, { width: labelW });
+        doc.font(FONT_BOLD).fontSize(9.5).fillColor('#111827').text(String(v), MARGIN + 6 + labelW, y, { width: CONTENT_W - labelW - 6 });
+        doc.y = Math.max(doc.y, y + 13);
+      }
+      doc.moveDown(0.4);
+    };
+
+    // Event-Details (§1) – variabel aus Booking.
+    const eventRows = [
+      ['Datum', dateDE(c.event_date)],
+      ['Veranstaltungsstätte', c.event_venue],
+      ['Adresse', c.venue_address],
+      ['Ort', c.event_city],
+      ['Kapazität', c.capacity ? `${intDE(c.capacity)} Personen` : null],
+      ['Einlass', c.doors_time ? `${c.doors_time} Uhr` : null],
+      ['Beginn', c.show_time ? `${c.show_time} Uhr` : null],
+    ];
+
+    // Deal-Details (§4) – Basis net/gross + Stufen.
+    let tiers = [];
+    try { tiers = c.deal_tiers ? JSON.parse(c.deal_tiers) : []; } catch { tiers = []; }
+    tiers = (Array.isArray(tiers) ? tiers : []).map(t => ({ from: num(t.from), pct: num(t.pct) })).filter(t => t.pct > 0).sort((a, b) => a.from - b.from);
+    const dealTypeLabel = { guarantee: 'Festgage', vs: 'Garantie vs. Beteiligung', plus: 'Garantie plus Beteiligung', door: 'Door Deal' }[c.deal_type] || c.deal_type || '—';
+    const basisLabel = c.deal_base === 'netprofit' ? 'Nettogewinn (nach örtlichen Kosten)' : 'Nettoeinnahmen aus Ticketverkäufen';
+    const dealRows = [
+      ['Deal-Art', dealTypeLabel],
+      ['Produktionskostengarantie (netto)', money(c.guarantee, cur)],
+      ['Berechnungsbasis Beteiligung', basisLabel],
+    ];
+    if (tiers.length > 1) {
+      tiers.forEach((t, i) => dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${money(t.from, cur)}`, pct(t.pct)]));
+    } else {
+      dealRows.push(['Beteiligung Artist', pct(c.deal_share)]);
+    }
+
+    const payRows = [
+      ['Abschlagszahlung (zzgl. USt.)', money(c.deposit, cur), c.deposit_due ? `bis ${dateDE(c.deposit_due)}` : 'nach Anforderung'],
+      ['Restzahlung', 'gemäß Abrechnung', c.balance_due ? `bis ${dateDE(c.balance_due)}` : 'nach dem Konzert'],
+    ];
+
     // ── §§-Bausteine (live) + interleaved Deal-Tabellen ──
     clauses.forEach((cl, i) => {
       ensureSpace(90);
@@ -170,21 +219,25 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       doc.moveDown(0.5);
 
       const t = norm(cl.title);
-      // §4 Deal, Entgelt und Zahlungsmodalitäten → Zahlungen + Refundierung
+      // §1 Vertragsgegenstand → Veranstaltungsdetails (variabel)
+      if (t.startsWith('vertragsgegenstand') || t.includes('gegenstand des vertrags')) {
+        drawKV('Veranstaltungsdetails', eventRows);
+      }
+      // §4 Deal, Entgelt und Zahlungsmodalitäten → Deal, Zahlungen, Refundierung, Bank (variabel)
       if (t.startsWith('deal') || t.includes('entgelt')) {
-        const payRows = [];
-        if (money(c.deposit, cur)) payRows.push(['Abschlagszahlung (vor der Veranstaltung)', money(c.deposit, cur)]);
-        if (money(c.guarantee, cur)) payRows.push(['Produktionskostengarantie (netto)', money(c.guarantee, cur)]);
-        if (payRows.length) drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag'], payRows, [CONTENT_W - 150, 150]);
+        drawKV('Deal', dealRows);
+        drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150]);
         if (refundRows.length) {
           const bandPct = pct(c.fee_band_split_pct);
           drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150]);
         }
+        if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]]);
       }
-      // §5 Eintrittspreise, Vorverkauf … → Ticketpreis-/Verkaufstabelle
+      // §5 Eintrittspreise, Vorverkauf … → Ticketpreis-/Verkaufstabelle + Support Acts (variabel)
       if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
         drawTable('Vorverkauf / Abendkasse', ['Händler', 'Art', 'Stück', 'Preis', 'Einnahme'], ticketTableRows,
           [CONTENT_W - 100 - 70 - 90 - 95, 100, 70, 90, 95]);
+        if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]]);
       }
     });
 

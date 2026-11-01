@@ -3910,6 +3910,14 @@ export interface BookingContract {
   venue_address?: string | null
   individual_terms?: string | null
   parties?: string | null   // JSON: [{role,name,address,email,taxid}, …]
+  // Variable Vertragsangaben (statt fix im Baustein): Event-Details, Zahlungstermine, Bank, Support
+  capacity?: string | null
+  doors_time?: string | null
+  show_time?: string | null
+  deposit_due?: string | null
+  balance_due?: string | null
+  bank_details?: string | null
+  support_acts?: string | null
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]

@@ -116,6 +116,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     issuer_mode: booking.issuer_mode ?? '', issuer_name: booking.issuer_name ?? '', issuer_address: booking.issuer_address ?? '',
     issuer_taxid: booking.issuer_taxid ?? '', issuer_email: booking.issuer_email ?? '', issuer_phone: booking.issuer_phone ?? '',
     notes: booking.notes ?? '',
+    // Variable Vertragsangaben (statt fix im Baustein): Event-Details, Zahlungstermine, Bank, Support
+    capacity: booking.capacity ?? '', doors_time: booking.doors_time ?? '', show_time: booking.show_time ?? '',
+    deposit_due: booking.deposit_due ?? '', balance_due: booking.balance_due ?? '',
+    bank_details: booking.bank_details ?? '', support_acts: booking.support_acts ?? '',
   }))
   const [channels, setChannels] = useState<BookingTicketSale[]>(booking.ticket_sales ?? [])
   const [costs, setCosts] = useState<BookingCostLine[]>(booking.cost_lines ?? [])
@@ -356,6 +360,17 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         )}
       </fieldset>
 
+      {/* Veranstaltung (variable Details für § 1 / § 5) */}
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERANSTALTUNG</legend>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {In('Kapazität', 'capacity', 'z.B. 2200')}
+          <div><label className="form-label">Einlass</label><input type="time" className="form-input" disabled={!isAdmin} value={f.doors_time ?? ''} onChange={e => set({ doors_time: e.target.value })} /></div>
+          <div><label className="form-label">Beginn</label><input type="time" className="form-input" disabled={!isAdmin} value={f.show_time ?? ''} onChange={e => set({ show_time: e.target.value })} /></div>
+        </div>
+        <div className="mt-3"><label className="form-label">Support Act(s)</label><input className="form-input" disabled={!isAdmin} value={f.support_acts ?? ''} onChange={e => set({ support_acts: e.target.value })} placeholder="z.B. Rogers" /></div>
+      </fieldset>
+
       {/* Deal */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>DEAL / KONDITIONEN</legend>
@@ -368,8 +383,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           {f.deal_base === 'netprofit' && In('Veranstalterkosten', 'promoter_costs')}
           {In('Anzahlung (netto)', 'deposit')}
           <div><label className="form-label">Währung</label><input className="form-input" disabled={!isAdmin} value={f.currency ?? 'EUR'} onChange={e => set({ currency: e.target.value })} /></div>
-          <div className="col-span-2 sm:col-span-3"><label className="form-label">Zahlungsziel</label><input className="form-input" disabled={!isAdmin} value={f.payment_terms ?? ''} onChange={e => set({ payment_terms: e.target.value })} placeholder="z.B. 50% bei Vertragsschluss, Rest nach Show" /></div>
+          <div><label className="form-label">Anzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.deposit_due ?? ''} onChange={e => set({ deposit_due: e.target.value })} /></div>
+          <div><label className="form-label">Restzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.balance_due ?? ''} onChange={e => set({ balance_due: e.target.value })} /></div>
         </div>
+        <div className="mt-3"><label className="form-label">Bankverbindung (Artist)</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.bank_details ?? ''} onChange={e => set({ bank_details: e.target.value })} placeholder="Kontoinhaber, IBAN, BIC" /></div>
 
         {/* Deal-Stufen (beliebig viele, progressiv) */}
         <div className="flex items-center justify-between mt-3 mb-1">

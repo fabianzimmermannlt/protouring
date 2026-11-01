@@ -2185,7 +2185,9 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN price TEXT`); } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
   for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
-    'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties']) {
+    'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
+    // Variable Vertragsangaben (statt fix im Baustein-Text): Event-Details, Zahlungstermine, Bank, Support
+    'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts']) {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
@@ -9955,13 +9957,8 @@ app.post('/api/booking/clauses', authenticateToken, requireTenant, async (req, r
 // werden beim PDF-Export aus den Deal-Werten gefüllt. „ÖV" = örtlicher Veranstalter.
 const FKP_STANDARD_CLAUSES = [
   { title: 'Vertragsgegenstand', body:
-`1. Gegenstand dieses Vertrags ist der Auftritt von {{artist}} auf folgendem „Konzert", das von {{partner}} als örtlichem Veranstalter („ÖV") durchgeführt wird:
-   Datum: {{datum}}
-   Veranstaltungsstätte: {{venue}}
-   Ort: {{stadt}}
-   Einlass und Beginn sowie die Kapazität ergeben sich aus den Veranstaltungsdetails bzw. den Anlagen zu diesem Vertrag.
-2. Die Parteien vereinbaren den folgenden Deal, der in § 4 näher beschrieben ist: {{deal}} – Produktionskostengarantie netto {{gage}} gegen Beteiligung nach Kosten.
-3. Weitere Einzelheiten ergeben sich aus der Bühnenanweisung / dem Artist Rider, über die/den sich die Parteien gegebenenfalls nachträglich einigen werden und welche/r als Anlage integraler Bestandteil dieses Vertrages wird.` },
+`1. Gegenstand dieses Vertrags ist der Auftritt von {{artist}} auf dem nachstehend bezeichneten „Konzert", das von {{partner}} als örtlichem Veranstalter („ÖV") durchgeführt wird. Die Veranstaltungsdetails (Datum, Veranstaltungsstätte, Adresse, Kapazität, Einlass und Beginn) sowie der vereinbarte Deal ergeben sich aus den nachstehenden Angaben.
+2. Weitere Einzelheiten ergeben sich aus der Bühnenanweisung / dem Artist Rider, über die/den sich die Parteien gegebenenfalls nachträglich einigen werden und welche/r als Anlage integraler Bestandteil dieses Vertrages wird.` },
 
   { title: 'Pflichten von Artist', body:
 `1. Artist tritt mit der zugehörigen Auftrittsproduktion („Auftrittsproduktion") beim Konzert auf. Artist ist bei dem Auftritt frei und unterliegt keinen Weisungen vom ÖV oder Dritten in Bezug auf die Gestaltung, Aufführung und Präsentation der Auftrittsproduktion.
@@ -9979,17 +9976,17 @@ const FKP_STANDARD_CLAUSES = [
 6. Dieser Vertrag beinhaltet weder die Zustimmung noch die Erlaubnis, Artist zu filmen oder zu fotografieren oder die Veranstaltung aufzuzeichnen, live zu übertragen oder in sonstiger Form zu veröffentlichen. Ausnahmen bedürfen der vorherigen schriftlichen Vereinbarung zwischen den Parteien.` },
 
   { title: 'Deal, Entgelt und Zahlungsmodalitäten', body:
-`1. ÖV zahlt an Artist eine „Produktionskostengarantie" in Höhe von {{gage}} zzgl. anfallender gesetzlicher Umsatzsteuer.
-2. Zusätzlich zahlt ÖV an Artist die vereinbarte Beteiligung am Nettogewinn der Veranstaltung, wenn die Beteiligung die Produktionskostengarantie übersteigt (vs. % of net): {{deal}}. Der Nettogewinn wird wie folgt ermittelt: Von den Nettoeinnahmen aus den Ticketverkäufen (Ticketeinnahmen abzgl. sämtlicher im Ticketverkauf einzurichtender Gebühren wie Ticketsystem-, Vorverkaufs- oder Mediengebühren sowie abzgl. Umsatzsteuer) werden die örtlichen Kosten abgezogen.
-3. Zusätzlich zahlt ÖV an Artist die Kosten für Buyouts nach § 3 Ziff. 3 gemäß gesonderter Aufstellung.
-4. Es wird eine Refundierung in der gesondert vereinbarten (inkl. MwSt. angegebenen) Höhe eingerichtet. Artist partizipiert an dieser Refundierung mit dem vereinbarten Anteil. Sämtliche anderen Zusatzgebühren wie Mediengebühren, Werbekostenzuschüsse, Facility Fees oder ÖPNV-Gebühren werden nach gesonderter Vereinbarung zwischen den Parteien aufgeteilt.
-5. ÖV hat eine Abschlagszahlung auf die Produktionskostengarantie in Höhe von {{anzahlung}} zzgl. gesetzlicher Umsatzsteuer sofort nach Anforderung, spätestens jedoch vor der Veranstaltung, gegen Rechnung im Voraus an Artist zu zahlen. Artist behält sich das Recht vor, jederzeit weitere Abschlagszahlungen in Rechnung zu stellen. Der verbleibende Betrag ist von ÖV unmittelbar nach dem Konzert nach Erhalt der entsprechenden Rechnung an Artist zu zahlen.
-6. Alle an Artist zu zahlenden Beträge sind auf Kosten von ÖV in EUR auf das von Artist benannte Konto zu überweisen.` },
+`1. ÖV zahlt an Artist die nachstehend angegebene „Produktionskostengarantie" zzgl. anfallender gesetzlicher Umsatzsteuer.
+2. Zusätzlich zahlt ÖV an Artist die nachstehend angegebene Beteiligung, wenn diese die Produktionskostengarantie übersteigt („vs."). Die maßgebliche Berechnungsbasis – die Nettoeinnahmen aus den Ticketverkäufen (Ticketeinnahmen abzgl. sämtlicher im Ticketverkauf einzurichtender Gebühren wie Ticketsystem-, Vorverkaufs- oder Mediengebühren sowie abzgl. Umsatzsteuer), ggf. abzgl. der örtlichen Kosten – sowie etwaige Beteiligungsstufen ergeben sich aus den nachstehenden Angaben.
+3. Zusätzlich zahlt ÖV an Artist die Kosten für Buyouts nach § 3 Ziff. 3 gemäß den nachstehenden Angaben.
+4. Es wird eine Refundierung in der nachstehend (inkl. MwSt.) angegebenen Höhe eingerichtet. Artist partizipiert an dieser Refundierung mit dem nachstehend angegebenen Anteil. Sämtliche anderen Zusatzgebühren wie Mediengebühren, Werbekostenzuschüsse, Facility Fees oder ÖPNV-Gebühren werden nach gesonderter Vereinbarung zwischen den Parteien aufgeteilt.
+5. Abschlagszahlung(en) auf die Produktionskostengarantie sowie die Restzahlung werden gegen Rechnung zu den nachstehend angegebenen Terminen fällig (Abschlag sofort nach Anforderung, spätestens vor der Veranstaltung; Rest unmittelbar nach dem Konzert nach Erhalt der Rechnung). Artist behält sich vor, jederzeit weitere Abschlagszahlungen in Rechnung zu stellen.
+6. Alle an Artist zu zahlenden Beträge sind auf Kosten von ÖV in EUR auf das nachstehend angegebene Konto zu überweisen.` },
 
   { title: 'Eintrittspreise, Vorverkauf, Support Acts und Präsentatoren', body:
-`1. Die Ticketpreise und das Einnahmeszenario werden zwischen den Parteien gesondert vereinbart (siehe Abrechnung/Anlage). Der Grundpreis beträgt {{ticketpreis}}.
+`1. Die Ticketpreise und das Einnahmeszenario ergeben sich aus den nachstehenden Angaben.
 2. ÖV stellt Artist und der den Artist vertretenden Gesellschaft kostenfrei mindestens 20 Zutrittsberechtigungen und maximal 3 % der verkaufbaren Kapazität zur Verfügung. Die Ausgabe von nicht in diesem Vertrag vorgesehenen Zutrittsberechtigungen bedarf der vorherigen schriftlichen Zustimmung von Artist.
-3. Support Act(s) und Präsentatoren werden gesondert vereinbart. Die Integration örtlicher Präsentatoren bedarf der vorherigen schriftlichen Zustimmung von Artist.` },
+3. Support Act(s) und Präsentatoren ergeben sich aus den nachstehenden Angaben. Die Integration örtlicher Präsentatoren bedarf der vorherigen schriftlichen Zustimmung von Artist.` },
 
   { title: 'Ticketing', body:
 `1. ÖV ist verpflichtet, den Ticketvorverkauf durchzuführen. Der Ticketvorverkauf ist ausschließlich über das vereinbarte Ticketsystem durchzuführen; sämtliche Abweichungen hiervon bedürfen der vorherigen schriftlichen Zustimmung von Artist. Bei der Anlage des Ticketvorverkaufs wird ÖV die den Artist vertretende Gesellschaft als Mitveranstalter freischalten. Die Herstellung und Ausgabe jeglicher Hardtickets bedarf der vorherigen schriftlichen Zustimmung von Artist.
@@ -10063,30 +10060,37 @@ app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, asyn
        FROM booking_clauses c WHERE c.tenant_id=?`, [req.tenant.id])
     const byTitle = new Map(existing.map(e => [(e.title || '').trim().toLowerCase(), e]))
 
-    let created = 0, updated = 0, archived = 0, order = existing.length
-    for (const c of FKP_STANDARD_CLAUSES) {
+    let created = 0, updated = 0, archived = 0
+    const standardTitles = new Set(FKP_STANDARD_CLAUSES.map(c => c.title.trim().toLowerCase()))
+    // Standard-§§ in der exakten Vorlagen-Reihenfolge (sort_order = Index), sowohl beim Anlegen als auch beim Aktualisieren.
+    for (let idx = 0; idx < FKP_STANDARD_CLAUSES.length; idx++) {
+      const c = FKP_STANDARD_CLAUSES[idx]
       const key = c.title.trim().toLowerCase()
       const ex = byTitle.get(key)
       if (ex) {
-        // Reaktivieren, falls archiviert; Body nur als neue Version, wenn er sich geändert hat.
-        if (ex.archived_at) { await db.run(`UPDATE booking_clauses SET archived_at=NULL, updated_at=datetime('now') WHERE id=?`, [ex.id]); }
+        await db.run(`UPDATE booking_clauses SET sort_order=?, archived_at=NULL, updated_at=datetime('now') WHERE id=?`, [idx, ex.id])
         if ((ex.body || '') !== c.body) {
           await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)',
             [req.tenant.id, ex.id, (ex.maxv || 0) + 1, c.body, req.user.id])
           updated++
         }
       } else {
-        const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order) VALUES (?,?,?)', [req.tenant.id, c.title, order++])
+        const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order) VALUES (?,?,?)', [req.tenant.id, c.title, idx])
         await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)', [req.tenant.id, r.lastID, 1, c.body, req.user.id])
         created++
       }
     }
 
     // Alte gekürzte Standardbausteine archivieren – aber nur, wenn unverändert (nur v1).
+    // Eigene (nicht-Standard) Bausteine ans Ende schieben, damit sie nach den §§ erscheinen.
+    let tail = FKP_STANDARD_CLAUSES.length
     for (const [key, ex] of byTitle) {
+      if (standardTitles.has(key)) continue
       if (FKP_OBSOLETE_TITLES.has(key) && !ex.archived_at && (ex.vcount || 0) <= 1) {
         await db.run(`UPDATE booking_clauses SET archived_at=datetime('now'), updated_at=datetime('now') WHERE id=?`, [ex.id])
         archived++
+      } else if (!ex.archived_at) {
+        await db.run(`UPDATE booking_clauses SET sort_order=? WHERE id=?`, [tail++, ex.id])
       }
     }
 
@@ -10245,7 +10249,8 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
 const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
   'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
-  'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties']
+  'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
+  'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 
