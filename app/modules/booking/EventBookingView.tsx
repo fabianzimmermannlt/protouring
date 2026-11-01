@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { DocumentArrowDownIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { DocumentArrowDownIcon, ArrowRightIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { SortableList } from '@/app/components/shared/SortableList'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
@@ -207,7 +208,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   // Parteien
   const setParty = (i: number, patch: Partial<Party>) => setParties(p => p.map((x, idx) => idx === i ? { ...x, ...patch } : x))
   const rmParty = (i: number) => setParties(p => p.filter((_, idx) => idx !== i))
-  const moveParty = (i: number, dir: -1 | 1) => setParties(p => { const j = i + dir; if (j < 0 || j >= p.length) return p; const n = [...p]; [n[i], n[j]] = [n[j], n[i]]; return n })
+  const reorderParties = (from: number, to: number) => setParties(p => { const n = [...p]; const [m] = n.splice(from, 1); n.splice(to, 0, m); return n })
   // Partei aus gewähltem Partner hinzufügen (Snapshot aus Stammdaten – strukturiert, kein Freitext)
   const onPickPartner = (p: Partner) => {
     setShowPicker(false)
@@ -301,10 +302,13 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         {parties.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Parteien. Über „Aus Event übernehmen" einen verknüpften Partner/das Venue wählen, oder „Partner wählen" aus den Stammdaten.</p>
         ) : (
-          <div className="space-y-1.5">
-            {parties.map((p, i) => (
+          <SortableList
+            items={parties}
+            disabled={!isAdmin}
+            getKey={(_, i) => i}
+            onReorder={reorderParties}
+            renderItem={(p, i) => (
               <AccordionSection
-                key={i}
                 title={p.name || 'Partei'}
                 bodyClassName="p-3"
                 titleContent={
@@ -313,12 +317,6 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     <span className="font-medium" style={{ color: 'var(--text)' }}>{p.name || '— ohne Namen —'}</span>
                   </span>
                 }
-                headerActions={isAdmin ? (
-                  <>
-                    <button onClick={() => moveParty(i, -1)} disabled={i === 0} title="Nach oben" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', padding: 4, color: 'var(--text-muted)', opacity: i === 0 ? 0.3 : 1 }}><ArrowUpIcon className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => moveParty(i, 1)} disabled={i === parties.length - 1} title="Nach unten" style={{ background: 'none', border: 'none', cursor: i === parties.length - 1 ? 'default' : 'pointer', padding: 4, color: 'var(--text-muted)', opacity: i === parties.length - 1 ? 0.3 : 1 }}><ArrowDownIcon className="w-3.5 h-3.5" /></button>
-                  </>
-                ) : undefined}
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div><label className="detail-label">Rolle</label>
@@ -336,8 +334,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   {isAdmin && <div className="sm:col-span-2 lg:col-span-3 flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Entfernen</button></div>}
                 </div>
               </AccordionSection>
-            ))}
-          </div>
+            )}
+          />
         )}
       </fieldset>
 
