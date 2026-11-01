@@ -97,14 +97,16 @@ function generateContractPdf({ contract: c, clauses = [], artist = {} }) {
     // ── Weitere Beteiligte (aus Parteien-Liste, außer Agentur/Veranstalter) ──
     let parties = [];
     try { parties = c.parties ? JSON.parse(c.parties) : []; } catch { parties = []; }
-    const roleLabel = { agency: 'Vertretung', promoter: 'Veranstalter', co_promoter: 'Mitveranstalter', venue: 'Venue', other: 'Beteiligte/r' };
-    const extras = (Array.isArray(parties) ? parties : []).filter(p => p && p.name && p.role !== 'agency' && p.role !== 'promoter');
+    const shown = new Set([c.partner_name, c.rep_name].filter(Boolean));
+    const composeP = (p) => [p.street, [p.postalCode, p.city].filter(Boolean).join(' '), p.country, p.address].filter(Boolean).join(', ');
+    // Bereits als Partei A/B oder im Event (Venue) gezeigte nicht doppeln.
+    const extras = (Array.isArray(parties) ? parties : []).filter(p => p && p.name && p.role !== 'Venue' && !shown.has(p.name));
     if (extras.length) {
       doc.font(FONT_BOLD).fontSize(9).fillColor('#374151').text('Weitere Beteiligte', MARGIN);
       doc.font(FONT_REG).fontSize(10).fillColor('#111827');
       for (const p of extras) {
-        const addr = String(p.address || '').replace(/\n+/g, ', ');
-        doc.text(`${roleLabel[p.role] || 'Beteiligte/r'}: ${p.name}${addr ? ' — ' + addr : ''}`, MARGIN, doc.y, { width: CONTENT_W });
+        const addr = composeP(p);
+        doc.text(`${p.role || 'Beteiligte/r'}: ${p.name}${addr ? ' — ' + addr : ''}`, MARGIN, doc.y, { width: CONTENT_W });
       }
       doc.moveDown(0.8);
     }

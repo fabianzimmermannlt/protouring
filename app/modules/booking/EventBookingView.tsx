@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { DocumentArrowDownIcon, ArrowRightIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { DocumentArrowDownIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   setBookingTicketSales, setBookingCostLines, getBookingSettings,
-  getVenue, getPartner, getTerminPartners,
+  getVenue, getPartner, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
 } from '@/lib/api-client'
@@ -44,14 +44,8 @@ const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFract
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
 const DEAL_BASE = [{ id: 'gross', label: '% vom Netto-Ticketumsatz' }, { id: 'netprofit', label: '% vom Nettogewinn (nach Kosten)' }]
-const PARTY_ROLES = [
-  { id: 'agency', label: 'Vertretung / Agentur' },
-  { id: 'promoter', label: 'Veranstalter' },
-  { id: 'co_promoter', label: 'Mitveranstalter' },
-  { id: 'venue', label: 'Venue' },
-  { id: 'other', label: 'Sonstige' },
-]
-const roleLabel = (id?: string) => PARTY_ROLES.find(r => r.id === id)?.label ?? 'Beteiligte/r'
+const VENUE_ROLE = 'Venue'
+const roleLabel = (r?: string) => r || 'Beteiligte/r'
 interface Party { role: string; name: string; street: string; postalCode: string; city: string; country: string; email: string; taxid: string; partner_id?: number }
 // Adresse für PDF/Rechnung aus den strukturierten Feldern zusammensetzen.
 const composeAddr = (p: { street?: string; postalCode?: string; city?: string; country?: string }) =>
@@ -147,12 +141,14 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [selected, setSelected] = useState<number[]>((booking.clauses ?? []).map(c => c.clause_id).filter((x): x is number => x != null))
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
+  const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false); const [savedMsg, setSavedMsg] = useState(false); const [invBusy, setInvBusy] = useState(false)
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
   useEffect(() => {
     getBookingClauses().then(setClauses).catch(() => {})
     getTerminPartners(termin.id).then(setEventPartners).catch(() => {})
+    getPartnerTypes().then(ts => setRoleOptions(ts.filter(t => t.visible).map(t => t.name))).catch(() => {})
     loadInvoices()
   }, [loadInvoices, termin.id])
 
@@ -172,10 +168,13 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const nextStatus = curIdx >= 0 && curIdx < BOOKING_STATUSES.length - 1 ? BOOKING_STATUSES[curIdx + 1] : null
 
   const saveEverything = async (patch: Partial<BookingContractInput> = {}) => {
-    // Agentur/Veranstalter aus der Parteien-Liste in die Bestandsfelder spiegeln (PDF/Rechnung).
-    const agency = parties.find(p => p.role === 'agency')
-    const promoter = parties.find(p => p.role === 'promoter') || parties.find(p => p.role === 'co_promoter')
-    const venue = parties.find(p => p.role === 'venue')
+    // Zuordnung in die Bestandsfelder (PDF/Rechnung) – rollenname-tolerant:
+    // Venue = Rolle „Venue"; Vertretung = Rolle enthält „Agent"/„Vertret"; Vertragspartner
+    // = erste übrige Partei (Reihenfolge ist vom Nutzer steuerbar).
+    const venue = parties.find(p => p.role === VENUE_ROLE)
+    const nonVenue = parties.filter(p => p.role !== VENUE_ROLE)
+    const agency = nonVenue.find(p => /agent|vertret/i.test(p.role))
+    const promoter = nonVenue.find(p => p !== agency) || nonVenue[0]
     const sync: Partial<BookingContractInput> = {
       parties: JSON.stringify(parties.filter(p => p.name || p.street || p.city)),
       rep_name: agency?.name ?? '', rep_address: agency ? composeAddr(agency) : '',
@@ -208,18 +207,19 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   // Parteien
   const setParty = (i: number, patch: Partial<Party>) => setParties(p => p.map((x, idx) => idx === i ? { ...x, ...patch } : x))
   const rmParty = (i: number) => setParties(p => p.filter((_, idx) => idx !== i))
+  const moveParty = (i: number, dir: -1 | 1) => setParties(p => { const j = i + dir; if (j < 0 || j >= p.length) return p; const n = [...p]; [n[i], n[j]] = [n[j], n[i]]; return n })
   // Partei aus gewähltem Partner hinzufügen (Snapshot aus Stammdaten – strukturiert, kein Freitext)
   const onPickPartner = (p: Partner) => {
     setShowPicker(false)
     setParties(prev => {
       if (prev.some(x => x.partner_id === Number(p.id))) return prev
-      return [...prev, { role: 'promoter', name: p.companyName || '', street: p.street || '', postalCode: p.postalCode || '', city: p.city || '', country: p.country || '', email: p.email || '', taxid: p.taxId || '', partner_id: Number(p.id) }]
+      return [...prev, { role: p.type || roleOptions[0] || '', name: p.companyName || '', street: p.street || '', postalCode: p.postalCode || '', city: p.city || '', country: p.country || '', email: p.email || '', taxid: p.taxId || '', partner_id: Number(p.id) }]
     })
   }
   // Einen verknüpften Event-Partner als Partei übernehmen (Adresse strukturiert aus Stammsatz).
   const addEventPartner = async (link: TerminPartner) => {
     if (parties.some(x => x.partner_id === link.partner_id)) return
-    const party: Party = { role: 'promoter', name: link.company_name || '', street: '', postalCode: '', city: link.city || '', country: '', email: link.email || '', taxid: '', partner_id: link.partner_id }
+    const party: Party = { role: link.role || link.partner_type || roleOptions[0] || '', name: link.company_name || '', street: '', postalCode: '', city: link.city || '', country: '', email: link.email || '', taxid: '', partner_id: link.partner_id }
     try { const m = await getPartner(String(link.partner_id)); party.street = m.street || ''; party.postalCode = m.postalCode || ''; party.city = m.city || party.city; party.country = m.country || ''; party.email = m.email || party.email; party.taxid = m.taxId || '' } catch { /* */ }
     setParties(prev => prev.some(x => x.partner_id === link.partner_id) ? prev : [...prev, party])
   }
@@ -228,8 +228,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     if (!termin.venueId || parties.some(x => x.role === 'venue')) return
     try {
       const v = await getVenue(String(termin.venueId))
-      setParties(prev => prev.some(x => x.role === 'venue') ? prev
-        : [...prev, { role: 'venue', name: v.name || termin.venueName || '', street: v.street || '', postalCode: v.postalCode || '', city: v.city || '', country: v.country || '', email: '', taxid: '' }])
+      setParties(prev => prev.some(x => x.role === VENUE_ROLE) ? prev
+        : [...prev, { role: VENUE_ROLE, name: v.name || termin.venueName || '', street: v.street || '', postalCode: v.postalCode || '', city: v.city || '', country: v.country || '', email: '', taxid: '' }])
     } catch { /* */ }
   }
   const onEventSelect = (value: string) => {
@@ -313,10 +313,18 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     <span className="font-medium" style={{ color: 'var(--text)' }}>{p.name || '— ohne Namen —'}</span>
                   </span>
                 }
+                headerActions={isAdmin ? (
+                  <>
+                    <button onClick={() => moveParty(i, -1)} disabled={i === 0} title="Nach oben" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', padding: 4, color: 'var(--text-muted)', opacity: i === 0 ? 0.3 : 1 }}><ArrowUpIcon className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => moveParty(i, 1)} disabled={i === parties.length - 1} title="Nach unten" style={{ background: 'none', border: 'none', cursor: i === parties.length - 1 ? 'default' : 'pointer', padding: 4, color: 'var(--text-muted)', opacity: i === parties.length - 1 ? 0.3 : 1 }}><ArrowDownIcon className="w-3.5 h-3.5" /></button>
+                  </>
+                ) : undefined}
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div><label className="detail-label">Rolle</label>
-                    <select className="detail-input" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>{PARTY_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}</select></div>
+                    <select className="detail-input" disabled={!isAdmin} value={p.role} onChange={e => setParty(i, { role: e.target.value })}>
+                      {Array.from(new Set([...roleOptions, VENUE_ROLE, p.role].filter(Boolean))).map(r => <option key={r} value={r}>{r}</option>)}
+                    </select></div>
                   <div><label className="detail-label">Name / Firma</label><input className="detail-input" disabled={!isAdmin} value={p.name} onChange={e => setParty(i, { name: e.target.value })} /></div>
                   <div><label className="detail-label">Straße</label><input className="detail-input" disabled={!isAdmin} value={p.street} onChange={e => setParty(i, { street: e.target.value })} /></div>
                   <div><label className="detail-label">PLZ</label><input className="detail-input" disabled={!isAdmin} value={p.postalCode} onChange={e => setParty(i, { postalCode: e.target.value })} /></div>
