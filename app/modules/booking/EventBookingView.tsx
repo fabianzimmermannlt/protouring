@@ -210,8 +210,18 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const toggleClause = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
   // Kanäle / Nebenkosten
-  const addChannel = () => setChannels(p => [...p, { vendor: '', art: 'vvk', money_with: 'promoter', tickets: '', revenue: '' }])
-  const setCh = (i: number, patch: Partial<BookingTicketSale>) => setChannels(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
+  const addChannel = () => setChannels(p => [...p, { vendor: '', art: 'vvk', money_with: 'promoter', tickets: '', price: '', revenue: '' }])
+  // Brutto wird aus Stück × Preis berechnet. Nur wenn ein Preis gesetzt ist; sonst bleibt
+  // ein ggf. direkt eingetragenes Brutto erhalten (Altbestand / Pauschal-Eingabe).
+  const setCh = (i: number, patch: Partial<BookingTicketSale>) => setChannels(p => p.map((s, idx) => {
+    if (idx !== i) return s
+    const next = { ...s, ...patch }
+    if ('tickets' in patch || 'price' in patch) {
+      const hasPrice = (next.price ?? '') !== ''
+      if (hasPrice) next.revenue = (nnum(next.tickets) * nnum(next.price)).toFixed(2)
+    }
+    return next
+  }))
   const rmCh = (i: number) => setChannels(p => p.filter((_, idx) => idx !== i))
   const addCost = () => setCosts(p => [...p, { label: '', net: '', vat: settings?.service_vat ?? '19' }])
   const setCo = (i: number, patch: Partial<BookingCostLine>) => setCosts(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
@@ -413,16 +423,23 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
-            {channels.map((s, i) => (
-              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1.3fr) 90px 100px 60px 100px 28px' }}>
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px', color: 'var(--text-subtle)' }}>
+              <span>Händler</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
+            </div>
+            {channels.map((s, i) => {
+              const hasPrice = (s.price ?? '') !== ''
+              return (
+              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px' }}>
                 <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
                 <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                 <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                 <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Brutto €" value={s.revenue ?? ''} onChange={e => setCh(i, { revenue: e.target.value })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={e => setCh(i, { price: e.target.value })} title="Ticketpreis brutto je Stück" />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
                 {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

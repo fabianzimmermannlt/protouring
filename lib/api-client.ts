@@ -3923,7 +3923,8 @@ export interface BookingTicketSale {
   art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
-  revenue?: string | null
+  price?: string | null        // Ticketpreis brutto je Stück; Brutto = tickets × price
+  revenue?: string | null      // Gesamtbrutto des Kanals (= tickets × price, berechnet)
   refund_amount?: string | null
   refund_pct?: string | null
 }

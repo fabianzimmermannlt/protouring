@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses,
@@ -484,13 +484,30 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
   const [s, setS] = useState<BookingSettings | null>(null)
   const [artist, setArtist] = useState<TenantArtistSettings | null>(null)
   const [logoPath, setLogoPath] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
+  const lastSavedRef = useRef<string>('')
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    getBookingSettings().then(setS).catch(() => {})
+    getBookingSettings().then(r => { setS(r); lastSavedRef.current = JSON.stringify(r) }).catch(() => {})
     getTenantArtistSettings().then(setArtist).catch(() => {})
     getEquipmentSettings().then(st => setLogoPath(st.label_logo_path ?? null)).catch(() => {})
   }, [])
+
+  // Auto-Save: 800 ms nach der letzten Änderung. Signaturvergleich verhindert Save-Loops.
+  useEffect(() => {
+    if (!s || !canEdit) return
+    const sig = JSON.stringify(s)
+    if (sig === lastSavedRef.current) return
+    setAutoState('pending')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      setAutoState('saving')
+      try { await updateBookingSettings(s); lastSavedRef.current = sig; setAutoState('saved') }
+      catch { setAutoState('error') }
+    }, 800)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s])
   const logoUrl = logoPath ? `${API_BASE}/uploads/${(logoPath.split('/uploads/')[1] ?? '')}` : null
   const onLogo = async (file: File | undefined) => { if (!file) return; try { const r = await uploadEquipmentLogo(file); setLogoPath(r.label_logo_path) } catch { /* */ } }
   const removeLogo = async () => { try { await deleteEquipmentLogo(); setLogoPath(null) } catch { /* */ } }
@@ -498,13 +515,21 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
   const artistName = artist?.displayName || artist?.name || ''
   const artistComplete = !!(artist && artistName && artist.artistStreet && artist.artistCity)
   const set = (p: Partial<BookingSettings>) => setS(prev => prev ? { ...prev, ...p } : prev)
-  const save = async () => { setSaving(true); try { const r = await updateBookingSettings(s); setS(r); setMsg('Gespeichert.'); setTimeout(() => setMsg(''), 1500) } catch { /* */ } setSaving(false) }
   const Fld = (label: string, key: keyof BookingSettings, ph = '') => (
     <div><label className="form-label">{label}</label><input className="form-input" disabled={!canEdit} value={(s[key] as string) ?? ''} onChange={e => set({ [key]: e.target.value })} placeholder={ph} /></div>
   )
   return (
     <div className="space-y-4" style={{ maxWidth: 680 }}>
-      <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Booking-Einstellungen</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Booking-Einstellungen</h2>
+        {canEdit && autoState !== 'idle' && (
+          <span className="text-xs" style={{ color: autoState === 'error' ? 'var(--danger)' : 'var(--text-muted)' }}>
+            {autoState === 'saving' || autoState === 'pending' ? 'Speichert automatisch…'
+              : autoState === 'saved' ? '✓ Automatisch gespeichert'
+              : autoState === 'error' ? '⚠ Speichern fehlgeschlagen' : ''}
+          </span>
+        )}
+      </div>
 
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>LOGO</legend>
@@ -579,7 +604,6 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Pro Event im Booking-Reiter überschreibbar (falls z. B. mal die Agentur direkt abrechnet).</p>
       </fieldset>
 
-      {canEdit && <div className="flex items-center gap-3"><button onClick={save} disabled={saving} className="btn btn-primary">{saving ? 'Speichern…' : 'Speichern'}</button>{msg && <span className="text-sm" style={{ color: 'var(--pos, green)' }}>✓ {msg}</span>}</div>}
     </div>
   )
 }

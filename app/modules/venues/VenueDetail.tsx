@@ -113,8 +113,10 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
   const [isDirty, setIsDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
   const [showDirtyDialog, setShowDirtyDialog] = useState(false)
   const originalRef = useRef<Record<string, string>>({})
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [files, setFiles] = useState<FileItem[]>([])
   const [filesLoading, setFilesLoading] = useState(true)
@@ -371,11 +373,26 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
     }
   }
 
+  // Auto-Save: 800 ms nach der letzten Änderung automatisch speichern (app-weit konsistent).
+  useEffect(() => {
+    if (!isEditor || !isDirty) return
+    setAutoState('pending')
+    if (autoTimer.current) clearTimeout(autoTimer.current)
+    autoTimer.current = setTimeout(async () => {
+      setAutoState('saving')
+      const ok = await saveEdit()
+      setAutoState(ok ? 'saved' : 'error')
+    }, 800)
+    return () => { if (autoTimer.current) clearTimeout(autoTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form])
+
   // Ungespeicherte Venue-Änderungen an den globalen Nav-Guard + beforeunload melden,
   // damit auch ein Seitenwechsel (nicht nur der interne Zurück-Button) warnt.
   useDirtyGuard('venue-detail', isDirty, saveEdit)
 
-  const handleBack = () => { if (isDirty) setShowDirtyDialog(true); else onBack?.() }
+  // Auto-Save läuft; bei Zurück offene Änderungen sofort flushen, nur bei Fehler nachfragen.
+  const handleBack = async () => { if (isDirty) { const ok = await saveEdit(); if (!ok) { setShowDirtyDialog(true); return } } onBack?.() }
 
   useEffect(() => {
     ;(window as any).__pt_isDirty = isDirty
@@ -404,18 +421,14 @@ export function VenueDetailContent({ venueId, onBack, headerRight }: { venueId: 
         <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? '' : (form.name || venue?.name || '')}
         </h2>
-        {isDirty ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>
-            <button onClick={cancelEdit}
-              style={{ padding: '5px 12px', fontSize: '13px', color: dirtyColor, background: 'none', border: `1px solid ${isL2 ? '#555' : '#d1d5db'}`, borderRadius: 0, cursor: 'pointer' }}>
-              <X className="w-3 h-3 inline mr-1" />{t('general.cancel')}
-            </button>
-            <button onClick={saveEdit} disabled={saving}
-              style={{ padding: '5px 12px', fontSize: '13px', fontWeight: 500, background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: 0, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}>
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-              {t('general.save')}
-            </button>
+        {(isDirty || autoState !== 'idle') && isEditor ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {(autoState === 'saving' || autoState === 'pending' || isDirty) && <Loader2 className="w-3 h-3 animate-spin" style={{ color: dirtyColor }} />}
+            <span style={{ fontSize: '12px', color: autoState === 'error' ? 'var(--danger)' : dirtyColor }}>
+              {autoState === 'saved' && !isDirty ? '✓ Automatisch gespeichert'
+                : autoState === 'error' ? '⚠ Speichern fehlgeschlagen'
+                : 'Speichert automatisch…'}
+            </span>
           </div>
         ) : headerRight ? (
           <div style={{ flexShrink: 0 }}>{headerRight}</div>

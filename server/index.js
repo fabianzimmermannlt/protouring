@@ -2182,6 +2182,7 @@ async function initDatabase() {
   // Ticketkanäle: Art + „Geld liegt bei"
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN art TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN money_with TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN price TEXT`); } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
   for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
     'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties']) {
@@ -10117,10 +10118,10 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
     let order = 0
     for (const s of rows) {
       await db.run(
-        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, revenue, refund_amount, refund_pct, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, price, revenue, refund_amount, refund_pct, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         [req.tenant.id, req.params.id, s.vendor || null, s.art || null, s.money_with || null,
-         s.tickets === '' ? null : s.tickets ?? null, s.revenue === '' ? null : s.revenue ?? null,
+         s.tickets === '' ? null : s.tickets ?? null, s.price === '' ? null : s.price ?? null, s.revenue === '' ? null : s.revenue ?? null,
          s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null, order++]
       )
     }
