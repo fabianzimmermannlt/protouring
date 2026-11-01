@@ -6,9 +6,34 @@ import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   setBookingTicketSales, setBookingCostLines, getBookingSettings,
+  getVenue, getPartner,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin,
 } from '@/lib/api-client'
+
+// Parteien aus dem verknüpften Event (Venue + Partner) zusammenstellen – strukturierte
+// Adressen aus den Stammdaten, damit man im Booking nichts doppelt tippt.
+async function partiesFromEvent(termin: Termin, settings: BookingSettings | null): Promise<Partial<BookingContractInput>> {
+  const out: Partial<BookingContractInput> = {}
+  if (settings?.rep_name) { out.rep_name = settings.rep_name; out.rep_address = settings.rep_address ?? '' }
+  try {
+    if (termin.partnerId) {
+      const p = await getPartner(String(termin.partnerId))
+      out.partner_name = p.companyName || ''
+      out.partner_address = [p.street, [p.postalCode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join('\n')
+      out.partner_email = p.email || ''
+    }
+  } catch { /* ignore */ }
+  try {
+    if (termin.venueId) {
+      const v = await getVenue(String(termin.venueId))
+      out.event_venue = v.name || termin.venueName || ''
+      out.venue_address = [v.street, [v.postalCode, v.city].filter(Boolean).join(' '), v.country].filter(Boolean).join('\n')
+      if (v.city) out.event_city = v.city
+    }
+  } catch { /* ignore */ }
+  return out
+}
 import { computeSettlement, type SettlementChannel } from '@/lib/booking/settlement'
 import { BOOKING_STATUSES } from './BookingModule'
 
@@ -39,6 +64,7 @@ export default function EventBookingView({ terminId, termin, isAdmin }: { termin
   const createBooking = async () => {
     setCreating(true)
     try {
+      const parties = await partiesFromEvent(termin, settings)
       const id = await createBookingContract({
         title: [termin.title || termin.city, 'Booking'].filter(Boolean).join(' – ') || 'Booking',
         status: 'enquiry', termin_id: terminId,
@@ -46,6 +72,7 @@ export default function EventBookingView({ terminId, termin, isAdmin }: { termin
         event_city: termin.city || termin.venueCity || '', event_venue: termin.venueName || '',
         currency: 'EUR', deal_type: 'vs', deal_base: 'gross',
         ticket_vat: settings?.ticket_vat ?? '7', fee_vat: settings?.fee_vat ?? '7', artist_vat: settings?.artist_vat ?? '7',
+        ...parties,
       })
       setBooking(await getBookingContract(id))
     } catch { /* ignore */ }
@@ -59,10 +86,10 @@ export default function EventBookingView({ terminId, termin, isAdmin }: { termin
       {isAdmin && <button onClick={createBooking} disabled={creating} className="btn btn-primary">{creating ? 'Lege an…' : 'Booking anlegen'}</button>}
     </div>
   )
-  return <BookingWorkspace booking={booking} settings={settings} isAdmin={isAdmin} onChanged={load} />
+  return <BookingWorkspace booking={booking} settings={settings} termin={termin} isAdmin={isAdmin} onChanged={load} />
 }
 
-function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: BookingContract; settings: BookingSettings | null; isAdmin: boolean; onChanged: () => void }) {
+function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { booking: BookingContract; settings: BookingSettings | null; termin: Termin; isAdmin: boolean; onChanged: () => void }) {
   const [f, setF] = useState<BookingContractInput>(() => ({
     status: booking.status, currency: booking.currency ?? 'EUR',
     rep_name: booking.rep_name ?? '', rep_address: booking.rep_address ?? '',
@@ -81,6 +108,12 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
   }))
   const [channels, setChannels] = useState<BookingTicketSale[]>(booking.ticket_sales ?? [])
   const [costs, setCosts] = useState<BookingCostLine[]>(booking.cost_lines ?? [])
+  const [tiers, setTiers] = useState<{ from: string; pct: string }[]>(() => {
+    try { const t = booking.deal_tiers ? JSON.parse(booking.deal_tiers) : null; if (Array.isArray(t) && t.length) return t.map((x: { from?: unknown; pct?: unknown }) => ({ from: String(x.from ?? ''), pct: String(x.pct ?? '') })) } catch { /* */ }
+    const base: { from: string; pct: string }[] = [{ from: '0', pct: booking.pct1 ?? '' }]
+    if (booking.threshold2 && booking.pct2) base.push({ from: booking.threshold2, pct: booking.pct2 })
+    return base
+  })
   const [clauses, setClauses] = useState<BookingClause[]>([])
   const [selected, setSelected] = useState<number[]>((booking.clauses ?? []).map(c => c.clause_id).filter((x): x is number => x != null))
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
@@ -97,7 +130,7 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
     channels: channels as SettlementChannel[], costs: costs.map(c => ({ net: c.net, vat: c.vat })),
     ticketVat: f.ticket_vat, feePerTicket: f.fee_per_ticket, feeVat: f.fee_vat, feeBandSplitPct: f.fee_band_split_pct,
     artistVat: f.artist_vat, dealBase: f.deal_base, promoterCosts: f.promoter_costs, guarantee: f.guarantee,
-    pct1: f.pct1, threshold2: f.threshold2, pct2: f.pct2, ticketingPayoutGross: f.ticketing_payout_gross,
+    tiers, ticketingPayoutGross: f.ticketing_payout_gross,
     deductOwnShop: deductOwn, depositNet: f.deposit, depositVat: f.artist_vat,
   })
 
@@ -105,7 +138,7 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
   const nextStatus = curIdx >= 0 && curIdx < BOOKING_STATUSES.length - 1 ? BOOKING_STATUSES[curIdx + 1] : null
 
   const saveEverything = async (patch: Partial<BookingContractInput> = {}) => {
-    await updateBookingContract(booking.id, { ...f, ...patch, clauseIds: selected })
+    await updateBookingContract(booking.id, { ...f, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), clauseIds: selected })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
   }
@@ -125,6 +158,9 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
   const addCost = () => setCosts(p => [...p, { label: '', net: '', vat: settings?.service_vat ?? '19' }])
   const setCo = (i: number, patch: Partial<BookingCostLine>) => setCosts(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   const rmCo = (i: number) => setCosts(p => p.filter((_, idx) => idx !== i))
+  const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
+  const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
+  const rmTier = (i: number) => setTiers(p => p.filter((_, idx) => idx !== i))
 
   const createInv = async (kind: 'deposit' | 'final') => {
     setInvBusy(true)
@@ -171,7 +207,10 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
       {/* Parteien */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>PARTEIEN</legend>
-        <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Kette z. B.: Artist → Vertretung (Agentur) → Vertragspartner (lokaler Veranstalter) → Venue. Felder optional – leer lassen, was nicht zutrifft.</p>
+        <div className="flex items-center justify-between mb-2 gap-3">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kette z. B.: Artist → Vertretung (Agentur) → Vertragspartner (lokaler Veranstalter) → Venue. Felder optional.</p>
+          {isAdmin && <button onClick={async () => { const p = await partiesFromEvent(termin, settings); set(p); }} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}>Aus Event übernehmen</button>}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label className="form-label">Vertretung / Agentur</label><input className="form-input" disabled={!isAdmin} value={f.rep_name ?? ''} onChange={e => set({ rep_name: e.target.value })} placeholder="z. B. FKP Scorpio" /></div>
           <div><label className="form-label">Adresse Vertretung</label><input className="form-input" disabled={!isAdmin} value={f.rep_address ?? ''} onChange={e => set({ rep_address: e.target.value })} /></div>
@@ -190,14 +229,31 @@ function BookingWorkspace({ booking, settings, isAdmin, onChanged }: { booking: 
               {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select></div>
           {In('Produktionskostengarantie', 'guarantee', '0')}
-          {In('% ab erster Karte', 'pct1', 'z.B. 60')}
-          {In('2. Schwelle ab Netto', 'threshold2', 'optional')}
-          {In('% ab Schwelle', 'pct2', 'optional')}
           {f.deal_base === 'netprofit' && In('Veranstalterkosten', 'promoter_costs')}
           {In('Anzahlung (netto)', 'deposit')}
           <div><label className="form-label">Währung</label><input className="form-input" disabled={!isAdmin} value={f.currency ?? 'EUR'} onChange={e => set({ currency: e.target.value })} /></div>
           <div className="col-span-2 sm:col-span-3"><label className="form-label">Zahlungsziel</label><input className="form-input" disabled={!isAdmin} value={f.payment_terms ?? ''} onChange={e => set({ payment_terms: e.target.value })} placeholder="z.B. 50% bei Vertragsschluss, Rest nach Show" /></div>
         </div>
+
+        {/* Deal-Stufen (beliebig viele, progressiv) */}
+        <div className="flex items-center justify-between mt-3 mb-1">
+          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Deal-Stufen (% je Netto-Einnahmebereich)</span>
+          {isAdmin && <button onClick={addTier} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Stufe</button>}
+        </div>
+        <div className="space-y-1.5">
+          {tiers.map((t, i) => (
+            <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 120px 28px' }}>
+              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {i === 0
+                  ? 'ab erster Karte'
+                  : <span className="flex items-center gap-1">ab Netto-Einnahme <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={e => setTier(i, { from: e.target.value })} placeholder="z.B. 44859,81" /> €</span>}
+              </div>
+              <div className="flex items-center gap-1"><input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} value={t.pct} onChange={e => setTier(i, { pct: e.target.value })} placeholder="%" /> <span className="text-sm" style={{ color: 'var(--text-muted)' }}>%</span></div>
+              {isAdmin && i > 0 ? <button onClick={() => rmTier(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+            </div>
+          ))}
+        </div>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Progressiv: jede Stufe gilt nur für den Betrag oberhalb ihrer Schwelle (wie Steuerstufen). „vs." Garantie – das Höhere gewinnt.</p>
       </fieldset>
 
       {/* Vertrag */}

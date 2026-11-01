@@ -24,7 +24,27 @@ describe('computeSettlement – echte KA Osnabrück', () => {
   it('offener Betrag nach Ticketing-Payout', () => { close(r.payableGross, 26292.00 - 9876) })
 })
 
-describe('computeSettlement – 2. Schwelle (Wiesbaden-artig)', () => {
+describe('computeSettlement – beliebig viele Stufen (progressiv)', () => {
+  it('3 Stufen marginal: 50 % bis 20k, 60 % bis 40k, 70 % darüber', () => {
+    const r = computeSettlement({
+      channels: [{ revenue: '53500', money_with: 'promoter' }], costs: [],
+      ticketVat: '7', dealBase: 'gross', guarantee: '0', artistVat: '7',
+      tiers: [{ from: '0', pct: '50' }, { from: '20000', pct: '60' }, { from: '40000', pct: '70' }],
+    })
+    const net = 53500 / 1.07 // 50000
+    const expected = 20000 * 0.5 + 20000 * 0.6 + (net - 40000) * 0.7 // 10000+12000+7000 = 29000
+    close(r.dealShareNet, expected)
+  })
+  it('Reihenfolge der Stufen egal (wird sortiert)', () => {
+    const r = computeSettlement({
+      channels: [{ revenue: '53500', money_with: 'promoter' }], costs: [], ticketVat: '7', dealBase: 'gross', guarantee: '0', artistVat: '7',
+      tiers: [{ from: '40000', pct: '70' }, { from: '0', pct: '50' }, { from: '20000', pct: '60' }],
+    })
+    close(r.dealShareNet, 29000)
+  })
+})
+
+describe('computeSettlement – 2. Schwelle (Wiesbaden-artig, Fallback pct1/threshold2/pct2)', () => {
   it('pct1 bis Schwelle, pct2 darüber', () => {
     const r = computeSettlement({
       channels: [{ revenue: '53500', tickets: '1000', money_with: 'promoter' }],

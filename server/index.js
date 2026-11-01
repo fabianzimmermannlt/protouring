@@ -2178,12 +2178,16 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN money_with TEXT`); } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
   for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
-    'rep_name','rep_address','venue_address','individual_terms']) {
+    'rep_name','rep_address','venue_address','individual_terms','deal_tiers']) {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
   for (const col of ['tax_amount','gross_amount','deductions_gross']) {
     try { await db.run(`ALTER TABLE booking_invoices ADD COLUMN ${col} TEXT`); } catch {}
+  }
+  // Booking-Settings: Standard-Vertretung/Agentur (Vorbelegung neuer Bookings)
+  for (const col of ['rep_name','rep_address']) {
+    try { await db.run(`ALTER TABLE booking_settings ADD COLUMN ${col} TEXT`); } catch {}
   }
 
   console.log('✅ Database initialized');
@@ -10049,7 +10053,7 @@ app.put('/api/booking/settings', authenticateToken, requireTenant, async (req, r
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     await getBookingSettings(req.tenant.id)
-    const cols = ['ticket_vat','fee_vat','artist_vat','service_vat','number_prefix','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone']
+    const cols = ['ticket_vat','fee_vat','artist_vat','service_vat','number_prefix','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone','rep_name','rep_address']
     const set = cols.filter(c => req.body[c] !== undefined)
     if (set.length) await db.run(`UPDATE booking_settings SET ${set.map(c => `${c}=?`).join(', ')} WHERE tenant_id=?`, [...set.map(c => req.body[c]), req.tenant.id])
     res.json({ settings: await getBookingSettings(req.tenant.id) })
@@ -10095,7 +10099,7 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
 const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
   'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
-  'rep_name','rep_address','venue_address','individual_terms']
+  'rep_name','rep_address','venue_address','individual_terms','deal_tiers']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 

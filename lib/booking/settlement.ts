@@ -27,9 +27,13 @@ export interface SettlementInput {
   dealBase?: string | null          // 'gross' (Netto-Ticketumsatz) | 'netprofit' (nach Kosten)
   promoterCosts?: string | null     // Veranstalterkosten (nur bei 'netprofit')
   guarantee?: string | null         // Produktionskostengarantie
-  pct1?: string | null              // % ab erster Karte
-  threshold2?: string | null        // Nettoeinnahme-Schwelle für pct2
-  pct2?: string | null              // % ab Schwelle
+  // Beliebig viele Deal-Stufen (progressiv): je Stufe gilt pct ab der Nettoeinnahme `from`.
+  // Erste Stufe sollte from=0 haben. Beispiel: [{from:0,pct:50},{from:44859.81,pct:55}].
+  tiers?: { from?: string | number | null; pct?: string | number | null }[]
+  // Rückwärtskompatibel (2 Stufen) – wird genutzt, falls tiers leer ist.
+  pct1?: string | null
+  threshold2?: string | null
+  pct2?: string | null
   ticketingPayoutGross?: string | null  // bereits vom Ticketanbieter an die Band ausgezahlt (brutto)
   deductOwnShop?: boolean           // Einnahmen aus eigenem Shop (money_with='band') verrechnen
   depositNet?: string | null        // bereits berechnete Anzahlung (netto)
@@ -65,12 +69,19 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
   const bandFeeShareNet = feeNet * n(inp.feeBandSplitPct) / 100
 
   const dealBaseAmt = inp.dealBase === 'netprofit' ? (ticketNet - n(inp.promoterCosts)) : ticketNet
-  const pct1 = n(inp.pct1), pct2 = n(inp.pct2), th2 = n(inp.threshold2)
-  let share: number
-  if (th2 > 0 && pct2 > 0) {
-    share = dealBaseAmt <= th2 ? dealBaseAmt * pct1 / 100 : (th2 * pct1 / 100 + (dealBaseAmt - th2) * pct2 / 100)
-  } else {
-    share = dealBaseAmt * pct1 / 100
+  // Stufen bestimmen: entweder aus tiers oder (Fallback) aus pct1/threshold2/pct2.
+  let tiers = (inp.tiers || []).map(t => ({ from: n(t.from), pct: n(t.pct) })).filter(t => t.pct !== 0 || t.from === 0)
+  if (!tiers.length) {
+    tiers = [{ from: 0, pct: n(inp.pct1) }]
+    if (n(inp.threshold2) > 0 && n(inp.pct2) > 0) tiers.push({ from: n(inp.threshold2), pct: n(inp.pct2) })
+  }
+  tiers.sort((a, b) => a.from - b.from)
+  // Progressiv/marginal: Anteil je Stufe auf den Betrag zwischen from[i] und from[i+1].
+  let share = 0
+  for (let i = 0; i < tiers.length; i++) {
+    const lower = tiers[i].from
+    const upper = i + 1 < tiers.length ? tiers[i + 1].from : Infinity
+    if (dealBaseAmt > lower) share += (Math.min(dealBaseAmt, upper) - lower) * tiers[i].pct / 100
   }
   const dealShareNet = Math.max(n(inp.guarantee), share)   // „vs" – das Höhere gewinnt
   const artistShareNet = dealShareNet + bandFeeShareNet

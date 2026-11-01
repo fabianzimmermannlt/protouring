@@ -508,6 +508,15 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
       </fieldset>
 
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERTRETUNG / AGENTUR (Standard)</legend>
+        <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Wird neuen Bookings als Vertretung vorbelegt (z. B. die Agentur, die den Artist vertritt). Pro Event überschreibbar.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Fld('Name / Firma', 'rep_name')}
+          <div><label className="form-label">Adresse</label><textarea className="form-input" rows={2} disabled={!canEdit} value={s.rep_address ?? ''} onChange={e => set({ rep_address: e.target.value })} /></div>
+        </div>
+      </fieldset>
+
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>RECHNUNGSSTELLER (Standard)</legend>
         <select className="form-select" disabled={!canEdit} value={s.issuer_mode || 'tenant'} onChange={e => set({ issuer_mode: e.target.value })} style={{ maxWidth: 360 }}>
           <option value="tenant">Band / Artist (Rechnungsanschrift aus Konto)</option>

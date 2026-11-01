@@ -3875,6 +3875,7 @@ export interface BookingContract {
   pct1?: string | null
   threshold2?: string | null
   pct2?: string | null
+  deal_tiers?: string | null   // JSON: [{from,pct}, …] – beliebig viele Deal-Stufen
   ticket_vat?: string | null
   fee_per_ticket?: string | null
   fee_vat?: string | null
@@ -3929,6 +3930,8 @@ export interface BookingSettings {
   issuer_taxid?: string | null
   issuer_email?: string | null
   issuer_phone?: string | null
+  rep_name?: string | null
+  rep_address?: string | null
 }
 
 export type BookingContractInput = Partial<Omit<BookingContract, 'id' | 'tenant_id' | 'created_at' | 'updated_at' | 'clauses'>> & { clauseIds?: number[] }
