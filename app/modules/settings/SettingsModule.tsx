@@ -27,6 +27,7 @@ import GewerkSettings from './GewerkSettings'
 import RolePermissionsSettings from './RolePermissionsSettings'
 import ScheduleTemplatesSettings from './ScheduleTemplatesSettings'
 import { useLanguage, useT } from '@/app/lib/i18n/LanguageContext'
+import { useAccordionPref, type AccordionMode, type AccordionScope } from '@/app/lib/accordionMode'
 import {
   getSettingsUsers, getMyRole, updateUserRole, removeUser, revokeInvite,
   adminSetUserEmail, adminSetUserPassword, adminToggleUserStatus,
@@ -82,19 +83,7 @@ export default function SettingsModule({ activeSubTab = 'profil' }: SettingsProp
         return <RolePermissionsSettings />
 
       case 'appearance':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <PaintBrushIcon className="w-5 h-5" />
-                {t('settings.appearance.title')}
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-gray-600">{t('settings.appearance.placeholder')}</p>
-              </div>
-            </div>
-          </div>
-        )
+        return <AppearanceSettings />
 
       case 'notifications':
         return <NotificationSettings />
@@ -200,6 +189,56 @@ const ARTIST_FORM_EMPTY: ArtistForm = {
   displayName: '', shortCode: '', homebase: '', genre: '',
   website: '', artistEmail: '', artistPhone: '',
   artistStreet: '', artistPostalCode: '', artistCity: '', artistCountry: '', artistTaxId: '',
+}
+
+function AppearanceSettings() {
+  const t = useT()
+  const { mode, scope, update } = useAccordionPref()
+  const MODES: ReadonlyArray<readonly [AccordionMode, string, string]> = [
+    ['combined', 'Kombiniert', 'Mehrere gleichzeitig offen'],
+    ['exclusive', 'Exklusiv', 'Immer nur eines offen'],
+  ]
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <PaintBrushIcon className="w-5 h-5" />
+          {t('settings.appearance.title')}
+        </h3>
+
+        <div className="border rounded-lg p-5 max-w-xl" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>Akkordeons</div>
+          <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+            Legt fest, ob sich aufklappbare Abschnitte gemeinsam öffnen lassen oder immer nur einer gleichzeitig offen ist.
+          </p>
+
+          <div className="flex gap-2 mb-4">
+            {MODES.map(([val, label, desc]) => (
+              <button key={val} type="button" onClick={() => update(val, scope)}
+                className="flex-1 text-left border rounded-md px-3 py-2 transition-colors"
+                style={{
+                  borderColor: mode === val ? 'var(--primary)' : 'var(--border)',
+                  background: mode === val ? 'var(--primary-soft)' : 'var(--surface-2)',
+                  color: 'var(--text)',
+                }}>
+                <div className="text-sm font-medium">{label}</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{desc}</div>
+              </button>
+            ))}
+          </div>
+
+          <label className="form-label">Gültig für</label>
+          <select className="form-select" value={scope} onChange={e => update(mode, e.target.value as AccordionScope)}>
+            <option value="device">Nur dieses Gerät</option>
+            <option value="account">Meinen Account (geräteübergreifend)</option>
+          </select>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-subtle)' }}>
+            „Nur dieses Gerät" speichert lokal. „Meinen Account" merkt die Einstellung für dich auf allen Geräten.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ArtistSettings() {

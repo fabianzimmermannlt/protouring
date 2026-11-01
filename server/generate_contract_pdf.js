@@ -15,8 +15,13 @@ const CONTENT_W = PAGE_W - MARGIN * 2;
 const FONT_REG = 'Helvetica', FONT_BOLD = 'Helvetica-Bold', FONT_ITALIC = 'Helvetica-Oblique';
 
 function drawLogo(doc, logoPath) {
-  if (!logoPath || !fs.existsSync(logoPath) || !/\.(png|jpe?g)$/i.test(logoPath)) return;
-  try { doc.image(logoPath, PAGE_W - MARGIN - 120, MARGIN, { fit: [120, 48], align: 'right' }); } catch { /* ignorieren */ }
+  // Logo oben mittig; gibt die untere Y-Kante zurück, damit der Titel darunter sitzt.
+  const boxW = 170, boxH = 56;
+  if (!logoPath || !fs.existsSync(logoPath) || !/\.(png|jpe?g)$/i.test(logoPath)) return MARGIN;
+  try {
+    doc.image(logoPath, (PAGE_W - boxW) / 2, MARGIN, { fit: [boxW, boxH], align: 'center', valign: 'center' });
+    return MARGIN + boxH;
+  } catch { return MARGIN; }
 }
 
 function money(v, cur = 'EUR') {
@@ -73,9 +78,10 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
 
     const ensureSpace = (need) => { if (doc.y > PAGE_H - MARGIN - need) doc.addPage(); };
 
-    // ── Kopf: Logo + zentrierter Titel ──
-    drawLogo(doc, c.logoPath || null);
-    doc.font(FONT_BOLD).fontSize(20).fillColor('#111827').text(c.title || 'Konzertvertrag', MARGIN, MARGIN + 6, { width: CONTENT_W, align: 'center' });
+    // ── Kopf: Logo oben mittig, darunter zentrierter Titel ──
+    const afterLogo = drawLogo(doc, c.logoPath || null);
+    const titleY = afterLogo > MARGIN ? afterLogo + 10 : MARGIN + 6;
+    doc.font(FONT_BOLD).fontSize(20).fillColor('#111827').text(c.title || 'Konzertvertrag', MARGIN, titleY, { width: CONTENT_W, align: 'center' });
     if (c.contract_no) doc.font(FONT_REG).fontSize(8).fillColor('#9ca3af').text(`Nr. ${c.contract_no}`, MARGIN, doc.y + 1, { width: CONTENT_W, align: 'center' });
     doc.moveDown(1);
 
