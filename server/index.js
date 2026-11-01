@@ -9949,35 +9949,148 @@ app.post('/api/booking/clauses', authenticateToken, requireTenant, async (req, r
 // Standard-Vertragsbausteine (an den FKP „Konzertvertrag / Local Contract" angelehnt).
 // Bewusst als anpassbarer Entwurf – Titel + Struktur fix, Volltext vom Nutzer finalisierbar.
 // Platzhalter: {{artist}} {{partner}} {{venue}} {{stadt}} {{datum}} {{gage}} {{deal}} {{ticketpreis}} {{anzahlung}}
+// Vollständige FKP-Standardbausteine (§ 1–§ 12), originalgetreu nach dem echten
+// FKP-Scorpio-Konzertvertrag strukturiert. Platzhalter ({{artist}}, {{partner}},
+// {{datum}}, {{stadt}}, {{venue}}, {{gage}}, {{deal}}, {{ticketpreis}}, {{anzahlung}})
+// werden beim PDF-Export aus den Deal-Werten gefüllt. „ÖV" = örtlicher Veranstalter.
 const FKP_STANDARD_CLAUSES = [
-  { title: 'Gegenstand des Vertrags', body: 'Gegenstand dieses Vertrags ist der Auftritt von {{artist}} beim Konzert am {{datum}} in {{stadt}}, {{venue}}. Veranstalter dieses Konzerts ist {{partner}}. Einlass und Beginn sowie weitere Details ergeben sich aus diesem Vertrag und seinen Anlagen (u. a. Stage Rider / Artist Rider), die integraler Bestandteil dieses Vertrags sind.' },
-  { title: 'Pflichten des Artists', body: 'Der Artist tritt beim Konzert mit seiner Auftrittsproduktion auf. Der Artist ist in Gestaltung, Durchführung und Präsentation der Auftrittsproduktion frei und nicht an Weisungen des Veranstalters oder Dritter gebunden. Der Artist stellt – soweit verfügbar – Promotionmaterial auf nicht-exklusiver Basis zur Verfügung (insbesondere Fotos inkl. Urheberrechtsnachweisen, Informationen, Biografien, Texte sowie Audio-/audiovisuelle Inhalte) ausschließlich zur Bewerbung des Konzerts.' },
-  { title: 'Pflichten des Veranstalters', body: 'Der Veranstalter stellt auf eigene Kosten die für die Durchführung des Konzerts erforderlichen Leistungen bereit, insbesondere P.A.- und Lichttechnik (soweit nicht von der Auftrittsproduktion umfasst), Beauftragung eines Sicherheits- und Ordnungsdienstes sowie Catering. Der Veranstalter holt alle erforderlichen Erlaubnisse und Genehmigungen rechtzeitig ein und trägt die damit verbundenen Kosten und Abgaben (u. a. GEMA, KSK, Ausländersteuer, soweit einschlägig).' },
-  { title: 'Vergütung', body: 'Der Artist erhält eine Produktionskostengarantie von {{gage}} zzgl. gesetzlicher Umsatzsteuer, abgerechnet nach dem vereinbarten Deal ({{deal}}). Eine etwaige Beteiligung/Refundierung sowie Nebenkosten (z. B. Buyouts) werden gemäß Abrechnung berücksichtigt. Eine Anzahlung in Höhe von {{anzahlung}} zzgl. USt ist gegen Rechnung im Voraus zu leisten; der Restbetrag ist unmittelbar nach dem Konzert gegen Rechnung zahlbar. Zahlungen erfolgen auf das vom Artist benannte Konto.' },
-  { title: 'Ticketing & Einnahmeszenario', body: 'Die Ticketpreise und das Einnahmeszenario werden zwischen den Parteien gesondert vereinbart (siehe Abrechnung). Der Grundpreis beträgt {{ticketpreis}}. Der Veranstalter legt den Artist bzw. dessen Vertretung als Mitveranstalter im Ticketsystem frei. Herstellung und Ausgabe von Hardtickets bedürfen der vorherigen schriftlichen Zustimmung des Artists. Dem Veranstalter stehen kostenfrei mindestens 20 und maximal 3 % der Zutrittsberechtigungen als Freikarten zu; darüber hinaus bedarf es der vorherigen schriftlichen Zustimmung des Artists.' },
-  { title: 'Ticketverkauf & Abrechnung', body: 'Der Veranstalter führt den Ticketverkauf ordnungsgemäß durch und legt auf Anforderung die Original-Abschlussrapporte sowie – bei zugelassenen Hardtickets – Original-Lieferschein und Original-Resttickets vor. Die Abrechnung erfolgt unverzüglich nach dem Konzert auf Basis der tatsächlich erzielten Einnahmen.' },
-  { title: 'Marketing', body: 'Der Veranstalter bewirbt das Konzert auf eigene Kosten in angemessenem Umfang (u. a. Online, Social Media, ggf. Out-of-Home). Der Artist bzw. dessen Vertretung kann Einblick in den Marketingplan verlangen. Die Verwendung von Name und Logo des Artists ist ausschließlich zur Bewerbung dieses Konzerts gestattet.' },
-  { title: 'Höhere Gewalt / Absage', body: 'Kann das Konzert aufgrund höherer Gewalt oder aus einem von keiner Partei zu vertretenden Grund nicht stattfinden, informieren sich die Parteien unverzüglich und stimmen das weitere Vorgehen ab. Ansprüche wegen Nichtdurchführung sind in diesen Fällen – vorbehaltlich zwingender gesetzlicher Regelungen – ausgeschlossen. Bei Open-Air-Veranstaltungen stellen wetterbedingte Absagen regelmäßig kein unvorhersehbares Ereignis dar.' },
-  { title: 'Haftung und Freistellung', body: 'Die Haftung der Parteien ist – vorbehaltlich der folgenden Regelungen – ausgeschlossen. Unberührt bleibt die Haftung für Vorsatz und grobe Fahrlässigkeit, für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit sowie nach dem Produkthaftungsgesetz. Bei einfacher Fahrlässigkeit wird nur bei Verletzung wesentlicher Vertragspflichten und begrenzt auf den vertragstypischen, vorhersehbaren Schaden gehaftet. Der Veranstalter stellt den Artist von Ansprüchen Dritter frei, die aus der Durchführung der Veranstaltung entstehen.' },
-  { title: 'Verhaltensregeln', body: 'Rassistische, sexistische, homophobe, faschistische oder sonst diskriminierende oder gewaltverherrlichende Inhalte und Verhaltensweisen sind im Rahmen der Veranstaltung untersagt. Die Parteien wirken auf einen diskriminierungsfreien, sicheren Veranstaltungsrahmen hin.' },
-  { title: 'Geheimhaltung', body: 'Die Parteien behandeln die Inhalte dieses Vertrags sowie alle im Zusammenhang mit der Zusammenarbeit erlangten Informationen vertraulich und machen sie Dritten nicht zugänglich, soweit dies nicht zur Durchführung des Konzerts erforderlich oder gesetzlich geboten ist.' },
-  { title: 'Schlussbestimmungen', body: 'Änderungen und Ergänzungen dieses Vertrags bedürfen der Textform. Individualvereinbarungen haben stets Vorrang. Sollten einzelne Bestimmungen unwirksam sein, bleibt der Vertrag im Übrigen wirksam. Dieser Vertrag unterliegt dem Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts (CISG) und des Kollisionsrechts. Gerichtsstand ist – soweit zulässig – der Sitz der den Artist vertretenden Gesellschaft.' },
+  { title: 'Vertragsgegenstand', body:
+`1. Gegenstand dieses Vertrags ist der Auftritt von {{artist}} auf folgendem „Konzert", das von {{partner}} als örtlichem Veranstalter („ÖV") durchgeführt wird:
+   Datum: {{datum}}
+   Veranstaltungsstätte: {{venue}}
+   Ort: {{stadt}}
+   Einlass und Beginn sowie die Kapazität ergeben sich aus den Veranstaltungsdetails bzw. den Anlagen zu diesem Vertrag.
+2. Die Parteien vereinbaren den folgenden Deal, der in § 4 näher beschrieben ist: {{deal}} – Produktionskostengarantie netto {{gage}} gegen Beteiligung nach Kosten.
+3. Weitere Einzelheiten ergeben sich aus der Bühnenanweisung / dem Artist Rider, über die/den sich die Parteien gegebenenfalls nachträglich einigen werden und welche/r als Anlage integraler Bestandteil dieses Vertrages wird.` },
+
+  { title: 'Pflichten von Artist', body:
+`1. Artist tritt mit der zugehörigen Auftrittsproduktion („Auftrittsproduktion") beim Konzert auf. Artist ist bei dem Auftritt frei und unterliegt keinen Weisungen vom ÖV oder Dritten in Bezug auf die Gestaltung, Aufführung und Präsentation der Auftrittsproduktion.
+2. Artist stellt dem ÖV, sofern und soweit vorhanden, nicht-exklusiv Werbematerial zur Verfügung. Dies kann insbesondere Fotos (inklusive der Urheberrechtsnachweise), Informationen, Biografien, Texte sowie audio- und audiovisuelle Inhalte umfassen. ÖV ist zur Nutzung dieser Werbematerialien ausschließlich im Rahmen der Bewerbung des Konzertes berechtigt. Eine darüberhinausgehende Nutzung zu eigenen Unternehmenszwecken von ÖV oder zur Bewerbung von Produkten und/oder Dienstleistungen Dritter ist nicht gestattet.` },
+
+  { title: 'Pflichten des ÖV', body:
+`1. ÖV ist als örtlicher Veranstalter verantwortlich für die ordnungs- und vertragsgemäße Erbringung sämtlicher vor Ort erforderlicher Leistungen, um die Veranstaltung durchzuführen, inklusive der Umsetzung der Bühnenanweisung / des Artist Riders. Zu den vor Ort zu erbringenden Leistungen gehören insbesondere, aber nicht ausschließlich:
+   • Anmietung der Veranstaltungsstätte inkl. Nebenkosten, Bereitstellen der Veranstaltungstechnik – insb. P.A. und Lichttechnik, sofern nicht von der Auftrittsproduktion umfasst –, Beauftragung Sicherheits- und Ordnungsdienstes, Bereitstellen von Catering;
+   • Gewährleistung eines Versicherungsschutzes für den Verantwortungsbereich des ÖV, insb. für durch das Publikum verursachte Schäden;
+   • notwendige Anmeldung des Konzerts bei den zuständigen Verwertungs- und Urheberrechtsgesellschaften und die Abführung der im Rahmen der Veranstaltung etwaig anfallenden Lizenzgebühren (insb. GEMA o. ä.).
+2. ÖV ist verantwortlich für sämtliche Angelegenheiten im Zusammenhang mit der Sicherheit der Veranstaltung und der Verkehrssicherungspflicht. ÖV sichert zu, das Konzert unter Beachtung aller geltenden gesetzlichen Sicherheitsvorschriften zu planen und diese vor Ort einzuhalten, und ist verpflichtet, alle für das Konzert erforderlichen Erlaubnisse und Genehmigungen rechtzeitig einzuholen.
+3. ÖV trägt sämtliche Kosten, die im Rahmen der Erfüllung seiner Pflichten anfallen („örtliche Kosten"). Soweit Artist und/oder die den Artist vertretende Gesellschaft Leistungen selbst erfüllt bzw. zur Verfügung stellt, hat ÖV die hierfür anfallenden Kosten zu erstatten („Buyout").
+4. ÖV ist dafür verantwortlich, sämtliche im Zusammenhang mit dem Konzert anfallenden Steuern und Abgaben ordnungsgemäß abzuführen; dies umfasst insbesondere die Künstlersozialabgabe und eine ggf. anfallende Vergnügungssteuer. ÖV trägt sämtliche Kosten für die Erfüllung der öffentlich-rechtlichen und steuerrechtlichen Verpflichtungen und hat keinen Anspruch auf Erstattung durch Artist.
+5. ÖV ist nicht berechtigt, Rechte an der Veranstaltung ganz oder teilweise ohne vorherige schriftliche Zustimmung durch Artist an Dritte zu lizenzieren.
+6. Dieser Vertrag beinhaltet weder die Zustimmung noch die Erlaubnis, Artist zu filmen oder zu fotografieren oder die Veranstaltung aufzuzeichnen, live zu übertragen oder in sonstiger Form zu veröffentlichen. Ausnahmen bedürfen der vorherigen schriftlichen Vereinbarung zwischen den Parteien.` },
+
+  { title: 'Deal, Entgelt und Zahlungsmodalitäten', body:
+`1. ÖV zahlt an Artist eine „Produktionskostengarantie" in Höhe von {{gage}} zzgl. anfallender gesetzlicher Umsatzsteuer.
+2. Zusätzlich zahlt ÖV an Artist die vereinbarte Beteiligung am Nettogewinn der Veranstaltung, wenn die Beteiligung die Produktionskostengarantie übersteigt (vs. % of net): {{deal}}. Der Nettogewinn wird wie folgt ermittelt: Von den Nettoeinnahmen aus den Ticketverkäufen (Ticketeinnahmen abzgl. sämtlicher im Ticketverkauf einzurichtender Gebühren wie Ticketsystem-, Vorverkaufs- oder Mediengebühren sowie abzgl. Umsatzsteuer) werden die örtlichen Kosten abgezogen.
+3. Zusätzlich zahlt ÖV an Artist die Kosten für Buyouts nach § 3 Ziff. 3 gemäß gesonderter Aufstellung.
+4. Es wird eine Refundierung in der gesondert vereinbarten (inkl. MwSt. angegebenen) Höhe eingerichtet. Artist partizipiert an dieser Refundierung mit dem vereinbarten Anteil. Sämtliche anderen Zusatzgebühren wie Mediengebühren, Werbekostenzuschüsse, Facility Fees oder ÖPNV-Gebühren werden nach gesonderter Vereinbarung zwischen den Parteien aufgeteilt.
+5. ÖV hat eine Abschlagszahlung auf die Produktionskostengarantie in Höhe von {{anzahlung}} zzgl. gesetzlicher Umsatzsteuer sofort nach Anforderung, spätestens jedoch vor der Veranstaltung, gegen Rechnung im Voraus an Artist zu zahlen. Artist behält sich das Recht vor, jederzeit weitere Abschlagszahlungen in Rechnung zu stellen. Der verbleibende Betrag ist von ÖV unmittelbar nach dem Konzert nach Erhalt der entsprechenden Rechnung an Artist zu zahlen.
+6. Alle an Artist zu zahlenden Beträge sind auf Kosten von ÖV in EUR auf das von Artist benannte Konto zu überweisen.` },
+
+  { title: 'Eintrittspreise, Vorverkauf, Support Acts und Präsentatoren', body:
+`1. Die Ticketpreise und das Einnahmeszenario werden zwischen den Parteien gesondert vereinbart (siehe Abrechnung/Anlage). Der Grundpreis beträgt {{ticketpreis}}.
+2. ÖV stellt Artist und der den Artist vertretenden Gesellschaft kostenfrei mindestens 20 Zutrittsberechtigungen und maximal 3 % der verkaufbaren Kapazität zur Verfügung. Die Ausgabe von nicht in diesem Vertrag vorgesehenen Zutrittsberechtigungen bedarf der vorherigen schriftlichen Zustimmung von Artist.
+3. Support Act(s) und Präsentatoren werden gesondert vereinbart. Die Integration örtlicher Präsentatoren bedarf der vorherigen schriftlichen Zustimmung von Artist.` },
+
+  { title: 'Ticketing', body:
+`1. ÖV ist verpflichtet, den Ticketvorverkauf durchzuführen. Der Ticketvorverkauf ist ausschließlich über das vereinbarte Ticketsystem durchzuführen; sämtliche Abweichungen hiervon bedürfen der vorherigen schriftlichen Zustimmung von Artist. Bei der Anlage des Ticketvorverkaufs wird ÖV die den Artist vertretende Gesellschaft als Mitveranstalter freischalten. Die Herstellung und Ausgabe jeglicher Hardtickets bedarf der vorherigen schriftlichen Zustimmung von Artist.
+2. ÖV ist für die ordnungsgemäße Anmeldung und Abführung der Umsatzsteuer für die durch den Ticketvorverkauf erzielten Einnahmen verantwortlich.
+3. ÖV wird Artist laufend und ohne Aufforderung und mindestens einmal pro Woche über den Stand des Ticketvorverkaufs informieren (mindestens über die Anzahl der verkauften Tickets und die erzielten Einnahmen).
+4. ÖV darf mit dem Ticketvorverkauf generierte Einnahmen teilweise an sich auszahlen lassen, um damit schriftlich nachgewiesene und anfallende örtliche Kosten zu decken, und wenn Artist der Auszahlung schriftlich zugestimmt hat.
+5. Unverzüglich nach der Veranstaltung wird ÖV Rechnung über die verkauften Tickets legen, unter Vorlage eines Original-Abschlussrapports und der Original-Stornotickets sowie – falls Hardtickets mit Zustimmung von Artist hergestellt und ausgegeben wurden – unter Vorlage von Original-Lieferschein und der Original-Resttickets. Nicht vorgelegte Original-Resttickets gelten für die Zwecke der Abrechnung als verkauft.` },
+
+  { title: 'Marketing, Promotion und Merchandise', body:
+`1. ÖV wird regionale Werbung für die Veranstaltung in angemessenem Umfang über branchenübliche und zielgruppenspezifische Marketingkanäle schalten (insb. Online-Marketing und -Promotion, Radio- und TV-Clips, Out-of-Home-Media etc.).
+2. ÖV wird auf Anforderung von Artist rechtzeitig vor der öffentlichen Ankündigung der Veranstaltung einen aussagekräftigen budgetierten Marketingplan zur Freigabe übermitteln. Nachträgliche Änderungen bedürfen der vorherigen schriftlichen Zustimmung von Artist. Artist behält sich vor, abhängig vom Ticketvorverkauf jederzeit Anpassungen am Marketingplan zu verlangen.
+3. Die den Artist vertretende Gesellschaft oder Artist werden ggf. „Social Media Events" für die Veranstaltung anlegen, die auf Anfrage durch ÖV gepflegt werden.
+4. Die Integration örtlicher Präsentatoren, inkl. der damit verbundenen von ÖV zu erbringenden Leistungen, bedarf der vorherigen schriftlichen Zustimmung von Artist.
+5. Die Veröffentlichung jeglicher von ÖV erstellter Werbemittel sowie Änderungen an von Artist vorgegebenem Werbematerial bedürfen der vorherigen schriftlichen Zustimmung von Artist.
+6. ÖV wird Artist für den eigenverantwortlichen Verkauf von Merchandise-Artikeln am Tag des Konzerts in der Veranstaltungsstätte kostenfrei eine geeignete Stellfläche und einen ausreichend großen Verkaufstisch zur Verfügung stellen. Sämtliche Rechte zur Vermarktung geistigen Eigentums von Artist sind Artist vorbehalten. Über Herstellung, Lieferung und Verkaufspreis von Merchandising-Artikeln bestimmt allein Artist. Sollte der Verkauf an einen Konzessionär vergeben sein, muss ÖV dies Artist unverzüglich nach Vertragsschluss mitteilen; andernfalls hat ÖV für einen konzessionsfreien Verkauf zu sorgen.` },
+
+  { title: 'Absage oder Abbruch, Höhere Gewalt', body:
+`1. Wenn der Auftritt für Artist wegen Krankheit von Artist, Krankheit eines Bandmitglieds oder bei ernsthafter Krankheit oder Tod eines Familienmitglieds oder Lebenspartners von Artist unmöglich oder unzumutbar ist, oder die Anreise zur Veranstaltungsstätte wegen höherer Gewalt unmöglich ist, entfallen sämtliche gegenseitigen Ansprüche der Parteien. Artist wird ÖV unverzüglich informieren. Ein Ersatztermin bedarf einer ausdrücklichen Vereinbarung in Schriftform. Darüber hinaus gilt:
+   • Bereits geleistete Zahlungen werden zurückgezahlt.
+   • Die Parteien tragen ihre Kosten selbst, einschließlich der Kosten, die bei der Vorbereitung der Veranstaltung entstanden sind.
+   Eine darüberhinausgehende Geltendmachung von Schadens- oder Aufwendungsersatz ist für beide Parteien ausgeschlossen.
+2. Wenn (a) das Konzert aufgrund höherer Gewalt vor Beginn des Auftritts von Artist abgesagt wird und (b) ÖV aufgrund dieser Absage verpflichtet ist, den Kunden den vollen Kartenpreis zu erstatten, gelten die Regelungen von Ziff. 1 entsprechend, mit der Maßgabe, dass ÖV Artist unverzüglich über die Absage informiert.
+3. Zur Klarstellung: Wenn (a) das Konzert nach seinem Beginn abgebrochen wird, oder (b) die Absage nicht auf höherer Gewalt beruht, oder (c) ÖV aufgrund der Absage nicht verpflichtet ist, den Kunden den vollen Ticketpreis zu erstatten, bleiben alle Zahlungsverpflichtungen von ÖV in vollem Umfang bestehen. ÖV ist verpflichtet, eine entsprechende Versicherung abzuschließen.
+4. „Höhere Gewalt" ist jedes unvorhersehbare Ereignis, das außerhalb des Einflussbereichs der Parteien liegt und von keiner Partei verschuldet wurde, einschließlich, aber nicht beschränkt auf Katastrophenfälle, Terrorakte, Krieg oder kriegsähnliche Ereignisse, Epidemien, Pandemien (einschließlich der COVID-19-Pandemie), Feuer, Streiks und behördliche Verbote aufgrund der vorgenannten Ereignisse. Die Parteien gehen nicht davon aus, dass wetterbedingte Absagen bei einer Open-Air-Veranstaltung ein unvorhersehbares Ereignis sind.` },
+
+  { title: 'Haftung und Freistellung', body:
+`1. ÖV trägt die alleinige Verantwortung für die ordnungsgemäße Erbringung der Leistungen vor Ort (s. § 3) und stellt Artist sowie die den Artist vertretende Gesellschaft auf erstes Anfordern von allen Ansprüchen frei, die Dritte aufgrund oder im Zusammenhang mit den vor Ort zu erbringenden Leistungen geltend machen. Dies umfasst auch die Kosten für eine notwendige Rechtsverteidigung.
+2. Die Haftung von Artist und der den Artist vertretenden Gesellschaft ist vorbehaltlich der folgenden Regelungen ausgeschlossen:
+   • Haftung für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit und nach dem Produkthaftungsgesetz.
+   • Haftung in allen Fällen vertraglicher und außervertraglicher Haftung bei Vorsatz und grober Fahrlässigkeit nach Maßgabe der gesetzlichen Bestimmungen.
+   • In sonstigen Fällen Haftung nur bei Verletzung einer Vertragspflicht, deren Erfüllung die ordnungsgemäße Durchführung des Vertrages überhaupt erst ermöglicht und auf deren Einhaltung regelmäßig vertraut werden darf (Kardinalpflicht), jedoch beschränkt auf den bei Vertragsschluss vorhersehbaren und typischen Schaden.
+3. Soweit die Haftung ausgeschlossen oder beschränkt ist, gilt dies auch für die persönliche Haftung der Organe, gesetzlichen Vertreter, Mitarbeiter und Erfüllungsgehilfen.` },
+
+  { title: 'Kündigung', body:
+`1. Dieser Vertrag kann nicht ordentlich, sondern nur außerordentlich aus wichtigem Grund gekündigt werden. Ein wichtiger Grund liegt insbesondere, aber nicht ausschließlich vor, wenn
+   • ÖV schuldhaft gegen die Verpflichtungen aus § 3 verstößt und eine Frist zur Abhilfe abgelaufen ist (es sei denn, diese Frist wäre von vornherein aussichtslos oder eine sofortige Kündigung ist aus besonderen Gründen gerechtfertigt); oder
+   • rassistische, sexistische, homophobe, faschistische oder sonst diskriminierende oder gewaltverherrlichende Inhalte bei oder im Zusammenhang mit der Veranstaltungsstätte oder der Veranstaltung selbst vorgetragen werden oder werden könnten.
+2. Sämtliche Kündigungen müssen in Schriftform erfolgen.` },
+
+  { title: 'Geheimhaltung', body:
+`Die Parteien bewahren Stillschweigen und Vertraulichkeit über (i) den Inhalt dieses Konzertvertrages, (ii) den Inhalt und Planungsstand der laufenden, vergangenen und zukünftigen Zusammenarbeit sowie (iii) alle erlangten Kenntnisse über betriebliche Abläufe der jeweils anderen Partei sowie erlangte Unterlagen, Daten, Dateien, Pläne und sonstige Arbeitsmaterialien, es sei denn, die offenlegende Partei ist zur Offenlegung aufgrund gerichtlicher/behördlicher Anordnungen und zwingender Rechtsnormen verpflichtet, z. B. gegenüber Steuerbehörden. Vorgenannte Informationen dürfen an solche Dritte weitergegeben werden, die aufgrund des Berufsrechts zur Vertraulichkeit und Verschwiegenheit verpflichtet sind (Rechtsanwälte, Steuerberater usw.).` },
+
+  { title: 'Schlussbestimmungen', body:
+`1. Sofern die Parteien bereits vertragliche Vereinbarungen über die Bedingungen des Auftritts getroffen haben, tritt dieser Konzertvertrag an die Stelle dieser Vereinbarungen und es gelten ausschließlich die in diesem Konzertvertrag enthaltenen Bestimmungen.
+2. Die Parteien sind sich darüber einig, dass durch den Konzertvertrag weder eine Gesellschaft, ein gesellschaftsähnliches Verhältnis, ein Arbeitsverhältnis noch ein Joint Venture begründet wird.
+3. Soweit nicht ausdrücklich anders festgelegt, bedürfen sämtliche Erklärungen und sonstigen Mitteilungen zu ihrer Wirksamkeit der Textform (§ 126b BGB), sodass ein Zugang per E-Mail genügt.
+4. Nebenabreden sind nicht getroffen. Änderungen und Ergänzungen des Konzertvertrages bedürfen zu ihrer Wirksamkeit der Schriftform. Dies gilt auch für eine Änderung dieser Schriftformklausel. Individualvereinbarungen haben aber stets Vorrang.
+5. Der Konzertvertrag und seine Auslegung unterliegen dem Recht der Bundesrepublik Deutschland, unter Ausschluss des UN-Kaufrechts (CISG) und des deutschen Kollisionsrechts.
+6. Ausschließlicher Gerichtsstand für alle Streitigkeiten aus oder im Zusammenhang mit diesem Konzertvertrag sowie Erfüllungsort ist der Sitz der den Artist vertretenden Gesellschaft.
+7. Sollten einzelne Bestimmungen des Konzertvertrages ganz oder teilweise unwirksam oder undurchführbar sein oder werden, wird hierdurch die Wirksamkeit der übrigen Bestimmungen nicht berührt. An die Stelle der unwirksamen Regelung tritt eine Regelung, die dem Sinn und Zweck der unwirksamen oder undurchführbaren Regelung wirtschaftlich am nächsten kommt. Dasselbe gilt im Fall von vertraglichen Lücken.` },
 ]
 
-// POST /api/booking/clauses/seed-fkp — FKP-Standardbausteine anlegen (überspringt bereits vorhandene Titel)
+// Alte (gekürzte) Standard-Titel, die durch die neue §-Struktur ersetzt wurden.
+const FKP_OBSOLETE_TITLES = new Set([
+  'gegenstand des vertrags', 'pflichten des veranstalters', 'vergütung',
+  'ticketing & einnahmeszenario', 'ticketverkauf & abrechnung', 'marketing',
+  'höhere gewalt / absage', 'verhaltensregeln',
+])
+
+// POST /api/booking/clauses/seed-fkp — FKP-Standardbausteine laden/aktualisieren.
+// Upsert: vorhandene Titel bekommen den vollständigen Text als NEUE Version (Historie bleibt),
+// fehlende §§ werden angelegt, und alte gekürzte Standardbausteine (unverändert) werden archiviert.
 app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const existing = await db.all('SELECT title FROM booking_clauses WHERE tenant_id=?', [req.tenant.id])
-    const have = new Set(existing.map(e => (e.title || '').trim().toLowerCase()))
-    let created = 0, order = existing.length
+    const existing = await db.all(
+      `SELECT c.id, c.title, c.archived_at,
+              (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body,
+              (SELECT COALESCE(MAX(version),0) FROM booking_clause_versions v WHERE v.clause_id=c.id) AS maxv,
+              (SELECT COUNT(*) FROM booking_clause_versions v WHERE v.clause_id=c.id) AS vcount
+       FROM booking_clauses c WHERE c.tenant_id=?`, [req.tenant.id])
+    const byTitle = new Map(existing.map(e => [(e.title || '').trim().toLowerCase(), e]))
+
+    let created = 0, updated = 0, archived = 0, order = existing.length
     for (const c of FKP_STANDARD_CLAUSES) {
-      if (have.has(c.title.trim().toLowerCase())) continue
-      const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order) VALUES (?,?,?)', [req.tenant.id, c.title, order++])
-      await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)', [req.tenant.id, r.lastID, 1, c.body, req.user.id])
-      created++
+      const key = c.title.trim().toLowerCase()
+      const ex = byTitle.get(key)
+      if (ex) {
+        // Reaktivieren, falls archiviert; Body nur als neue Version, wenn er sich geändert hat.
+        if (ex.archived_at) { await db.run(`UPDATE booking_clauses SET archived_at=NULL, updated_at=datetime('now') WHERE id=?`, [ex.id]); }
+        if ((ex.body || '') !== c.body) {
+          await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)',
+            [req.tenant.id, ex.id, (ex.maxv || 0) + 1, c.body, req.user.id])
+          updated++
+        }
+      } else {
+        const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order) VALUES (?,?,?)', [req.tenant.id, c.title, order++])
+        await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)', [req.tenant.id, r.lastID, 1, c.body, req.user.id])
+        created++
+      }
     }
-    res.json({ ok: true, created })
+
+    // Alte gekürzte Standardbausteine archivieren – aber nur, wenn unverändert (nur v1).
+    for (const [key, ex] of byTitle) {
+      if (FKP_OBSOLETE_TITLES.has(key) && !ex.archived_at && (ex.vcount || 0) <= 1) {
+        await db.run(`UPDATE booking_clauses SET archived_at=datetime('now'), updated_at=datetime('now') WHERE id=?`, [ex.id])
+        archived++
+      }
+    }
+
+    res.json({ ok: true, created, updated, archived })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

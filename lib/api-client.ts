@@ -3977,9 +3977,9 @@ export async function deleteBookingClause(id: number): Promise<void> {
   await request(`/api/booking/clauses/${id}`, { method: 'DELETE' })
 }
 /** FKP-Standardbausteine für den aktuellen Tenant anlegen (überspringt vorhandene Titel). */
-export async function seedFkpClauses(): Promise<number> {
-  const res = await request<{ created: number }>('/api/booking/clauses/seed-fkp', { method: 'POST' })
-  return res.created
+export async function seedFkpClauses(): Promise<{ created: number; updated: number; archived: number }> {
+  const res = await request<{ created: number; updated?: number; archived?: number }>('/api/booking/clauses/seed-fkp', { method: 'POST' })
+  return { created: res.created ?? 0, updated: res.updated ?? 0, archived: res.archived ?? 0 }
 }
 
 export async function getBookingContracts(): Promise<BookingContract[]> {

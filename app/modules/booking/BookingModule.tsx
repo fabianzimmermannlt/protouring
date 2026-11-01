@@ -71,7 +71,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Vertragsbausteine</h2>
         {canEdit && !showArchived && (
           <div className="flex gap-2">
-            <button onClick={async () => { if (!confirm('FKP-Standardbausteine anlegen? (bereits vorhandene Titel werden übersprungen)')) return; const n = await seedFkpClauses(); alert(`${n} Baustein(e) angelegt.`); load() }} className="btn btn-ghost">FKP-Standard laden</button>
+            <button onClick={async () => { if (!confirm('FKP-Standardbausteine laden/aktualisieren?\n\nVorhandene Bausteine werden auf den vollständigen Vertragstext aktualisiert (als neue Version – die Historie bleibt erhalten), fehlende §§ werden angelegt, alte gekürzte Bausteine werden archiviert.')) return; const r = await seedFkpClauses(); alert(`${r.created} angelegt, ${r.updated} aktualisiert, ${r.archived} archiviert.`); load() }} className="btn btn-ghost">FKP-Standard laden</button>
             <button onClick={() => setModal({ clause: null })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
           </div>
         )}
