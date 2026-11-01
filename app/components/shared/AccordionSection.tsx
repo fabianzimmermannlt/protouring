@@ -33,7 +33,7 @@ export function AccordionSection({ title, defaultOpen = false, headerActions, st
   }
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${className}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+    <div className={`border overflow-hidden ${className}`} style={{ background: 'var(--surface)', borderColor: 'var(--border)', borderRadius: 0 }}>
       <div className="flex items-center">
         <button
           onClick={toggle}

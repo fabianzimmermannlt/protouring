@@ -62,7 +62,7 @@ function ITextarea({ label, value, onChange, placeholder = '', readOnly = false 
   )
 }
 
-export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRight }: { partnerId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode }) {
+export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRight, hideTitle }: { partnerId: string; onNotFound?: () => void; onBack?: () => void; headerRight?: React.ReactNode; hideTitle?: boolean }) {
   const t = useT()
   const { layout } = useLayout()
   const isL2 = true // App fest Dark-Mode
@@ -153,10 +153,12 @@ export function PartnerDetailContent({ partnerId, onNotFound, onBack, headerRigh
         </button>
       )}
       {/* Header */}
-      <div className="flex items-center justify-between" style={{ minHeight: '32px', gap: '12px' }}>
-        <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {loading ? '' : (form.companyName || partner?.companyName || '')}
-        </h2>
+      <div className="flex items-center justify-between" style={{ minHeight: hideTitle && !isDirty ? 0 : '32px', gap: '12px' }}>
+        {hideTitle
+          ? <div style={{ flex: 1, minWidth: 0 }} />
+          : <h2 style={{ color: titleColor, fontSize: '17px', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {loading ? '' : (form.companyName || partner?.companyName || '')}
+            </h2>}
         {isDirty ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ fontSize: '12px', color: dirtyColor }}>Ungespeicherte Änderungen</span>

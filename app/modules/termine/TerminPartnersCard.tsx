@@ -126,6 +126,19 @@ export default function TerminPartnersCard({
       .finally(() => setLoading(false))
   }, [terminId])
 
+  // Akkordeon-Titel live aktualisieren, wenn der Partner-Stammsatz gespeichert wird.
+  useEffect(() => {
+    const onUpdated = (e: Event) => {
+      const p = (e as CustomEvent<{ id?: number | string; companyName?: string; contactPerson?: string; city?: string; type?: string }>).detail
+      if (!p?.id) return
+      setLinks(prev => prev.map(l => l.partner_id === Number(p.id)
+        ? { ...l, company_name: p.companyName ?? l.company_name, contact_person: p.contactPerson ?? l.contact_person, city: p.city ?? l.city, partner_type: p.type ?? l.partner_type }
+        : l))
+    }
+    window.addEventListener('partner-updated', onUpdated)
+    return () => window.removeEventListener('partner-updated', onUpdated)
+  }, [])
+
   const handleSelect = async (partner: Partner) => {
     setShowPicker(false)
     if (swappingLink) {
@@ -211,7 +224,7 @@ export default function TerminPartnersCard({
               </>
             ) : undefined}
           >
-            <PartnerDetailContent partnerId={String(link.partner_id)} />
+            <PartnerDetailContent partnerId={String(link.partner_id)} hideTitle />
           </AccordionSection>
         )
       })}
