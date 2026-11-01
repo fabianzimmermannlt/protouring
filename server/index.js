@@ -9925,17 +9925,22 @@ app.get('/api/booking/clauses', authenticateToken, requireTenant, async (req, re
        ORDER BY c.sort_order, c.title`,
       [req.tenant.id]
     )
-    // Standard-§§ robust in fester FKP-Reihenfolge anzeigen (unabhängig vom DB-sort_order),
-    // eigene Bausteine danach – identisch zur PDF-Sortierung, ohne erneutes Seeden.
-    const FKP_ORDER = new Map(FKP_STANDARD_CLAUSES.map((cc, i) => [cc.title.trim().toLowerCase(), i]))
-    rows.forEach((r, i) => { r.__pos = i })
-    rows.sort((a, b) => {
-      const ka = FKP_ORDER.has((a.title || '').trim().toLowerCase()) ? FKP_ORDER.get((a.title || '').trim().toLowerCase()) : 1000 + a.__pos
-      const kb = FKP_ORDER.has((b.title || '').trim().toLowerCase()) ? FKP_ORDER.get((b.title || '').trim().toLowerCase()) : 1000 + b.__pos
-      return ka - kb
-    })
-    rows.forEach(r => { delete r.__pos })
+    // Reihenfolge = sort_order (vom „FKP-Standard laden" gesetzt, danach manuell verschiebbar).
     res.json({ clauses: rows })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/clauses/reorder — Reihenfolge der Bausteine setzen (ids in gewünschter Reihenfolge).
+// MUSS vor der /:id-Route stehen, sonst matcht Express „reorder" als :id.
+app.put('/api/booking/clauses/reorder', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : []
+    let order = 0
+    for (const id of ids) {
+      await db.run(`UPDATE booking_clauses SET sort_order=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?`, [order++, id, req.tenant.id])
+    }
+    res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
@@ -10427,20 +10432,10 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
     // Pro-Vertrag Overrides: Häkchen aus → Baustein weglassen; eigener Text → statt Bibliothekstext.
     const ovRows = await db.all('SELECT clause_id, included, body FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [req.params.id, tenant.id])
     const ov = new Map(ovRows.map(o => [o.clause_id, o]))
+    // Reihenfolge = sort_order aus der Bibliothek (Query ist bereits so sortiert); Overrides anwenden.
     const clauses = clausesRaw
       .filter(c => { const o = ov.get(c.id); return !o || o.included !== 0 })
       .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
-    // Reihenfolge robust erzwingen: Standard-§§ immer in der festen FKP-Vorlagen-
-    // Reihenfolge (Vertragsgegenstand zuerst), unabhängig vom sort_order der DB –
-    // damit kein erneutes „FKP-Standard laden" nötig ist. Eigene Bausteine folgen
-    // danach in ihrer gespeicherten Reihenfolge.
-    const FKP_ORDER = new Map(FKP_STANDARD_CLAUSES.map((cc, i) => [cc.title.trim().toLowerCase(), i]))
-    clauses.forEach((cl, i) => { cl.__pos = i })
-    clauses.sort((a, b) => {
-      const ka = FKP_ORDER.has((a.title || '').trim().toLowerCase()) ? FKP_ORDER.get((a.title || '').trim().toLowerCase()) : 1000 + a.__pos
-      const kb = FKP_ORDER.has((b.title || '').trim().toLowerCase()) ? FKP_ORDER.get((b.title || '').trim().toLowerCase()) : 1000 + b.__pos
-      return ka - kb
-    })
     const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
     const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
     const bset = await getBookingSettings(tenant.id)

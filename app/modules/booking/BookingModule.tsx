@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import {
-  getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses,
+  getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses, reorderBookingClauses,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
   getBookingSettings, updateBookingSettings, getTenantArtistSettings,
@@ -65,6 +65,16 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   }, [showArchived])
   useEffect(() => { load() }, [load])
 
+  // Reihenfolge verschieben (nur in der aktiven Liste); optimistisch + persistiert.
+  const move = async (i: number, dir: -1 | 1) => {
+    const j = i + dir
+    if (j < 0 || j >= clauses.length) return
+    const next = [...clauses]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setClauses(next)
+    try { await reorderBookingClauses(next.map(c => c.id)) } catch { load() }
+  }
+
   return (
     <div className="space-y-4" style={{ maxWidth: 820 }}>
       <div className="flex items-center justify-between">
@@ -92,7 +102,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{showArchived ? 'Kein archivierter Baustein' : 'Noch keine Bausteine angelegt'}</div>
       ) : (
         <div className="space-y-2">
-          {clauses.map(c => (
+          {clauses.map((c, i) => (
             <div key={c.id} className="border rounded-lg p-3" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -105,6 +115,8 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
                 {canEdit && (
                   <div className="flex gap-1 flex-shrink-0">
                     {!showArchived && <>
+                      <button onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach oben"><ChevronUpIcon className="w-4 h-4" /></button>
+                      <button onClick={() => move(i, 1)} disabled={i === clauses.length - 1} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach unten"><ChevronDownIcon className="w-4 h-4" /></button>
                       <button onClick={() => setHistoryFor(c)} className="p-1 text-gray-400 hover:text-blue-600" title={`Versionen (${c.version_count ?? 1})`}><ClockIcon className="w-4 h-4" /></button>
                       <button onClick={() => setModal({ clause: c })} className="p-1 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
                       <button onClick={async () => { await archiveBookingClause(c.id, true); load() }} className="p-1 text-gray-400 hover:text-gray-700" title="Archivieren"><ArchiveBoxIcon className="w-4 h-4" /></button>

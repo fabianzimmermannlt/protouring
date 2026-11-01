@@ -13,6 +13,11 @@ const MARGIN = 56;
 const PAGE_W = 595, PAGE_H = 842;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const FONT_REG = 'Helvetica', FONT_BOLD = 'Helvetica-Bold', FONT_ITALIC = 'Helvetica-Oblique';
+// Einheitliche Typografie: wenige feste Größen (Titel / Überschrift / Fließtext / Tabelle / klein),
+// nur Regular + Bold. Hängende Einrückung: IND1 hinter Ziffern, IND1+IND2 hinter Bullets.
+const SIZE_TITLE = 18, SIZE_H = 11, SIZE_BODY = 9.5, SIZE_TABLE = 8.5, SIZE_SMALL = 8;
+const INK = '#111827', BODY_INK = '#1f2937', MUTED = '#6b7280', LINE = '#d1d5db';
+const LINEGAP = 2.5, IND1 = 15, IND2 = 14;
 
 function drawLogo(doc, logoPath) {
   // Logo oben mittig; gibt die untere Y-Kante zurück, damit der Titel darunter sitzt.
@@ -82,19 +87,18 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     // ── Kopf: Logo oben mittig, darunter zentrierter Titel ──
     const afterLogo = drawLogo(doc, c.logoPath || null);
     const titleY = afterLogo > MARGIN ? afterLogo + 10 : MARGIN + 6;
-    doc.font(FONT_BOLD).fontSize(20).fillColor('#111827').text(c.title || 'Konzertvertrag', MARGIN, titleY, { width: CONTENT_W, align: 'center' });
-    if (c.contract_no) doc.font(FONT_REG).fontSize(8).fillColor('#9ca3af').text(`Nr. ${c.contract_no}`, MARGIN, doc.y + 1, { width: CONTENT_W, align: 'center' });
+    doc.font(FONT_BOLD).fontSize(SIZE_TITLE).fillColor(INK).text(c.title || 'Konzertvertrag', MARGIN, titleY, { width: CONTENT_W, align: 'center' });
+    if (c.contract_no) doc.font(FONT_REG).fontSize(SIZE_SMALL).fillColor('#9ca3af').text(`Nr. ${c.contract_no}`, MARGIN, doc.y + 1, { width: CONTENT_W, align: 'center' });
     doc.moveDown(1);
 
     // ── Parteienkopf (zwischen … vertreten durch … und …) ──
     const addrLine = (parts) => parts.filter(Boolean).join(', ');
     const partyBlock = (intro, name, addr, extra, tag) => {
-      if (intro) doc.font(FONT_REG).fontSize(10).fillColor('#111827').text(intro, MARGIN, doc.y, { width: CONTENT_W });
-      doc.font(FONT_BOLD).fontSize(10).fillColor('#111827').text(name || '—', MARGIN, doc.y, { width: CONTENT_W, continued: !!addr });
-      if (addr) doc.font(FONT_REG).fontSize(10).fillColor('#111827').text(`, ${addr}`, { width: CONTENT_W });
-      if (extra) doc.font(FONT_REG).fontSize(10).fillColor('#111827').text(extra, MARGIN, doc.y, { width: CONTENT_W });
-      doc.font(FONT_BOLD).fontSize(9.5).fillColor('#374151').text(`– „${tag}" –`, MARGIN, doc.y + 2, { width: CONTENT_W, align: 'right' });
-      doc.moveDown(0.6);
+      if (intro) { doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(intro, MARGIN, doc.y, { width: CONTENT_W, align: 'center' }); doc.moveDown(0.1); }
+      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(`${name || '—'}${addr ? ', ' + addr : ''}`, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
+      if (extra) doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(extra, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
+      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(`– „${tag}" –`, MARGIN, doc.y + 1, { width: CONTENT_W, align: 'center' });
+      doc.moveDown(0.5);
     };
 
     const artistAddr = addrLine([artist.address, [artist.postalCode, artist.city].filter(Boolean).join(' '), artist.country]);
@@ -103,7 +107,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     if (c.rep_name) partyBlock('vertreten durch', c.rep_name, c.rep_address || '', null, 'Agentur');
     partyBlock('und', c.partner_name, c.partner_address || '', c.partner_email || null, 'ÖV');
 
-    doc.font(FONT_REG).fontSize(9.5).fillColor('#374151')
+    doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED)
       .text('– Artist und ÖV gemeinsam auch als „Parteien" und einzeln als „Partei" –', MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
     doc.moveDown(0.6);
 
@@ -114,8 +118,9 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const composeP = (p) => [p.street, [p.postalCode, p.city].filter(Boolean).join(' '), p.country, p.address].filter(Boolean).join(', ');
     const extras = (Array.isArray(parties) ? parties : []).filter(p => p && p.name && p.role !== 'Venue' && !shown.has(p.name));
     if (extras.length) {
-      doc.font(FONT_BOLD).fontSize(9).fillColor('#374151').text('Weitere Beteiligte', MARGIN);
-      doc.font(FONT_REG).fontSize(9.5).fillColor('#111827');
+      doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Weitere Beteiligte', MARGIN);
+      doc.moveDown(0.2);
+      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK);
       for (const p of extras) {
         const addr = composeP(p);
         doc.text(`${p.role || 'Beteiligte/r'}: ${p.name}${addr ? ' — ' + addr : ''}`, MARGIN, doc.y, { width: CONTENT_W });
@@ -130,14 +135,14 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const drawTable = (title, headers, rows, widths) => {
       if (!rows.length) return;
       ensureSpace(60 + rows.length * 16);
-      if (title) { doc.font(FONT_ITALIC).fontSize(9).fillColor('#374151').text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.15); }
+      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.2); }
       const x0 = MARGIN, totalW = widths.reduce((a, b) => a + b, 0);
       const rowH = 16;
       const drawRow = (cells, bold, bg) => {
         const y = doc.y;
         if (bg) { doc.save().rect(x0, y, totalW, rowH).fill(bg).restore(); }
         let x = x0;
-        doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(8.5).fillColor('#111827');
+        doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_TABLE).fillColor(INK);
         cells.forEach((cell, i) => {
           const alignRight = i > 0; // erste Spalte links, Rest rechts
           doc.text(String(cell ?? ''), x + 4, y + 4, { width: widths[i] - 8, align: alignRight ? 'right' : 'left', lineBreak: false });
@@ -171,12 +176,12 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       const rows = pairs.filter(p => p && p[1] != null && p[1] !== '');
       if (!rows.length) return;
       ensureSpace(30 + rows.length * 14);
-      if (title) { doc.font(FONT_ITALIC).fontSize(9).fillColor('#374151').text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.15); }
+      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.2); }
       const labelW = 210;
       for (const [k, v] of rows) {
         const y = doc.y;
-        doc.font(FONT_REG).fontSize(9.5).fillColor('#6b7280').text(k, MARGIN + 6, y, { width: labelW });
-        doc.font(FONT_BOLD).fontSize(9.5).fillColor('#111827').text(String(v), MARGIN + 6 + labelW, y, { width: CONTENT_W - labelW - 6 });
+        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(k, MARGIN + 6, y, { width: labelW });
+        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(String(v), MARGIN + 6 + labelW, y, { width: CONTENT_W - labelW - 6 });
         doc.y = Math.max(doc.y, y + 13);
       }
       doc.moveDown(0.4);
@@ -215,14 +220,43 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       ['Restzahlung', 'gemäß Abrechnung', c.balance_due ? `bis ${dateDE(c.balance_due)}` : 'nach dem Konzert'],
     ];
 
+    // Hängende Einrückung: Marker (Ziffer/Bullet) links, Text in einer eingerückten Spalte,
+    // sodass umbrochene Zeilen unter dem Text (nicht unter der Ziffer) stehen.
+    const hang = (marker, mx, text, tx, tw) => {
+      const y0 = doc.y;
+      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(text, tx, y0, { width: tw, lineGap: LINEGAP });
+      const y1 = doc.y;
+      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(marker, mx, y0, { width: tx - mx });
+      doc.y = Math.max(y1, doc.y);
+    };
+    // Baustein-Text zeilenweise: „1." / „2." → Ziffer-Einrückung, „•" → Bullet, sonst Fließzeile
+    // (unter der Ziffernspalte, wenn der § nummeriert ist).
+    const drawClauseBody = (text) => {
+      const hasNum = /(^|\n)\s*\d+\.\s/.test(text);
+      for (const raw of String(text || '').split('\n')) {
+        const line = raw.trim();
+        if (!line) { doc.moveDown(0.2); continue; }
+        ensureSpace(26);
+        let m;
+        if ((m = line.match(/^(\d+)\.\s+(.*)$/))) {
+          hang(`${m[1]}.`, MARGIN, m[2], MARGIN + IND1, CONTENT_W - IND1);
+        } else if ((m = line.match(/^[•·]\s*(.*)$/))) {
+          hang('•', MARGIN + IND1, m[1], MARGIN + IND1 + IND2, CONTENT_W - IND1 - IND2);
+        } else {
+          const x = hasNum ? MARGIN + IND1 : MARGIN;
+          doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(line, x, doc.y, { width: CONTENT_W - (x - MARGIN), lineGap: LINEGAP });
+        }
+        doc.moveDown(0.12);
+      }
+    };
+
     // ── §§-Bausteine (live) + interleaved Deal-Tabellen ──
     clauses.forEach((cl, i) => {
       ensureSpace(90);
-      doc.font(FONT_BOLD).fontSize(10.5).fillColor('#111827')
+      doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK)
         .text(`§ ${i + 1}  ${cl.title}`, MARGIN, doc.y, { width: CONTENT_W });
-      doc.moveDown(0.2);
-      doc.font(FONT_REG).fontSize(9.5).fillColor('#1f2937')
-        .text(fillPlaceholders(cl.body, placeholders) || ' ', MARGIN, doc.y, { width: CONTENT_W, lineGap: 2 });
+      doc.moveDown(0.3);
+      drawClauseBody(fillPlaceholders(cl.body, placeholders) || ' ');
       doc.moveDown(0.5);
 
       const t = norm(cl.title);
@@ -252,26 +286,27 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const costRows = (costLines || []).filter(l => l && (l.label || l.net)).map(l => [l.label || '—', money(l.net, cur) || '—', l.vat ? `${num(l.vat)} %` : '—']);
     if (costRows.length) {
       ensureSpace(80);
-      doc.font(FONT_BOLD).fontSize(10.5).fillColor('#111827').text('Nebenkosten / Buyouts', MARGIN, doc.y, { width: CONTENT_W });
-      doc.moveDown(0.2);
+      doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Nebenkosten / Buyouts', MARGIN, doc.y, { width: CONTENT_W });
+      doc.moveDown(0.3);
       drawTable(null, ['Position', 'Netto', 'USt'], costRows, [CONTENT_W - 130 - 70, 130, 70]);
     }
 
     // ── Individualvereinbarungen (haben Vorrang) ──
     if (c.individual_terms) {
       ensureSpace(100);
-      doc.font(FONT_BOLD).fontSize(10.5).fillColor('#111827').text('Individualvereinbarungen', MARGIN, doc.y, { width: CONTENT_W });
-      doc.font(FONT_REG).fontSize(8).fillColor('#6b7280').text('(haben gemäß Schlussbestimmungen Vorrang vor den vorstehenden Bausteinen)', MARGIN, doc.y, { width: CONTENT_W });
-      doc.moveDown(0.2);
-      doc.font(FONT_REG).fontSize(9.5).fillColor('#1f2937').text(String(c.individual_terms), MARGIN, doc.y, { width: CONTENT_W, lineGap: 2 });
+      doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Individualvereinbarungen', MARGIN, doc.y, { width: CONTENT_W });
+      doc.font(FONT_REG).fontSize(SIZE_SMALL).fillColor(MUTED).text('(haben gemäß Schlussbestimmungen Vorrang vor den vorstehenden Bausteinen)', MARGIN, doc.y, { width: CONTENT_W });
+      doc.moveDown(0.25);
+      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(String(c.individual_terms), MARGIN, doc.y, { width: CONTENT_W, lineGap: LINEGAP });
       doc.moveDown(0.6);
     }
 
     // ── Notizen ──
     if (c.notes) {
       ensureSpace(80);
-      doc.font(FONT_BOLD).fontSize(9).fillColor('#374151').text('Weitere Vereinbarungen', MARGIN);
-      doc.font(FONT_REG).fontSize(9.5).fillColor('#111827').text(String(c.notes), { width: CONTENT_W, lineGap: 2 });
+      doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Weitere Vereinbarungen', MARGIN);
+      doc.moveDown(0.3);
+      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(String(c.notes), MARGIN, doc.y, { width: CONTENT_W, lineGap: LINEGAP });
       doc.moveDown(0.6);
     }
 

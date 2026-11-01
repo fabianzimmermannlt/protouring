@@ -3995,6 +3995,11 @@ export async function seedFkpClauses(): Promise<{ created: number; updated: numb
   return { created: res.created ?? 0, updated: res.updated ?? 0, archived: res.archived ?? 0 }
 }
 
+/** Reihenfolge der Bausteine setzen (ids in gewünschter Reihenfolge). */
+export async function reorderBookingClauses(ids: number[]): Promise<void> {
+  await request('/api/booking/clauses/reorder', { method: 'PUT', body: { ids } })
+}
+
 export async function getBookingContracts(): Promise<BookingContract[]> {
   const res = await request<{ contracts: BookingContract[] }>('/api/booking/contracts')
   return res.contracts
