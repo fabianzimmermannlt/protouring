@@ -13,9 +13,11 @@ interface Props {
   /** Optionaler eigener Titel-Inhalt (statt Uppercase-Label), z. B. „Rolle — Name". */
   titleContent?: React.ReactNode
   className?: string
+  /** Innenabstand des Inhaltsbereichs (damit Kacheln nicht am Rand kleben), z. B. "p-4". */
+  bodyClassName?: string
 }
 
-export function AccordionSection({ title, defaultOpen = false, headerActions, stateKey, titleContent, className = '', children }: Props) {
+export function AccordionSection({ title, defaultOpen = false, headerActions, stateKey, titleContent, className = '', bodyClassName = '', children }: Props) {
   const [open, setOpen] = useState(() => {
     if (stateKey && typeof window !== 'undefined') {
       const stored = localStorage.getItem(`accordion_${stateKey}`)
@@ -55,7 +57,7 @@ export function AccordionSection({ title, defaultOpen = false, headerActions, st
           </div>
         )}
       </div>
-      {open && <div style={{ borderTop: '1px solid var(--border)' }}>{children}</div>}
+      {open && <div className={bodyClassName} style={{ borderTop: '1px solid var(--border)' }}>{children}</div>}
     </div>
   )
 }

@@ -191,6 +191,7 @@ export default function TerminPartnersCard({
             key={link.id}
             title={link.company_name || 'Partner'}
             defaultOpen={links.length === 1}
+            bodyClassName="p-4"
             titleContent={
               <span className="truncate">
                 <span className="font-medium" style={{ color: 'var(--text)' }}>{link.company_name || 'Partner'}</span>
