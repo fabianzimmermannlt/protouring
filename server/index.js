@@ -10218,7 +10218,7 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
     const clauses = await db.all('SELECT * FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
     const bset = await getBookingSettings(tenant.id)
     const { generateContractPdf } = require('./generate_contract_pdf')
-    const pdf = await generateContractPdf({ contract, clauses, artist: resolveIssuer(contract, bset, tenant) })
+    const pdf = await generateContractPdf({ contract, clauses, artist: resolveIssuer(contract, bset, tenant), logoPath: tenant.label_logo_path })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="Vertrag_${contract.contract_no || contract.id}.pdf"`)
     res.send(pdf)
@@ -10304,7 +10304,7 @@ app.get('/api/booking/invoices/:id/pdf', async (req, res) => {
     const contract = inv.contract_id ? await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [inv.contract_id, tenant.id]) : null
     const bset = await getBookingSettings(tenant.id)
     const { generateInvoicePdf } = require('./generate_invoice_pdf')
-    const pdf = await generateInvoicePdf({ invoice: inv, issuer: resolveIssuer(contract, bset, tenant) })
+    const pdf = await generateInvoicePdf({ invoice: inv, issuer: resolveIssuer(contract, bset, tenant), logoPath: tenant.label_logo_path })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `inline; filename="${inv.invoice_no || 'Rechnung'}.pdf"`)
     res.send(pdf)

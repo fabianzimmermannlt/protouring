@@ -5,6 +5,13 @@
  * Kein Rechts-/Steuer-Anspruch – reine Dokumentenerzeugung aus den erfassten Werten.
  */
 const PDFDocument = require('pdfkit');
+const fs = require('fs');
+
+// Logo oben rechts platzieren (nur PNG/JPG; Fehler ignorieren, nie das PDF sprengen).
+function drawLogo(doc, logoPath, margin, contentW, pageW) {
+  if (!logoPath || !fs.existsSync(logoPath) || !/\.(png|jpe?g)$/i.test(logoPath)) return;
+  try { doc.image(logoPath, pageW - margin - 120, margin, { fit: [120, 48], align: 'right' }); } catch { /* ungültiges Bild – ignorieren */ }
+}
 
 const MARGIN = 56;
 const PAGE_W = 595, PAGE_H = 842;
@@ -40,7 +47,7 @@ function fillPlaceholders(text, map) {
   });
 }
 
-function generateContractPdf({ contract: c, clauses = [], artist = {} }) {
+function generateContractPdf({ contract: c, clauses = [], artist = {}, logoPath = null }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
     const chunks = [];
@@ -64,6 +71,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {} }) {
     };
 
     // ── Kopf ──
+    drawLogo(doc, logoPath, MARGIN, CONTENT_W, PAGE_W);
     doc.font(FONT_REG).fontSize(7).fillColor('#6b7280').text('VERTRAG', MARGIN, MARGIN, { characterSpacing: 1 });
     doc.font(FONT_BOLD).fontSize(18).fillColor('#111827').text(c.title || 'Vertrag', MARGIN, doc.y + 2, { width: CONTENT_W });
     if (c.contract_no) doc.font(FONT_REG).fontSize(8).fillColor('#9ca3af').text(`Nr. ${c.contract_no}`, { width: CONTENT_W });

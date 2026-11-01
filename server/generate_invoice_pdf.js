@@ -8,6 +8,11 @@
  * kommt in der Compliance-Phase und sollte mit dem Steuerberater geprüft werden.
  */
 const PDFDocument = require('pdfkit');
+const fs = require('fs');
+function drawLogo(doc, logoPath, x, y) {
+  if (!logoPath || !fs.existsSync(logoPath) || !/\.(png|jpe?g)$/i.test(logoPath)) return false;
+  try { doc.image(logoPath, x, y, { fit: [120, 40], align: 'right' }); return true; } catch { return false; }
+}
 
 const M = 56, PAGE_W = 595, CONTENT_W = PAGE_W - M * 2;
 const REG = 'Helvetica', BOLD = 'Helvetica-Bold';
@@ -16,7 +21,7 @@ function num(v) { const x = Number(String(v ?? '').replace(',', '.')); return is
 function money(n, cur = 'EUR') { return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur; }
 function dateDE(iso) { if (!iso) return ''; const [y, m, d] = String(iso).slice(0, 10).split('-'); return (y && m && d) ? `${d}.${m}.${y}` : iso; }
 
-function generateInvoicePdf({ invoice: inv, issuer = {} }) {
+function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: M, left: M, right: M } });
     const chunks = [];
@@ -41,9 +46,12 @@ function generateInvoicePdf({ invoice: inv, issuer = {} }) {
     doc.font(REG).fontSize(10.5).fillColor('#111827');
     doc.text([inv.recipient_name, inv.recipient_address].filter(Boolean).join('\n') || '—', M, M + 24, { width: 280 });
 
+    // ── Logo (oben rechts) ──
+    const hasLogo = drawLogo(doc, logoPath, M + CONTENT_W - 120, M);
+
     // ── Rechnungs-Meta (rechts) ──
     const metaX = M + CONTENT_W - 200;
-    let my = M + 24;
+    let my = hasLogo ? M + 50 : M + 24;
     const meta = (k, v) => { doc.font(REG).fontSize(9).fillColor('#6b7280').text(k, metaX, my, { width: 90 }); doc.font(BOLD).fontSize(9).fillColor('#111827').text(v, metaX + 90, my, { width: 110 }); my += 14; };
     meta('Rechnungs-Nr.', inv.invoice_no || '—');
     meta('Datum', dateDE(inv.issue_date));

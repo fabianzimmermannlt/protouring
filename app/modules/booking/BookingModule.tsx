@@ -6,8 +6,10 @@ import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
-  getBookingSettings, updateBookingSettings,
+  getBookingSettings, updateBookingSettings, getTenantBilling,
+  getEquipmentSettings, uploadEquipmentLogo, deleteEquipmentLogo, API_BASE,
   getTermine, getEffectiveRole, canEdit as canEditArea,
+  type TenantBilling,
   type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type BookingSettings, type Termin,
 } from '@/lib/api-client'
 
@@ -480,10 +482,20 @@ function InvoicesTab() {
 // ═══════════════════════════════════════════════════════════════════════════
 function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
   const [s, setS] = useState<BookingSettings | null>(null)
+  const [billing, setBilling] = useState<TenantBilling | null>(null)
+  const [logoPath, setLogoPath] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  useEffect(() => { getBookingSettings().then(setS).catch(() => {}) }, [])
+  useEffect(() => {
+    getBookingSettings().then(setS).catch(() => {})
+    getTenantBilling().then(setBilling).catch(() => {})
+    getEquipmentSettings().then(st => setLogoPath(st.label_logo_path ?? null)).catch(() => {})
+  }, [])
+  const logoUrl = logoPath ? `${API_BASE}/uploads/${(logoPath.split('/uploads/')[1] ?? '')}` : null
+  const onLogo = async (file: File | undefined) => { if (!file) return; try { const r = await uploadEquipmentLogo(file); setLogoPath(r.label_logo_path) } catch { /* */ } }
+  const removeLogo = async () => { try { await deleteEquipmentLogo(); setLogoPath(null) } catch { /* */ } }
   if (!s) return <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
+  const billingComplete = !!(billing && (billing.company || billing.lastName) && billing.address && billing.city)
   const set = (p: Partial<BookingSettings>) => setS(prev => prev ? { ...prev, ...p } : prev)
   const save = async () => { setSaving(true); try { const r = await updateBookingSettings(s); setS(r); setMsg('Gespeichert.'); setTimeout(() => setMsg(''), 1500) } catch { /* */ } setSaving(false) }
   const Fld = (label: string, key: keyof BookingSettings, ph = '') => (
@@ -492,6 +504,26 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-4" style={{ maxWidth: 680 }}>
       <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Booking-Einstellungen</h2>
+
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>LOGO</legend>
+        <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Erscheint oben auf Vertrag, Abrechnung und Rechnung (ein Logo je Artist, auch für Equipment-Labels).</p>
+        <div className="flex items-center gap-4">
+          <div style={{ width: 120, height: 60, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+            {logoUrl ? <img src={logoUrl} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>Kein Logo</span>}
+          </div>
+          {canEdit && (
+            <div className="flex items-center gap-2">
+              <label className="btn btn-ghost" style={{ cursor: 'pointer' }}>
+                <PlusIcon className="w-4 h-4" />{logoPath ? 'Ersetzen' : 'Logo hochladen'}
+                <input type="file" accept="image/png,image/jpeg" style={{ display: 'none' }} onChange={e => onLogo(e.target.files?.[0])} />
+              </label>
+              {logoPath && <button onClick={removeLogo} className="btn btn-ghost text-red-600 hover:bg-red-50"><TrashIcon className="w-4 h-4" />Entfernen</button>}
+            </div>
+          )}
+        </div>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-subtle)' }}>PNG oder JPG. (Für scharfen Druck mind. ~600px Breite.)</p>
+      </fieldset>
 
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>UMSATZSTEUER (Vorbelegung)</legend>
@@ -522,6 +554,20 @@ function BookingSettingsTab({ canEdit }: { canEdit: boolean }) {
           <option value="tenant">Band / Artist (Rechnungsanschrift aus Konto)</option>
           <option value="custom">Abweichend (z. B. Agentur)</option>
         </select>
+        {s.issuer_mode !== 'custom' && (
+          <div className="mt-3 rounded p-3 text-sm" style={{ background: 'var(--hover)' }}>
+            {billingComplete ? (
+              <>
+                <div className="font-medium" style={{ color: 'var(--text)' }}>{billing?.company || [billing?.firstName, billing?.lastName].filter(Boolean).join(' ')}</div>
+                <div style={{ color: 'var(--text-muted)' }}>{[billing?.address, [billing?.postalCode, billing?.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>
+                {billing?.taxId && <div className="text-xs" style={{ color: 'var(--text-muted)' }}>USt-IdNr./St-Nr.: {billing.taxId}</div>}
+                <div className="mt-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>Aus Einstellungen → Konto → Rechnungsanschrift. Dort bearbeiten.</div>
+              </>
+            ) : (
+              <div style={{ color: 'var(--accent)' }}>⚠ Keine vollständige Rechnungsanschrift hinterlegt – der Artist erscheint auf Vertrag/Rechnung nur mit Namen. Bitte unter <strong>Einstellungen → Konto → Rechnungsanschrift</strong> ausfüllen (Firma, Straße, PLZ, Ort, USt-IdNr.).</div>
+            )}
+          </div>
+        )}
         {s.issuer_mode === 'custom' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {Fld('Name / Firma', 'issuer_name')}{Fld('USt-IdNr./St-Nr.', 'issuer_taxid')}
