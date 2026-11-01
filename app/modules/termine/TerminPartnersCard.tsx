@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-client'
 import { PartnerDetailContent } from '../partners/PartnerDetail'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
+import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import { PartnerPickerModal } from '@/app/components/shared/modals/PartnerPickerModal'
 
 // ── TerminPartnersCard ───────────────────────────────────────────────────────
@@ -93,19 +94,13 @@ export default function TerminPartnersCard({
 
       {/* Pro Partner eine Standard-AccordionSection: eingeklappt Firma/Rolle/Ort, aufgeklappt Details */}
       {links.map(link => {
-        const sub = [link.role || link.partner_type, link.contact_person, link.city].filter(Boolean).join(' · ')
         return (
           <AccordionSection
             key={link.id}
             title={link.company_name || 'Partner'}
             defaultOpen={links.length === 1}
             bodyClassName="p-4"
-            titleContent={
-              <span className="truncate">
-                <span className="font-medium" style={{ color: 'var(--text)' }}>{link.company_name || 'Partner'}</span>
-                {sub && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{'  —  ' + sub}</span>}
-              </span>
-            }
+            titleContent={<TitleWithRole name={link.company_name || 'Partner'} role={link.role || link.partner_type} />}
             headerActions={isAdmin ? (
               <>
                 <button

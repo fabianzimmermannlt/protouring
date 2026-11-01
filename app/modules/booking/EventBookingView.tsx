@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DocumentArrowDownIcon, ArrowRightIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { SortableList } from '@/app/components/shared/SortableList'
+import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
@@ -143,7 +144,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
-  const [saving, setSaving] = useState(false); const [savedMsg, setSavedMsg] = useState(false); const [invBusy, setInvBusy] = useState(false)
+  const [invBusy, setInvBusy] = useState(false)
+  const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
   useEffect(() => {
@@ -186,12 +188,24 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
   }
-  const persist = async (patch: Partial<BookingContractInput> = {}) => {
-    setSaving(true)
-    try { await saveEverything(patch); setSavedMsg(true); setTimeout(() => setSavedMsg(false), 1500); onChanged() } catch { /* ignore */ }
-    setSaving(false)
-  }
-  const setStatus = (id: string) => { set({ status: id }); persist({ status: id }) }
+  // ── Auto-Save (debounced) – kein „Speichern"-Knopf mehr nötig ──────────────
+  const firstRun = useRef(true)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!isAdmin) return
+    if (firstRun.current) { firstRun.current = false; return }
+    setAutoState('pending')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      setAutoState('saving')
+      try { await saveEverything(); setAutoState('saved') } catch { setAutoState('error') }
+    }, 800)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+    // bewusst auf die editierbaren Zustände hören:
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f, parties, channels, costs, tiers, selected])
+
+  const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
   const toggleClause = (id: number) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
 
@@ -311,12 +325,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               <AccordionSection
                 title={p.name || 'Partei'}
                 bodyClassName="p-3"
-                titleContent={
-                  <span className="truncate">
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 mr-2" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>{roleLabel(p.role)}</span>
-                    <span className="font-medium" style={{ color: 'var(--text)' }}>{p.name || '— ohne Namen —'}</span>
-                  </span>
-                }
+                titleContent={<TitleWithRole name={p.name || '— ohne Namen —'} role={roleLabel(p.role)} />}
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div><label className="detail-label">Rolle</label>
@@ -510,8 +519,12 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
 
       {isAdmin && (
         <div className="flex items-center gap-3">
-          <button onClick={() => persist()} disabled={saving} className="btn btn-primary">{saving ? 'Speichern…' : 'Speichern'}</button>
-          {savedMsg && <span className="text-sm" style={{ color: 'var(--pos, green)' }}>✓ Gespeichert</span>}
+          <span className="text-xs" style={{ color: autoState === 'error' ? 'var(--danger)' : 'var(--text-muted)' }}>
+            {autoState === 'saving' || autoState === 'pending' ? 'Speichert automatisch…'
+              : autoState === 'saved' ? '✓ Automatisch gespeichert'
+              : autoState === 'error' ? '⚠ Speichern fehlgeschlagen'
+              : 'Änderungen werden automatisch gespeichert'}
+          </span>
           <button onClick={async () => { if (!confirm('Booking für dieses Event löschen?')) return; await deleteBookingContract(booking.id); onChanged() }} className="btn btn-ghost text-red-600 hover:bg-red-50 ml-auto"><TrashIcon className="w-4 h-4" />Booking löschen</button>
         </div>
       )}
