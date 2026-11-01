@@ -10,6 +10,8 @@ export interface SettlementChannel {
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
   revenue?: string | null      // Bruttoeinnahme dieses Kanals (inkl. Ticket-USt)
+  chan_fee?: string | null       // Gebühr/Ticket NUR für diesen Kanal (leer = global; Abendkasse = 0)
+  chan_fee_split?: string | null // Band-Anteil % an der Gebühr NUR für diesen Kanal (leer = global)
 }
 export interface SettlementCost {
   label?: string | null
@@ -63,10 +65,22 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
   const ticketNet = ticketGross / (1 + ticketVat / 100)
   const ticketVatAmt = ticketGross - ticketNet
 
-  const feeTotalGross = n(inp.feePerTicket) * totalTickets
+  // Ticket-Systemgebühr („Refundierung") PRO Kanal: Gebühr/Ticket × Anzahl.
+  // Default = globale feePerTicket; Abendkasse (art='boxoffice') hat keine Systemgebühr (0),
+  // sofern nicht am Kanal ausdrücklich gesetzt. Band-Split ebenfalls je Kanal (Default global).
+  const globalFee = n(inp.feePerTicket), globalSplit = n(inp.feeBandSplitPct)
+  let feeTotalGross = 0, bandFeeShareGross = 0
+  for (const c of channels) {
+    const hasOwnFee = c.chan_fee != null && String(c.chan_fee) !== ''
+    const fee = hasOwnFee ? n(c.chan_fee) : (c.art === 'boxoffice' ? 0 : globalFee)
+    const lineGross = n(c.tickets) * fee
+    feeTotalGross += lineGross
+    const split = (c.chan_fee_split != null && String(c.chan_fee_split) !== '') ? n(c.chan_fee_split) : globalSplit
+    bandFeeShareGross += lineGross * split / 100
+  }
   const feeNet = feeTotalGross / (1 + feeVat / 100)
   const feeVatAmt = feeTotalGross - feeNet
-  const bandFeeShareNet = feeNet * n(inp.feeBandSplitPct) / 100
+  const bandFeeShareNet = bandFeeShareGross / (1 + feeVat / 100)
 
   const dealBaseAmt = inp.dealBase === 'netprofit' ? (ticketNet - n(inp.promoterCosts)) : ticketNet
   // Stufen bestimmen: entweder aus tiers oder (Fallback) aus pct1/threshold2/pct2.

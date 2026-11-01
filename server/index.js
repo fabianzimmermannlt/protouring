@@ -2183,6 +2183,9 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN art TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN money_with TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN price TEXT`); } catch {}
+  // Refundierung pro Kanal: Gebühr/Ticket + Band-Split-% (leer = global; Abendkasse = 0).
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee_split TEXT`); } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -10281,11 +10284,12 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
     let order = 0
     for (const s of rows) {
       await db.run(
-        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, price, revenue, refund_amount, refund_pct, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, chan_fee_split, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [req.tenant.id, req.params.id, s.vendor || null, s.art || null, s.money_with || null,
          s.tickets === '' ? null : s.tickets ?? null, s.price === '' ? null : s.price ?? null, s.revenue === '' ? null : s.revenue ?? null,
-         s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null, order++]
+         s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null,
+         s.chan_fee === '' ? null : s.chan_fee ?? null, s.chan_fee_split === '' ? null : s.chan_fee_split ?? null, order++]
       )
     }
     res.json({ ok: true })

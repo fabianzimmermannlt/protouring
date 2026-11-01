@@ -522,15 +522,31 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             </div>
             {channels.map((s, i) => {
               const hasPrice = (s.price ?? '') !== ''
+              const boxoffice = (s.art ?? 'vvk') === 'boxoffice'
               return (
-              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px' }}>
-                <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
-                <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
-                <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={e => setCh(i, { price: e.target.value })} title="Ticketpreis brutto je Stück" />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
-                {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+              <div key={i} className="space-y-1">
+                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px' }}>
+                  <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
+                  <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
+                  <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
+                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />
+                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={e => setCh(i, { price: e.target.value })} title="Ticketpreis brutto je Stück" />
+                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
+                  {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+                </div>
+                <div className="flex items-center gap-1.5 pl-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
+                  <span style={{ minWidth: 64 }}>Refund.:</span>
+                  <input className="form-input text-right" style={{ height: 26, width: 78 }} inputMode="decimal" disabled={!isAdmin}
+                    placeholder={boxoffice ? '0' : (f.fee_per_ticket ? `${f.fee_per_ticket} (gl.)` : 'global')}
+                    value={s.chan_fee ?? ''} onChange={e => setCh(i, { chan_fee: e.target.value })}
+                    title="Gebühr/Ticket nur für diesen Kanal · leer = global, Abendkasse = 0" />
+                  <span>€/Tkt</span>
+                  <input className="form-input text-right" style={{ height: 26, width: 64 }} inputMode="decimal" disabled={!isAdmin}
+                    placeholder={f.fee_band_split_pct ? `${f.fee_band_split_pct} (gl.)` : 'global'}
+                    value={s.chan_fee_split ?? ''} onChange={e => setCh(i, { chan_fee_split: e.target.value })}
+                    title="Band-Anteil % an der Gebühr nur für diesen Kanal · leer = global" />
+                  <span>% Band</span>
+                </div>
               </div>
               )
             })}

@@ -24,6 +24,32 @@ describe('computeSettlement – echte KA Osnabrück', () => {
   it('offener Betrag nach Ticketing-Payout', () => { close(r.payableGross, 26292.00 - 9876) })
 })
 
+// Refundierung PRO Kanal: Abendkasse hat KEINE Systemgebühr → über 956 statt 961 Tickets.
+describe('computeSettlement – echte KA Wiesbaden (Refundierung ohne Abendkasse)', () => {
+  const r = computeSettlement({
+    channels: [
+      { name: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '578', revenue: '26010,00' },
+      { name: 'Artistshop', art: 'ownshop', money_with: 'band', tickets: '119', revenue: '5355,00' },
+      { name: 'Reservix', art: 'vvk', money_with: 'promoter', tickets: '259', revenue: '11655,00' },
+      { name: 'Box Office', art: 'boxoffice', money_with: 'promoter', tickets: '5', revenue: '300,00' },
+    ],
+    costs: [{ label: 'Nightliner Buyout', net: '1000', vat: '19' }],
+    ticketVat: '7', feePerTicket: '3,38', feeVat: '7', feeBandSplitPct: '50', artistVat: '7',
+    dealBase: 'gross', guarantee: '0',
+    tiers: [{ from: 0, pct: 50 }, { from: 44859.81, pct: 55 }],
+    ticketingPayoutGross: '6013,07', deductOwnShop: false,
+  })
+
+  // Die KA rundet pro Schritt auf Cent, der Rechenkern rechnet durchgängig → bis zu 1 Cent Drift.
+  const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(0.02)
+  it('Ticketeinnahmen brutto/netto + Stück', () => { close(r.ticketGross, 43320); close(r.ticketNet, 40485.98); close(r.totalTickets, 961) })
+  it('Refundierung brutto über 956 Tickets (Abendkasse 0)', () => { close(r.feeTotalGross, 3231.28); near(r.feeNet, 3019.89); near(r.bandFeeShareNet, 1509.95) })
+  it('Deal-Anteil (50% vom Netto-Ticketumsatz, unter 2. Schwelle)', () => { near(r.dealShareNet, 20242.99) })
+  it('Anteil gesamt netto', () => { near(r.artistShareNet, 21752.94) })
+  it('Rechnungsbetrag netto/USt/brutto', () => { near(r.rechnungNet, 22752.94); near(r.rechnungVat, 1712.71); near(r.rechnungGross, 24465.65) })
+  it('Restbetrag an Band nach Ticketing-Payout', () => { near(r.payableGross, 18452.58) })
+})
+
 describe('computeSettlement – beliebig viele Stufen (progressiv)', () => {
   it('3 Stufen marginal: 50 % bis 20k, 60 % bis 40k, 70 % darüber', () => {
     const r = computeSettlement({
