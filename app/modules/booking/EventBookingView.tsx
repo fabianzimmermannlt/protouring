@@ -46,7 +46,10 @@ const nnum = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.'
 const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
-const DEAL_BASE = [{ id: 'gross', label: '% vom Netto-Ticketumsatz' }, { id: 'netprofit', label: '% vom Nettogewinn (nach Kosten)' }]
+const DEAL_BASE = [
+  { id: 'gross', label: '% vom Netto-Ticketumsatz (vs. % of gross)' },
+  { id: 'netprofit', label: '% vom Nettogewinn nach Kosten (vs. % of net)' },
+]
 const VENUE_ROLE = 'Venue'
 const roleLabel = (r?: string) => r || 'Beteiligte/r'
 interface Party { role: string; name: string; street: string; postalCode: string; city: string; country: string; email: string; taxid: string; partner_id?: number }
@@ -419,7 +422,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>DEAL / KONDITIONEN</legend>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div><label className="form-label">Deal-Basis</label>
+          <div><label className="form-label inline-flex items-center gap-1">Deal-Basis
+            <HelpTip text="Worauf sich die Beteiligung bezieht. „vs. % of gross“: Prozent vom Netto-Ticketumsatz (vor Abzug der Veranstalterkosten). „vs. % of net“: Prozent vom Nettogewinn (Ticketumsatz abzüglich der Veranstalterkosten). „vs.“ heißt: der höhere Wert aus Produktionskostengarantie und Beteiligung gilt." /></label>
             <select className="form-select" disabled={!isAdmin} value={f.deal_base ?? 'gross'} onChange={e => set({ deal_base: e.target.value })}>
               {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select></div>
