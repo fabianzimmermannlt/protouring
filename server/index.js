@@ -2186,6 +2186,8 @@ async function initDatabase() {
   // Refundierung pro Kanal: Gebühr/Ticket + Band-Split-% (leer = global; Abendkasse = 0).
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee_split TEXT`); } catch {}
+  // Preiskategorie je Kanal (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – für die §5.1-Tabellen.
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN category TEXT`); } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -10291,9 +10293,9 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
     let order = 0
     for (const s of rows) {
       await db.run(
-        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, chan_fee_split, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [req.tenant.id, req.params.id, s.vendor || null, s.art || null, s.money_with || null,
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, category, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, chan_fee_split, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, s.vendor || null, s.category || null, s.art || null, s.money_with || null,
          s.tickets === '' ? null : s.tickets ?? null, s.price === '' ? null : s.price ?? null, s.revenue === '' ? null : s.revenue ?? null,
          s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null,
          s.chan_fee === '' ? null : s.chan_fee ?? null, s.chan_fee_split === '' ? null : s.chan_fee_split ?? null, order++]

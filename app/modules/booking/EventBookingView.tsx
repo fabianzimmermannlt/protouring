@@ -296,7 +296,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
 
   // Kanäle / Nebenkosten
-  const addChannel = () => setChannels(p => [...p, { vendor: '', art: 'vvk', money_with: 'promoter', tickets: '', price: '', revenue: '' }])
+  const addChannel = () => setChannels(p => [...p, { vendor: '', category: '', art: 'vvk', money_with: 'promoter', tickets: '', price: '', revenue: '' }])
   // Brutto wird aus Stück × Preis berechnet. Nur wenn ein Preis gesetzt ist; sonst bleibt
   // ein ggf. direkt eingetragenes Brutto erhalten (Altbestand / Pauschal-Eingabe).
   const setCh = (i: number, patch: Partial<BookingTicketSale>) => setChannels(p => p.map((s, idx) => {
@@ -690,16 +690,17 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
-            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px', color: 'var(--text-subtle)' }}>
-              <span>Händler</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1fr) 72px 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
+              <span>Händler</span><span>Kategorie</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
             </div>
             {channels.map((s, i) => {
               const hasPrice = (s.price ?? '') !== ''
               const boxoffice = (s.art ?? 'vvk') === 'boxoffice'
               return (
               <div key={i} className="space-y-1">
-                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px' }}>
+                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 72px 80px 90px 50px 74px 92px 26px' }}>
                   <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
+                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => setCh(i, { category: e.target.value })} title="Preiskategorie (z.B. Cat. 01, VIP, Steh-/Sitzplatz)" />
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />

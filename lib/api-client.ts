@@ -3939,6 +3939,7 @@ export interface BookingContract {
 export interface BookingTicketSale {
   id?: number
   vendor?: string | null
+  category?: string | null     // Preiskategorie (z.B. Cat. 01, VIP, Steh-/Sitzplatz)
   art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
