@@ -339,34 +339,44 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       } else if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
         inject = {
           '1': () => {
-            // § 5.1 wie FKP: Vorverkaufs-Szenario, Abendkasse, Preisstruktur (Face Value je System).
-            const cap = num(c.capacity), holds = num(c.vk_holds), comps = num(c.vk_comps), kills = num(c.vk_kills);
-            const verk = Math.max(0, cap - holds - comps - kills);
+            // § 5.1 wie FKP: Vorverkaufs-Szenario JE PK (Kontingent/Holds/Comps/Kills/Preis), Abendkasse
+            // je PK, Preisstruktur = Face Value je Ticketsystem × PK.
             const vvkChans = (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice');
-            // Preiskategorien: bevorzugt die im §5.1-Block definierte Preisstruktur (Vertrag), sonst
-            // aus den Vertriebskanälen abgeleitet (Altbestand). Fallback „Cat. 01".
+            // Preiskategorien als eine Quelle. Fallback (Altbestand): eine Zeile aus den Haus-Einzelwerten.
             let priceCats = [];
-            try { const pc = c.price_categories ? JSON.parse(c.price_categories) : null; if (Array.isArray(pc)) priceCats = pc.filter(x => (x.name || x.face)); } catch { priceCats = []; }
-            // Die Vorverkauf-Zeile aggregiert die ganze Halle → nur bei genau EINER Kategorie deren Name.
-            const vkCatList = priceCats.length
-              ? [...new Set(priceCats.map(x => String(x.name || '').trim()).filter(Boolean))]
-              : [...new Set(vvkChans.map(x => String(x.category || '').trim()).filter(Boolean))];
-            const vkCat = vkCatList.length === 1 ? vkCatList[0] : 'Cat. 01';
-            const vkPrice = (c.vk_base_price != null && c.vk_base_price !== '') ? num(c.vk_base_price)
-              : (priceCats.length === 1 ? num(priceCats[0].face) : (vvkChans[0] ? num(vvkChans[0].price) : 0));
-            const einnahme = verk * vkPrice;
-            const vkRows = [[vkCat, intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), money(vkPrice, cur) || '—', money(einnahme, cur) || '—']];
-            const totalVk = ['Gesamt', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), '', money(einnahme, cur) || '—']; totalVk._bold = true; totalVk._bg = '#f9fafb';
-            vkRows.push(totalVk);
-            drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326], IND1);
-            const boChan = (ticketSales || []).find(s => (s.art || '') === 'boxoffice');
-            const akPrice = (c.ak_price != null && c.ak_price !== '') ? num(c.ak_price) : (boChan ? num(boChan.price) : 0);
-            const akCat = (boChan && String(boChan.category || '').trim()) ? String(boChan.category).trim() : 'Cat. 01';
-            if (akPrice > 0) drawTable('Abendkasse', ['PK', 'Grundpreis'], [[akCat, money(akPrice, cur)]], [CONTENT_W - 120, 120], IND1);
-            const psRows = priceCats.length
-              ? priceCats.map(x => [String(x.name || '').trim() || 'Cat. 01', String(x.vendor || '').trim() || '—', money(x.face, cur) || '—'])
-              : vvkChans.filter(s => s.vendor || s.price).map(s => [String(s.category || '').trim() || 'Cat. 01', s.vendor || '—', money(s.price, cur) || '—']);
-            if (psRows.length) drawTable('Preisstruktur', ['Kategorie', 'Ticketsystem', 'Face Value'], psRows, [120, CONTENT_W - 120 - 110, 110], IND1);
+            try { const pc = c.price_categories ? JSON.parse(c.price_categories) : null; if (Array.isArray(pc)) priceCats = pc.filter(x => (x.name || x.price || x.cap || x.face)); } catch { priceCats = []; }
+            if (!priceCats.length) {
+              const legacy = [c.capacity, c.vk_base_price, c.vk_holds, c.vk_comps, c.vk_kills, c.ak_price].some(v => v != null && v !== '');
+              if (legacy) priceCats = [{ name: 'Cat. 01', cap: c.capacity, holds: c.vk_holds, comps: c.vk_comps, kills: c.vk_kills, price: c.vk_base_price, akprice: c.ak_price }];
+            }
+            const nv = (x) => Math.max(0, num(x.cap) - num(x.holds) - num(x.comps) - num(x.kills));
+            // Vorverkauf-Tabelle je PK + Gesamt.
+            const vkRows = priceCats.map(x => {
+              const verk = nv(x), pr = num(x.price);
+              return [String(x.name || '').trim() || 'Cat. 01', intDE(x.cap), intDE(x.holds), intDE(x.comps), intDE(x.kills), intDE(verk), money(x.price, cur) || '—', money(verk * pr, cur) || '—'];
+            });
+            if (vkRows.length) {
+              const sum = (f) => priceCats.reduce((a, x) => a + f(x), 0);
+              const totEin = priceCats.reduce((a, x) => a + nv(x) * num(x.price), 0);
+              const totalVk = ['Gesamt', intDE(sum(x => num(x.cap))), intDE(sum(x => num(x.holds))), intDE(sum(x => num(x.comps))), intDE(sum(x => num(x.kills))), intDE(sum(nv)), '', money(totEin, cur) || '—'];
+              totalVk._bold = true; totalVk._bg = '#f9fafb';
+              vkRows.push(totalVk);
+              drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326], IND1);
+            }
+            // Abendkasse je PK (nur Kategorien mit AK-Preis).
+            const akRows = priceCats.filter(x => x.akprice != null && String(x.akprice) !== '').map(x => [String(x.name || '').trim() || 'Cat. 01', money(x.akprice, cur) || '—']);
+            if (akRows.length) drawTable('Abendkasse', ['PK', 'Grundpreis'], akRows, [CONTENT_W - 120, 120], IND1);
+            // Preisstruktur: Face Value je Ticketsystem × PK (abgeleitet; alle Systeme = PK-Grundpreis).
+            if (priceCats.length) {
+              const systems = [...new Set(vvkChans.map(s => String(s.vendor || '').trim()).filter(Boolean))];
+              const pkNames = priceCats.map(x => String(x.name || '').trim() || 'Cat. 01');
+              const faceByPk = priceCats.map(x => money(x.price, cur) || '—');
+              const psHeaders = ['Preis-Element', 'Ticketsystem', ...pkNames];
+              const psRows = (systems.length ? systems : ['Alle Systeme']).map(sys => ['Face Value', sys, ...faceByPk]);
+              const peW = 70, pkW = Math.max(52, Math.min(90, Math.floor((CONTENT_W - peW - 110) / Math.max(1, pkNames.length))));
+              const tsW = CONTENT_W - peW - pkW * pkNames.length;
+              drawTable('Preisstruktur', psHeaders, psRows, [peW, tsW, ...pkNames.map(() => pkW)], IND1);
+            }
           },
           '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]], IND1); },
         };

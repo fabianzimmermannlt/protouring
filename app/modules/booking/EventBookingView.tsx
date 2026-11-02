@@ -48,6 +48,11 @@ const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFract
 const amtDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const intDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { maximumFractionDigits: 0 })
 
+// Preiskategorie (Vorverkauf-Szenario je PK, wie FKP): eigenes Kontingent + Holds/Comps/Kills + Preise.
+type PriceCat = { name: string; cap: string; holds: string; comps: string; kills: string; price: string; akprice: string }
+const catVerk = (c: PriceCat) => Math.max(0, parseNum(c.cap) - parseNum(c.holds) - parseNum(c.comps) - parseNum(c.kills))
+const catEinnahme = (c: PriceCat) => catVerk(c) * parseNum(c.price)
+
 // Editierbares Zahlenfeld: zeigt den Wert deutsch formatiert (20000 → "20.000,00"),
 // solange das Feld NICHT fokussiert ist. Beim Reinklicken erscheint der reine Wert zum
 // Bearbeiten (kein Umformatieren beim Tippen → kein Cursor-Springen). kind steuert die
@@ -192,9 +197,23 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     if (booking.threshold2 && booking.pct2) base.push({ from: booking.threshold2, pct: booking.pct2 })
     return base
   })
-  // Preiskategorien (Vertrags-Preisstruktur): oben definiert, in der Abrechnung je Kanal zugeordnet.
-  const [cats, setCats] = useState<{ name: string; vendor: string; face: string }[]>(() => {
-    try { const t = booking.price_categories ? JSON.parse(booking.price_categories) : null; if (Array.isArray(t)) return t.map((x: { name?: unknown; vendor?: unknown; face?: unknown }) => ({ name: String(x.name ?? ''), vendor: String(x.vendor ?? ''), face: String(x.face ?? '') })) } catch { /* */ }
+  // Preiskategorien = Vorverkauf-Szenario je PK (Kontingent/Holds/Comps/Kills/Preise), wie FKP.
+  // Eine Quelle für Mengen UND Preise; speist die Vertrags-§5.1 und die Abrechnung (Kanal-Zuordnung).
+  const [cats, setCats] = useState<PriceCat[]>(() => {
+    try {
+      const t = booking.price_categories ? JSON.parse(booking.price_categories) : null
+      if (Array.isArray(t) && t.length) return t.map((x: Record<string, unknown>) => ({
+        name: String(x.name ?? ''), cap: String(x.cap ?? ''), holds: String(x.holds ?? ''),
+        comps: String(x.comps ?? ''), kills: String(x.kills ?? ''),
+        price: String(x.price ?? x.face ?? ''), akprice: String(x.akprice ?? ''),
+      }))
+    } catch { /* */ }
+    // Migration: aus den früheren Haus-Einzelwerten eine Zeile „Cat. 01" bilden.
+    const legacy = [booking.capacity, booking.vk_base_price, booking.vk_holds, booking.vk_comps, booking.vk_kills, booking.ak_price]
+    if (legacy.some(v => (v ?? '') !== '')) return [{
+      name: 'Cat. 01', cap: booking.capacity ?? '', holds: booking.vk_holds ?? '', comps: booking.vk_comps ?? '',
+      kills: booking.vk_kills ?? '', price: booking.vk_base_price ?? '', akprice: booking.ak_price ?? '',
+    }]
     return []
   })
   const [parties, setParties] = useState<Party[]>(() => {
@@ -291,7 +310,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
       ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
-    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.face)) })
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
     // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
@@ -346,8 +365,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addCost = () => setCosts(p => [...p, { label: '', net: '', vat: settings?.service_vat ?? '19' }])
   const setCo = (i: number, patch: Partial<BookingCostLine>) => setCosts(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   const rmCo = (i: number) => setCosts(p => p.filter((_, idx) => idx !== i))
-  const addCat = () => setCats(p => [...p, { name: '', vendor: '', face: '' }])
-  const setCat = (i: number, patch: Partial<{ name: string; vendor: string; face: string }>) => setCats(p => p.map((c, idx) => idx === i ? { ...c, ...patch } : c))
+  const addCat = () => setCats(p => [...p, { name: '', cap: '', holds: '', comps: '', kills: '', price: '', akprice: '' }])
+  const setCat = (i: number, patch: Partial<PriceCat>) => setCats(p => p.map((c, idx) => idx === i ? { ...c, ...patch } : c))
   const rmCat = (i: number) => setCats(p => p.filter((_, idx) => idx !== i))
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
@@ -574,48 +593,52 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="mt-3"><label className="form-label">Support Act(s)</label><input className="form-input" disabled={!isAdmin} value={f.support_acts ?? ''} onChange={e => set({ support_acts: e.target.value })} placeholder="z.B. Rogers" /></div>
       </fieldset>
 
-      {/* Eintrittspreise / Vorverkauf (§ 5.1) */}
+      {/* Eintrittspreise / Vorverkauf (§ 5.1) – Szenario je Preiskategorie (wie FKP) */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
-          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show). Kapazität kommt aus der Veranstaltung oben. Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; erwartete Einnahme = Verkaufbar × VVK-Grundpreis. Die Preiskategorien unten bilden die Preisstruktur im Vertrag und stehen in der Abrechnung je Kanal zur Auswahl." />
+          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show), je Preiskategorie. Kapazität = zum Verkauf gestelltes Kontingent dieser Kategorie (kann kleiner sein als die Hallen-Kapazität oben). Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; Einnahme = Verkaufbar × VVK-Grundpreis. Diese Kategorien stehen in der Abrechnung je Vertriebskanal zur Auswahl und bilden die Preisstruktur im Vertrag." />
         </legend>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {In('VVK-Grundpreis', 'vk_base_price', 'Face Value, z.B. 45')}
-          {In('Abendkasse-Preis', 'ak_price', 'z.B. 60')}
-          <div>
-            <label className="form-label">Verkaufbar</label>
-            <input className="form-input" readOnly value={intDE(Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
-          </div>
-          {In('Holds', 'vk_holds', '0', 'Holds = zurückgehaltene Tickets, die (vorerst) nicht in den freien Verkauf gehen – z.B. Produktions-Holds (FOH/Technik/Sichtlinien), Künstler- und Management-Kontingente, VIP, Sponsoren. Holds können später freigegeben („released“) und doch noch verkauft werden.', 'int')}
-          {In('Comps', 'vk_comps', '0', 'Comps (complimentary) = kostenlos vergebene Freikarten – Gästeliste, Presse, Fotografen, Crew, Promo/Verlosung. Bringen 0 € Einnahme und werden daher aus dem verkaufbaren Kontingent herausgerechnet.', 'int')}
-          {In('Kills', 'vk_kills', '0', 'Kills = dauerhaft gesperrte Plätze, die gar nicht verkauft werden dürfen – Sichtbehinderung, Bühnen-/Stageaufbau, Mischpult-Insel, Notausgänge und Wege, abgehängte Ränge. Werden nie verkauft und nie verschenkt.', 'int')}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Preiskategorien / Vorverkauf-Szenario</span>
+          {isAdmin && <button onClick={addCat} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Kategorie</button>}
         </div>
-
-        {/* Preiskategorien – werden Teil des Vertrags (§5.1 Preisstruktur) und in der Abrechnung je Kanal zugeordnet */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium inline-flex items-center gap-1">Preiskategorien
-              <HelpTip text="Die Preisklassen der Show (z.B. Cat. 01, VIP, Steh-/Sitzplatz) mit ihrem Face Value. Werden im Vertrag unter §5.1 als Preisstruktur festgehalten und stehen in der Abrechnung je Vertriebskanal zur Auswahl. Ohne Einträge gilt der VVK-Grundpreis fürs ganze Haus." /></span>
-            {isAdmin && <button onClick={addCat} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Kategorie</button>}
-          </div>
-          {cats.length === 0 ? (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Kategorien – es gilt der VVK-Grundpreis fürs ganze Haus. Mit „Kategorie" einzelne Preisklassen festlegen.</p>
-          ) : (
-            <div className="space-y-1">
-              <div className="grid gap-1.5 text-[11px] px-1" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) 110px 26px', color: 'var(--text-muted)' }}>
-                <span>Kategorie</span><span>Ticketsystem (optional)</span><span className="text-right">Face Value</span><span />
+        {cats.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Noch keine Preiskategorie. Mit „Kategorie" die Preisklassen der Show anlegen (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – je mit Kontingent und Preis.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: 720 }}>
+              <div className="grid gap-1.5 text-[11px] px-1 mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', color: 'var(--text-muted)' }}>
+                <span>Kategorie</span><span className="text-right">Kapazität</span><span className="text-right">Holds</span><span className="text-right">Comps</span><span className="text-right">Kills</span><span className="text-right">Verkaufbar</span><span className="text-right">Grundpreis</span><span className="text-right">AK-Preis</span><span className="text-right">Einnahme</span><span />
               </div>
               {cats.map((c, i) => (
-                <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) 110px 26px' }}>
-                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
-                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Eventim" value={c.vendor} onChange={e => setCat(i, { vendor: e.target.value })} />
-                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.face} onChange={v => setCat(i, { face: v })} />
+                <div key={i} className="grid gap-1.5 items-center mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px' }}>
+                  <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.cap} onChange={v => setCat(i, { cap: v })} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.holds} onChange={v => setCat(i, { holds: v })} title="Holds = zurückgehaltene Tickets (Produktion, VIP, Sponsoren …)" />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.comps} onChange={v => setCat(i, { comps: v })} title="Comps = Freikarten (Gästeliste, Presse, Crew …)" />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.kills} onChange={v => setCat(i, { kills: v })} title="Kills = dauerhaft gesperrte Plätze (Sicht, Bühne, Notausgänge …)" />
+                  <input className="form-input text-right" readOnly value={intDE(catVerk(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.price} onChange={v => setCat(i, { price: v })} title="VVK-Grundpreis (Face Value) dieser Kategorie" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.akprice} onChange={v => setCat(i, { akprice: v })} title="Abendkasse-Preis dieser Kategorie (optional)" />
+                  <input className="form-input text-right" readOnly value={amtDE(catEinnahme(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Verkaufbar × Grundpreis" />
                   {isAdmin ? <button onClick={() => rmCat(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
                 </div>
               ))}
+              {/* Gesamt-Zeile */}
+              <div className="grid gap-1.5 items-center px-1 pt-1 border-t text-sm font-semibold" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', borderColor: 'var(--border)', color: 'var(--text)' }}>
+                <span>Gesamt</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.cap), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.holds), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.comps), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.kills), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + catVerk(c), 0))}</span>
+                <span /><span />
+                <span className="text-right">{amtDE(cats.reduce((a, c) => a + catEinnahme(c), 0))} €</span>
+                <span />
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </fieldset>
 
       {/* Deal */}
@@ -768,10 +791,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     const name = e.target.value
                     const m = cats.find(c => c.name && c.name === name)
                     const patch: Partial<BookingTicketSale> = { category: name }
-                    if (m) {
-                      if (m.vendor && !(s.vendor ?? '').trim()) patch.vendor = m.vendor
-                      if (m.face && !(s.price ?? '').trim()) { patch.price = m.face; patch.revenue = (nnum(s.tickets) * nnum(m.face)).toFixed(2) }
-                    }
+                    // Preis aus der Kategorie vorbefüllen, wenn noch leer (VVK-Grundpreis, bzw. AK bei Abendkasse).
+                    const catPrice = m ? ((s.art === 'boxoffice' && m.akprice) ? m.akprice : m.price) : ''
+                    if (catPrice && !(s.price ?? '').trim()) { patch.price = catPrice; patch.revenue = (nnum(s.tickets) * nnum(catPrice)).toFixed(2) }
                     setCh(i, patch)
                   }} title="Preiskategorie – Auswahl aus den oben definierten Kategorien (Freitext möglich)" />
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
