@@ -13,6 +13,7 @@ import {
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
 } from '@/lib/api-client'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
+import { HelpTip } from '@/app/components/shared/HelpTip'
 import { PartnerPickerModal } from '@/app/components/shared/modals/PartnerPickerModal'
 
 // Parteien aus dem verknüpften Event (Venue + Partner) zusammenstellen – strukturierte
@@ -349,10 +350,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       {/* Parteien */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>PARTEIEN</legend>
-        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Kette, z. B.: Artist → Vertretung → Veranstalter → Venue. Name/Adresse kommen aus den Stammdaten (dort pflegen).</p>
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           {isAdmin && (
-            <div className="flex gap-2 items-center">
+            <>
               <select className="detail-input" style={{ width: 'auto', minWidth: 190 }} value="" onChange={e => { if (e.target.value) onEventSelect(e.target.value) }}>
                 <option value="">+ Aus Event übernehmen…</option>
                 {eventPartners.filter(l => !parties.some(x => x.partner_id === l.partner_id)).map(l => (
@@ -361,8 +361,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                 {termin.venueId && !parties.some(x => x.role === 'venue') && <option value="__venue">Venue: {termin.venueName || 'Venue'}</option>}
               </select>
               <button onClick={() => setShowPicker(true)} className="btn btn-ghost whitespace-nowrap" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Partner wählen</button>
-            </div>
+            </>
           )}
+          <HelpTip text="Parteienkette, z. B.: Artist → Vertretung → Veranstalter → Venue. Name und Adresse kommen aus den Stammdaten (dort pflegen)." />
         </div>
         {parties.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Parteien. Über „Aus Event übernehmen" einen verknüpften Partner/das Venue wählen, oder „Partner wählen" aus den Stammdaten.</p>
