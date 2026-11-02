@@ -36,7 +36,7 @@ export function PartnerPickerModal({
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} className="shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
         <div style={{ borderBottom: '1px solid var(--border)' }} className="flex items-center justify-between px-5 py-4">
           <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Partner wählen</h3>
-          <button onClick={onClose} style={{ color: 'var(--text-muted)' }} className="hover:text-white transition-colors"><X size={16} /></button>
+          <button data-modal-close onClick={onClose} style={{ color: 'var(--text-muted)' }} className="hover:text-white transition-colors"><X size={16} /></button>
         </div>
         <div className="px-4 py-3 space-y-2">
           <input type="text" autoFocus placeholder="Suchen…" value={search} onChange={e => setSearch(e.target.value)} className="form-input w-full text-sm" style={{ fontSize: 13 }} />

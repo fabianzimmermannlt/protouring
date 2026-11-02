@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ModalScrollReset } from '@/app/components/shared/ModalScrollReset'
+import { ModalDismiss } from '@/app/components/shared/ModalDismiss'
 import { ServiceWorkerRegister } from '@/app/components/shared/ServiceWorkerRegister'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -46,6 +47,7 @@ export default function RootLayout({
         />
         <ServiceWorkerRegister />
         <ModalScrollReset />
+        <ModalDismiss />
         {children}
       </body>
     </html>
