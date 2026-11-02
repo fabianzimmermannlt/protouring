@@ -740,8 +740,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           </label></div>
         </div>
 
-        {/* Nebenkosten */}
-        <div className="flex items-center justify-between mt-4 mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Nebenkosten</span>{isAdmin && <button onClick={addCost} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Position</button>}</div>
+        {/* Nebenkosten / Buyouts (§ 4) */}
+        <div className="flex items-center justify-between mt-4 mb-1"><span className="text-sm font-medium inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>Nebenkosten / Buyouts<HelpTip text="Vom Veranstalter zu erstattende Leistungen, die Artist/Agentur selbst stellt (z.B. Nightliner-Buyout). Erscheinen im Vertrag als Buyouts in § 4 und fließen in die Abrechnung (Rechnung an den Veranstalter) ein." /></span>{isAdmin && <button onClick={addCost} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Position</button>}</div>
         {costs.length > 0 && (
           <div className="space-y-1.5">
             {costs.map((c, i) => (

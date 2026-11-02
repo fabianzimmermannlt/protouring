@@ -283,6 +283,10 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       }
     };
 
+    // Buyouts (= erfasste Nebenkosten/Buyouts) – werden inline in § 4 gezeigt (wie FKP Köln).
+    const costRows = (costLines || []).filter(l => l && (l.label || l.net)).map(l => [l.label || '—', money(l.net, cur) || '—', l.vat ? `${num(l.vat)} %` : '—']);
+    let buyoutsRendered = false;
+
     // ── §§-Bausteine (live) + interleaved Deal-Tabellen ──
     clauses.forEach((cl, i) => {
       ensureSpace(90);
@@ -298,6 +302,8 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       } else if (t.startsWith('deal') || t.includes('entgelt')) {
         inject = {
           '1': () => drawKV('Deal', dealRows, IND1),
+          // § 4 Ziff. 2: Buyouts (Leistung · Kosten · USt) wie FKP Köln; „keine", wenn nichts erfasst.
+          '2': () => { buyoutsRendered = true; if (costRows.length) drawTable('Buyouts (zzgl. gesetzlicher USt.)', ['Leistung', 'Kosten (netto)', 'USt'], costRows, [CONTENT_W - 130 - 70, 130, 70], IND1); else drawKV(null, [['Buyouts', 'keine']], IND1); },
           '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'PK', 'Betrag (brutto)'], refundRows, [CONTENT_W - 90 - 150, 90, 150], IND1); } },
           '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150], IND1),
           '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]], IND1); },
@@ -333,9 +339,8 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       doc.moveDown(0.5);
     });
 
-    // ── Nebenkosten (falls erfasst) ──
-    const costRows = (costLines || []).filter(l => l && (l.label || l.net)).map(l => [l.label || '—', money(l.net, cur) || '—', l.vat ? `${num(l.vat)} %` : '—']);
-    if (costRows.length) {
+    // ── Nebenkosten / Buyouts (nur als Fallback, falls nicht schon inline in § 4 gezeigt) ──
+    if (costRows.length && !buyoutsRendered) {
       ensureSpace(80);
       doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Nebenkosten / Buyouts', MARGIN, doc.y, { width: CONTENT_W });
       doc.moveDown(0.3);
