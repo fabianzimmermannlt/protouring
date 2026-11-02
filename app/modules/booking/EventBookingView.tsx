@@ -371,8 +371,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   }
   const invGross = (iv: BookingInvoice) => nnum(iv.gross_amount) - nnum(iv.deductions_gross)
 
-  const In = (label: string, key: keyof BookingContractInput, ph = '') => (
-    <div><label className="form-label">{label}</label>
+  const In = (label: string, key: keyof BookingContractInput, ph = '', help?: string) => (
+    <div><label className="form-label inline-flex items-center gap-1">{label}{help && <HelpTip text={help} />}</label>
       <input className="form-input" inputMode="decimal" disabled={!isAdmin} value={(f[key] as string) ?? ''} onChange={e => set({ [key]: e.target.value } as Partial<BookingContractInput>)} placeholder={ph} /></div>
   )
   const Row = ({ k, v, bold, muted, big, sub }: { k: string; v: string; bold?: boolean; muted?: boolean; big?: boolean; sub?: boolean }) => (
@@ -504,9 +504,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             <label className="form-label">Verkaufbar</label>
             <input className="form-input" readOnly value={Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)).toLocaleString('de-DE')} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
           </div>
-          {In('Holds', 'vk_holds', '0')}
-          {In('Comps', 'vk_comps', '0')}
-          {In('Kills', 'vk_kills', '0')}
+          {In('Holds', 'vk_holds', '0', 'Holds = zurückgehaltene Tickets, die (vorerst) nicht in den freien Verkauf gehen – z.B. Produktions-Holds (FOH/Technik/Sichtlinien), Künstler- und Management-Kontingente, VIP, Sponsoren. Holds können später freigegeben („released“) und doch noch verkauft werden.')}
+          {In('Comps', 'vk_comps', '0', 'Comps (complimentary) = kostenlos vergebene Freikarten – Gästeliste, Presse, Fotografen, Crew, Promo/Verlosung. Bringen 0 € Einnahme und werden daher aus dem verkaufbaren Kontingent herausgerechnet.')}
+          {In('Kills', 'vk_kills', '0', 'Kills = dauerhaft gesperrte Plätze, die gar nicht verkauft werden dürfen – Sichtbehinderung, Bühnen-/Stageaufbau, Mischpult-Insel, Notausgänge und Wege, abgehängte Ränge. Werden nie verkauft und nie verschenkt.')}
         </div>
       </fieldset>
 
