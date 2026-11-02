@@ -47,6 +47,32 @@ const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFract
 // Betrag deutsch fürs Anzeigen in read-only Feldern: 32000 → "32.000,00" (ohne Währung); leer bleibt leer.
 const amtDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const intDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { maximumFractionDigits: 0 })
+
+// Editierbares Zahlenfeld: zeigt den Wert deutsch formatiert (20000 → "20.000,00"),
+// solange das Feld NICHT fokussiert ist. Beim Reinklicken erscheint der reine Wert zum
+// Bearbeiten (kein Umformatieren beim Tippen → kein Cursor-Springen). kind steuert die
+// Darstellung: 'money' = Betrag mit 2 Nachkommastellen, 'int' = ganze Zahl mit Tausender-Punkt,
+// 'raw' = unverändert (z.B. Prozentwerte).
+function NumInput({ value, onChange, kind = 'money', disabled, readOnly, placeholder, className = 'form-input', style, title, align }: {
+  value: string; onChange: (v: string) => void; kind?: 'money' | 'int' | 'raw';
+  disabled?: boolean; readOnly?: boolean; placeholder?: string; className?: string; style?: React.CSSProperties; title?: string; align?: 'right'
+}) {
+  const [focused, setFocused] = useState(false)
+  const raw = value ?? ''
+  const display = (focused && !readOnly) || raw === '' || kind === 'raw'
+    ? raw
+    : (kind === 'int' ? intDE(raw) : amtDE(raw))
+  return (
+    <input
+      className={className + (align === 'right' ? ' text-right' : '')}
+      inputMode="decimal" disabled={disabled} readOnly={readOnly} placeholder={placeholder} title={title} style={style}
+      value={display}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onChange={e => onChange(e.target.value)}
+    />
+  )
+}
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
 const DEAL_BASE = [
@@ -419,9 +445,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   }
   const invGross = (iv: BookingInvoice) => nnum(iv.gross_amount) - nnum(iv.deductions_gross)
 
-  const In = (label: string, key: keyof BookingContractInput, ph = '', help?: string) => (
+  const In = (label: string, key: keyof BookingContractInput, ph = '', help?: string, kind: 'money' | 'int' | 'raw' = 'money') => (
     <div><label className="form-label inline-flex items-center gap-1">{label}{help && <HelpTip text={help} />}</label>
-      <input className="form-input" inputMode="decimal" disabled={!isAdmin} value={(f[key] as string) ?? ''} onChange={e => set({ [key]: e.target.value } as Partial<BookingContractInput>)} placeholder={ph} /></div>
+      <NumInput kind={kind} disabled={!isAdmin} value={(f[key] as string) ?? ''} onChange={v => set({ [key]: v } as Partial<BookingContractInput>)} placeholder={ph} /></div>
   )
   const Row = ({ k, v, bold, muted, big, sub }: { k: string; v: string; bold?: boolean; muted?: boolean; big?: boolean; sub?: boolean }) => (
     <div className={`flex justify-between ${sub ? 'pl-3' : ''}`} style={{ padding: '2px 0' }}>
@@ -531,7 +557,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div>
             <label className="form-label">Kapazität</label>
-            <input className="form-input" inputMode="decimal" disabled={!isAdmin} value={(f.capacity as string) ?? ''} onChange={e => set({ capacity: e.target.value })} placeholder="z.B. 2200" />
+            <NumInput kind="int" disabled={!isAdmin} value={(f.capacity as string) ?? ''} onChange={v => set({ capacity: v })} placeholder="z.B. 2200" />
             {termin.venueId ? <p className="text-xs mt-0.5" style={{ color: 'var(--text-subtle)' }}>Wird im Venue-Datensatz gespeichert</p> : null}
           </div>
           <div><label className="form-label">Einlass</label><input type="time" className="form-input" disabled={!isAdmin} value={f.doors_time ?? ''} onChange={e => set({ doors_time: e.target.value })} /></div>
@@ -552,9 +578,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             <label className="form-label">Verkaufbar</label>
             <input className="form-input" readOnly value={intDE(Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
           </div>
-          {In('Holds', 'vk_holds', '0', 'Holds = zurückgehaltene Tickets, die (vorerst) nicht in den freien Verkauf gehen – z.B. Produktions-Holds (FOH/Technik/Sichtlinien), Künstler- und Management-Kontingente, VIP, Sponsoren. Holds können später freigegeben („released“) und doch noch verkauft werden.')}
-          {In('Comps', 'vk_comps', '0', 'Comps (complimentary) = kostenlos vergebene Freikarten – Gästeliste, Presse, Fotografen, Crew, Promo/Verlosung. Bringen 0 € Einnahme und werden daher aus dem verkaufbaren Kontingent herausgerechnet.')}
-          {In('Kills', 'vk_kills', '0', 'Kills = dauerhaft gesperrte Plätze, die gar nicht verkauft werden dürfen – Sichtbehinderung, Bühnen-/Stageaufbau, Mischpult-Insel, Notausgänge und Wege, abgehängte Ränge. Werden nie verkauft und nie verschenkt.')}
+          {In('Holds', 'vk_holds', '0', 'Holds = zurückgehaltene Tickets, die (vorerst) nicht in den freien Verkauf gehen – z.B. Produktions-Holds (FOH/Technik/Sichtlinien), Künstler- und Management-Kontingente, VIP, Sponsoren. Holds können später freigegeben („released“) und doch noch verkauft werden.', 'int')}
+          {In('Comps', 'vk_comps', '0', 'Comps (complimentary) = kostenlos vergebene Freikarten – Gästeliste, Presse, Fotografen, Crew, Promo/Verlosung. Bringen 0 € Einnahme und werden daher aus dem verkaufbaren Kontingent herausgerechnet.', 'int')}
+          {In('Kills', 'vk_kills', '0', 'Kills = dauerhaft gesperrte Plätze, die gar nicht verkauft werden dürfen – Sichtbehinderung, Bühnen-/Stageaufbau, Mischpult-Insel, Notausgänge und Wege, abgehängte Ränge. Werden nie verkauft und nie verschenkt.', 'int')}
         </div>
       </fieldset>
 
@@ -608,7 +634,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     {i === 0
                       ? 'ab Beginn'
-                      : <span className="flex items-center gap-1">ab {tierOnTickets ? 'Ticket' : 'Netto-Umsatz'} <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={e => setTier(i, { from: e.target.value })} placeholder={tierOnTickets ? 'z.B. 1000' : 'z.B. 44859,81'} /> {tierOnTickets ? 'Stück' : '€'}</span>}
+                      : <span className="flex items-center gap-1">ab {tierOnTickets ? 'Ticket' : 'Netto-Umsatz'} <NumInput kind={tierOnTickets ? 'int' : 'money'} align="right" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={v => setTier(i, { from: v })} placeholder={tierOnTickets ? 'z.B. 1000' : 'z.B. 44859,81'} /> {tierOnTickets ? 'Stück' : '€'}</span>}
                   </div>
                   <div className="flex items-center gap-1"><input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} value={t.pct} onChange={e => setTier(i, { pct: e.target.value })} placeholder="%" /> <span className="text-sm" style={{ color: 'var(--text-muted)' }}>%</span></div>
                   {isAdmin && i > 0 ? <button onClick={() => rmTier(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
@@ -706,9 +732,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => setCh(i, { category: e.target.value })} title="Preiskategorie (z.B. Cat. 01, VIP, Steh-/Sitzplatz)" />
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={e => setCh(i, { price: e.target.value })} title="Ticketpreis brutto je Stück" />
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={hasPrice ? amtDE(s.revenue) : (s.revenue ?? '')} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={v => setCh(i, { tickets: v })} />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={v => setCh(i, { price: v })} title="Ticketpreis brutto je Stück" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={v => setCh(i, { revenue: v })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
                   {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
                 </div>
                 <div className="flex items-center gap-1.5 pl-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
@@ -731,11 +757,11 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-          {In('USt Tickets %', 'ticket_vat')}
+          {In('USt Tickets %', 'ticket_vat', '', undefined, 'raw')}
           {In('Ticketgebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
-          {In('USt Gebühr %', 'fee_vat')}
-          {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50')}
-          {In('USt Künstleranteil %', 'artist_vat')}
+          {In('USt Gebühr %', 'fee_vat', '', undefined, 'raw')}
+          {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50', undefined, 'raw')}
+          {In('USt Künstleranteil %', 'artist_vat', '', undefined, 'raw')}
           {In('Ticketing-Payout (brutto)', 'ticketing_payout_gross', 'bereits an Band')}
           <div className="flex items-end"><label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
             <input type="checkbox" disabled={!isAdmin} checked={deductOwn} onChange={e => set({ deduct_own_shop: e.target.checked ? '1' : '' })} className="accent-blue-600" />
@@ -750,7 +776,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             {costs.map((c, i) => (
               <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 110px 70px 28px' }}>
                 <input className="form-input" disabled={!isAdmin} placeholder="z.B. Nightliner Buyout" value={c.label ?? ''} onChange={e => setCo(i, { label: e.target.value })} />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="netto €" value={c.net ?? ''} onChange={e => setCo(i, { net: e.target.value })} />
+                <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="netto €" value={c.net ?? ''} onChange={v => setCo(i, { net: v })} />
                 <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="USt %" value={c.vat ?? ''} onChange={e => setCo(i, { vat: e.target.value })} />
                 {isAdmin ? <button onClick={() => rmCo(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
               </div>
