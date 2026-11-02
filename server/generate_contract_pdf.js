@@ -224,10 +224,11 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     // sodass umbrochene Zeilen unter dem Text (nicht unter der Ziffer) stehen.
     const hang = (marker, mx, text, tx, tw) => {
       const y0 = doc.y;
+      // Marker ZUERST auf der aktuellen Seite, dann Text ab derselben Zeile. So bleibt die
+      // Ziffer/Bullet bei der ersten Textzeile – auch wenn der Text über einen Seitenumbruch
+      // läuft (sonst landete die Ziffer separat an der alten Position → Loch + verwaiste Ziffer).
+      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(marker, mx, y0, { width: tx - mx, lineBreak: false });
       doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(text, tx, y0, { width: tw, lineGap: LINEGAP });
-      const y1 = doc.y;
-      doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(marker, mx, y0, { width: tx - mx });
-      doc.y = Math.max(y1, doc.y);
     };
     // Baustein-Text zeilenweise: „1." / „2." → Ziffer-Einrückung, „•" → Bullet, sonst Fließzeile
     // (unter der Ziffernspalte, wenn der § nummeriert ist).
