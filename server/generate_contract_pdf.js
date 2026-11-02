@@ -232,7 +232,9 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     };
     // Baustein-Text zeilenweise: „1." / „2." → Ziffer-Einrückung, „•" → Bullet, sonst Fließzeile
     // (unter der Ziffernspalte, wenn der § nummeriert ist).
-    const drawClauseBody = (text) => {
+    // inject = { <Ziffer>: fn } → nach der jeweiligen Ziffer wird die variable Tabelle
+    // eingefügt (z.B. Ticketpreise direkt unter § 5.1, Support Acts unter § 5.3).
+    const drawClauseBody = (text, inject) => {
       const hasNum = /(^|\n)\s*\d+\.\s/.test(text);
       for (const raw of String(text || '').split('\n')) {
         const line = raw.trim();
@@ -241,6 +243,9 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
         let m;
         if ((m = line.match(/^(\d+)\.\s+(.*)$/))) {
           hang(`${m[1]}.`, MARGIN, m[2], MARGIN + IND1, CONTENT_W - IND1);
+          doc.moveDown(0.12);
+          if (inject && inject[m[1]]) { doc.moveDown(0.15); inject[m[1]](); }
+          continue;
         } else if ((m = line.match(/^[•·]\s*(.*)$/))) {
           hang('•', MARGIN + IND1, m[1], MARGIN + IND1 + IND2, CONTENT_W - IND1 - IND2);
         } else {
@@ -257,30 +262,27 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK)
         .text(`§ ${i + 1}  ${cl.title}`, MARGIN, doc.y, { width: CONTENT_W });
       doc.moveDown(0.3);
-      drawClauseBody(fillPlaceholders(cl.body, placeholders) || ' ');
-      doc.moveDown(0.5);
 
+      // Variable Tabellen direkt hinter der referenzierenden Ziffer einfügen (wie die Vorlage).
       const t = norm(cl.title);
-      // §1 Vertragsgegenstand → Veranstaltungsdetails (variabel)
+      let inject = null;
       if (t.startsWith('vertragsgegenstand') || t.includes('gegenstand des vertrags')) {
-        drawKV('Veranstaltungsdetails', eventRows);
+        inject = { '1': () => drawKV('Veranstaltungsdetails', eventRows) };
+      } else if (t.startsWith('deal') || t.includes('entgelt')) {
+        inject = {
+          '1': () => drawKV('Deal', dealRows),
+          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150]); } },
+          '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150]),
+          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]]); },
+        };
+      } else if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
+        inject = {
+          '1': () => drawTable('Vorverkauf / Abendkasse', ['Händler', 'Art', 'Stück', 'Preis', 'Einnahme'], ticketTableRows, [CONTENT_W - 100 - 70 - 90 - 95, 100, 70, 90, 95]),
+          '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]]); },
+        };
       }
-      // §4 Deal, Entgelt und Zahlungsmodalitäten → Deal, Zahlungen, Refundierung, Bank (variabel)
-      if (t.startsWith('deal') || t.includes('entgelt')) {
-        drawKV('Deal', dealRows);
-        drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150]);
-        if (refundRows.length) {
-          const bandPct = pct(c.fee_band_split_pct);
-          drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150]);
-        }
-        if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]]);
-      }
-      // §5 Eintrittspreise, Vorverkauf … → Ticketpreis-/Verkaufstabelle + Support Acts (variabel)
-      if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
-        drawTable('Vorverkauf / Abendkasse', ['Händler', 'Art', 'Stück', 'Preis', 'Einnahme'], ticketTableRows,
-          [CONTENT_W - 100 - 70 - 90 - 95, 100, 70, 90, 95]);
-        if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]]);
-      }
+      drawClauseBody(fillPlaceholders(cl.body, placeholders) || ' ', inject);
+      doc.moveDown(0.5);
     });
 
     // ── Nebenkosten (falls erfasst) ──
