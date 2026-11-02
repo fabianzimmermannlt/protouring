@@ -3890,6 +3890,8 @@ export interface BookingContract {
   actual_revenue: string | null
   // Erweiterte Deal-/Abrechnungsfelder
   deal_base?: string | null
+  deal_model?: string | null   // Preset: fix | participation | vs | plus | vs_break | custom
+  tier_basis?: string | null   // Stufen-Schwellen bezogen auf: revenue (Umsatz) | tickets (Ticketzahl)
   promoter_costs?: string | null
   pct1?: string | null
   threshold2?: string | null

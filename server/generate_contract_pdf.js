@@ -198,21 +198,34 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       ['Beginn', c.show_time ? `${c.show_time} Uhr` : null],
     ];
 
-    // Deal-Details (§4) – Basis net/gross + Stufen.
+    // Deal-Details (§4) – zusammensetzbares Modell: Fixgage? Beteiligung? Verhältnis? Basis? Stufen.
     let tiers = [];
     try { tiers = c.deal_tiers ? JSON.parse(c.deal_tiers) : []; } catch { tiers = []; }
     tiers = (Array.isArray(tiers) ? tiers : []).map(t => ({ from: num(t.from), pct: num(t.pct) })).filter(t => t.pct > 0).sort((a, b) => a.from - b.from);
-    const dealTypeLabel = { guarantee: 'Festgage', vs: 'Garantie vs. Beteiligung', plus: 'Garantie plus Beteiligung', door: 'Door Deal' }[c.deal_type] || c.deal_type || '—';
-    const basisLabel = c.deal_base === 'netprofit' ? 'Nettogewinn (nach örtlichen Kosten)' : 'Nettoeinnahmen aus Ticketverkäufen';
-    const dealRows = [
-      ['Deal-Art', dealTypeLabel],
-      ['Produktionskostengarantie (netto)', money(c.guarantee, cur)],
-      ['Berechnungsbasis Beteiligung', basisLabel],
-    ];
-    if (tiers.length > 1) {
-      tiers.forEach((t, i) => dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${money(t.from, cur)}`, pct(t.pct)]));
-    } else {
-      dealRows.push(['Beteiligung Artist', pct(c.deal_share)]);
+    // Preset (gespeichert) oder aus Werten ableiten.
+    const hasFixAmt = num(c.guarantee) > 0;
+    const hasPartAmt = tiers.length > 0 || num(c.deal_share) > 0;
+    const model = c.deal_model || (hasFixAmt && !hasPartAmt ? 'fix' : (!hasFixAmt && hasPartAmt ? 'participation'
+      : (c.deal_base === 'netprofit' ? 'vs_break' : (c.deal_type === 'plus' ? 'plus' : 'vs'))));
+    const showFix = model === 'custom' ? true : model !== 'participation';
+    const showPart = model === 'custom' ? true : model !== 'fix';
+    const dealTypeLabel = {
+      fix: 'Fixgage', participation: 'Nur Beteiligung', vs: 'Fixgage gegen Beteiligung – das Höhere',
+      plus: 'Fixgage plus Beteiligung', vs_break: 'Fixgage gegen Beteiligung ab Break-Even', custom: 'Individuell',
+    }[model] || '—';
+    const basisLabel = c.deal_base === 'netprofit' ? 'Nettogewinn ab Break-Even des Veranstalters' : 'Nettoeinnahmen aus Ticketverkäufen';
+    const onTickets = c.tier_basis === 'tickets';
+    const thr = (v) => onTickets ? `${num(v).toLocaleString('de-DE')} Tickets` : money(v, cur);
+    const dealRows = [['Deal-Modell', dealTypeLabel]];
+    if (showFix) dealRows.push(['Fixgage / Garantie (netto)', money(c.guarantee, cur)]);
+    if (showPart) {
+      if (c.deal_base === 'netprofit') dealRows.push(['Break-Even Veranstalter (netto)', money(c.promoter_costs, cur)]);
+      dealRows.push(['Berechnungsbasis Beteiligung', basisLabel]);
+      if (tiers.length > 1) {
+        tiers.forEach((t, i) => dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${thr(t.from)}`, pct(t.pct)]));
+      } else {
+        dealRows.push(['Beteiligung Artist', tiers.length === 1 ? pct(tiers[0].pct) : pct(c.deal_share)]);
+      }
     }
 
     const payRows = [

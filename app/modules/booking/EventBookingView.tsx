@@ -47,9 +47,36 @@ const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFract
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
 const DEAL_BASE = [
-  { id: 'gross', label: '% vom Netto-Ticketumsatz (vs. % of gross)' },
-  { id: 'netprofit', label: '% vom Nettogewinn nach Kosten (vs. % of net)' },
+  { id: 'gross', label: 'Netto-Ticketumsatz (% of gross)' },
+  { id: 'netprofit', label: 'Nettogewinn ab Break-Even (% of net)' },
 ]
+// Zusammensetzbares Deal-Modell: wenige Bausteine (Fixgage? Beteiligung? Verhältnis? Basis?),
+// aus denen sich alle gängigen Deals ergeben. Die Presets setzen nur die Schalter;
+// der Rechner bleibt generisch. „custom" blendet alle Schalter einzeln ein.
+const DEAL_MODELS: { id: string; label: string; fix: boolean; part: boolean; type?: string; base?: string }[] = [
+  { id: 'fix', label: 'Fixgage', fix: true, part: false, type: 'guarantee' },
+  { id: 'participation', label: 'Nur Beteiligung (ggf. mit Stufen)', fix: false, part: true, type: 'vs', base: 'gross' },
+  { id: 'vs', label: 'Fixgage gegen Beteiligung – das Höhere', fix: true, part: true, type: 'vs', base: 'gross' },
+  { id: 'plus', label: 'Fixgage plus Beteiligung', fix: true, part: true, type: 'plus', base: 'gross' },
+  { id: 'vs_break', label: 'Fixgage gegen Beteiligung ab Break-Even', fix: true, part: true, type: 'vs', base: 'netprofit' },
+]
+const TIER_BASIS = [
+  { id: 'revenue', label: 'Netto-Umsatz (€)' },
+  { id: 'tickets', label: 'Ticketzahl (Stück)' },
+]
+// Für Bestandsverträge ohne gespeichertes Preset: aus den vorhandenen Werten ableiten.
+const deriveDealModel = (b: { deal_model?: string | null; guarantee?: string | null; deal_base?: string | null; deal_type?: string | null; deal_tiers?: string | null; pct1?: string | null }): string => {
+  if (b.deal_model) return b.deal_model
+  const num = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+  const hasFix = num(b.guarantee) > 0
+  let hasPart = false
+  try { const t = b.deal_tiers ? JSON.parse(b.deal_tiers) : null; if (Array.isArray(t) && t.some((x: { pct?: unknown }) => num(x.pct) > 0)) hasPart = true } catch { /* */ }
+  if (!hasPart && num(b.pct1) > 0) hasPart = true
+  if (hasFix && !hasPart) return 'fix'
+  if (!hasFix && hasPart) return 'participation'
+  if (hasFix && hasPart) return b.deal_base === 'netprofit' ? 'vs_break' : (b.deal_type === 'plus' ? 'plus' : 'vs')
+  return 'vs'
+}
 const VENUE_ROLE = 'Venue'
 const roleLabel = (r?: string) => r || 'Beteiligte/r'
 interface Party { role: string; name: string; street: string; postalCode: string; city: string; country: string; email: string; taxid: string; partner_id?: number }
@@ -111,6 +138,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     partner_name: booking.partner_name ?? '', partner_address: booking.partner_address ?? '', partner_email: booking.partner_email ?? '',
     individual_terms: booking.individual_terms ?? '',
     deal_type: booking.deal_type ?? 'vs', deal_base: booking.deal_base ?? 'gross',
+    deal_model: deriveDealModel(booking), tier_basis: booking.tier_basis ?? 'revenue',
     guarantee: booking.guarantee ?? '', pct1: booking.pct1 ?? '', threshold2: booking.threshold2 ?? '', pct2: booking.pct2 ?? '',
     promoter_costs: booking.promoter_costs ?? '', deposit: booking.deposit ?? '', payment_terms: booking.payment_terms ?? '',
     ticket_vat: booking.ticket_vat ?? settings?.ticket_vat ?? '7',
@@ -195,12 +223,20 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const set = (patch: Partial<BookingContractInput>) => setF(prev => ({ ...prev, ...patch }))
   const cur = f.currency || 'EUR'
   const deductOwn = f.deduct_own_shop === '1'
+  // Deal-Modell auflösen (steuert, welche Felder sichtbar sind und ob Stufen in die Rechnung gehen).
+  const dmId = f.deal_model ?? 'vs'
+  const isCustomDeal = dmId === 'custom'
+  const dm = DEAL_MODELS.find(m => m.id === dmId)
+  const showFix = isCustomDeal || (dm?.fix ?? true)
+  const showPart = isCustomDeal || (dm?.part ?? true)
+  const tierOnTickets = f.tier_basis === 'tickets'
 
   const st = computeSettlement({
     channels: channels as SettlementChannel[], costs: costs.map(c => ({ net: c.net, vat: c.vat })),
     ticketVat: f.ticket_vat, feePerTicket: f.fee_per_ticket, feeVat: f.fee_vat, feeBandSplitPct: f.fee_band_split_pct,
     artistVat: f.artist_vat, dealBase: f.deal_base, promoterCosts: f.promoter_costs, guarantee: f.guarantee,
-    tiers, ticketingPayoutGross: f.ticketing_payout_gross,
+    dealType: f.deal_type, tierBasis: f.tier_basis,
+    tiers: showPart ? tiers : [], ticketingPayoutGross: f.ticketing_payout_gross,
     deductOwnShop: deductOwn, depositNet: f.deposit, depositVat: f.artist_vat,
   })
 
@@ -279,6 +315,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
   const rmTier = (i: number) => setTiers(p => p.filter((_, idx) => idx !== i))
+
+  // Deal-Modell: Preset setzt nur die Schalter (deal_type/deal_base), der Rechner bleibt generisch.
+  const applyDealModel = (id: string) => {
+    const m = DEAL_MODELS.find(x => x.id === id)
+    const patch: Partial<BookingContractInput> = { deal_model: id }
+    if (m?.type) patch.deal_type = m.type
+    if (m?.base) patch.deal_base = m.base
+    set(patch)
+  }
   // Parteien
   const setParty = (i: number, patch: Partial<Party>) => setParties(p => p.map((x, idx) => idx === i ? { ...x, ...patch } : x))
   const rmParty = (i: number) => setParties(p => p.filter((_, idx) => idx !== i))
@@ -514,39 +559,70 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>DEAL / KONDITIONEN</legend>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div><label className="form-label inline-flex items-center gap-1">Deal-Basis
-            <HelpTip text="Worauf sich die Beteiligung bezieht. „vs. % of gross“: Prozent vom Netto-Ticketumsatz (vor Abzug der Veranstalterkosten). „vs. % of net“: Prozent vom Nettogewinn (Ticketumsatz abzüglich der Veranstalterkosten). „vs.“ heißt: der höhere Wert aus Produktionskostengarantie und Beteiligung gilt." /></label>
-            <select className="form-select" disabled={!isAdmin} value={f.deal_base ?? 'gross'} onChange={e => set({ deal_base: e.target.value })}>
-              {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+          <div><label className="form-label inline-flex items-center gap-1">Deal-Modell
+            <HelpTip text="Baukasten aus wenigen Schaltern. Fixgage = feste Gage. Nur Beteiligung = Prozent vom Umsatz (ggf. mit Stufen). „gegen“ (vs.) = der höhere Wert aus Fixgage und Beteiligung gilt. „plus“ = beides wird addiert. „ab Break-Even“ = die Beteiligung greift erst auf den Umsatz oberhalb der fixen Break-Even-Summe des Veranstalters. „Benutzerdefiniert“ blendet alle Schalter einzeln ein." /></label>
+            <select className="form-select" disabled={!isAdmin} value={dmId} onChange={e => applyDealModel(e.target.value)}>
+              {DEAL_MODELS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+              <option value="custom">Benutzerdefiniert</option>
             </select></div>
-          {In('Produktionskostengarantie', 'guarantee', '0')}
-          {f.deal_base === 'netprofit' && In('Veranstalterkosten', 'promoter_costs')}
-          {In('Anzahlung (netto)', 'deposit')}
+          {showFix && In('Fixgage / Garantie (netto)', 'guarantee', '0')}
           <div><label className="form-label">Währung</label><input className="form-input" disabled={!isAdmin} value={f.currency ?? 'EUR'} onChange={e => set({ currency: e.target.value })} /></div>
+        </div>
+
+        {/* Beteiligung (nur wenn das Modell eine Beteiligung hat) */}
+        {showPart && (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {isCustomDeal && (
+                <div><label className="form-label inline-flex items-center gap-1">Verhältnis
+                  <HelpTip text="„gegen“ (vs.): der höhere Wert aus Fixgage und Beteiligung gilt – entweder/oder. „plus“: Fixgage und Beteiligung werden addiert." /></label>
+                  <select className="form-select" disabled={!isAdmin} value={f.deal_type === 'plus' ? 'plus' : 'vs'} onChange={e => set({ deal_type: e.target.value })}>
+                    <option value="vs">gegen Fixgage – das Höhere</option>
+                    <option value="plus">plus Fixgage – addiert</option>
+                  </select></div>
+              )}
+              <div><label className="form-label inline-flex items-center gap-1">Beteiligungs-Basis
+                <HelpTip text="Worauf die Prozente gerechnet werden. „Netto-Ticketumsatz“: vom gesamten Netto-Umsatz. „Nettogewinn ab Break-Even“: nur vom Umsatz oberhalb der fixen Break-Even-Summe des Veranstalters." /></label>
+                <select className="form-select" disabled={!isAdmin} value={f.deal_base ?? 'gross'} onChange={e => set({ deal_base: e.target.value })}>
+                  {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select></div>
+              {f.deal_base === 'netprofit' && In('Break-Even Veranstalter (netto)', 'promoter_costs', '0', 'Die fixe Break-Even-Summe des Veranstalters (eine Zahl, keine Positionsliste). Erst oberhalb dieses Betrags greift die Beteiligung.')}
+              <div><label className="form-label inline-flex items-center gap-1">Stufen-Basis
+                <HelpTip text="Woran die Stufen-Schwellen hängen: am Netto-Umsatz (€) oder an der verkauften Ticketzahl (Stück). Der Prozentsatz gilt jeweils für den Bereich oberhalb der Schwelle." /></label>
+                <select className="form-select" disabled={!isAdmin} value={f.tier_basis ?? 'revenue'} onChange={e => set({ tier_basis: e.target.value })}>
+                  {TIER_BASIS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select></div>
+            </div>
+
+            {/* Stufen (beliebig viele, progressiv) */}
+            <div className="flex items-center justify-between mt-3 mb-1">
+              <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Beteiligung / Stufen</span>
+              {isAdmin && <button onClick={addTier} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Stufe</button>}
+            </div>
+            <div className="space-y-1.5">
+              {tiers.map((t, i) => (
+                <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 120px 28px' }}>
+                  <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {i === 0
+                      ? 'ab Beginn'
+                      : <span className="flex items-center gap-1">ab {tierOnTickets ? 'Ticket' : 'Netto-Umsatz'} <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={e => setTier(i, { from: e.target.value })} placeholder={tierOnTickets ? 'z.B. 1000' : 'z.B. 44859,81'} /> {tierOnTickets ? 'Stück' : '€'}</span>}
+                  </div>
+                  <div className="flex items-center gap-1"><input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} value={t.pct} onChange={e => setTier(i, { pct: e.target.value })} placeholder="%" /> <span className="text-sm" style={{ color: 'var(--text-muted)' }}>%</span></div>
+                  {isAdmin && i > 0 ? <button onClick={() => rmTier(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Progressiv: jede Stufe gilt nur für den Bereich oberhalb ihrer Schwelle (wie Steuerstufen){tierOnTickets ? ' – Schwellen in Ticketzahl' : ''}. {f.deal_type === 'plus' ? 'Fixgage und Beteiligung werden addiert.' : 'Es gilt der höhere Wert aus Fixgage und Beteiligung („vs.").'}</p>
+          </div>
+        )}
+
+        {/* Zahlungen */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+          {In('Anzahlung (netto)', 'deposit')}
           <div><label className="form-label">Anzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.deposit_due ?? ''} onChange={e => set({ deposit_due: e.target.value })} /></div>
           <div><label className="form-label">Restzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.balance_due ?? ''} onChange={e => set({ balance_due: e.target.value })} /></div>
         </div>
         <div className="mt-3"><label className="form-label">Bankverbindung (Artist)</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.bank_details ?? ''} onChange={e => set({ bank_details: e.target.value })} placeholder="Kontoinhaber, IBAN, BIC" /></div>
-
-        {/* Deal-Stufen (beliebig viele, progressiv) */}
-        <div className="flex items-center justify-between mt-3 mb-1">
-          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Deal-Stufen (% je Netto-Einnahmebereich)</span>
-          {isAdmin && <button onClick={addTier} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Stufe</button>}
-        </div>
-        <div className="space-y-1.5">
-          {tiers.map((t, i) => (
-            <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 120px 28px' }}>
-              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {i === 0
-                  ? 'ab erster Karte'
-                  : <span className="flex items-center gap-1">ab Netto-Einnahme <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={e => setTier(i, { from: e.target.value })} placeholder="z.B. 44859,81" /> €</span>}
-              </div>
-              <div className="flex items-center gap-1"><input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} value={t.pct} onChange={e => setTier(i, { pct: e.target.value })} placeholder="%" /> <span className="text-sm" style={{ color: 'var(--text-muted)' }}>%</span></div>
-              {isAdmin && i > 0 ? <button onClick={() => rmTier(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
-            </div>
-          ))}
-        </div>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Progressiv: jede Stufe gilt nur für den Betrag oberhalb ihrer Schwelle (wie Steuerstufen). „vs." Garantie – das Höhere gewinnt.</p>
       </fieldset>
 
       {/* Vertrag */}

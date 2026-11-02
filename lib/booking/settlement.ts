@@ -26,11 +26,16 @@ export interface SettlementInput {
   feeVat?: string | null            // USt auf die Gebühr (z.B. 7)
   feeBandSplitPct?: string | null   // Anteil der Band an der Gebühr (netto), z.B. 50
   artistVat?: string | null         // USt auf den Künstleranteil (z.B. 7)
-  dealBase?: string | null          // 'gross' (Netto-Ticketumsatz) | 'netprofit' (nach Kosten)
-  promoterCosts?: string | null     // Veranstalterkosten (nur bei 'netprofit')
-  guarantee?: string | null         // Produktionskostengarantie
-  // Beliebig viele Deal-Stufen (progressiv): je Stufe gilt pct ab der Nettoeinnahme `from`.
-  // Erste Stufe sollte from=0 haben. Beispiel: [{from:0,pct:50},{from:44859.81,pct:55}].
+  dealBase?: string | null          // 'gross' (Netto-Ticketumsatz) | 'netprofit' (nach Break-Even)
+  promoterCosts?: string | null     // Veranstalter-Break-Even (nur bei 'netprofit')
+  guarantee?: string | null         // Fixgage / Produktionskostengarantie
+  // Verhältnis Fixgage ↔ Beteiligung: 'plus' = beides addiert; sonst (vs/guarantee) = das Höhere.
+  dealType?: string | null
+  // Bezug der Stufen-Schwellen: 'tickets' = `from` ist eine Ticketzahl; sonst = Netto-Umsatz.
+  tierBasis?: string | null
+  // Beliebig viele Deal-Stufen (progressiv): je Stufe gilt pct ab der Schwelle `from`
+  // (Netto-Umsatz oder Ticketzahl, je nach tierBasis). Erste Stufe sollte from=0 haben.
+  // Beispiel: [{from:0,pct:50},{from:44859.81,pct:55}].
   tiers?: { from?: string | number | null; pct?: string | number | null }[]
   // Rückwärtskompatibel (2 Stufen) – wird genutzt, falls tiers leer ist.
   pct1?: string | null
@@ -90,6 +95,12 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
     if (n(inp.threshold2) > 0 && n(inp.pct2) > 0) tiers.push({ from: n(inp.threshold2), pct: n(inp.pct2) })
   }
   tiers.sort((a, b) => a.from - b.from)
+  // Bei Stufen auf Ticketzahl: Schwellen in Umsatz umrechnen (Ø-Umsatz je Ticket auf der Basis),
+  // damit der marginale Loop unverändert auf dealBaseAmt läuft. Ticketzahl 0 → alles Stufe 1.
+  if (inp.tierBasis === 'tickets') {
+    const scale = totalTickets > 0 ? dealBaseAmt / totalTickets : 0
+    tiers = tiers.map(t => ({ from: t.from * scale, pct: t.pct }))
+  }
   // Progressiv/marginal: Anteil je Stufe auf den Betrag zwischen from[i] und from[i+1].
   let share = 0
   for (let i = 0; i < tiers.length; i++) {
@@ -97,7 +108,10 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
     const upper = i + 1 < tiers.length ? tiers[i + 1].from : Infinity
     if (dealBaseAmt > lower) share += (Math.min(dealBaseAmt, upper) - lower) * tiers[i].pct / 100
   }
-  const dealShareNet = Math.max(n(inp.guarantee), share)   // „vs" – das Höhere gewinnt
+  // Verhältnis Fixgage ↔ Beteiligung: 'plus' = Garantie + Beteiligung; sonst das Höhere („vs").
+  // Reine Fixgage (keine Stufen) → share=0 → Garantie; reine Beteiligung (keine Garantie) → share.
+  const guar = n(inp.guarantee)
+  const dealShareNet = inp.dealType === 'plus' ? (guar + share) : Math.max(guar, share)
   const artistShareNet = dealShareNet + bandFeeShareNet
 
   const costsNet = costs.reduce((a, c) => a + n(c.net), 0)

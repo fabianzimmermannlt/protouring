@@ -82,3 +82,44 @@ describe('computeSettlement – 2. Schwelle (Wiesbaden-artig, Fallback pct1/thre
     close(r.dealShareNet, expected)
   })
 })
+
+// Zusammensetzbares Deal-Modell: Verhältnis (vs/plus), Basis (ab Break-Even), Stufen-Basis (Ticketzahl).
+describe('computeSettlement – Deal-Modell-Bausteine', () => {
+  const base = { costs: [], ticketVat: '7', artistVat: '7' as const }
+  const net = 53500 / 1.07 // 50000
+
+  it('Fixgage plus Beteiligung (addiert)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      dealBase: 'gross', dealType: 'plus', guarantee: '3000', tiers: [{ from: 0, pct: 50 }],
+    })
+    close(r.dealShareNet, 3000 + net * 0.5) // 28000
+  })
+
+  it('Fixgage gegen Beteiligung – das Höhere gewinnt (Garantie)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      dealBase: 'gross', dealType: 'vs', guarantee: '30000', tiers: [{ from: 0, pct: 50 }],
+    })
+    close(r.dealShareNet, 30000) // max(30000, 25000)
+  })
+
+  it('Stufen auf Ticketzahl (Schwelle in Stück → Umsatz umgerechnet)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', tickets: '1000', money_with: 'promoter' }],
+      dealBase: 'gross', dealType: 'vs', guarantee: '0', tierBasis: 'tickets',
+      tiers: [{ from: 0, pct: 50 }, { from: 500, pct: 60 }],
+    })
+    // Ø 50 €/Ticket → Schwelle 500 Tickets = 25.000 €; 25000*0,5 + 25000*0,6
+    close(r.dealShareNet, 25000 * 0.5 + 25000 * 0.6) // 27500
+  })
+
+  it('Nur Beteiligung ab Break-Even (netprofit)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      dealBase: 'netprofit', dealType: 'vs', guarantee: '0', promoterCosts: '30000',
+      tiers: [{ from: 0, pct: 50 }],
+    })
+    close(r.dealShareNet, (net - 30000) * 0.5) // 10000
+  })
+})

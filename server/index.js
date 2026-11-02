@@ -2195,7 +2195,7 @@ async function initDatabase() {
     await db.run(`DELETE FROM booking_contract_clauses`);
   } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
-  for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
+  for (const col of ['deal_base','deal_model','tier_basis','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
     'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
     // Variable Vertragsangaben (statt fix im Baustein-Text): Event-Details, Zahlungstermine, Bank, Support
     'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
@@ -10304,7 +10304,7 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
 })
 
 const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
-  'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
+  'deal_base','deal_model','tier_basis','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
   'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
   'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
