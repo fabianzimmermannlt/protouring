@@ -2198,7 +2198,9 @@ async function initDatabase() {
   for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
     'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
     // Variable Vertragsangaben (statt fix im Baustein-Text): Event-Details, Zahlungstermine, Bank, Support
-    'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts']) {
+    'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
+    // § 5.1 Eintrittspreise / Vorverkaufsszenario (wie FKP): Holds/Comps/Kills, VVK-Grundpreis, Abendkasse-Preis
+    'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price']) {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
@@ -10305,7 +10307,8 @@ const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date'
   'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
   'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
-  'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts']
+  'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
+  'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 

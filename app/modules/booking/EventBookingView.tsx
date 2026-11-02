@@ -124,6 +124,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     capacity: booking.capacity ?? '', doors_time: booking.doors_time ?? '', show_time: booking.show_time ?? '',
     deposit_due: booking.deposit_due ?? '', balance_due: booking.balance_due ?? '',
     bank_details: booking.bank_details ?? '', support_acts: booking.support_acts ?? '',
+    vk_holds: booking.vk_holds ?? '', vk_comps: booking.vk_comps ?? '', vk_kills: booking.vk_kills ?? '',
+    vk_base_price: booking.vk_base_price ?? '', ak_price: booking.ak_price ?? '',
   }))
   const [channels, setChannels] = useState<BookingTicketSale[]>(booking.ticket_sales ?? [])
   const [costs, setCosts] = useState<BookingCostLine[]>(booking.cost_lines ?? [])
@@ -416,6 +418,24 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <div><label className="form-label">Beginn</label><input type="time" className="form-input" disabled={!isAdmin} value={f.show_time ?? ''} onChange={e => set({ show_time: e.target.value })} /></div>
         </div>
         <div className="mt-3"><label className="form-label">Support Act(s)</label><input className="form-input" disabled={!isAdmin} value={f.support_acts ?? ''} onChange={e => set({ support_acts: e.target.value })} placeholder="z.B. Rogers" /></div>
+      </fieldset>
+
+      {/* Eintrittspreise / Vorverkauf (§ 5.1) */}
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
+          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show). Kapazität kommt aus der Veranstaltung oben. Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; erwartete Einnahme = Verkaufbar × VVK-Grundpreis. Die Face Values je Ticketsystem kommen aus den Vertriebskanälen in der Abrechnung." />
+        </legend>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {In('VVK-Grundpreis', 'vk_base_price', 'Face Value, z.B. 45')}
+          {In('Abendkasse-Preis', 'ak_price', 'z.B. 60')}
+          <div>
+            <label className="form-label">Verkaufbar</label>
+            <input className="form-input" readOnly value={Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)).toLocaleString('de-DE')} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
+          </div>
+          {In('Holds', 'vk_holds', '0')}
+          {In('Comps', 'vk_comps', '0')}
+          {In('Kills', 'vk_kills', '0')}
+        </div>
       </fieldset>
 
       {/* Deal */}

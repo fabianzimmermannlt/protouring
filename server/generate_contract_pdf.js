@@ -277,7 +277,23 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
         };
       } else if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
         inject = {
-          '1': () => drawTable('Vorverkauf / Abendkasse', ['Händler', 'Art', 'Stück', 'Preis', 'Einnahme'], ticketTableRows, [CONTENT_W - 100 - 70 - 90 - 95, 100, 70, 90, 95]),
+          '1': () => {
+            // § 5.1 wie FKP: Vorverkaufs-Szenario, Abendkasse, Preisstruktur (Face Value je System).
+            const cap = num(c.capacity), holds = num(c.vk_holds), comps = num(c.vk_comps), kills = num(c.vk_kills);
+            const verk = Math.max(0, cap - holds - comps - kills);
+            const vvkChans = (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice');
+            const vkPrice = (c.vk_base_price != null && c.vk_base_price !== '') ? num(c.vk_base_price) : (vvkChans[0] ? num(vvkChans[0].price) : 0);
+            const einnahme = verk * vkPrice;
+            const vkRows = [['Cat. 01', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), money(vkPrice, cur) || '—', money(einnahme, cur) || '—']];
+            const totalVk = ['Gesamt', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), '', money(einnahme, cur) || '—']; totalVk._bold = true; totalVk._bg = '#f9fafb';
+            vkRows.push(totalVk);
+            drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326]);
+            const boChan = (ticketSales || []).find(s => (s.art || '') === 'boxoffice');
+            const akPrice = (c.ak_price != null && c.ak_price !== '') ? num(c.ak_price) : (boChan ? num(boChan.price) : 0);
+            if (akPrice > 0) drawTable('Abendkasse', ['PK', 'Grundpreis'], [['Cat. 01', money(akPrice, cur)]], [CONTENT_W - 120, 120]);
+            const psRows = vvkChans.filter(s => s.vendor || s.price).map(s => ['Face Value', s.vendor || '—', money(s.price, cur) || '—']);
+            if (psRows.length) drawTable('Preisstruktur', ['Preis-Element', 'Ticketsystem', 'Cat. 01'], psRows, [120, CONTENT_W - 120 - 110, 110]);
+          },
           '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]]); },
         };
       }

@@ -3921,6 +3921,12 @@ export interface BookingContract {
   balance_due?: string | null
   bank_details?: string | null
   support_acts?: string | null
+  // § 5.1 Vorverkaufsszenario (wie FKP)
+  vk_holds?: string | null
+  vk_comps?: string | null
+  vk_kills?: string | null
+  vk_base_price?: string | null   // VVK-Grundpreis (Face Value)
+  ak_price?: string | null        // Abendkasse-Grundpreis
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
