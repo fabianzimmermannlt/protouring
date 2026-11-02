@@ -161,7 +161,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       };
       drawRow(headers, true, '#f3f4f6');
       rows.forEach(r => { ensureSpace(rowH + 20); drawRow(r, r._bold, r._bg); });
-      doc.moveDown(0.5);
+      doc.moveDown(1); // Leerzeile nach jeder Tabelle (sonst gequetscht)
     };
 
     // Tabellen-Daten vorbereiten
@@ -193,7 +193,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
         doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(String(v), x0 + labelW, y, { width: innerW - labelW });
         doc.y = Math.max(doc.y, y + 13);
       }
-      doc.moveDown(0.4);
+      doc.moveDown(0.8); // Leerzeile nach jedem KV-Block
     };
 
     // Event-Details (§1) – variabel aus Booking.
