@@ -1,8 +1,32 @@
 // Validierung des Abrechnungs-Rechenkerns gegen eine echte Konzertabrechnung (Osnabrück, Q4/2026).
 import { describe, it, expect } from 'vitest'
-import { computeSettlement } from './settlement'
+import { computeSettlement, parseNum } from './settlement'
 
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 2)
+
+describe('parseNum – deutsche & kanonische Schreibweise', () => {
+  it('erkennt Tausender-Punkt + Dezimal-Komma', () => {
+    close(parseNum('1.600,50'), 1600.5)
+    close(parseNum('1.600.000'), 1600000)
+    close(parseNum('44859,81'), 44859.81)
+  })
+  it('erkennt kanonische (toFixed) und US-Schreibweise', () => {
+    close(parseNum('32000.00'), 32000)
+    close(parseNum('1,600.50'), 1600.5)
+  })
+  it('liefert bei leer/ungültig 0', () => {
+    expect(parseNum('')).toBe(0)
+    expect(parseNum(null)).toBe(0)
+    expect(parseNum('abc')).toBe(0)
+  })
+  it('wird in der Abrechnung genutzt (Umsatz mit Tausender-Punkt)', () => {
+    const r = computeSettlement({
+      channels: [{ name: 'X', art: 'vvk', money_with: 'promoter', tickets: '1.000', revenue: '45.000,00' }],
+      ticketVat: '7', guarantee: '0', dealShare: '100', dealBase: 'gross',
+    } as Parameters<typeof computeSettlement>[0])
+    close(r.ticketGross, 45000)
+  })
+})
 
 describe('computeSettlement – echte KA Osnabrück', () => {
   const r = computeSettlement({

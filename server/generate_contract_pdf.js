@@ -29,17 +29,35 @@ function drawLogo(doc, logoPath) {
   } catch { return MARGIN; }
 }
 
+// Robuste Zahl-Erkennung (deutsch + kanonisch), identisch zu lib/booking/settlement.ts parseNum:
+//   "1.600,50"→1600.5  "1600,50"→1600.5  "1.600.000"→1600000  "32000.00"→32000  "1,600.50"→1600.5
+function parseNum(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v ?? '').trim();
+  if (!s) return 0;
+  const hasComma = s.includes(','), hasDot = s.includes('.');
+  if (hasComma && hasDot) {
+    s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  } else if (hasComma) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if ((s.match(/\./g) || []).length > 1) {
+    s = s.replace(/\./g, '');
+  }
+  const x = Number(s); return isFinite(x) ? x : 0;
+}
 function money(v, cur = 'EUR') {
   if (v == null || v === '') return null;
-  const n = Number(String(v).replace(',', '.'));
-  if (!isFinite(n)) return String(v);
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = parseNum(s);
+  if (!isFinite(n) || (n === 0 && !/[0-9]/.test(s))) return String(v);
   return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur;
 }
-function num(v) { const n = Number(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0; }
+function num(v) { return parseNum(v); }
 function intDE(v) { const n = num(v); return n ? n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) : (v == null || v === '' ? '—' : String(v)); }
 function pct(v) {
   if (v == null || v === '') return null;
-  const n = Number(String(v).replace(',', '.'));
+  const n = parseNum(v);
   if (!isFinite(n)) return String(v);
   const p = n <= 1 ? n * 100 : n;
   return p.toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' %';
@@ -235,10 +253,20 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     if (showPart) {
       if (c.deal_base === 'netprofit') dealRows.push(['Break-Even Veranstalter (netto)', money(c.promoter_costs, cur)]);
       dealRows.push(['Berechnungsbasis Beteiligung', basisLabel]);
+      // Bei echtem Gewinn-Split (Nettogewinn ab Break-Even) ist die Beteiligung eine
+      // Aufteilung zwischen Artist und ÖV – daher den Gegenanteil des ÖV mit ausweisen
+      // (wie FKP Köln: „Artist 85 % – ÖV 15 %"). Bei Ticket-Umsatz-Basis wäre das irreführend.
+      const splitNet = c.deal_base === 'netprofit';
+      const ovPct = (v) => { const n = num(v); const a = n <= 1 ? n * 100 : n; return pct(100 - a); };
       if (tiers.length > 1) {
-        tiers.forEach((t, i) => dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${thr(t.from)}`, pct(t.pct)]));
+        tiers.forEach((t, i) => {
+          dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${thr(t.from)}`, pct(t.pct)]);
+          if (splitNet) dealRows.push([i === 0 ? 'Beteiligung ÖV / Veranstalter' : '… ÖV / Veranstalter', ovPct(t.pct)]);
+        });
       } else {
-        dealRows.push(['Beteiligung Artist', tiers.length === 1 ? pct(tiers[0].pct) : pct(c.deal_share)]);
+        const artistPct = tiers.length === 1 ? tiers[0].pct : c.deal_share;
+        dealRows.push(['Beteiligung Artist', pct(artistPct)]);
+        if (splitNet) dealRows.push(['Beteiligung ÖV / Veranstalter', ovPct(artistPct)]);
       }
     }
 

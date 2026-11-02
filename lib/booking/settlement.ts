@@ -59,7 +59,28 @@ export interface SettlementResult {
   payableGross: number   // offener Betrag an die Band nach allen Verrechnungen
 }
 
-const n = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+// Robuste Zahl-Erkennung für deutsche UND kanonische Schreibweise:
+//   "1.600,50" → 1600.5   "1600,50" → 1600.5   "1.600.000" → 1600000
+//   "32000.00" → 32000     "1,600.50" → 1600.5  (US-Format, letzter Trenner = Dezimal)
+// Regel: Sind beide Trenner da, ist der LETZTE der Dezimaltrenner; sonst ist "," immer
+// Dezimal (App-Konvention), und mehrere "." sind Tausender.
+export function parseNum(v: unknown): number {
+  if (typeof v === 'number') return isFinite(v) ? v : 0
+  let s = String(v ?? '').trim()
+  if (!s) return 0
+  const hasComma = s.includes(','), hasDot = s.includes('.')
+  if (hasComma && hasDot) {
+    s = s.lastIndexOf(',') > s.lastIndexOf('.')
+      ? s.replace(/\./g, '').replace(',', '.')   // deutsch: Punkt=Tausender, Komma=Dezimal
+      : s.replace(/,/g, '')                        // US: Komma=Tausender
+  } else if (hasComma) {
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else if ((s.match(/\./g) || []).length > 1) {
+    s = s.replace(/\./g, '')                        // mehrere Punkte = Tausender
+  }
+  const x = Number(s); return isFinite(x) ? x : 0
+}
+const n = parseNum
 
 export function computeSettlement(inp: SettlementInput): SettlementResult {
   const ticketVat = n(inp.ticketVat), feeVat = n(inp.feeVat), artistVat = n(inp.artistVat)

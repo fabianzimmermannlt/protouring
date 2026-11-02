@@ -39,11 +39,14 @@ async function partiesFromEvent(termin: Termin, settings: BookingSettings | null
   } catch { /* ignore */ }
   return out
 }
-import { computeSettlement, type SettlementChannel } from '@/lib/booking/settlement'
+import { computeSettlement, parseNum, type SettlementChannel } from '@/lib/booking/settlement'
 import { BOOKING_STATUSES } from './BookingModule'
 
-const nnum = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+const nnum = parseNum
 const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
+// Betrag deutsch fürs Anzeigen in read-only Feldern: 32000 → "32.000,00" (ohne Währung); leer bleibt leer.
+const amtDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const intDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { maximumFractionDigits: 0 })
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
 const DEAL_BASE = [
@@ -547,7 +550,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           {In('Abendkasse-Preis', 'ak_price', 'z.B. 60')}
           <div>
             <label className="form-label">Verkaufbar</label>
-            <input className="form-input" readOnly value={Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)).toLocaleString('de-DE')} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
+            <input className="form-input" readOnly value={intDE(Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
           </div>
           {In('Holds', 'vk_holds', '0', 'Holds = zurückgehaltene Tickets, die (vorerst) nicht in den freien Verkauf gehen – z.B. Produktions-Holds (FOH/Technik/Sichtlinien), Künstler- und Management-Kontingente, VIP, Sponsoren. Holds können später freigegeben („released“) und doch noch verkauft werden.')}
           {In('Comps', 'vk_comps', '0', 'Comps (complimentary) = kostenlos vergebene Freikarten – Gästeliste, Presse, Fotografen, Crew, Promo/Verlosung. Bringen 0 € Einnahme und werden daher aus dem verkaufbaren Kontingent herausgerechnet.')}
@@ -705,7 +708,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />
                   <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={e => setCh(i, { price: e.target.value })} title="Ticketpreis brutto je Stück" />
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
+                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={hasPrice ? amtDE(s.revenue) : (s.revenue ?? '')} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
                   {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
                 </div>
                 <div className="flex items-center gap-1.5 pl-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
