@@ -8,7 +8,7 @@ import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
-  getVenue, updateVenue, getPartner, getTerminPartners, getPartnerTypes,
+  getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
 } from '@/lib/api-client'
@@ -159,6 +159,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return m
   })
   const [editingClause, setEditingClause] = useState<number | null>(null)
+  // Stammdaten-Abgleich: Master-Partner je partner_id laden, Abweichungen anzeigen (beide Richtungen).
+  const [masters, setMasters] = useState<Record<number, Partner>>({})
+  const [cmpOpen, setCmpOpen] = useState<number | null>(null)
   const [invoices, setInvoices] = useState<BookingInvoice[]>([])
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
@@ -279,6 +282,47 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   // Parteien
   const setParty = (i: number, patch: Partial<Party>) => setParties(p => p.map((x, idx) => idx === i ? { ...x, ...patch } : x))
   const rmParty = (i: number) => setParties(p => p.filter((_, idx) => idx !== i))
+
+  // Master-Partner (Stammdaten) der verknüpften Parteien laden – für den Abgleich.
+  useEffect(() => {
+    const ids = Array.from(new Set(parties.map(p => p.partner_id).filter((x): x is number => !!x)))
+    const missing = ids.filter(id => !(id in masters))
+    if (!missing.length) return
+    let alive = true
+    Promise.all(missing.map(id => getPartner(String(id)).then(m => [id, m] as const).catch(() => null)))
+      .then(res => { if (!alive) return; const add: Record<number, Partner> = {}; for (const r of res) if (r) add[r[0]] = r[1]; if (Object.keys(add).length) setMasters(prev => ({ ...prev, ...add })) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parties])
+
+  // Feld-Zuordnung Vertragspartei ↔ Partner-Stammsatz; liefert die abweichenden Felder.
+  const PARTY_FIELD_MAP: [keyof Party, keyof Partner, string][] = [
+    ['name', 'companyName', 'Name / Firma'], ['street', 'street', 'Straße'], ['postalCode', 'postalCode', 'PLZ'],
+    ['city', 'city', 'Ort'], ['country', 'country', 'Land'], ['email', 'email', 'E-Mail'], ['taxid', 'taxId', 'USt-IdNr./St-Nr.'],
+  ]
+  const partyDiffs = (p: Party) => {
+    const m = p.partner_id ? masters[p.partner_id] : undefined
+    if (!m) return []
+    return PARTY_FIELD_MAP
+      .map(([pk, mk, label]) => ({ label, master: String(m[mk] ?? '').trim(), contract: String(p[pk] ?? '').trim() }))
+      .filter(d => d.master !== d.contract)
+  }
+  const pullFromMaster = (i: number) => {
+    const p = parties[i]; const m = p.partner_id ? masters[p.partner_id] : undefined; if (!m) return
+    setParty(i, { name: m.companyName, street: m.street, postalCode: m.postalCode, city: m.city, country: m.country, email: m.email, taxid: m.taxId })
+    setCmpOpen(null)
+  }
+  const pushToMaster = async (i: number) => {
+    const p = parties[i]; const id = p.partner_id; const m = id ? masters[id] : undefined; if (!id || !m) return
+    if (!confirm(`Änderungen von „${p.name || 'dieser Partei'}" in die Partner-Stammdaten speichern?\n\nGilt dann für ALLE Events/Verträge, die diesen Partner nutzen.`)) return
+    const updated: PartnerFormData = {
+      type: m.type, companyName: p.name, street: p.street, postalCode: p.postalCode, city: p.city,
+      state: m.state, country: p.country, contactPerson: m.contactPerson, email: p.email, phone: m.phone,
+      taxId: p.taxid, billingAddress: m.billingAddress, notes: m.notes,
+    }
+    try { await updatePartner(String(id), updated); setMasters(prev => ({ ...prev, [id]: { ...m, ...updated } })); setCmpOpen(null) }
+    catch { alert('Speichern in Stammdaten fehlgeschlagen.') }
+  }
   const reorderParties = (from: number, to: number) => setParties(p => { const n = [...p]; const [m] = n.splice(from, 1); n.splice(to, 0, m); return n })
   // Partei aus gewähltem Partner hinzufügen (Snapshot aus Stammdaten – strukturiert, kein Freitext)
   const onPickPartner = (p: Partner) => {
@@ -396,7 +440,35 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   <div><label className="detail-label">Land</label><input className="detail-input" disabled={!isAdmin} value={p.country} onChange={e => setParty(i, { country: e.target.value })} /></div>
                   <div><label className="detail-label">E-Mail</label><input className="detail-input" disabled={!isAdmin} value={p.email} onChange={e => setParty(i, { email: e.target.value })} /></div>
                   <div><label className="detail-label">USt-IdNr./St-Nr.</label><input className="detail-input" disabled={!isAdmin} value={p.taxid} onChange={e => setParty(i, { taxid: e.target.value })} /></div>
-                  {p.partner_id && <div className="sm:col-span-2 lg:col-span-3 text-[11px]" style={{ color: 'var(--text-subtle)' }}>Aus Partner-Stammdaten übernommen – Änderungen hier gelten nur für diesen Vertrag.</div>}
+                  {p.partner_id && masters[p.partner_id] && (() => {
+                    const diffs = partyDiffs(p)
+                    if (!diffs.length) return <div className="sm:col-span-2 lg:col-span-3 text-[11px]" style={{ color: 'var(--text-subtle)' }}>Aus Partner-Stammdaten übernommen – stimmt mit dem Stammsatz überein.</div>
+                    return (
+                      <div className="sm:col-span-2 lg:col-span-3 rounded-md p-2" style={{ background: 'var(--surface-2)', border: '1px solid var(--accent)' }}>
+                        <button type="button" onClick={() => setCmpOpen(cmpOpen === i ? null : i)} className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--accent)' }}>⇄ Weicht vom Stammdatensatz ab ({diffs.length}) {cmpOpen === i ? '▴' : '▾'}</button>
+                        {cmpOpen === i && (
+                          <div className="mt-2">
+                            <div className="grid gap-1 text-[11px]" style={{ gridTemplateColumns: '90px 1fr 1fr' }}>
+                              <span style={{ color: 'var(--text-subtle)' }}>Feld</span><span style={{ color: 'var(--text-subtle)' }}>Stammdaten</span><span style={{ color: 'var(--text-subtle)' }}>Vertrag</span>
+                              {diffs.map(d => (
+                                <div key={d.label} className="contents">
+                                  <span style={{ color: 'var(--text-muted)' }}>{d.label}</span>
+                                  <span style={{ color: 'var(--text)' }}>{d.master || '—'}</span>
+                                  <span style={{ color: 'var(--text)' }}>{d.contract || '—'}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                <button type="button" onClick={() => pullFromMaster(i)} className="btn btn-ghost" style={{ padding: '3px 10px' }}>← Stammdaten übernehmen</button>
+                                <button type="button" onClick={() => pushToMaster(i)} className="btn btn-ghost" style={{ padding: '3px 10px' }}>→ In Stammdaten speichern</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {isAdmin && <div className="sm:col-span-2 lg:col-span-3 flex justify-end"><button onClick={() => rmParty(i)} className="btn btn-ghost text-red-600 hover:bg-red-50" style={{ padding: '4px 10px' }}><TrashIcon className="w-4 h-4" />Entfernen</button></div>}
                 </div>
               </AccordionSection>
