@@ -192,6 +192,11 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     if (booking.threshold2 && booking.pct2) base.push({ from: booking.threshold2, pct: booking.pct2 })
     return base
   })
+  // Preiskategorien (Vertrags-Preisstruktur): oben definiert, in der Abrechnung je Kanal zugeordnet.
+  const [cats, setCats] = useState<{ name: string; vendor: string; face: string }[]>(() => {
+    try { const t = booking.price_categories ? JSON.parse(booking.price_categories) : null; if (Array.isArray(t)) return t.map((x: { name?: unknown; vendor?: unknown; face?: unknown }) => ({ name: String(x.name ?? ''), vendor: String(x.vendor ?? ''), face: String(x.face ?? '') })) } catch { /* */ }
+    return []
+  })
   const [parties, setParties] = useState<Party[]>(() => {
     const norm = (x: Partial<Party> & { address?: string }): Party => ({
       role: x.role ?? 'other', name: x.name ?? '',
@@ -286,7 +291,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
       ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
-    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')) })
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.face)) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
     // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
@@ -319,7 +324,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // bewusst auf die editierbaren Zustände hören:
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, parties, channels, costs, tiers, clauseOv])
+  }, [f, parties, channels, costs, tiers, cats, clauseOv])
 
   const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
@@ -341,6 +346,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addCost = () => setCosts(p => [...p, { label: '', net: '', vat: settings?.service_vat ?? '19' }])
   const setCo = (i: number, patch: Partial<BookingCostLine>) => setCosts(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   const rmCo = (i: number) => setCosts(p => p.filter((_, idx) => idx !== i))
+  const addCat = () => setCats(p => [...p, { name: '', vendor: '', face: '' }])
+  const setCat = (i: number, patch: Partial<{ name: string; vendor: string; face: string }>) => setCats(p => p.map((c, idx) => idx === i ? { ...c, ...patch } : c))
+  const rmCat = (i: number) => setCats(p => p.filter((_, idx) => idx !== i))
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
   const rmTier = (i: number) => setTiers(p => p.filter((_, idx) => idx !== i))
@@ -569,7 +577,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       {/* Eintrittspreise / Vorverkauf (§ 5.1) */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
-          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show). Kapazität kommt aus der Veranstaltung oben. Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; erwartete Einnahme = Verkaufbar × VVK-Grundpreis. Die Face Values je Ticketsystem kommen aus den Vertriebskanälen in der Abrechnung." />
+          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show). Kapazität kommt aus der Veranstaltung oben. Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; erwartete Einnahme = Verkaufbar × VVK-Grundpreis. Die Preiskategorien unten bilden die Preisstruktur im Vertrag und stehen in der Abrechnung je Kanal zur Auswahl." />
         </legend>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {In('VVK-Grundpreis', 'vk_base_price', 'Face Value, z.B. 45')}
@@ -581,6 +589,32 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           {In('Holds', 'vk_holds', '0', 'Holds = zurückgehaltene Tickets, die (vorerst) nicht in den freien Verkauf gehen – z.B. Produktions-Holds (FOH/Technik/Sichtlinien), Künstler- und Management-Kontingente, VIP, Sponsoren. Holds können später freigegeben („released“) und doch noch verkauft werden.', 'int')}
           {In('Comps', 'vk_comps', '0', 'Comps (complimentary) = kostenlos vergebene Freikarten – Gästeliste, Presse, Fotografen, Crew, Promo/Verlosung. Bringen 0 € Einnahme und werden daher aus dem verkaufbaren Kontingent herausgerechnet.', 'int')}
           {In('Kills', 'vk_kills', '0', 'Kills = dauerhaft gesperrte Plätze, die gar nicht verkauft werden dürfen – Sichtbehinderung, Bühnen-/Stageaufbau, Mischpult-Insel, Notausgänge und Wege, abgehängte Ränge. Werden nie verkauft und nie verschenkt.', 'int')}
+        </div>
+
+        {/* Preiskategorien – werden Teil des Vertrags (§5.1 Preisstruktur) und in der Abrechnung je Kanal zugeordnet */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium inline-flex items-center gap-1">Preiskategorien
+              <HelpTip text="Die Preisklassen der Show (z.B. Cat. 01, VIP, Steh-/Sitzplatz) mit ihrem Face Value. Werden im Vertrag unter §5.1 als Preisstruktur festgehalten und stehen in der Abrechnung je Vertriebskanal zur Auswahl. Ohne Einträge gilt der VVK-Grundpreis fürs ganze Haus." /></span>
+            {isAdmin && <button onClick={addCat} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Kategorie</button>}
+          </div>
+          {cats.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Kategorien – es gilt der VVK-Grundpreis fürs ganze Haus. Mit „Kategorie" einzelne Preisklassen festlegen.</p>
+          ) : (
+            <div className="space-y-1">
+              <div className="grid gap-1.5 text-[11px] px-1" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) 110px 26px', color: 'var(--text-muted)' }}>
+                <span>Kategorie</span><span>Ticketsystem (optional)</span><span className="text-right">Face Value</span><span />
+              </div>
+              {cats.map((c, i) => (
+                <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) 110px 26px' }}>
+                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
+                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Eventim" value={c.vendor} onChange={e => setCat(i, { vendor: e.target.value })} />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.face} onChange={v => setCat(i, { face: v })} />
+                  {isAdmin ? <button onClick={() => rmCat(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </fieldset>
 
@@ -716,6 +750,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>ABRECHNUNG (nach der Show)</legend>
 
+        <datalist id="pt-price-cats">{cats.filter(c => c.name).map((c, i) => <option key={i} value={c.name} />)}</datalist>
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
@@ -729,7 +764,16 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               <div key={i} className="space-y-1">
                 <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 72px 80px 90px 50px 74px 92px 26px' }}>
                   <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
-                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => setCh(i, { category: e.target.value })} title="Preiskategorie (z.B. Cat. 01, VIP, Steh-/Sitzplatz)" />
+                  <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => {
+                    const name = e.target.value
+                    const m = cats.find(c => c.name && c.name === name)
+                    const patch: Partial<BookingTicketSale> = { category: name }
+                    if (m) {
+                      if (m.vendor && !(s.vendor ?? '').trim()) patch.vendor = m.vendor
+                      if (m.face && !(s.price ?? '').trim()) { patch.price = m.face; patch.revenue = (nnum(s.tickets) * nnum(m.face)).toFixed(2) }
+                    }
+                    setCh(i, patch)
+                  }} title="Preiskategorie – Auswahl aus den oben definierten Kategorien (Freitext möglich)" />
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={v => setCh(i, { tickets: v })} />

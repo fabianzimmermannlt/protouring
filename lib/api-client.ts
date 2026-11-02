@@ -3929,6 +3929,7 @@ export interface BookingContract {
   vk_kills?: string | null
   vk_base_price?: string | null   // VVK-Grundpreis (Face Value)
   ak_price?: string | null        // Abendkasse-Grundpreis
+  price_categories?: string | null // JSON: [{name,vendor,face}, …] – Preiskategorien als Vertrags-Preisstruktur
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
