@@ -177,7 +177,12 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
 
     const feePer = money(c.fee_per_ticket, cur);
     // Refundierung = Ticketsystem-Gebühr; nur Vorverkaufskanäle (Abendkasse/Eigener Shop haben keine).
-    const refundRows = feePer ? (ticketSales || []).filter(s => (s.art || 'vvk') === 'vvk').map(s => [s.vendor || 'Ticketsystem', feePer]) : [];
+    // Refundierung je Kanal (wie FKP Köln: Ticketsystem · PK · Betrag). Betrifft alle Kanäle
+    // außer Abendkasse (= wie Abrechnung); PK = Preiskategorie; Betrag = Kanal-Gebühr oder global.
+    const refundRows = feePer ? (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice').map(s => {
+      const ef = (s.chan_fee != null && String(s.chan_fee) !== '') ? money(s.chan_fee, cur) : feePer;
+      return [s.vendor || 'Ticketsystem', String(s.category || '').trim() || 'Cat. 01', ef];
+    }) : [];
 
     // Key-Value-Block (Label links, Wert rechts fett).
     const drawKV = (title, pairs, indent = 0) => {
@@ -293,7 +298,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       } else if (t.startsWith('deal') || t.includes('entgelt')) {
         inject = {
           '1': () => drawKV('Deal', dealRows, IND1),
-          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150], IND1); } },
+          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'PK', 'Betrag (brutto)'], refundRows, [CONTENT_W - 90 - 150, 90, 150], IND1); } },
           '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150], IND1),
           '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]], IND1); },
         };
