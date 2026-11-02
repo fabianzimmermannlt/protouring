@@ -95,7 +95,10 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const addrLine = (parts) => parts.filter(Boolean).join(', ');
     const partyBlock = (intro, name, addr, extra, tag) => {
       if (intro) { doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(intro, MARGIN, doc.y, { width: CONTENT_W, align: 'center' }); doc.moveDown(0.1); }
-      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(`${name || '—'}${addr ? ', ' + addr : ''}`, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
+      // Firmenname in eigener Zeile, Anschrift darunter (Zeilenschaltung nach dem Namen).
+      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(name || '—', MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
+      const addr1 = String(addr || '').replace(/\s*\n\s*/g, ', ').trim();
+      if (addr1) doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(addr1, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
       if (extra) doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(extra, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
       doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(`– „${tag}" –`, MARGIN, doc.y + 1, { width: CONTENT_W, align: 'center' });
       doc.moveDown(0.5);
@@ -132,11 +135,16 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     doc.moveDown(0.6);
 
     // ── Tabellen-Helfer (einfache Linien-Tabelle) ──
-    const drawTable = (title, headers, rows, widths) => {
+    const drawTable = (title, headers, rows, widths, indent = 0) => {
       if (!rows.length) return;
       ensureSpace(60 + rows.length * 16);
-      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.2); }
-      const x0 = MARGIN, totalW = widths.reduce((a, b) => a + b, 0);
+      const x0 = MARGIN + indent, innerW = CONTENT_W - indent;
+      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(BODY_INK).text(title, x0, doc.y, { width: innerW }); doc.moveDown(0.2); }
+      // Spaltenbreiten auf die eingerückte Breite begrenzen (letzte Spalte kürzen, nie überlaufen).
+      const w = widths.slice();
+      const sumW = w.reduce((a, b) => a + b, 0);
+      if (sumW > innerW) w[w.length - 1] -= (sumW - innerW);
+      const totalW = w.reduce((a, b) => a + b, 0);
       const rowH = 16;
       const drawRow = (cells, bold, bg) => {
         const y = doc.y;
@@ -145,8 +153,8 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
         doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_TABLE).fillColor(INK);
         cells.forEach((cell, i) => {
           const alignRight = i > 0; // erste Spalte links, Rest rechts
-          doc.text(String(cell ?? ''), x + 4, y + 4, { width: widths[i] - 8, align: alignRight ? 'right' : 'left', lineBreak: false });
-          x += widths[i];
+          doc.text(String(cell ?? ''), x + 4, y + 4, { width: w[i] - 8, align: alignRight ? 'right' : 'left', lineBreak: false });
+          x += w[i];
         });
         doc.lineWidth(0.4).strokeColor('#d1d5db').rect(x0, y, totalW, rowH).stroke();
         doc.y = y + rowH;
@@ -172,16 +180,17 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const refundRows = feePer ? (ticketSales || []).filter(s => (s.art || 'vvk') === 'vvk').map(s => [s.vendor || 'Ticketsystem', feePer]) : [];
 
     // Key-Value-Block (Label links, Wert rechts fett).
-    const drawKV = (title, pairs) => {
+    const drawKV = (title, pairs, indent = 0) => {
       const rows = pairs.filter(p => p && p[1] != null && p[1] !== '');
       if (!rows.length) return;
       ensureSpace(30 + rows.length * 14);
-      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.2); }
-      const labelW = 210;
+      const x0 = MARGIN + indent, innerW = CONTENT_W - indent;
+      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(BODY_INK).text(title, x0, doc.y, { width: innerW }); doc.moveDown(0.2); }
+      const labelW = Math.min(210, innerW - 120);
       for (const [k, v] of rows) {
         const y = doc.y;
-        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(k, MARGIN + 6, y, { width: labelW });
-        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(String(v), MARGIN + 6 + labelW, y, { width: CONTENT_W - labelW - 6 });
+        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(k, x0, y, { width: labelW });
+        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(String(v), x0 + labelW, y, { width: innerW - labelW });
         doc.y = Math.max(doc.y, y + 13);
       }
       doc.moveDown(0.4);
@@ -280,13 +289,13 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       const t = norm(cl.title);
       let inject = null;
       if (t.startsWith('vertragsgegenstand') || t.includes('gegenstand des vertrags')) {
-        inject = { '1': () => drawKV('Veranstaltungsdetails', eventRows) };
+        inject = { '1': () => drawKV('Veranstaltungsdetails', eventRows, IND1) };
       } else if (t.startsWith('deal') || t.includes('entgelt')) {
         inject = {
-          '1': () => drawKV('Deal', dealRows),
-          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150]); } },
-          '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150]),
-          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]]); },
+          '1': () => drawKV('Deal', dealRows, IND1),
+          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150], IND1); } },
+          '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150], IND1),
+          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]], IND1); },
         };
       } else if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
         inject = {
@@ -300,14 +309,14 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
             const vkRows = [['Cat. 01', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), money(vkPrice, cur) || '—', money(einnahme, cur) || '—']];
             const totalVk = ['Gesamt', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), '', money(einnahme, cur) || '—']; totalVk._bold = true; totalVk._bg = '#f9fafb';
             vkRows.push(totalVk);
-            drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326]);
+            drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326], IND1);
             const boChan = (ticketSales || []).find(s => (s.art || '') === 'boxoffice');
             const akPrice = (c.ak_price != null && c.ak_price !== '') ? num(c.ak_price) : (boChan ? num(boChan.price) : 0);
-            if (akPrice > 0) drawTable('Abendkasse', ['PK', 'Grundpreis'], [['Cat. 01', money(akPrice, cur)]], [CONTENT_W - 120, 120]);
+            if (akPrice > 0) drawTable('Abendkasse', ['PK', 'Grundpreis'], [['Cat. 01', money(akPrice, cur)]], [CONTENT_W - 120, 120], IND1);
             const psRows = vvkChans.filter(s => s.vendor || s.price).map(s => ['Face Value', s.vendor || '—', money(s.price, cur) || '—']);
-            if (psRows.length) drawTable('Preisstruktur', ['Preis-Element', 'Ticketsystem', 'Cat. 01'], psRows, [120, CONTENT_W - 120 - 110, 110]);
+            if (psRows.length) drawTable('Preisstruktur', ['Preis-Element', 'Ticketsystem', 'Cat. 01'], psRows, [120, CONTENT_W - 120 - 110, 110], IND1);
           },
-          '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]]); },
+          '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]], IND1); },
         };
       }
       drawClauseBody(fillPlaceholders(cl.body, placeholders) || ' ', inject);
