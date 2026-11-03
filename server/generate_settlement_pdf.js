@@ -106,7 +106,7 @@ function generateSettlementPdf({ contract: c = {}, issuer = {}, data = {}, logoP
       y += 14;
       band('Refundierung');
       trow({ vendor: 'Refundierung', cat: 'Kategorie', preis: 'Preis', anz: 'Anzahl' }, true);
-      for (const r of data.refundRows) trow({ vendor: 'Ticket Rebate', cat: r.category, rab: r.category, preis: money(r.fee), anz: String(r.tickets), einn: money(r.betrag) }, false);
+      for (const r of data.refundRows) trow({ vendor: 'Ticket Rebate', cat: r.category, preis: money(r.fee), anz: String(r.tickets), einn: money(r.betrag) }, false);
       y += 4;
       sumRow('Refundierung gesamt (brutto)', money(data.feeGross), { bold: true });
       sumRow('abzgl. MwSt.', money(data.feeVatAmt), { muted: true, pctStr: pct(data.feeVatPct) });

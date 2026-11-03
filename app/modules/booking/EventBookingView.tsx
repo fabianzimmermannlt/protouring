@@ -523,18 +523,23 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       if (!g.price) g.price = price
       g.subs.push({ label: (ch.rabattstufe || '').trim(), price, tickets, einnahme: einn })
     }
-    // Refundierung: je Kategorie (ohne Abendkasse), globale Gebühr/Ticket.
-    const feePer = nnum(f.fee_per_ticket)
-    const refundRows: SettlementKA['refundRows'] = []
-    if (feePer > 0 || channels.some(c => (c.chan_fee ?? '') !== '')) {
-      const byCat: Record<string, number> = {}
-      for (const ch of channels) {
-        if (ch.art === 'boxoffice') continue
-        const cat = (ch.category || '').trim() || '—'
-        byCat[cat] = (byCat[cat] || 0) + nnum(ch.tickets)
-      }
-      for (const [cat, tickets] of Object.entries(byCat)) refundRows.push({ category: cat, fee: feePer, tickets, betrag: tickets * feePer })
+    // Refundierung: je Kategorie (ohne Abendkasse). Effektive Gebühr/Ticket wie in
+    // computeSettlement: Kanal-Gebühr (chan_fee) vor globaler fee_per_ticket, Abendkasse = 0.
+    const globalFee = nnum(f.fee_per_ticket)
+    const byCat: Record<string, { tickets: number; betrag: number }> = {}
+    for (const ch of channels) {
+      if (ch.art === 'boxoffice') continue
+      const fee = (ch.chan_fee ?? '') !== '' ? nnum(ch.chan_fee) : globalFee
+      if (fee <= 0) continue
+      const cat = (ch.category || '').trim() || '—'
+      const t = nnum(ch.tickets)
+      const e = byCat[cat] || { tickets: 0, betrag: 0 }
+      e.tickets += t; e.betrag += t * fee
+      byCat[cat] = e
     }
+    const refundRows: SettlementKA['refundRows'] = Object.entries(byCat).map(
+      ([cat, v]) => ({ category: cat, fee: v.tickets ? v.betrag / v.tickets : 0, tickets: v.tickets, betrag: v.betrag })
+    )
     // Deal / Veranstaltungsabrechnung.
     const base = f.deal_base === 'netprofit' ? 'netprofit' : 'gross'
     const guar = nnum(f.guarantee)
