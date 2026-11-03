@@ -813,22 +813,29 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>ABRECHNUNG (nach der Show)</legend>
 
-        <datalist id="pt-price-cats">{cats.filter(c => c.name).map((c, i) => <option key={i} value={c.name} />)}</datalist>
-        <datalist id="pt-shops">{shops.filter(Boolean).map((s, i) => <option key={i} value={s} />)}</datalist>
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
-            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: '110px minmax(0,1fr) 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: '2fr 1fr 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
               <span>Händler</span><span>Kategorie</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
             </div>
             {channels.map((s, i) => {
               const hasPrice = (s.price ?? '') !== ''
               const boxoffice = (s.art ?? 'vvk') === 'boxoffice'
+              // Auswahllisten aus den oben definierten Shops/Kategorien; ein evtl. vorhandener
+              // (Alt-)Wert, der dort nicht (mehr) steht, bleibt als Option erhalten, damit nichts verloren geht.
+              const shopNames = shops.filter((v, k, a) => v && a.indexOf(v) === k)
+              const shopOpts = s.vendor && !shopNames.includes(s.vendor) ? [s.vendor, ...shopNames] : shopNames
+              const catNames = cats.map(c => c.name).filter((v, k, a) => v && a.indexOf(v) === k)
+              const catOpts = s.category && !catNames.includes(s.category) ? [s.category, ...catNames] : catNames
               return (
               <div key={i} className="space-y-1">
-                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '110px minmax(0,1fr) 80px 90px 50px 74px 92px 26px' }}>
-                  <input className="form-input" list="pt-shops" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} title="Ticketsystem / Shop – Auswahl aus den oben definierten Shops (Freitext möglich)" />
-                  <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => {
+                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '2fr 1fr 80px 90px 50px 74px 92px 26px' }}>
+                  <select className="form-select" disabled={!isAdmin} value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} title="Ticketsystem / Shop – aus den oben definierten Shops">
+                    <option value="">— Händler —</option>
+                    {shopOpts.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <select className="form-select" disabled={!isAdmin} value={s.category ?? ''} title="Preiskategorie – aus den oben definierten Kategorien" onChange={e => {
                     const name = e.target.value
                     const m = cats.find(c => c.name && c.name === name)
                     const patch: Partial<BookingTicketSale> = { category: name }
@@ -836,7 +843,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     const catPrice = m ? ((s.art === 'boxoffice' && m.akprice) ? m.akprice : m.price) : ''
                     if (catPrice && !(s.price ?? '').trim()) { patch.price = catPrice; patch.revenue = (nnum(s.tickets) * nnum(catPrice)).toFixed(2) }
                     setCh(i, patch)
-                  }} title="Preiskategorie – Auswahl aus den oben definierten Kategorien (Freitext möglich)" />
+                  }}>
+                    <option value="">— Kategorie —</option>
+                    {catOpts.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={v => setCh(i, { tickets: v })} />
