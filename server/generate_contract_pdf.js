@@ -194,13 +194,27 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     }
 
     const feePer = money(c.fee_per_ticket, cur);
-    // Refundierung = Ticketsystem-Gebühr; nur Vorverkaufskanäle (Abendkasse/Eigener Shop haben keine).
-    // Refundierung je Kanal (wie FKP Köln: Ticketsystem · PK · Betrag). Betrifft alle Kanäle
-    // außer Abendkasse (= wie Abrechnung); PK = Preiskategorie; Betrag = Kanal-Gebühr oder global.
-    const refundRows = feePer ? (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice').map(s => {
-      const ef = (s.chan_fee != null && String(s.chan_fee) !== '') ? money(s.chan_fee, cur) : feePer;
-      return [s.vendor || 'Ticketsystem', String(s.category || '').trim() || 'Cat. 01', ef];
-    }) : [];
+    // Ticketsysteme/Shops + Preiskategorien aus dem Vertrag (zum Vertragszeitpunkt definiert).
+    const shopList = (() => {
+      try { const ts = c.ticket_systems ? JSON.parse(c.ticket_systems) : null; if (Array.isArray(ts)) return ts.map(x => String(typeof x === 'string' ? x : (x && x.name) || '').trim()).filter(Boolean); } catch { /* */ }
+      return [];
+    })();
+    const catList = (() => {
+      try { const pc = c.price_categories ? JSON.parse(c.price_categories) : null; if (Array.isArray(pc)) return pc.filter(x => x && (x.name || x.price || x.cap || x.face)); } catch { /* */ }
+      return [];
+    })();
+    const pkNames = catList.length ? catList.map(x => String(x.name || '').trim() || 'Cat. 01') : ['Cat. 01'];
+    // Refundierung = Ticketsystem-Gebühr (wie FKP: Ticketsystem · PK · Betrag). Bevorzugt die im Vertrag
+    // definierten Shops × Kategorien mit globaler Gebühr; sonst Fallback aus den Abrechnungs-Kanälen.
+    let refundRows = [];
+    if (feePer && shopList.length) {
+      for (const sh of shopList) for (const pk of pkNames) refundRows.push([sh, pk, feePer]);
+    } else if (feePer) {
+      refundRows = (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice').map(s => {
+        const ef = (s.chan_fee != null && String(s.chan_fee) !== '') ? money(s.chan_fee, cur) : feePer;
+        return [s.vendor || 'Ticketsystem', String(s.category || '').trim() || 'Cat. 01', ef];
+      });
+    }
 
     // Key-Value-Block (Label links, Wert rechts fett).
     const drawKV = (title, pairs, indent = 0) => {
@@ -367,15 +381,16 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
             const akRows = priceCats.filter(x => x.akprice != null && String(x.akprice) !== '').map(x => [String(x.name || '').trim() || 'Cat. 01', money(x.akprice, cur) || '—']);
             if (akRows.length) drawTable('Abendkasse', ['PK', 'Grundpreis'], akRows, [CONTENT_W - 120, 120], IND1);
             // Preisstruktur: Face Value je Ticketsystem × PK (abgeleitet; alle Systeme = PK-Grundpreis).
+            // Systeme bevorzugt aus der im Vertrag definierten Shop-Liste, sonst aus den Kanälen.
             if (priceCats.length) {
-              const systems = [...new Set(vvkChans.map(s => String(s.vendor || '').trim()).filter(Boolean))];
-              const pkNames = priceCats.map(x => String(x.name || '').trim() || 'Cat. 01');
+              const systems = shopList.length ? shopList : [...new Set(vvkChans.map(s => String(s.vendor || '').trim()).filter(Boolean))];
+              const pkCols = priceCats.map(x => String(x.name || '').trim() || 'Cat. 01');
               const faceByPk = priceCats.map(x => money(x.price, cur) || '—');
-              const psHeaders = ['Preis-Element', 'Ticketsystem', ...pkNames];
+              const psHeaders = ['Preis-Element', 'Ticketsystem', ...pkCols];
               const psRows = (systems.length ? systems : ['Alle Systeme']).map(sys => ['Face Value', sys, ...faceByPk]);
-              const peW = 70, pkW = Math.max(52, Math.min(90, Math.floor((CONTENT_W - peW - 110) / Math.max(1, pkNames.length))));
-              const tsW = CONTENT_W - peW - pkW * pkNames.length;
-              drawTable('Preisstruktur', psHeaders, psRows, [peW, tsW, ...pkNames.map(() => pkW)], IND1);
+              const peW = 70, pkW = Math.max(52, Math.min(90, Math.floor((CONTENT_W - peW - 110) / Math.max(1, pkCols.length))));
+              const tsW = CONTENT_W - peW - pkW * pkCols.length;
+              drawTable('Preisstruktur', psHeaders, psRows, [peW, tsW, ...pkCols.map(() => pkW)], IND1);
             }
           },
           '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]], IND1); },

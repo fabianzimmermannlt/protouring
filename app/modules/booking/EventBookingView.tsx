@@ -216,6 +216,22 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     }]
     return []
   })
+  // Ticketsysteme / Shops (Eigener Shop, Eventim …): zum Vertragszeitpunkt definiert, speisen §4 Refundierung
+  // und §5.1 Preisstruktur; in der Abrechnung als Händler-Auswahl. Face Value/Gebühr sind NICHT je Shop (FKP).
+  const [shops, setShops] = useState<string[]>(() => {
+    try {
+      const t = booking.ticket_systems ? JSON.parse(booking.ticket_systems) : null
+      if (Array.isArray(t)) { const names = t.map((x: unknown) => String(typeof x === 'string' ? x : ((x as { name?: unknown })?.name ?? '')).trim()).filter(Boolean); if (names.length) return names }
+    } catch { /* */ }
+    const seen = new Set<string>(); const fromChans: string[] = []
+    for (const s of (booking.ticket_sales ?? [])) {
+      if ((s.art ?? 'vvk') === 'boxoffice') continue
+      const v = (s.vendor ?? '').trim()
+      if (v && !seen.has(v)) { seen.add(v); fromChans.push(v) }
+    }
+    if (fromChans.length) return fromChans
+    return ['Eigener Shop', 'Eventim']
+  })
   const [parties, setParties] = useState<Party[]>(() => {
     const norm = (x: Partial<Party> & { address?: string }): Party => ({
       role: x.role ?? 'other', name: x.name ?? '',
@@ -310,7 +326,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
       ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
-    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)) })
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)), ticket_systems: JSON.stringify(shops.map(s => s.trim()).filter(Boolean)) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
     // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
@@ -343,7 +359,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // bewusst auf die editierbaren Zustände hören:
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, parties, channels, costs, tiers, cats, clauseOv])
+  }, [f, parties, channels, costs, tiers, cats, shops, clauseOv])
 
   const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
@@ -368,6 +384,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addCat = () => setCats(p => [...p, { name: '', cap: '', holds: '', comps: '', kills: '', price: '', akprice: '' }])
   const setCat = (i: number, patch: Partial<PriceCat>) => setCats(p => p.map((c, idx) => idx === i ? { ...c, ...patch } : c))
   const rmCat = (i: number) => setCats(p => p.filter((_, idx) => idx !== i))
+  const addShop = () => setShops(p => [...p, ''])
+  const setShop = (i: number, v: string) => setShops(p => p.map((s, idx) => idx === i ? v : s))
+  const rmShop = (i: number) => setShops(p => p.filter((_, idx) => idx !== i))
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
   const rmTier = (i: number) => setTiers(p => p.filter((_, idx) => idx !== i))
@@ -639,6 +658,27 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             </div>
           </div>
         )}
+
+        {/* Ticketsysteme / Shops – welche Systeme verkaufen (Vertrag). Preis/Gebühr sind NICHT je Shop (FKP). */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium inline-flex items-center gap-1">Ticketsysteme / Shops
+              <HelpTip text="Welche Ticketsysteme/Shops die Tickets verkaufen (z.B. Eigener Shop, Eventim, Reservix). Werden im Vertrag festgehalten: §4 Refundierung (Shop × Kategorie, Betrag = Refundierungs-Gebühr) und §5.1 Preisstruktur (Face Value = Kategorie-Preis je Shop). Face Value und Gebühr sind laut FKP für alle Shops gleich – abweichende Gebühr je Shop regelst du in der Abrechnung pro Kanal." /></span>
+            {isAdmin && <button onClick={addShop} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Shop</button>}
+          </div>
+          {shops.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Ticketsysteme. Mit „Shop" die verkaufenden Systeme angeben (z.B. Eigener Shop, Eventim).</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {shops.map((s, i) => (
+                <div key={i} className="inline-flex items-center gap-1">
+                  <input className="form-input" style={{ width: 160 }} disabled={!isAdmin} placeholder="z.B. Eventim" value={s} onChange={e => setShop(i, e.target.value)} />
+                  {isAdmin && <button onClick={() => rmShop(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </fieldset>
 
       {/* Deal */}
@@ -774,6 +814,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>ABRECHNUNG (nach der Show)</legend>
 
         <datalist id="pt-price-cats">{cats.filter(c => c.name).map((c, i) => <option key={i} value={c.name} />)}</datalist>
+        <datalist id="pt-shops">{shops.filter(Boolean).map((s, i) => <option key={i} value={s} />)}</datalist>
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
@@ -786,7 +827,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               return (
               <div key={i} className="space-y-1">
                 <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 72px 80px 90px 50px 74px 92px 26px' }}>
-                  <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
+                  <input className="form-input" list="pt-shops" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} title="Ticketsystem / Shop – Auswahl aus den oben definierten Shops (Freitext möglich)" />
                   <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => {
                     const name = e.target.value
                     const m = cats.find(c => c.name && c.name === name)

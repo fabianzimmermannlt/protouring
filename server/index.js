@@ -2203,8 +2203,10 @@ async function initDatabase() {
     'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
     // § 5.1 Eintrittspreise / Vorverkaufsszenario (wie FKP): Holds/Comps/Kills, VVK-Grundpreis, Abendkasse-Preis
     'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price',
-    // Preiskategorien (Cat. 01 / VIP / Steh-/Sitzplatz) als Vertrags-Preisstruktur. JSON: [{name,vendor,face}, …]
-    'price_categories']) {
+    // Preiskategorien (Cat. 01 / VIP / Steh-/Sitzplatz) als Vertrags-Preisstruktur. JSON: [{name,cap,holds,comps,kills,price,akprice}, …]
+    'price_categories',
+    // Ticketsysteme/Shops (Eigener Shop, Eventim …) als Vertrags-Angabe. JSON: ["Eigener Shop","Eventim", …]
+    'ticket_systems']) {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
@@ -10312,7 +10314,7 @@ const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date'
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
   'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
   'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
-  'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price','price_categories']
+  'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price','price_categories','ticket_systems']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 
