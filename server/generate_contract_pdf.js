@@ -155,30 +155,38 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     // ── Tabellen-Helfer (einfache Linien-Tabelle) ──
     const drawTable = (title, headers, rows, widths, indent = 0) => {
       if (!rows.length) return;
-      ensureSpace(60 + rows.length * 16);
       const x0 = MARGIN + indent, innerW = CONTENT_W - indent;
-      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(BODY_INK).text(title, x0, doc.y, { width: innerW }); doc.moveDown(0.2); }
-      // Spaltenbreiten auf die eingerückte Breite begrenzen (letzte Spalte kürzen, nie überlaufen).
-      const w = widths.slice();
-      const sumW = w.reduce((a, b) => a + b, 0);
-      if (sumW > innerW) w[w.length - 1] -= (sumW - innerW);
+      if (title) { ensureSpace(34); doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(BODY_INK).text(title, x0, doc.y, { width: innerW }); doc.moveDown(0.2); }
+      // Spalten exakt auf die (eingerückte) Breite skalieren: füllt die Zeile voll aus
+      // (keine Lücke rechts) und läuft nie über – die übergebenen Breiten sind nur Verhältnisse.
+      const sumW = widths.reduce((a, b) => a + b, 0) || 1;
+      const w = widths.map(x => x * innerW / sumW);
       const totalW = w.reduce((a, b) => a + b, 0);
-      const rowH = 16;
+      const PAD = 4, MIN_ROWH = 16;
       const drawRow = (cells, bold, bg) => {
+        doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_TABLE);
+        // Zeilenhöhe dynamisch aus dem höchsten Feld: lange Texte (z. B. Kategoriename)
+        // brechen innerhalb der Spalte um und bleiben lesbar, statt die nächste Zeile zu überlappen.
+        const texts = cells.map(c => String(c ?? ''));
+        let rowH = MIN_ROWH;
+        texts.forEach((s, i) => {
+          const h = doc.heightOfString(s, { width: w[i] - PAD * 2, align: i > 0 ? 'right' : 'left' }) + PAD * 2;
+          if (h > rowH) rowH = h;
+        });
+        ensureSpace(rowH + 2);
         const y = doc.y;
         if (bg) { doc.save().rect(x0, y, totalW, rowH).fill(bg).restore(); }
+        doc.fillColor(INK);
         let x = x0;
-        doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_TABLE).fillColor(INK);
-        cells.forEach((cell, i) => {
-          const alignRight = i > 0; // erste Spalte links, Rest rechts
-          doc.text(String(cell ?? ''), x + 4, y + 4, { width: w[i] - 8, align: alignRight ? 'right' : 'left', lineBreak: false });
+        texts.forEach((s, i) => {
+          doc.text(s, x + PAD, y + PAD, { width: w[i] - PAD * 2, align: i > 0 ? 'right' : 'left' });
           x += w[i];
         });
         doc.lineWidth(0.4).strokeColor('#d1d5db').rect(x0, y, totalW, rowH).stroke();
         doc.y = y + rowH;
       };
       drawRow(headers, true, '#f3f4f6');
-      rows.forEach(r => { ensureSpace(rowH + 20); drawRow(r, r._bold, r._bg); });
+      rows.forEach(r => drawRow(r, r._bold, r._bg));
       doc.moveDown(1); // Leerzeile nach jeder Tabelle (sonst gequetscht)
     };
 
@@ -375,7 +383,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
               const totalVk = ['Gesamt', intDE(sum(x => num(x.cap))), intDE(sum(x => num(x.holds))), intDE(sum(x => num(x.comps))), intDE(sum(x => num(x.kills))), intDE(sum(nv)), '', money(totEin, cur) || '—'];
               totalVk._bold = true; totalVk._bg = '#f9fafb';
               vkRows.push(totalVk);
-              drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326], IND1);
+              drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [84, 56, 40, 44, 38, 62, 66, 88], IND1);
             }
             // Abendkasse je PK (nur Kategorien mit AK-Preis).
             const akRows = priceCats.filter(x => x.akprice != null && String(x.akprice) !== '').map(x => [String(x.name || '').trim() || 'Cat. 01', money(x.akprice, cur) || '—']);

@@ -612,75 +612,6 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="mt-3"><label className="form-label">Support Act(s)</label><input className="form-input" disabled={!isAdmin} value={f.support_acts ?? ''} onChange={e => set({ support_acts: e.target.value })} placeholder="z.B. Rogers" /></div>
       </fieldset>
 
-      {/* Eintrittspreise / Vorverkauf (§ 5.1) – Szenario je Preiskategorie (wie FKP) */}
-      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
-        <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
-          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show), je Preiskategorie. Kapazität = zum Verkauf gestelltes Kontingent dieser Kategorie (kann kleiner sein als die Hallen-Kapazität oben). Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; Einnahme = Verkaufbar × VVK-Grundpreis. Diese Kategorien stehen in der Abrechnung je Vertriebskanal zur Auswahl und bilden die Preisstruktur im Vertrag." />
-        </legend>
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Preiskategorien / Vorverkauf-Szenario</span>
-          {isAdmin && <button onClick={addCat} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Kategorie</button>}
-        </div>
-        {cats.length === 0 ? (
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Noch keine Preiskategorie. Mit „Kategorie" die Preisklassen der Show anlegen (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – je mit Kontingent und Preis.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <div style={{ minWidth: 720 }}>
-              <div className="grid gap-1.5 text-[11px] px-1 mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', color: 'var(--text-muted)' }}>
-                <span>Kategorie</span><span className="text-right">Kapazität</span><span className="text-right">Holds</span><span className="text-right">Comps</span><span className="text-right">Kills</span><span className="text-right">Verkaufbar</span><span className="text-right">Grundpreis</span><span className="text-right">AK-Preis</span><span className="text-right">Einnahme</span><span />
-              </div>
-              {cats.map((c, i) => (
-                <div key={i} className="grid gap-1.5 items-center mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px' }}>
-                  <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
-                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.cap} onChange={v => setCat(i, { cap: v })} />
-                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.holds} onChange={v => setCat(i, { holds: v })} title="Holds = zurückgehaltene Tickets (Produktion, VIP, Sponsoren …)" />
-                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.comps} onChange={v => setCat(i, { comps: v })} title="Comps = Freikarten (Gästeliste, Presse, Crew …)" />
-                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.kills} onChange={v => setCat(i, { kills: v })} title="Kills = dauerhaft gesperrte Plätze (Sicht, Bühne, Notausgänge …)" />
-                  <input className="form-input text-right" readOnly value={intDE(catVerk(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
-                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.price} onChange={v => setCat(i, { price: v })} title="VVK-Grundpreis (Face Value) dieser Kategorie" />
-                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.akprice} onChange={v => setCat(i, { akprice: v })} title="Abendkasse-Preis dieser Kategorie (optional)" />
-                  <input className="form-input text-right" readOnly value={amtDE(catEinnahme(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Verkaufbar × Grundpreis" />
-                  {isAdmin ? <button onClick={() => rmCat(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
-                </div>
-              ))}
-              {/* Gesamt-Zeile */}
-              <div className="grid gap-1.5 items-center px-1 pt-1 border-t text-sm font-semibold" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', borderColor: 'var(--border)', color: 'var(--text)' }}>
-                <span>Gesamt</span>
-                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.cap), 0))}</span>
-                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.holds), 0))}</span>
-                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.comps), 0))}</span>
-                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.kills), 0))}</span>
-                <span className="text-right">{intDE(cats.reduce((a, c) => a + catVerk(c), 0))}</span>
-                <span /><span />
-                <span className="text-right">{amtDE(cats.reduce((a, c) => a + catEinnahme(c), 0))} €</span>
-                <span />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Ticketsysteme / Shops – welche Systeme verkaufen (Vertrag). Preis/Gebühr sind NICHT je Shop (FKP). */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium inline-flex items-center gap-1">Ticketsysteme / Shops
-              <HelpTip text="Welche Ticketsysteme/Shops die Tickets verkaufen (z.B. Eigener Shop, Eventim, Reservix). Werden im Vertrag festgehalten: §4 Refundierung (Shop × Kategorie, Betrag = Refundierungs-Gebühr) und §5.1 Preisstruktur (Face Value = Kategorie-Preis je Shop). Face Value und Gebühr sind laut FKP für alle Shops gleich – abweichende Gebühr je Shop regelst du in der Abrechnung pro Kanal." /></span>
-            {isAdmin && <button onClick={addShop} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Shop</button>}
-          </div>
-          {shops.length === 0 ? (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Ticketsysteme. Mit „Shop" die verkaufenden Systeme angeben (z.B. Eigener Shop, Eventim).</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {shops.map((s, i) => (
-                <div key={i} className="inline-flex items-center gap-1">
-                  <input className="form-input" style={{ width: 160 }} disabled={!isAdmin} placeholder="z.B. Eventim" value={s} onChange={e => setShop(i, e.target.value)} />
-                  {isAdmin && <button onClick={() => rmShop(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </fieldset>
-
       {/* Deal */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>DEAL / KONDITIONEN</legend>
@@ -749,6 +680,75 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <div><label className="form-label">Restzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.balance_due ?? ''} onChange={e => set({ balance_due: e.target.value })} /></div>
         </div>
         <div className="mt-3"><label className="form-label">Bankverbindung (Artist)</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.bank_details ?? ''} onChange={e => set({ bank_details: e.target.value })} placeholder="Kontoinhaber, IBAN, BIC" /></div>
+      </fieldset>
+
+      {/* Eintrittspreise / Vorverkauf (§ 5.1) – Szenario je Preiskategorie (wie FKP) */}
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
+          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show), je Preiskategorie. Kapazität = zum Verkauf gestelltes Kontingent dieser Kategorie (kann kleiner sein als die Hallen-Kapazität oben). Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; Einnahme = Verkaufbar × VVK-Grundpreis. Diese Kategorien stehen in der Abrechnung je Vertriebskanal zur Auswahl und bilden die Preisstruktur im Vertrag." />
+        </legend>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Preiskategorien / Vorverkauf-Szenario</span>
+          {isAdmin && <button onClick={addCat} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Kategorie</button>}
+        </div>
+        {cats.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Noch keine Preiskategorie. Mit „Kategorie" die Preisklassen der Show anlegen (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – je mit Kontingent und Preis.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: 720 }}>
+              <div className="grid gap-1.5 text-[11px] px-1 mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', color: 'var(--text-muted)' }}>
+                <span>Kategorie</span><span className="text-right">Kapazität</span><span className="text-right">Holds</span><span className="text-right">Comps</span><span className="text-right">Kills</span><span className="text-right">Verkaufbar</span><span className="text-right">Grundpreis</span><span className="text-right">AK-Preis</span><span className="text-right">Einnahme</span><span />
+              </div>
+              {cats.map((c, i) => (
+                <div key={i} className="grid gap-1.5 items-center mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px' }}>
+                  <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.cap} onChange={v => setCat(i, { cap: v })} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.holds} onChange={v => setCat(i, { holds: v })} title="Holds = zurückgehaltene Tickets (Produktion, VIP, Sponsoren …)" />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.comps} onChange={v => setCat(i, { comps: v })} title="Comps = Freikarten (Gästeliste, Presse, Crew …)" />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.kills} onChange={v => setCat(i, { kills: v })} title="Kills = dauerhaft gesperrte Plätze (Sicht, Bühne, Notausgänge …)" />
+                  <input className="form-input text-right" readOnly value={intDE(catVerk(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.price} onChange={v => setCat(i, { price: v })} title="VVK-Grundpreis (Face Value) dieser Kategorie" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.akprice} onChange={v => setCat(i, { akprice: v })} title="Abendkasse-Preis dieser Kategorie (optional)" />
+                  <input className="form-input text-right" readOnly value={amtDE(catEinnahme(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Verkaufbar × Grundpreis" />
+                  {isAdmin ? <button onClick={() => rmCat(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+                </div>
+              ))}
+              {/* Gesamt-Zeile */}
+              <div className="grid gap-1.5 items-center px-1 pt-1 border-t text-sm font-semibold" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', borderColor: 'var(--border)', color: 'var(--text)' }}>
+                <span>Gesamt</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.cap), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.holds), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.comps), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.kills), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + catVerk(c), 0))}</span>
+                <span /><span />
+                <span className="text-right">{amtDE(cats.reduce((a, c) => a + catEinnahme(c), 0))} €</span>
+                <span />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ticketsysteme / Shops – welche Systeme verkaufen (Vertrag). Preis/Gebühr sind NICHT je Shop (FKP). */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium inline-flex items-center gap-1">Ticketsysteme / Shops
+              <HelpTip text="Welche Ticketsysteme/Shops die Tickets verkaufen (z.B. Eigener Shop, Eventim, Reservix). Werden im Vertrag festgehalten: §4 Refundierung (Shop × Kategorie, Betrag = Refundierungs-Gebühr) und §5.1 Preisstruktur (Face Value = Kategorie-Preis je Shop). Face Value und Gebühr sind laut FKP für alle Shops gleich – abweichende Gebühr je Shop regelst du in der Abrechnung pro Kanal." /></span>
+            {isAdmin && <button onClick={addShop} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Shop</button>}
+          </div>
+          {shops.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Ticketsysteme. Mit „Shop" die verkaufenden Systeme angeben (z.B. Eigener Shop, Eventim).</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {shops.map((s, i) => (
+                <div key={i} className="inline-flex items-center gap-1">
+                  <input className="form-input" style={{ width: 160 }} disabled={!isAdmin} placeholder="z.B. Eventim" value={s} onChange={e => setShop(i, e.target.value)} />
+                  {isAdmin && <button onClick={() => rmShop(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </fieldset>
 
       {/* Vertrag */}
