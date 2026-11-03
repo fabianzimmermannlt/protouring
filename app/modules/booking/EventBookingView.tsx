@@ -701,7 +701,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               </div>
               {cats.map((c, i) => (
                 <div key={i} className="grid gap-1.5 items-center mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px' }}>
-                  <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
+                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
                   <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.cap} onChange={v => setCat(i, { cap: v })} />
                   <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.holds} onChange={v => setCat(i, { holds: v })} title="Holds = zurückgehaltene Tickets (Produktion, VIP, Sponsoren …)" />
                   <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.comps} onChange={v => setCat(i, { comps: v })} title="Comps = Freikarten (Gästeliste, Presse, Crew …)" />
