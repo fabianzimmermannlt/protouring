@@ -818,7 +818,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
-            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1fr) 72px 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: '110px minmax(0,1fr) 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
               <span>Händler</span><span>Kategorie</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
             </div>
             {channels.map((s, i) => {
@@ -826,7 +826,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               const boxoffice = (s.art ?? 'vvk') === 'boxoffice'
               return (
               <div key={i} className="space-y-1">
-                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 72px 80px 90px 50px 74px 92px 26px' }}>
+                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '110px minmax(0,1fr) 80px 90px 50px 74px 92px 26px' }}>
                   <input className="form-input" list="pt-shops" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} title="Ticketsystem / Shop – Auswahl aus den oben definierten Shops (Freitext möglich)" />
                   <input className="form-input" list="pt-price-cats" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={s.category ?? ''} onChange={e => {
                     const name = e.target.value
