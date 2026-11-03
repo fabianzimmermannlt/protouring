@@ -71,10 +71,20 @@ function generateSettlementPdf({ contract: c = {}, issuer = {}, data = {}, logoP
     // Empfänger links
     const recY = y;
     doc.font(REG).fontSize(9.5).fillColor(INK).text([c.partner_name, c.partner_address].filter(Boolean).join('\n') || '—', M, y, { width: 280 });
-    // Meta rechts
+    // Meta rechts (rechtsbündig; lange Werte dürfen umbrechen, Zeilenhöhe wächst dann mit)
     const meta = [['Artist:', artist], ['Stadt:', c.event_city || ''], ['Veranstaltungsort:', c.event_venue || ''], ['Datum der Veranstaltung:', dateDE(c.event_date)]];
+    const KEY_X = 262, KEY_W = 128, VAL_X = 395, VAL_W = (M + CONTENT_W) - VAL_X;
     let my = recY;
-    for (const [k, v] of meta) { doc.font(REG).fontSize(9.5).fillColor(INK).text(k, 300, my, { width: 130, align: 'right', lineBreak: false }); doc.font(BOLD).fontSize(9.5).fillColor(INK).text(sane(v || '—'), 435, my, { width: 104, align: 'right', lineBreak: false }); my += 16; }
+    for (const [k, v] of meta) {
+      const val = sane(v || '—');
+      doc.font(REG).fontSize(9.5).fillColor(INK);
+      const hK = doc.currentLineHeight();
+      doc.text(k, KEY_X, my, { width: KEY_W, align: 'right', lineBreak: false });
+      doc.font(BOLD).fontSize(9.5).fillColor(INK);
+      const hV = doc.heightOfString(val, { width: VAL_W, align: 'right' });
+      doc.text(val, VAL_X, my, { width: VAL_W, align: 'right' });
+      my += Math.max(hK, hV) + 3;
+    }
     y = Math.max(doc.y, my) + 16;
 
     // ── Seite 1: Eintrittskartenabrechnung ────────────────────────────────

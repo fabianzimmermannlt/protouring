@@ -44,6 +44,9 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null, draft 
     const totalNet = num(inv.total_net);
     const taxAmt = num(inv.tax_amount);
     const grossAmt = num(inv.gross_amount) || (totalNet + taxAmt);
+    // USt-Satz: aus dem Datensatz, sonst aus Betrag/Netto abgeleitet (eff. Satz).
+    const taxRate = num(inv.tax_rate) || (totalNet > 0 ? Math.round((taxAmt / totalNet) * 10000) / 100 : 0);
+    const pctDE = r => r.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
     const deductions = num(inv.deductions_gross);
     const payable = grossAmt - deductions;
     const titleMap = { deposit: 'Anzahlungsrechnung', final: 'Rechnung' };
@@ -124,7 +127,7 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null, draft 
     };
 
     line('Rechnungsbetrag netto', money(totalNet, cur));
-    line('zzgl. USt', money(taxAmt, cur), { muted: true });
+    line('zzgl. USt ' + pctDE(taxRate), money(taxAmt, cur), { muted: true });
     line('Gesamt brutto', money(grossAmt, cur), { bold: true });
     if (deductions > 0) {
       doc.moveDown(0.2);
