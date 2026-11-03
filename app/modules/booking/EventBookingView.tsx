@@ -7,7 +7,7 @@ import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
-  previewBookingInvoice, openBookingSettlementPdf, type SettlementPdfLine,
+  previewBookingInvoice, openBookingSettlementPdf, type SettlementKA,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
   getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
@@ -507,27 +507,82 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     } catch { /* ignore */ }
     setInvBusy(false)
   }
-  // Abrechnungs-Aufstellung als PDF: dieselben Zeilen wie die Ergebnis-Anzeige unten.
-  const settlementLines = (): SettlementPdfLine[] => {
-    const L: SettlementPdfLine[] = []
-    L.push({ label: 'Ticketeinnahmen brutto', value: eur(st.ticketGross, cur), muted: true })
-    L.push({ label: `abzgl. USt (${nnum(f.ticket_vat).toLocaleString('de-DE')} %)`, value: '− ' + eur(st.ticketVatAmt, cur), muted: true, sub: true })
-    L.push({ label: 'Ticketeinnahmen netto', value: eur(st.ticketNet, cur) })
-    L.push({ label: 'Anteil an Ticketumsatz (netto)', value: eur(st.dealShareNet, cur) })
-    if (st.bandFeeShareNet > 0) L.push({ label: 'Anteil an Ticketgebühr (netto)', value: eur(st.bandFeeShareNet, cur) })
-    if (st.costsNet > 0) L.push({ label: 'Nebenkosten (netto)', value: eur(st.costsNet, cur) })
-    L.push({ label: 'Rechnungsbetrag netto', value: eur(st.rechnungNet, cur), bold: true })
-    L.push({ label: 'zzgl. USt', value: eur(st.rechnungVat, cur), muted: true, sub: true })
-    L.push({ label: 'Rechnungsbetrag brutto', value: eur(st.rechnungGross, cur), bold: true })
-    if (st.ticketingPayout > 0) L.push({ label: 'abzgl. Ticketing-Payout', value: '− ' + eur(st.ticketingPayout, cur), muted: true })
-    if (st.ownShopGross > 0) L.push({ label: 'abzgl. Eigener Shop (bei Band)', value: '− ' + eur(st.ownShopGross, cur), muted: true })
-    if (st.depositGross > 0) L.push({ label: 'abzgl. Anzahlung', value: '− ' + eur(st.depositGross, cur), muted: true })
-    L.push({ label: 'Offener Betrag an die Band', value: eur(st.payableGross, cur), bold: true, big: true, rule: true })
-    return L
+  // Konzertabrechnung (KA) nach FKP-Layout: Rohzahlen aus dem Rechenkern (st) + gruppierte Zeilen.
+  const buildKA = (): SettlementKA => {
+    const pctStr = (v: number) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'
+    // Ticketeinnahme: Kanäle nach Händler×Kategorie gruppieren, je Rabattstufe eine Unterzeile.
+    const groups: SettlementKA['ticketGroups'] = []
+    for (const ch of channels) {
+      const vendor = (ch.vendor || '').trim(), category = (ch.category || '').trim()
+      const price = nnum(ch.price), tickets = nnum(ch.tickets)
+      const einn = (ch.price ?? '') !== '' ? tickets * price : nnum(ch.revenue)
+      let g = groups.find(x => x.vendor === vendor && x.category === category)
+      if (!g) { g = { vendor, category, price, tickets: 0, einnahme: 0, boxoffice: false, subs: [] }; groups.push(g) }
+      g.tickets += tickets; g.einnahme += einn
+      if (ch.art === 'boxoffice') g.boxoffice = true
+      if (!g.price) g.price = price
+      g.subs.push({ label: (ch.rabattstufe || '').trim(), price, tickets, einnahme: einn })
+    }
+    // Refundierung: je Kategorie (ohne Abendkasse), globale Gebühr/Ticket.
+    const feePer = nnum(f.fee_per_ticket)
+    const refundRows: SettlementKA['refundRows'] = []
+    if (feePer > 0 || channels.some(c => (c.chan_fee ?? '') !== '')) {
+      const byCat: Record<string, number> = {}
+      for (const ch of channels) {
+        if (ch.art === 'boxoffice') continue
+        const cat = (ch.category || '').trim() || '—'
+        byCat[cat] = (byCat[cat] || 0) + nnum(ch.tickets)
+      }
+      for (const [cat, tickets] of Object.entries(byCat)) refundRows.push({ category: cat, fee: feePer, tickets, betrag: tickets * feePer })
+    }
+    // Deal / Veranstaltungsabrechnung.
+    const base = f.deal_base === 'netprofit' ? 'netprofit' : 'gross'
+    const guar = nnum(f.guarantee)
+    const T = tiers.map(t => ({ from: nnum(t.from), pct: nnum(t.pct) })).sort((a, b) => a.from - b.from)
+    const baseAmt = st.dealBaseAmt
+    const tierAmt = T.map((t, i) => { const lower = t.from, upper = i + 1 < T.length ? T[i + 1].from : Infinity; return baseAmt > lower ? (Math.min(baseAmt, upper) - lower) * t.pct / 100 : 0 })
+    const rawShare = tierAmt.reduce((a, b) => a + b, 0)
+    const guaranteeWon = guar >= rawShare
+    const applied = st.dealShareNet
+    const t1pct = T[0]?.pct ?? 0
+    let dealLabel = '', dealDescription = ''
+    const dealLines: SettlementKA['dealLines'] = []
+    if (base === 'netprofit') {
+      dealLabel = 'AM - vs. % of net Deal'
+      dealDescription = 'Beteiligung am Nettogewinn & Übernahme der Kosten, wenn dieser die Produktionskostengarantie übersteigt'
+      dealLines.push({ label: `Kosten ${f.partner_name || 'Veranstalter'}`, valueStr: eur(nnum(f.promoter_costs), cur) })
+      dealLines.push({ label: 'Nettogewinn', valueStr: eur(baseAmt, cur) })
+      dealLines.push({ label: `Produktionskostengarantie lt. Vereinbarung ${eur(guar, cur)} gegen ${pctStr(t1pct)} von ${eur(baseAmt, cur)}`, valueStr: eur(applied, cur) })
+    } else {
+      dealLabel = `AM - vs. % of gross${T.length > 1 ? ' / 2nd threshold' : ''} Deal`
+      dealDescription = 'Beteiligung an den Nettoeinnahmen, wenn diese die Produktionskostengarantie übersteigt'
+      const line1Val = T.length > 1 ? (guaranteeWon ? guar : tierAmt[0]) : applied
+      dealLines.push({ label: `Produktionskostengarantie lt. Vereinbarung ${eur(guar, cur)} gegen ${pctStr(t1pct)} ab der ersten Karte`, valueStr: eur(line1Val, cur) })
+      if (T.length > 1) dealLines.push({ label: `und ${pctStr(T[1].pct)} ab einer Nettoeinnahme von ${eur(T[1].from, cur)}`, valueStr: eur(guaranteeWon ? 0 : (tierAmt[1] || 0), cur) })
+    }
+    const anteilVatPct = nnum(f.artist_vat)
+    const anteilVatAmt = st.artistShareNet * anteilVatPct / 100
+    const deductions: SettlementKA['deductions'] = []
+    if (st.ticketingPayout > 0) deductions.push({ label: `abzgl. Ticketing Payout (inkl. MwSt. ${pctStr(nnum(f.ticket_vat))})`, amount: st.ticketingPayout })
+    if (st.ownShopGross > 0) deductions.push({ label: 'abzgl. Eigener Shop (bei Band)', amount: st.ownShopGross })
+    if (st.depositGross > 0) deductions.push({ label: 'abzgl. Anzahlung', amount: st.depositGross })
+    return {
+      currency: cur,
+      ticketGroups: groups, totalTickets: st.totalTickets,
+      ticketGross: st.ticketGross, ticketVatPct: nnum(f.ticket_vat), ticketVatAmt: st.ticketVatAmt, ticketNet: st.ticketNet,
+      refundRows, feeGross: st.feeTotalGross, feeVatPct: nnum(f.fee_vat), feeVatAmt: st.feeVatAmt, feeNet: st.feeNet,
+      dealLabel, dealDescription, dealLines,
+      anteilTicketNet: st.dealShareNet, bandSplitPct: nnum(f.fee_band_split_pct), anteilRefundNet: st.bandFeeShareNet,
+      anteilNet: st.artistShareNet, anteilVatPct, anteilVatAmt, anteilGross: st.artistShareNet + anteilVatAmt,
+      costRows: costs.map(c => ({ label: c.label || 'Position', vatPct: nnum(c.vat), net: nnum(c.net) })),
+      costsNet: st.costsNet, costsVatAmt: st.costsVat, costsGross: st.costsNet + st.costsVat,
+      rechnungNet: st.rechnungNet, rechnungVatAmt: st.rechnungVat, rechnungGross: st.rechnungGross,
+      deductions, payableGross: st.payableGross,
+    }
   }
   const onSettlementPdf = async () => {
     setPdfBusy(true)
-    try { await saveEverything(); await openBookingSettlementPdf(booking.id, { lines: settlementLines(), dealLabel: isCustomDeal ? 'Benutzerdefiniert' : (dm?.label || '') }) } catch { /* ignore */ }
+    try { await saveEverything(); await openBookingSettlementPdf(booking.id, buildKA()) } catch { /* ignore */ }
     setPdfBusy(false)
   }
   const invGross = (iv: BookingInvoice) => nnum(iv.gross_amount) - nnum(iv.deductions_gross)
@@ -895,8 +950,12 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   <NumInput kind="money" align="right" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={v => setCh(i, { revenue: v })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
                   {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
                 </div>
-                <div className="flex items-center gap-1.5 pl-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
-                  <span style={{ minWidth: 64 }}>Refund.:</span>
+                <div className="flex items-center gap-1.5 pl-1 text-[11px] flex-wrap" style={{ color: 'var(--text-subtle)' }}>
+                  <span style={{ minWidth: 64 }}>Rabattstufe:</span>
+                  <input className="form-input" style={{ height: 26, width: 150 }} disabled={!isAdmin}
+                    placeholder="z.B. public sale" value={s.rabattstufe ?? ''} onChange={e => setCh(i, { rabattstufe: e.target.value })}
+                    title="Verkaufs-/Preisart innerhalb Kanal×Kategorie (public sale, Presale, Rollstuhl, Bandshop, Box Office …). Erscheint in der Konzertabrechnung als Unterzeile; mehrere Zeilen mit gleichem Händler+Kategorie werden gruppiert." />
+                  <span style={{ minWidth: 48, marginLeft: 8 }}>Refund.:</span>
                   <input className="form-input text-right" style={{ height: 26, width: 78 }} inputMode="decimal" disabled={!isAdmin}
                     placeholder={boxoffice ? '0' : (f.fee_per_ticket ? `${f.fee_per_ticket} (gl.)` : 'global')}
                     value={s.chan_fee ?? ''} onChange={e => setCh(i, { chan_fee: e.target.value })}

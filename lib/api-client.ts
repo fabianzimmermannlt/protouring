@@ -3942,6 +3942,7 @@ export interface BookingTicketSale {
   id?: number
   vendor?: string | null
   category?: string | null     // Preiskategorie (z.B. Cat. 01, VIP, Steh-/Sitzplatz)
+  rabattstufe?: string | null  // Verkaufs-/Preisart innerhalb Kanal×Kategorie (public sale, Presale, Rollstuhl, Bandshop, Box Office …)
   art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
@@ -4133,9 +4134,36 @@ export async function previewBookingInvoice(data: {
   await openBookingPdfPost('invoices/preview', data)
 }
 
-export interface SettlementPdfLine { label: string; value: string; bold?: boolean; muted?: boolean; sub?: boolean; big?: boolean; rule?: boolean }
-/** Abrechnungs-Aufstellung als PDF (fertig formatierte Zeilen aus dem Client-Rechenkern). */
-export async function openBookingSettlementPdf(contractId: number, payload: { lines: SettlementPdfLine[]; dealLabel?: string }): Promise<void> {
+// ── Konzertabrechnung (KA) nach FKP-Layout ───────────────────────────────────
+// Rohe Zahlen aus dem Client-Rechenkern; der Generator formatiert (money/dateDE) und layoutet.
+export interface KATicketSub { label: string; price: number; tickets: number; einnahme: number }
+export interface KATicketGroup { vendor: string; category: string; price: number; tickets: number; einnahme: number; boxoffice?: boolean; subs: KATicketSub[] }
+export interface KARefundRow { category: string; fee: number; tickets: number; betrag: number }
+export interface KACostRow { label: string; vatPct: number; net: number }
+export interface KADealLine { label: string; valueStr: string }
+export interface SettlementKA {
+  currency: string
+  // Eintrittskartenabrechnung – Ticketeinnahme
+  ticketGroups: KATicketGroup[]
+  totalTickets: number
+  ticketGross: number; ticketVatPct: number; ticketVatAmt: number; ticketNet: number
+  // Refundierung
+  refundRows: KARefundRow[]
+  feeGross: number; feeVatPct: number; feeVatAmt: number; feeNet: number
+  // Veranstaltungsabrechnung – Deal
+  dealLabel: string; dealDescription: string
+  dealLines: KADealLine[]
+  anteilTicketNet: number; bandSplitPct: number; anteilRefundNet: number
+  anteilNet: number; anteilVatPct: number; anteilVatAmt: number; anteilGross: number
+  // Nebenkosten
+  costRows: KACostRow[]; costsNet: number; costsVatAmt: number; costsGross: number
+  // Rechnungsbetrag
+  rechnungNet: number; rechnungVatAmt: number; rechnungGross: number
+  deductions: { label: string; amount: number }[]
+  payableGross: number
+}
+/** Konzertabrechnung (KA) als PDF im FKP-Layout. */
+export async function openBookingSettlementPdf(contractId: number, payload: SettlementKA): Promise<void> {
   await openBookingPdfPost(`contracts/${contractId}/settlement/pdf`, payload)
 }
 

@@ -2188,6 +2188,7 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee_split TEXT`); } catch {}
   // Preiskategorie je Kanal (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – für die §5.1-Tabellen.
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN category TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN rabattstufe TEXT`); } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -10297,9 +10298,9 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
     let order = 0
     for (const s of rows) {
       await db.run(
-        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, category, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, chan_fee_split, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [req.tenant.id, req.params.id, s.vendor || null, s.category || null, s.art || null, s.money_with || null,
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, category, rabattstufe, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, chan_fee_split, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, s.vendor || null, s.category || null, s.rabattstufe || null, s.art || null, s.money_with || null,
          s.tickets === '' ? null : s.tickets ?? null, s.price === '' ? null : s.price ?? null, s.revenue === '' ? null : s.revenue ?? null,
          s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null,
          s.chan_fee === '' ? null : s.chan_fee ?? null, s.chan_fee_split === '' ? null : s.chan_fee_split ?? null, order++]
@@ -10549,9 +10550,8 @@ app.post('/api/booking/contracts/:id/settlement/pdf', authenticateToken, require
     const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
     const bset = await getBookingSettings(req.tenant.id)
-    const lines = Array.isArray(req.body?.lines) ? req.body.lines : []
     const { generateSettlementPdf } = require('./generate_settlement_pdf')
-    const pdf = await generateSettlementPdf({ contract: c, issuer: resolveIssuer(c, bset, req.tenant), lines, dealLabel: String(req.body?.dealLabel || ''), logoPath: req.tenant.label_logo_path })
+    const pdf = await generateSettlementPdf({ contract: c, issuer: resolveIssuer(c, bset, req.tenant), data: req.body || {}, logoPath: req.tenant.label_logo_path })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', 'inline; filename="abrechnung.pdf"')
     res.send(pdf)
