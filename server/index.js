@@ -10513,6 +10513,51 @@ app.post('/api/booking/invoices', authenticateToken, requireTenant, async (req, 
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// POST /api/booking/invoices/preview — Rechnungs-Vorschau als PDF (Entwurf, Wasserzeichen).
+// Gleicher Body wie /invoices, aber KEIN DB-Eintrag und KEINE Rechnungsnummer wird vergeben.
+app.post('/api/booking/invoices/preview', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const b = req.body || {}
+    const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [b.contractId, req.tenant.id])
+    if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const kind = b.kind === 'deposit' ? 'deposit' : 'final'
+    const bset = await getBookingSettings(req.tenant.id)
+    const description = b.description || (kind === 'deposit' ? 'Anzahlung / Vorauszahlung gemäß Vereinbarung' : 'Honorar / Abrechnung gemäß Vereinbarung')
+    const inv = {
+      invoice_no: null, kind, issue_date: new Date().toISOString().slice(0, 10),
+      service_date: b.service_date || c.event_date || null, currency: c.currency || 'EUR',
+      tax_rate: String(b.tax_rate ?? ''), total_net: String(b.total_net ?? 0), tax_amount: String(b.tax_amount ?? 0),
+      gross_amount: String(b.gross_amount ?? 0), deductions_gross: String(b.deductions_gross ?? 0), deposit_net: String(b.deposit_net ?? 0),
+      description, recipient_name: c.partner_name || '', recipient_address: c.partner_address || '',
+      event_title: c.event_title || '', event_date: c.event_date || null,
+    }
+    const { generateInvoicePdf } = require('./generate_invoice_pdf')
+    const pdf = await generateInvoicePdf({ invoice: inv, issuer: resolveIssuer(c, bset, req.tenant), logoPath: req.tenant.label_logo_path, draft: true })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'inline; filename="rechnung-vorschau.pdf"')
+    res.send(pdf)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/booking/contracts/:id/settlement/pdf — Abrechnungs-Aufstellung als PDF.
+// Die fertig formatierten Zeilen kommen aus dem Client-Rechenkern (computeSettlement),
+// damit das PDF 1:1 der Anzeige entspricht. Reines Ansehen, kein DB-Eintrag.
+app.post('/api/booking/contracts/:id/settlement/pdf', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const bset = await getBookingSettings(req.tenant.id)
+    const lines = Array.isArray(req.body?.lines) ? req.body.lines : []
+    const { generateSettlementPdf } = require('./generate_settlement_pdf')
+    const pdf = await generateSettlementPdf({ contract: c, issuer: resolveIssuer(c, bset, req.tenant), lines, dealLabel: String(req.body?.dealLabel || ''), logoPath: req.tenant.label_logo_path })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'inline; filename="abrechnung.pdf"')
+    res.send(pdf)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // DELETE /api/booking/invoices/:id
 app.delete('/api/booking/invoices/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })

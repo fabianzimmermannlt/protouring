@@ -7,6 +7,7 @@ import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
+  previewBookingInvoice, openBookingSettlementPdf, type SettlementPdfLine,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
   getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
@@ -263,6 +264,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [invBusy, setInvBusy] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
   const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
@@ -488,6 +490,45 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       loadInvoices(); onChanged()
     } catch { /* ignore */ }
     setInvBusy(false)
+  }
+  // Rechnungs-Vorschau (Entwurf, Wasserzeichen) aus denselben Werten wie das echte Erstellen –
+  // nur ohne zu speichern/Nummer zu vergeben, damit man sie vorher sehen kann.
+  const previewInv = async (kind: 'deposit' | 'final') => {
+    setInvBusy(true)
+    try {
+      await saveEverything()
+      if (kind === 'deposit') {
+        const net = nnum(f.deposit); const vat = net * nnum(f.artist_vat) / 100
+        await previewBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
+      } else {
+        const deductions = st.rechnungGross - st.payableGross
+        await previewBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
+      }
+    } catch { /* ignore */ }
+    setInvBusy(false)
+  }
+  // Abrechnungs-Aufstellung als PDF: dieselben Zeilen wie die Ergebnis-Anzeige unten.
+  const settlementLines = (): SettlementPdfLine[] => {
+    const L: SettlementPdfLine[] = []
+    L.push({ label: 'Ticketeinnahmen brutto', value: eur(st.ticketGross, cur), muted: true })
+    L.push({ label: `abzgl. USt (${nnum(f.ticket_vat).toLocaleString('de-DE')} %)`, value: '− ' + eur(st.ticketVatAmt, cur), muted: true, sub: true })
+    L.push({ label: 'Ticketeinnahmen netto', value: eur(st.ticketNet, cur) })
+    L.push({ label: 'Anteil an Ticketumsatz (netto)', value: eur(st.dealShareNet, cur) })
+    if (st.bandFeeShareNet > 0) L.push({ label: 'Anteil an Ticketgebühr (netto)', value: eur(st.bandFeeShareNet, cur) })
+    if (st.costsNet > 0) L.push({ label: 'Nebenkosten (netto)', value: eur(st.costsNet, cur) })
+    L.push({ label: 'Rechnungsbetrag netto', value: eur(st.rechnungNet, cur), bold: true })
+    L.push({ label: 'zzgl. USt', value: eur(st.rechnungVat, cur), muted: true, sub: true })
+    L.push({ label: 'Rechnungsbetrag brutto', value: eur(st.rechnungGross, cur), bold: true })
+    if (st.ticketingPayout > 0) L.push({ label: 'abzgl. Ticketing-Payout', value: '− ' + eur(st.ticketingPayout, cur), muted: true })
+    if (st.ownShopGross > 0) L.push({ label: 'abzgl. Eigener Shop (bei Band)', value: '− ' + eur(st.ownShopGross, cur), muted: true })
+    if (st.depositGross > 0) L.push({ label: 'abzgl. Anzahlung', value: '− ' + eur(st.depositGross, cur), muted: true })
+    L.push({ label: 'Offener Betrag an die Band', value: eur(st.payableGross, cur), bold: true, big: true, rule: true })
+    return L
+  }
+  const onSettlementPdf = async () => {
+    setPdfBusy(true)
+    try { await saveEverything(); await openBookingSettlementPdf(booking.id, { lines: settlementLines(), dealLabel: isCustomDeal ? 'Benutzerdefiniert' : (dm?.label || '') }) } catch { /* ignore */ }
+    setPdfBusy(false)
   }
   const invGross = (iv: BookingInvoice) => nnum(iv.gross_amount) - nnum(iv.deductions_gross)
 
@@ -917,6 +958,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           {st.depositGross > 0 && <Row k="abzgl. Anzahlung" v={'− ' + eur(st.depositGross, cur)} muted />}
           <div className="border-t mt-1 pt-1" style={{ borderColor: 'var(--border)' }}><Row k="Offener Betrag an die Band" v={eur(st.payableGross, cur)} big bold /></div>
         </div>
+        <button onClick={onSettlementPdf} disabled={pdfBusy} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />{pdfBusy ? 'Erzeuge…' : 'Abrechnung-PDF'}</button>
       </fieldset>
 
       {/* Rechnungssteller */}
@@ -940,12 +982,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       {/* Rechnungen */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>RECHNUNGEN</legend>
-        {isAdmin && (
-          <div className="flex gap-2 flex-wrap mb-3">
-            <button onClick={() => createInv('deposit')} disabled={invBusy || nnum(f.deposit) <= 0} className="btn btn-ghost" title={nnum(f.deposit) <= 0 ? 'Keine Anzahlung hinterlegt' : ''}><PlusIcon className="w-4 h-4" />Anzahlungsrechnung</button>
-            <button onClick={() => createInv('final')} disabled={invBusy} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Schlussrechnung</button>
+        {isAdmin && (<>
+          <div className="flex gap-2 flex-wrap mb-1">
+            <button onClick={() => previewInv('deposit')} disabled={invBusy || nnum(f.deposit) <= 0} className="btn btn-ghost" title="Vorschau als PDF – ohne zu speichern"><DocumentArrowDownIcon className="w-4 h-4" />Anzahlung – Vorschau</button>
+            <button onClick={() => createInv('deposit')} disabled={invBusy || nnum(f.deposit) <= 0} className="btn btn-ghost" title={nnum(f.deposit) <= 0 ? 'Keine Anzahlung hinterlegt' : 'Rechnung endgültig erstellen'}><PlusIcon className="w-4 h-4" />Anzahlungsrechnung</button>
+            <button onClick={() => previewInv('final')} disabled={invBusy} className="btn btn-ghost" title="Vorschau als PDF – ohne zu speichern"><DocumentArrowDownIcon className="w-4 h-4" />Schluss – Vorschau</button>
+            <button onClick={() => createInv('final')} disabled={invBusy} className="btn btn-primary" title="Rechnung endgültig erstellen"><PlusIcon className="w-4 h-4" />Schlussrechnung</button>
           </div>
-        )}
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>„Vorschau" erzeugt ein Entwurfs-PDF (Wasserzeichen, keine Nummer) ohne zu speichern. „…rechnung" legt die Rechnung endgültig an.</p>
+        </>)}
         {invoices.length === 0 ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Rechnungen. Erst Abrechnung ausfüllen, dann erstellen.</p> : (
           <div className="space-y-1">
             {invoices.map(iv => (

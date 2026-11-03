@@ -4109,6 +4109,36 @@ export function openBookingInvoicePdf(id: number): void {
   openBookingPdf(`invoices/${id}`)
 }
 
+/** POST, das ein PDF (Blob) zurückgibt, und öffnet es in einem neuen Tab. Für Vorschauen,
+ *  bei denen Daten mitgesendet werden müssen (kein GET mit Query). */
+async function openBookingPdfPost(path: string, body: unknown): Promise<void> {
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (tenant?.slug) headers['X-Tenant-Slug'] = tenant.slug
+  const res = await fetch(`${API_BASE}/api/booking/${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
+  if (!res.ok) throw new Error('PDF konnte nicht erzeugt werden')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  if (typeof window !== 'undefined') { window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000) }
+}
+
+/** Rechnungs-Vorschau (Entwurf, Wasserzeichen) aus den aktuellen Werten – ohne zu speichern. */
+export async function previewBookingInvoice(data: {
+  contractId: number; kind: 'deposit' | 'final'
+  total_net: number; tax_amount: number; gross_amount: number
+  deductions_gross?: number; deposit_net?: number; description?: string; service_date?: string
+}): Promise<void> {
+  await openBookingPdfPost('invoices/preview', data)
+}
+
+export interface SettlementPdfLine { label: string; value: string; bold?: boolean; muted?: boolean; sub?: boolean; big?: boolean; rule?: boolean }
+/** Abrechnungs-Aufstellung als PDF (fertig formatierte Zeilen aus dem Client-Rechenkern). */
+export async function openBookingSettlementPdf(contractId: number, payload: { lines: SettlementPdfLine[]; dealLabel?: string }): Promise<void> {
+  await openBookingPdfPost(`contracts/${contractId}/settlement/pdf`, payload)
+}
+
 // ── Carnets ──────────────────────────────────────────────────────────────────
 
 export interface Carnet {

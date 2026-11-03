@@ -21,13 +21,24 @@ function num(v) { const x = Number(String(v ?? '').replace(',', '.')); return is
 function money(n, cur = 'EUR') { return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur; }
 function dateDE(iso) { if (!iso) return ''; const [y, m, d] = String(iso).slice(0, 10).split('-'); return (y && m && d) ? `${d}.${m}.${y}` : iso; }
 
-function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null }) {
+function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null, draft = false }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margins: { top: M, bottom: M, left: M, right: M } });
     const chunks = [];
     doc.on('data', d => chunks.push(d));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+
+    // Vorschau/Entwurf: diagonales Wasserzeichen, damit das PDF nicht mit einer echten Rechnung
+    // verwechselt wird (keine gültige Rechnungsnummer, nicht gebucht).
+    if (draft) {
+      doc.save();
+      doc.rotate(-32, { origin: [PAGE_W / 2, 421] });
+      doc.font(BOLD).fontSize(96).fillColor('#dc2626').opacity(0.08)
+        .text('VORSCHAU', PAGE_W / 2 - 320, 421 - 70, { width: 640, align: 'center' });
+      doc.restore();
+      doc.y = M;
+    }
 
     const cur = inv.currency || 'EUR';
     const totalNet = num(inv.total_net);
@@ -53,7 +64,7 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null }) {
     const metaX = M + CONTENT_W - 200;
     let my = hasLogo ? M + 50 : M + 24;
     const meta = (k, v) => { doc.font(REG).fontSize(9).fillColor('#6b7280').text(k, metaX, my, { width: 90 }); doc.font(BOLD).fontSize(9).fillColor('#111827').text(v, metaX + 90, my, { width: 110 }); my += 14; };
-    meta('Rechnungs-Nr.', inv.invoice_no || '—');
+    meta('Rechnungs-Nr.', draft ? 'Entwurf (noch keine)' : (inv.invoice_no || '—'));
     meta('Datum', dateDE(inv.issue_date));
     if (inv.service_date) meta('Leistungsdatum', dateDE(inv.service_date));
     if (issuer.taxId) meta('USt-IdNr./St-Nr.', issuer.taxId);
@@ -93,7 +104,7 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null }) {
     line('Gesamt brutto', money(grossAmt, cur), { bold: true });
     if (deductions > 0) {
       doc.moveDown(0.2);
-      line('abzgl. Anzahlung / Auszahlungen (brutto)', '− ' + money(deductions, cur), { muted: true });
+      line('abzgl. Anzahlung / Auszahlungen (brutto)', '- ' + money(deductions, cur), { muted: true });
       doc.moveDown(0.2);
       doc.moveTo(sumX, doc.y).lineTo(sumX + 260, doc.y).lineWidth(0.5).strokeColor('#d1d5db').stroke();
       doc.moveDown(0.3);
