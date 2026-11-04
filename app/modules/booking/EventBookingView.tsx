@@ -872,6 +872,39 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         </div>
       </fieldset>
 
+      {/* Refundierung & Buyouts (Vertrag · § 4) – Definitionen, die VOR dem Vertrag stehen,
+          weil sie in ihn eingehen. Die konkreten Verkaufszahlen je Kanal kommen erst nach der
+          Show in der Abrechnung; Shops/Kategorien sind oben bereits definiert. */}
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>REFUNDIERUNG & BUYOUTS (§ 4)</legend>
+        <div className="flex items-center gap-1 mb-2">
+          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Refundierung / Ticketgebühr</span>
+          <HelpTip text="Gebühr je Ticket (Refundierung), die der Veranstalter an Artist/Agentur erstattet, und der Band-Anteil daran. Gilt – wie der Face Value – laut FKP für alle Shops/Kategorien gleich; eine abweichende Gebühr je Kanal regelst du in der Abrechnung. Diese Definition gehört in den Vertrag (§ 4); die Stückzahlen folgen nach der Show in der Abrechnung." />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {In('Ticketgebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
+          {In('USt Gebühr %', 'fee_vat', '', undefined, 'raw')}
+          {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50', undefined, 'raw')}
+        </div>
+
+        {/* Nebenkosten / Buyouts (§ 4) */}
+        <div className="flex items-center justify-between mt-4 mb-1"><span className="text-sm font-medium inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>Nebenkosten / Buyouts<HelpTip text="Vom Veranstalter zu erstattende Leistungen, die Artist/Agentur selbst stellt (z.B. Nightliner-Buyout). Erscheinen im Vertrag als Buyouts in § 4 und fließen in die Abrechnung (Rechnung an den Veranstalter) ein." /></span>{isAdmin && <button onClick={addCost} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Position</button>}</div>
+        {costs.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Buyouts. Mit „Position" vom Veranstalter zu erstattende Leistungen anlegen (z.B. Nightliner-Buyout).</p>
+        ) : (
+          <div className="space-y-1.5">
+            {costs.map((c, i) => (
+              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 110px 70px 28px' }}>
+                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Nightliner Buyout" value={c.label ?? ''} onChange={e => setCo(i, { label: e.target.value })} />
+                <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="netto €" value={c.net ?? ''} onChange={v => setCo(i, { net: v })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="USt %" value={c.vat ?? ''} onChange={e => setCo(i, { vat: e.target.value })} />
+                {isAdmin ? <button onClick={() => rmCo(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+              </div>
+            ))}
+          </div>
+        )}
+      </fieldset>
+
       {/* Vertrag */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERTRAG</legend>
@@ -1000,9 +1033,6 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
           {In('USt Tickets %', 'ticket_vat', '', undefined, 'raw')}
-          {In('Ticketgebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
-          {In('USt Gebühr %', 'fee_vat', '', undefined, 'raw')}
-          {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50', undefined, 'raw')}
           {In('USt Künstleranteil %', 'artist_vat', '', undefined, 'raw')}
           {In('Ticketing-Payout (brutto)', 'ticketing_payout_gross', 'bereits an Band')}
           <div className="flex items-end"><label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
@@ -1010,21 +1040,6 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             Eigener Shop verrechnen
           </label></div>
         </div>
-
-        {/* Nebenkosten / Buyouts (§ 4) */}
-        <div className="flex items-center justify-between mt-4 mb-1"><span className="text-sm font-medium inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>Nebenkosten / Buyouts<HelpTip text="Vom Veranstalter zu erstattende Leistungen, die Artist/Agentur selbst stellt (z.B. Nightliner-Buyout). Erscheinen im Vertrag als Buyouts in § 4 und fließen in die Abrechnung (Rechnung an den Veranstalter) ein." /></span>{isAdmin && <button onClick={addCost} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Position</button>}</div>
-        {costs.length > 0 && (
-          <div className="space-y-1.5">
-            {costs.map((c, i) => (
-              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 110px 70px 28px' }}>
-                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Nightliner Buyout" value={c.label ?? ''} onChange={e => setCo(i, { label: e.target.value })} />
-                <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="netto €" value={c.net ?? ''} onChange={v => setCo(i, { net: v })} />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="USt %" value={c.vat ?? ''} onChange={e => setCo(i, { vat: e.target.value })} />
-                {isAdmin ? <button onClick={() => rmCo(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Ergebnis */}
         <div className="mt-3 rounded-lg p-3 text-sm" style={{ background: 'var(--hover)' }}>
