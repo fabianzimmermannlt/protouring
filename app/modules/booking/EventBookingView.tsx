@@ -649,6 +649,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         {isAdmin && nextStatus && <button onClick={goNext} className="btn btn-primary ml-2" style={{ padding: '6px 12px' }}>{nextStatus.label} <ArrowRightIcon className="w-4 h-4" /></button>}
       </div>
 
+      {/* ── Bereich 1: Vertrag (alle Angaben für den Vertrag; endet mit dem Vertrag-PDF-Button) ── */}
+      <div className="flex items-center gap-3 pt-1">
+        <span className="inline-flex items-center justify-center rounded-full text-xs font-bold" style={{ width: 24, height: 24, background: 'var(--primary)', color: '#fff' }}>1</span>
+        <div>
+          <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Vertrag</div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Alle Angaben für den Vertrag – unten erzeugt der Button das Vertrags-PDF.</div>
+        </div>
+      </div>
+
       {/* Parteien */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>PARTEIEN</legend>
@@ -972,9 +981,18 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <button onClick={() => openBookingContractPdf(booking.id)} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />Vertrag-PDF</button>
       </fieldset>
 
+      {/* ── Bereich 2: Abrechnung (Zahlen nach der Show) ── */}
+      <div className="flex items-center gap-3 pt-3">
+        <span className="inline-flex items-center justify-center rounded-full text-xs font-bold" style={{ width: 24, height: 24, background: 'var(--primary)', color: '#fff' }}>2</span>
+        <div>
+          <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Abrechnung</div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Zahlen nach der Show – Verkauf je Kanal, Verrechnungen, Ergebnis.</div>
+        </div>
+      </div>
+
       {/* Abrechnung */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
-        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>ABRECHNUNG (nach der Show)</legend>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>TICKETVERKAUF & ERGEBNIS</legend>
 
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
@@ -1070,6 +1088,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         </div>
         <button onClick={onSettlementPdf} disabled={pdfBusy} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />{pdfBusy ? 'Erzeuge…' : 'Abrechnung-PDF'}</button>
       </fieldset>
+
+      {/* ── Bereich 3: Rechnung (Rechnungssteller + Rechnungen erstellen) ── */}
+      <div className="flex items-center gap-3 pt-3">
+        <span className="inline-flex items-center justify-center rounded-full text-xs font-bold" style={{ width: 24, height: 24, background: 'var(--primary)', color: '#fff' }}>3</span>
+        <div>
+          <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Rechnung</div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Rechnungssteller festlegen und Anzahlungs-/Schlussrechnung erstellen.</div>
+        </div>
+      </div>
 
       {/* Rechnungssteller */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
