@@ -87,10 +87,9 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
   const ticketVat = n(inp.ticketVat), feeVat = n(inp.feeVat), artistVat = n(inp.artistVat)
   const channels = inp.channels || [], costs = inp.costs || []
 
-  // Ticketpreis/Umsatz (revenue = Stück × Preis) wird als NETTO eingegeben; Brutto = netto + USt.
   const totalTickets = channels.reduce((a, c) => a + n(c.tickets), 0)
-  const ticketNet = channels.reduce((a, c) => a + n(c.revenue), 0)
-  const ticketGross = ticketNet * (1 + ticketVat / 100)
+  const ticketGross = channels.reduce((a, c) => a + n(c.revenue), 0)
+  const ticketNet = ticketGross / (1 + ticketVat / 100)
   const ticketVatAmt = ticketGross - ticketNet
 
   // Ticket-Systemgebühr („Refundierung") PRO Kanal: Gebühr/Ticket × Anzahl.
@@ -149,8 +148,7 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
   const rechnungVat = artistShareNet * artistVat / 100 + costsVat
   const rechnungGross = rechnungNet + rechnungVat
 
-  // Eigener-Shop-Einnahme (bei Band) = die bereits brutto vereinnahmte Kasse: Netto-Umsatz + USt.
-  const ownShopGross = inp.deductOwnShop ? channels.filter(c => c.money_with === 'band').reduce((a, c) => a + n(c.revenue), 0) * (1 + ticketVat / 100) : 0
+  const ownShopGross = inp.deductOwnShop ? channels.filter(c => c.money_with === 'band').reduce((a, c) => a + n(c.revenue), 0) : 0
   const ticketingPayout = n(inp.ticketingPayoutGross)
   const depositGross = n(inp.depositNet) * (1 + n(inp.depositVat) / 100)
   const payableGross = rechnungGross - ticketingPayout - ownShopGross - depositGross

@@ -998,7 +998,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
             <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: '2fr 1fr 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
-              <span>Händler</span><span>Kategorie</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis netto €</span><span className="text-right">= Netto €</span><span />
+              <span>Händler</span><span>Kategorie</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
             </div>
             {channels.map((s, i) => {
               const hasPrice = (s.price ?? '') !== ''
@@ -1033,8 +1033,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={v => setCh(i, { tickets: v })} />
-                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={v => setCh(i, { price: v })} title="Ticketpreis netto je Stück" />
-                  <NumInput kind="money" align="right" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Netto €" value={s.revenue ?? ''} onChange={v => setCh(i, { revenue: v })} title={hasPrice ? 'Berechnet: Stück × Preis (netto)' : 'Gesamtnetto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={v => setCh(i, { price: v })} title="Ticketpreis brutto je Stück" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={v => setCh(i, { revenue: v })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
                   {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
                 </div>
                 <div className="flex items-center gap-1.5 pl-1 text-[11px] flex-wrap" style={{ color: 'var(--text-subtle)' }}>
@@ -1067,9 +1067,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
 
         {/* Ergebnis */}
         <div className="mt-3 rounded-lg p-3 text-sm" style={{ background: 'var(--hover)' }}>
-          <Row k="Ticketeinnahmen netto" v={eur(st.ticketNet, cur)} />
-          <Row k={`zzgl. USt (${nnum(f.ticket_vat).toLocaleString('de-DE')} %)`} v={'+ ' + eur(st.ticketVatAmt, cur)} muted sub />
           <Row k="Ticketeinnahmen brutto" v={eur(st.ticketGross, cur)} muted />
+          <Row k={`abzgl. USt (${nnum(f.ticket_vat).toLocaleString('de-DE')} %)`} v={'− ' + eur(st.ticketVatAmt, cur)} muted sub />
+          <Row k="Ticketeinnahmen netto" v={eur(st.ticketNet, cur)} />
           <Row k={`Anteil an Ticketumsatz (netto)`} v={eur(st.dealShareNet, cur)} />
           {st.bandFeeShareNet > 0 && <Row k="Anteil an Ticketgebühr (netto)" v={eur(st.bandFeeShareNet, cur)} />}
           {st.costsNet > 0 && <Row k="Nebenkosten (netto)" v={eur(st.costsNet, cur)} />}

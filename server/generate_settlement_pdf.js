@@ -108,10 +108,9 @@ function generateSettlementPdf({ contract: c = {}, issuer = {}, data = {}, logoP
     doc.font(BOLD).fontSize(8.5).fillColor(INK).text('Ticketverkauf gesamt', C_VEND, y, { width: (C_ANZ_R - ANZ_W) - C_VEND - 6, align: 'right', lineBreak: false });
     doc.text(String(data.totalTickets ?? 0), C_ANZ_R - ANZ_W, y, { width: ANZ_W, align: 'right', lineBreak: false });
     y += STEP + 8;
-    // Ticketpreise werden netto eingegeben → Netto zuerst, dann zzgl. MwSt → Brutto.
-    sumRow('Ticketeinnahme gesamt (netto)', money(data.ticketNet), { bold: true });
-    sumRow('zzgl. MwSt.', money(data.ticketVatAmt), { muted: true, pctStr: pct(data.ticketVatPct) });
-    sumRow('Ticketeinnahme gesamt (brutto)', money(data.ticketGross), { bold: true, under: true });
+    sumRow('Ticketeinnahme gesamt (brutto)', money(data.ticketGross), { bold: true });
+    sumRow('abzgl. MwSt.', money(data.ticketVatAmt), { muted: true, pctStr: pct(data.ticketVatPct) });
+    sumRow('Ticketeinnahme gesamt (netto)', money(data.ticketNet), { bold: true, under: true });
 
     if ((data.refundRows || []).length) {
       y += 14;
