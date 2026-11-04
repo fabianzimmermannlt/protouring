@@ -47,6 +47,12 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null, draft 
     // USt-Satz: aus dem Datensatz, sonst aus Betrag/Netto abgeleitet (eff. Satz).
     const taxRate = num(inv.tax_rate) || (totalNet > 0 ? Math.round((taxAmt / totalNet) * 10000) / 100 : 0);
     const pctDE = r => r.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
+    // USt-Aufschlüsselung je Satz (für die Buchhaltung): 7 % / 19 % getrennt, mit Bemessungsgrundlage.
+    const vatBreakdown = (() => {
+      let v = inv.vat_breakdown;
+      if (typeof v === 'string') { try { v = JSON.parse(v); } catch { v = []; } }
+      return (Array.isArray(v) ? v : []).filter(g => num(g.base) !== 0 || num(g.amount) !== 0);
+    })();
     const deductions = num(inv.deductions_gross);
     const payable = grossAmt - deductions;
     const titleMap = { deposit: 'Anzahlungsrechnung', final: 'Rechnung' };
@@ -127,7 +133,13 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null, draft 
     };
 
     line('Rechnungsbetrag netto', money(totalNet, cur));
-    line('zzgl. USt ' + pctDE(taxRate), money(taxAmt, cur), { muted: true });
+    if (vatBreakdown.length >= 2) {
+      // Gemischte Sätze → je Satz eine Zeile mit Bemessungsgrundlage, damit korrekt verbuchbar.
+      for (const g of vatBreakdown) line('zzgl. USt ' + pctDE(num(g.rate)) + ' (auf ' + money(num(g.base), cur) + ')', money(num(g.amount), cur), { muted: true });
+    } else {
+      const r = vatBreakdown.length === 1 ? num(vatBreakdown[0].rate) : taxRate;
+      line('zzgl. USt ' + pctDE(r), money(taxAmt, cur), { muted: true });
+    }
     line('Gesamt brutto', money(grossAmt, cur), { bold: true });
     if (deductions > 0) {
       doc.moveDown(0.2);

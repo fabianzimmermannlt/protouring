@@ -476,16 +476,29 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     if (link) addEventPartner(link)
   }
 
+  // USt je Satz aufschlüsseln (7 % / 19 % getrennt) – Künstleranteil + Nebenkosten nach Satz gruppiert.
+  const vatBreakdown = (kind: 'deposit' | 'final') => {
+    const groups: Record<string, { rate: number; base: number; amount: number }> = {}
+    const add = (rate: number, base: number) => {
+      if (base === 0) return
+      const key = rate.toFixed(2)
+      const g = groups[key] || { rate, base: 0, amount: 0 }
+      g.base += base; g.amount += base * rate / 100; groups[key] = g
+    }
+    if (kind === 'deposit') add(nnum(f.artist_vat), nnum(f.deposit))
+    else { add(nnum(f.artist_vat), st.artistShareNet); for (const c of costs) add(nnum(c.vat), nnum(c.net)) }
+    return Object.values(groups).sort((a, b) => a.rate - b.rate)
+  }
   const createInv = async (kind: 'deposit' | 'final') => {
     setInvBusy(true)
     try {
       await saveEverything()
       if (kind === 'deposit') {
         const net = nnum(f.deposit); const vat = net * nnum(f.artist_vat) / 100
-        await createBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
+        await createBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, vat_breakdown: vatBreakdown(kind), description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
       } else {
         const deductions = st.rechnungGross - st.payableGross
-        await createBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
+        await createBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), vat_breakdown: vatBreakdown(kind), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
       }
       loadInvoices(); onChanged()
     } catch { /* ignore */ }
@@ -499,10 +512,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       await saveEverything()
       if (kind === 'deposit') {
         const net = nnum(f.deposit); const vat = net * nnum(f.artist_vat) / 100
-        await previewBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
+        await previewBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, vat_breakdown: vatBreakdown(kind), description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
       } else {
         const deductions = st.rechnungGross - st.payableGross
-        await previewBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
+        await previewBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), vat_breakdown: vatBreakdown(kind), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
       }
     } catch { /* ignore */ }
     setInvBusy(false)

@@ -4096,10 +4096,11 @@ export async function getBookingInvoices(contractId?: number): Promise<BookingIn
   const res = await request<{ invoices: BookingInvoice[] }>(`/api/booking/invoices${contractId ? `?contractId=${contractId}` : ''}`)
   return res.invoices
 }
+export interface InvoiceVatLine { rate: number; base: number; amount: number }
 export async function createBookingInvoice(data: {
   contractId: number; kind: 'deposit' | 'final'
   total_net: number; tax_amount: number; gross_amount: number
-  deductions_gross?: number; deposit_net?: number; description?: string; service_date?: string
+  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; description?: string; service_date?: string
 }): Promise<{ id: number; invoice_no: string }> {
   return await request<{ id: number; invoice_no: string }>('/api/booking/invoices', { method: 'POST', body: data })
 }
@@ -4129,7 +4130,7 @@ async function openBookingPdfPost(path: string, body: unknown): Promise<void> {
 export async function previewBookingInvoice(data: {
   contractId: number; kind: 'deposit' | 'final'
   total_net: number; tax_amount: number; gross_amount: number
-  deductions_gross?: number; deposit_net?: number; description?: string; service_date?: string
+  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; description?: string; service_date?: string
 }): Promise<void> {
   await openBookingPdfPost('invoices/preview', data)
 }
