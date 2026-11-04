@@ -24,15 +24,17 @@ describe('parseNum – deutsche & kanonische Schreibweise', () => {
       channels: [{ name: 'X', art: 'vvk', money_with: 'promoter', tickets: '1.000', revenue: '45.000,00' }],
       ticketVat: '7', guarantee: '0', dealShare: '100', dealBase: 'gross',
     } as Parameters<typeof computeSettlement>[0])
-    close(r.ticketGross, 45000)
+    close(r.ticketNet, 45000)  // revenue ist jetzt netto
   })
 })
 
+// Ticketpreis/Umsatz wird jetzt NETTO eingegeben → zum Reproduzieren der FKP-KA (Face Value brutto)
+// den Netto-Umsatz = Brutto/1,07 füttern. Zielwerte der echten KA bleiben identisch.
 describe('computeSettlement – echte KA Osnabrück', () => {
   const r = computeSettlement({
     channels: [
-      { name: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '675', revenue: '30375,00' },
-      { name: 'Bandshop', art: 'ownshop', money_with: 'band', tickets: '200', revenue: '9000,00' },
+      { name: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '675', revenue: '28387.850467' },
+      { name: 'Bandshop', art: 'ownshop', money_with: 'band', tickets: '200', revenue: '8411.214953' },
     ],
     costs: [{ label: 'Nightliner Buyout', net: '750', vat: '19' }],
     ticketVat: '7', feePerTicket: '3,38', feeVat: '7', feeBandSplitPct: '60', artistVat: '7',
@@ -52,10 +54,10 @@ describe('computeSettlement – echte KA Osnabrück', () => {
 describe('computeSettlement – echte KA Wiesbaden (Refundierung ohne Abendkasse)', () => {
   const r = computeSettlement({
     channels: [
-      { name: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '578', revenue: '26010,00' },
-      { name: 'Artistshop', art: 'ownshop', money_with: 'band', tickets: '119', revenue: '5355,00' },
-      { name: 'Reservix', art: 'vvk', money_with: 'promoter', tickets: '259', revenue: '11655,00' },
-      { name: 'Box Office', art: 'boxoffice', money_with: 'promoter', tickets: '5', revenue: '300,00' },
+      { name: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '578', revenue: '24308.411215' },
+      { name: 'Artistshop', art: 'ownshop', money_with: 'band', tickets: '119', revenue: '5004.672897' },
+      { name: 'Reservix', art: 'vvk', money_with: 'promoter', tickets: '259', revenue: '10892.523364' },
+      { name: 'Box Office', art: 'boxoffice', money_with: 'promoter', tickets: '5', revenue: '280.373832' },
     ],
     costs: [{ label: 'Nightliner Buyout', net: '1000', vat: '19' }],
     ticketVat: '7', feePerTicket: '3,38', feeVat: '7', feeBandSplitPct: '50', artistVat: '7',
@@ -105,17 +107,17 @@ describe('computeSettlement – Refundierung je Händler (shopFees)', () => {
 describe('computeSettlement – beliebig viele Stufen (progressiv)', () => {
   it('3 Stufen marginal: 50 % bis 20k, 60 % bis 40k, 70 % darüber', () => {
     const r = computeSettlement({
-      channels: [{ revenue: '53500', money_with: 'promoter' }], costs: [],
+      channels: [{ revenue: '50000', money_with: 'promoter' }], costs: [],
       ticketVat: '7', dealBase: 'gross', guarantee: '0', artistVat: '7',
       tiers: [{ from: '0', pct: '50' }, { from: '20000', pct: '60' }, { from: '40000', pct: '70' }],
     })
-    const net = 53500 / 1.07 // 50000
+    const net = 50000 // revenue ist jetzt netto
     const expected = 20000 * 0.5 + 20000 * 0.6 + (net - 40000) * 0.7 // 10000+12000+7000 = 29000
     close(r.dealShareNet, expected)
   })
   it('Reihenfolge der Stufen egal (wird sortiert)', () => {
     const r = computeSettlement({
-      channels: [{ revenue: '53500', money_with: 'promoter' }], costs: [], ticketVat: '7', dealBase: 'gross', guarantee: '0', artistVat: '7',
+      channels: [{ revenue: '50000', money_with: 'promoter' }], costs: [], ticketVat: '7', dealBase: 'gross', guarantee: '0', artistVat: '7',
       tiers: [{ from: '40000', pct: '70' }, { from: '0', pct: '50' }, { from: '20000', pct: '60' }],
     })
     close(r.dealShareNet, 29000)
@@ -125,11 +127,11 @@ describe('computeSettlement – beliebig viele Stufen (progressiv)', () => {
 describe('computeSettlement – 2. Schwelle (Wiesbaden-artig, Fallback pct1/threshold2/pct2)', () => {
   it('pct1 bis Schwelle, pct2 darüber', () => {
     const r = computeSettlement({
-      channels: [{ revenue: '53500', tickets: '1000', money_with: 'promoter' }],
+      channels: [{ revenue: '50000', tickets: '1000', money_with: 'promoter' }],
       costs: [], ticketVat: '7', dealBase: 'gross', guarantee: '0',
       pct1: '50', threshold2: '44859,81', pct2: '55', artistVat: '7',
     })
-    const net = 53500 / 1.07 // 50000
+    const net = 50000 // revenue ist jetzt netto
     const expected = 44859.81 * 0.5 + (net - 44859.81) * 0.55
     close(r.dealShareNet, expected)
   })
@@ -138,11 +140,11 @@ describe('computeSettlement – 2. Schwelle (Wiesbaden-artig, Fallback pct1/thre
 // Zusammensetzbares Deal-Modell: Verhältnis (vs/plus), Basis (ab Break-Even), Stufen-Basis (Ticketzahl).
 describe('computeSettlement – Deal-Modell-Bausteine', () => {
   const base = { costs: [], ticketVat: '7', artistVat: '7' as const }
-  const net = 53500 / 1.07 // 50000
+  const net = 50000 // revenue ist jetzt netto
 
   it('Fixgage plus Beteiligung (addiert)', () => {
     const r = computeSettlement({
-      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      ...base, channels: [{ revenue: '50000', money_with: 'promoter' }],
       dealBase: 'gross', dealType: 'plus', guarantee: '3000', tiers: [{ from: 0, pct: 50 }],
     })
     close(r.dealShareNet, 3000 + net * 0.5) // 28000
@@ -150,7 +152,7 @@ describe('computeSettlement – Deal-Modell-Bausteine', () => {
 
   it('Fixgage gegen Beteiligung – das Höhere gewinnt (Garantie)', () => {
     const r = computeSettlement({
-      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      ...base, channels: [{ revenue: '50000', money_with: 'promoter' }],
       dealBase: 'gross', dealType: 'vs', guarantee: '30000', tiers: [{ from: 0, pct: 50 }],
     })
     close(r.dealShareNet, 30000) // max(30000, 25000)
@@ -158,7 +160,7 @@ describe('computeSettlement – Deal-Modell-Bausteine', () => {
 
   it('Stufen auf Ticketzahl (Schwelle in Stück → Umsatz umgerechnet)', () => {
     const r = computeSettlement({
-      ...base, channels: [{ revenue: '53500', tickets: '1000', money_with: 'promoter' }],
+      ...base, channels: [{ revenue: '50000', tickets: '1000', money_with: 'promoter' }],
       dealBase: 'gross', dealType: 'vs', guarantee: '0', tierBasis: 'tickets',
       tiers: [{ from: 0, pct: 50 }, { from: 500, pct: 60 }],
     })
@@ -168,7 +170,7 @@ describe('computeSettlement – Deal-Modell-Bausteine', () => {
 
   it('Nur Beteiligung ab Break-Even (netprofit)', () => {
     const r = computeSettlement({
-      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      ...base, channels: [{ revenue: '50000', money_with: 'promoter' }],
       dealBase: 'netprofit', dealType: 'vs', guarantee: '0', promoterCosts: '30000',
       tiers: [{ from: 0, pct: 50 }],
     })
