@@ -1048,11 +1048,6 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     value={s.chan_fee ?? ''} onChange={e => setCh(i, { chan_fee: e.target.value })}
                     title="Gebühr/Ticket nur für diesen Kanal · leer = Händler-/Standard-Gebühr, Abendkasse = 0" />
                   <span>€/Tkt</span>
-                  <input className="form-input text-right" style={{ height: 26, width: 64 }} inputMode="decimal" disabled={!isAdmin}
-                    placeholder={f.fee_band_split_pct ? `${f.fee_band_split_pct} (gl.)` : 'global'}
-                    value={s.chan_fee_split ?? ''} onChange={e => setCh(i, { chan_fee_split: e.target.value })}
-                    title="Band-Anteil % an der Gebühr nur für diesen Kanal · leer = global" />
-                  <span>% Band</span>
                 </div>
               </div>
               )

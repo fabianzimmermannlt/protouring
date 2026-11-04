@@ -11,8 +11,7 @@ export interface SettlementChannel {
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
   revenue?: string | null      // Bruttoeinnahme dieses Kanals (inkl. Ticket-USt)
-  chan_fee?: string | null       // Gebühr/Ticket NUR für diesen Kanal (leer = global; Abendkasse = 0)
-  chan_fee_split?: string | null // Band-Anteil % an der Gebühr NUR für diesen Kanal (leer = global)
+  chan_fee?: string | null       // Gebühr/Ticket NUR für diesen Kanal (leer = Händler-/Standard-Gebühr; Abendkasse = 0)
 }
 export interface SettlementCost {
   label?: string | null
@@ -108,8 +107,8 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
     const fee = hasOwnFee ? n(c.chan_fee) : (c.art === 'boxoffice' ? 0 : (hasShopFee ? n(shopFeeRaw) : globalFee))
     const lineGross = n(c.tickets) * fee
     feeTotalGross += lineGross
-    const split = (c.chan_fee_split != null && String(c.chan_fee_split) !== '') ? n(c.chan_fee_split) : globalSplit
-    bandFeeShareGross += lineGross * split / 100
+    // Band-Anteil an der Gebühr = ein globaler Deal-Wert (nicht je Händler/Kanal).
+    bandFeeShareGross += lineGross * globalSplit / 100
   }
   const feeNet = feeTotalGross / (1 + feeVat / 100)
   const feeVatAmt = feeTotalGross - feeNet

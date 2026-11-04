@@ -3950,8 +3950,7 @@ export interface BookingTicketSale {
   revenue?: string | null      // Gesamtbrutto des Kanals (= tickets × price, berechnet)
   refund_amount?: string | null
   refund_pct?: string | null
-  chan_fee?: string | null       // Refundierung: Gebühr/Ticket NUR für diesen Kanal (leer = global; Abendkasse = 0)
-  chan_fee_split?: string | null // Band-Anteil % an der Gebühr NUR für diesen Kanal (leer = global)
+  chan_fee?: string | null       // Refundierung: Gebühr/Ticket NUR für diesen Kanal (leer = Händler-/Standard-Gebühr; Abendkasse = 0)
 }
 
 export interface BookingCostLine {
