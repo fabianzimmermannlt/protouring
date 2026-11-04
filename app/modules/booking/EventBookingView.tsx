@@ -219,19 +219,27 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   })
   // Ticketsysteme / Shops (Eigener Shop, Eventim …): zum Vertragszeitpunkt definiert, speisen §4 Refundierung
   // und §5.1 Preisstruktur; in der Abrechnung als Händler-Auswahl. Face Value/Gebühr sind NICHT je Shop (FKP).
-  const [shops, setShops] = useState<string[]>(() => {
+  // Vertriebskanäle/Shops MIT je-Händler-Refundierung. Zum Vertragszeitpunkt definiert (speisen §4/§5.1);
+  // in der Abrechnung Händler-Auswahl + Gebühren-Quelle. Abwärtskompatibel: alte Namensliste (string[]).
+  const [shops, setShops] = useState<{ name: string; fee: string }[]>(() => {
     try {
       const t = booking.ticket_systems ? JSON.parse(booking.ticket_systems) : null
-      if (Array.isArray(t)) { const names = t.map((x: unknown) => String(typeof x === 'string' ? x : ((x as { name?: unknown })?.name ?? '')).trim()).filter(Boolean); if (names.length) return names }
+      if (Array.isArray(t)) {
+        const rows = t.map((x: unknown) => typeof x === 'string'
+          ? { name: x.trim(), fee: '' }
+          : { name: String((x as { name?: unknown })?.name ?? '').trim(), fee: String((x as { fee?: unknown })?.fee ?? '') }
+        ).filter(s => s.name)
+        if (rows.length) return rows
+      }
     } catch { /* */ }
-    const seen = new Set<string>(); const fromChans: string[] = []
+    const seen = new Set<string>(); const fromChans: { name: string; fee: string }[] = []
     for (const s of (booking.ticket_sales ?? [])) {
       if ((s.art ?? 'vvk') === 'boxoffice') continue
       const v = (s.vendor ?? '').trim()
-      if (v && !seen.has(v)) { seen.add(v); fromChans.push(v) }
+      if (v && !seen.has(v)) { seen.add(v); fromChans.push({ name: v, fee: String(s.chan_fee ?? '') }) }
     }
     if (fromChans.length) return fromChans
-    return ['Eigener Shop', 'Eventim']
+    return [{ name: 'Eigener Shop', fee: '' }, { name: 'Eventim', fee: '' }]
   })
   const [parties, setParties] = useState<Party[]>(() => {
     const norm = (x: Partial<Party> & { address?: string }): Party => ({
@@ -302,9 +310,11 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const showPart = isCustomDeal || (dm?.part ?? true)
   const tierOnTickets = f.tier_basis === 'tickets'
 
+  // Refundierung je Händler als Map (Name → Gebühr) für den Rechenkern (vor globaler Standard-Gebühr).
+  const shopFees = Object.fromEntries(shops.filter(s => s.name.trim() && String(s.fee).trim() !== '').map(s => [s.name.trim(), s.fee]))
   const st = computeSettlement({
     channels: channels as SettlementChannel[], costs: costs.map(c => ({ net: c.net, vat: c.vat })),
-    ticketVat: f.ticket_vat, feePerTicket: f.fee_per_ticket, feeVat: f.fee_vat, feeBandSplitPct: f.fee_band_split_pct,
+    ticketVat: f.ticket_vat, feePerTicket: f.fee_per_ticket, shopFees, feeVat: f.fee_vat, feeBandSplitPct: f.fee_band_split_pct,
     artistVat: f.artist_vat, dealBase: f.deal_base, promoterCosts: f.promoter_costs, guarantee: f.guarantee,
     dealType: f.deal_type, tierBasis: f.tier_basis,
     tiers: showPart ? tiers : [], ticketingPayoutGross: f.ticketing_payout_gross,
@@ -328,7 +338,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
       ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
-    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)), ticket_systems: JSON.stringify(shops.map(s => s.trim()).filter(Boolean)) })
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)), ticket_systems: JSON.stringify(shops.map(s => ({ name: s.name.trim(), fee: String(s.fee ?? '').trim() })).filter(s => s.name)) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
     // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
@@ -386,8 +396,8 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addCat = () => setCats(p => [...p, { name: '', cap: '', holds: '', comps: '', kills: '', price: '', akprice: '' }])
   const setCat = (i: number, patch: Partial<PriceCat>) => setCats(p => p.map((c, idx) => idx === i ? { ...c, ...patch } : c))
   const rmCat = (i: number) => setCats(p => p.filter((_, idx) => idx !== i))
-  const addShop = () => setShops(p => [...p, ''])
-  const setShop = (i: number, v: string) => setShops(p => p.map((s, idx) => idx === i ? v : s))
+  const addShop = () => setShops(p => [...p, { name: '', fee: '' }])
+  const setShop = (i: number, patch: Partial<{ name: string; fee: string }>) => setShops(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   const rmShop = (i: number) => setShops(p => p.filter((_, idx) => idx !== i))
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
@@ -543,13 +553,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       if (!g.price) g.price = price
       g.subs.push({ label: (ch.rabattstufe || '').trim(), price, tickets, einnahme: einn })
     }
-    // Refundierung: je Kategorie (ohne Abendkasse). Effektive Gebühr/Ticket wie in
-    // computeSettlement: Kanal-Gebühr (chan_fee) vor globaler fee_per_ticket, Abendkasse = 0.
+    // Refundierung: je Kategorie (ohne Abendkasse). Effektive Gebühr/Ticket wie in computeSettlement:
+    // Kanal-Override (chan_fee) > Händler-Gebühr (shopFees) > globale Standard-Gebühr; Abendkasse = 0.
     const globalFee = nnum(f.fee_per_ticket)
     const byCat: Record<string, { tickets: number; betrag: number }> = {}
     for (const ch of channels) {
       if (ch.art === 'boxoffice') continue
-      const fee = (ch.chan_fee ?? '') !== '' ? nnum(ch.chan_fee) : globalFee
+      const sf = shopFees[(ch.vendor || '').trim()]
+      const fee = (ch.chan_fee ?? '') !== '' ? nnum(ch.chan_fee)
+        : (sf != null && String(sf).trim() !== '' ? nnum(sf) : globalFee)
       if (fee <= 0) continue
       const cat = (ch.category || '').trim() || '—'
       const t = nnum(ch.tickets)
@@ -850,39 +862,36 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           </div>
         )}
 
-        {/* Ticketsysteme / Shops – welche Systeme verkaufen (Vertrag). Preis/Gebühr sind NICHT je Shop (FKP). */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium inline-flex items-center gap-1">Ticketsysteme / Shops
-              <HelpTip text="Welche Ticketsysteme/Shops die Tickets verkaufen (z.B. Eigener Shop, Eventim, Reservix). Werden im Vertrag festgehalten: §4 Refundierung (Shop × Kategorie, Betrag = Refundierungs-Gebühr) und §5.1 Preisstruktur (Face Value = Kategorie-Preis je Shop). Face Value und Gebühr sind laut FKP für alle Shops gleich – abweichende Gebühr je Shop regelst du in der Abrechnung pro Kanal." /></span>
-            {isAdmin && <button onClick={addShop} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Shop</button>}
-          </div>
-          {shops.length === 0 ? (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Ticketsysteme. Mit „Shop" die verkaufenden Systeme angeben (z.B. Eigener Shop, Eventim).</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {shops.map((s, i) => (
-                <div key={i} className="inline-flex items-center gap-1">
-                  <input className="form-input" style={{ width: 160 }} disabled={!isAdmin} placeholder="z.B. Eventim" value={s} onChange={e => setShop(i, e.target.value)} />
-                  {isAdmin && <button onClick={() => rmShop(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </fieldset>
 
-      {/* Refundierung & Buyouts (Vertrag · § 4) – Definitionen, die VOR dem Vertrag stehen,
-          weil sie in ihn eingehen. Die konkreten Verkaufszahlen je Kanal kommen erst nach der
-          Show in der Abrechnung; Shops/Kategorien sind oben bereits definiert. */}
+      {/* Vertriebskanäle, Refundierung & Buyouts (Vertrag · § 4) – Definitionen, die VOR dem Vertrag
+          stehen, weil sie in ihn eingehen. Jeder Händler/Shop mit eigener Refundierung (Gebühr/Ticket).
+          Die konkreten Verkaufszahlen je Kanal kommen erst nach der Show in der Abrechnung. */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
-        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>REFUNDIERUNG & BUYOUTS (§ 4)</legend>
-        <div className="flex items-center gap-1 mb-2">
-          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Refundierung / Ticketgebühr</span>
-          <HelpTip text="Gebühr je Ticket (Refundierung), die der Veranstalter an Artist/Agentur erstattet, und der Band-Anteil daran. Gilt – wie der Face Value – laut FKP für alle Shops/Kategorien gleich; eine abweichende Gebühr je Kanal regelst du in der Abrechnung. Diese Definition gehört in den Vertrag (§ 4); die Stückzahlen folgen nach der Show in der Abrechnung." />
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERTRIEBSKANÄLE · REFUNDIERUNG · BUYOUTS (§ 4)</legend>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>Vertriebskanäle / Shops – Refundierung je Händler
+            <HelpTip text="Welche Ticketsysteme/Shops verkaufen und welche Refundierungs-Gebühr je Ticket der Veranstalter dafür erstattet. Je Händler eigene Gebühr; bleibt sie leer, gilt die Standard-Gebühr unten. In der Abrechnung erbt jeder Kanal die Gebühr seines Händlers (pro Zeile noch übersteuerbar). Diese Definition steht im Vertrag (§ 4 Refundierung, § 5.1 Preisstruktur)." /></span>
+          {isAdmin && <button onClick={addShop} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Händler</button>}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {In('Ticketgebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
+        {shops.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Vertriebskanäle. Mit „Händler" die verkaufenden Systeme anlegen (z.B. Eigener Shop, Eventim) – je mit Refundierungs-Gebühr.</p>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1fr) 150px 28px', color: 'var(--text-subtle)' }}>
+              <span>Händler / Shop</span><span className="text-right">Refundierung €/Ticket</span><span />
+            </div>
+            {shops.map((s, i) => (
+              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 150px 28px' }}>
+                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Eventim" value={s.name} onChange={e => setShop(i, { name: e.target.value })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder={f.fee_per_ticket ? `${f.fee_per_ticket} (Std.)` : 'Standard'} value={s.fee} onChange={e => setShop(i, { fee: e.target.value })} title="Refundierungs-Gebühr je Ticket nur für diesen Händler · leer = Standard-Gebühr unten" />
+                {isAdmin ? <button onClick={() => rmShop(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+          {In('Standard-Gebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
           {In('USt Gebühr %', 'fee_vat', '', undefined, 'raw')}
           {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50', undefined, 'raw')}
         </div>
@@ -978,8 +987,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               const boxoffice = (s.art ?? 'vvk') === 'boxoffice'
               // Auswahllisten aus den oben definierten Shops/Kategorien; ein evtl. vorhandener
               // (Alt-)Wert, der dort nicht (mehr) steht, bleibt als Option erhalten, damit nichts verloren geht.
-              const shopNames = shops.filter((v, k, a) => v && a.indexOf(v) === k)
+              const shopNames = shops.map(sh => sh.name.trim()).filter((v, k, a) => v && a.indexOf(v) === k)
               const shopOpts = s.vendor && !shopNames.includes(s.vendor) ? [s.vendor, ...shopNames] : shopNames
+              // Von diesem Händler geerbte Refundierung (Platzhalter, wenn chan_fee leer).
+              const shopFee = (shops.find(sh => sh.name.trim() === (s.vendor || '').trim())?.fee || '').trim()
               const catNames = cats.map(c => c.name).filter((v, k, a) => v && a.indexOf(v) === k)
               const catOpts = s.category && !catNames.includes(s.category) ? [s.category, ...catNames] : catNames
               return (
@@ -1015,9 +1026,9 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     title="Verkaufs-/Preisart innerhalb Kanal×Kategorie (public sale, Presale, Rollstuhl, Bandshop, Box Office …). Erscheint in der Konzertabrechnung als Unterzeile; mehrere Zeilen mit gleichem Händler+Kategorie werden gruppiert." />
                   <span style={{ minWidth: 48, marginLeft: 8 }}>Refund.:</span>
                   <input className="form-input text-right" style={{ height: 26, width: 78 }} inputMode="decimal" disabled={!isAdmin}
-                    placeholder={boxoffice ? '0' : (f.fee_per_ticket ? `${f.fee_per_ticket} (gl.)` : 'global')}
+                    placeholder={boxoffice ? '0' : (shopFee ? `${shopFee} (Händler)` : (f.fee_per_ticket ? `${f.fee_per_ticket} (Std.)` : 'Standard'))}
                     value={s.chan_fee ?? ''} onChange={e => setCh(i, { chan_fee: e.target.value })}
-                    title="Gebühr/Ticket nur für diesen Kanal · leer = global, Abendkasse = 0" />
+                    title="Gebühr/Ticket nur für diesen Kanal · leer = Händler-/Standard-Gebühr, Abendkasse = 0" />
                   <span>€/Tkt</span>
                   <input className="form-input text-right" style={{ height: 26, width: 64 }} inputMode="decimal" disabled={!isAdmin}
                     placeholder={f.fee_band_split_pct ? `${f.fee_band_split_pct} (gl.)` : 'global'}

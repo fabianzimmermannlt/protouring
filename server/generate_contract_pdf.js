@@ -204,7 +204,13 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const feePer = money(c.fee_per_ticket, cur);
     // Ticketsysteme/Shops + Preiskategorien aus dem Vertrag (zum Vertragszeitpunkt definiert).
     const shopList = (() => {
-      try { const ts = c.ticket_systems ? JSON.parse(c.ticket_systems) : null; if (Array.isArray(ts)) return ts.map(x => String(typeof x === 'string' ? x : (x && x.name) || '').trim()).filter(Boolean); } catch { /* */ }
+      try {
+        const ts = c.ticket_systems ? JSON.parse(c.ticket_systems) : null;
+        if (Array.isArray(ts)) return ts.map(x => typeof x === 'string'
+          ? { name: x.trim(), fee: '' }
+          : { name: String((x && x.name) || '').trim(), fee: String((x && x.fee) != null ? x.fee : '') }
+        ).filter(x => x.name);
+      } catch { /* */ }
       return [];
     })();
     const catList = (() => {
@@ -214,9 +220,15 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const pkNames = catList.length ? catList.map(x => String(x.name || '').trim() || 'Cat. 01') : ['Cat. 01'];
     // Refundierung = Ticketsystem-Gebühr (wie FKP: Ticketsystem · PK · Betrag). Bevorzugt die im Vertrag
     // definierten Shops × Kategorien mit globaler Gebühr; sonst Fallback aus den Abrechnungs-Kanälen.
+    // Refundierung je Händler: eigene Shop-Gebühr vor globaler Standard-Gebühr (feePer).
     let refundRows = [];
-    if (feePer && shopList.length) {
-      for (const sh of shopList) for (const pk of pkNames) refundRows.push([sh, pk, feePer]);
+    const anyShopFee = shopList.some(sh => String(sh.fee).trim() !== '');
+    if (shopList.length && (feePer || anyShopFee)) {
+      for (const sh of shopList) {
+        const ef = String(sh.fee).trim() !== '' ? money(sh.fee, cur) : feePer;
+        if (!ef) continue;
+        for (const pk of pkNames) refundRows.push([sh.name, pk, ef]);
+      }
     } else if (feePer) {
       refundRows = (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice').map(s => {
         const ef = (s.chan_fee != null && String(s.chan_fee) !== '') ? money(s.chan_fee, cur) : feePer;

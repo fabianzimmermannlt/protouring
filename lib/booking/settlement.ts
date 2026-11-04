@@ -6,6 +6,7 @@
 
 export interface SettlementChannel {
   name?: string | null
+  vendor?: string | null       // Händler/Shop-Name (Zuordnung zur je-Händler-Refundierung)
   art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
@@ -22,7 +23,8 @@ export interface SettlementInput {
   channels: SettlementChannel[]
   costs: SettlementCost[]
   ticketVat?: string | null         // USt auf Tickets (z.B. 7)
-  feePerTicket?: string | null      // Ticket-Systemgebühr je Ticket (brutto), „Refundierung"
+  feePerTicket?: string | null      // Standard-Ticketgebühr je Ticket (brutto), „Refundierung" (Fallback)
+  shopFees?: Record<string, string | number | null>  // Refundierung je Händler/Shop-Name (vor feePerTicket)
   feeVat?: string | null            // USt auf die Gebühr (z.B. 7)
   feeBandSplitPct?: string | null   // Anteil der Band an der Gebühr (netto), z.B. 50
   artistVat?: string | null         // USt auf den Künstleranteil (z.B. 7)
@@ -95,10 +97,15 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
   // Default = globale feePerTicket; Abendkasse (art='boxoffice') hat keine Systemgebühr (0),
   // sofern nicht am Kanal ausdrücklich gesetzt. Band-Split ebenfalls je Kanal (Default global).
   const globalFee = n(inp.feePerTicket), globalSplit = n(inp.feeBandSplitPct)
+  const shopFees = inp.shopFees || {}
+  // Refundierung je Ticket: Kanal-Override (chan_fee) > Händler-Gebühr (shopFees[vendor]) >
+  // globale Standard-Gebühr; Abendkasse ohne Override = 0.
   let feeTotalGross = 0, bandFeeShareGross = 0
   for (const c of channels) {
     const hasOwnFee = c.chan_fee != null && String(c.chan_fee) !== ''
-    const fee = hasOwnFee ? n(c.chan_fee) : (c.art === 'boxoffice' ? 0 : globalFee)
+    const shopFeeRaw = c.vendor != null ? shopFees[String(c.vendor).trim()] : undefined
+    const hasShopFee = shopFeeRaw != null && String(shopFeeRaw) !== ''
+    const fee = hasOwnFee ? n(c.chan_fee) : (c.art === 'boxoffice' ? 0 : (hasShopFee ? n(shopFeeRaw) : globalFee))
     const lineGross = n(c.tickets) * fee
     feeTotalGross += lineGross
     const split = (c.chan_fee_split != null && String(c.chan_fee_split) !== '') ? n(c.chan_fee_split) : globalSplit

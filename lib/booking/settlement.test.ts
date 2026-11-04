@@ -74,6 +74,34 @@ describe('computeSettlement – echte KA Wiesbaden (Refundierung ohne Abendkasse
   it('Restbetrag an Band nach Ticketing-Payout', () => { near(r.payableGross, 18452.58) })
 })
 
+describe('computeSettlement – Refundierung je Händler (shopFees)', () => {
+  const base = {
+    channels: [
+      { vendor: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '100', revenue: '4500' },
+      { vendor: 'Reservix', art: 'vvk', money_with: 'promoter', tickets: '100', revenue: '4500' },
+      { vendor: 'Abendkasse', art: 'boxoffice', money_with: 'promoter', tickets: '50', revenue: '2250' },
+    ],
+    ticketVat: '7', feeVat: '7', feeBandSplitPct: '50', artistVat: '7', guarantee: '0', dealBase: 'gross',
+  }
+  it('nutzt Händler-Gebühr vor Standard, Abendkasse 0', () => {
+    const r = computeSettlement({ ...base, feePerTicket: '3,00', shopFees: { Eventim: '4,00', Reservix: '2,00' } } as Parameters<typeof computeSettlement>[0])
+    // 100×4 + 100×2 + 0 (Abendkasse) = 600
+    close(r.feeTotalGross, 600)
+  })
+  it('fällt auf Standard-Gebühr zurück, wenn Händler keine eigene hat', () => {
+    const r = computeSettlement({ ...base, feePerTicket: '3,00', shopFees: { Eventim: '4,00' } } as Parameters<typeof computeSettlement>[0])
+    // Eventim 100×4 + Reservix 100×3 (Standard) = 700
+    close(r.feeTotalGross, 700)
+  })
+  it('chan_fee am Kanal übersteuert die Händler-Gebühr', () => {
+    const r = computeSettlement({
+      ...base, feePerTicket: '3,00', shopFees: { Eventim: '4,00', Reservix: '2,00' },
+      channels: [{ vendor: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '100', revenue: '4500', chan_fee: '5,00' }],
+    } as Parameters<typeof computeSettlement>[0])
+    close(r.feeTotalGross, 500)
+  })
+})
+
 describe('computeSettlement – beliebig viele Stufen (progressiv)', () => {
   it('3 Stufen marginal: 50 % bis 20k, 60 % bis 40k, 70 % darüber', () => {
     const r = computeSettlement({
