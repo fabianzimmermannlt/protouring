@@ -2211,7 +2211,7 @@ async function initDatabase() {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
-  for (const col of ['tax_amount','gross_amount','deductions_gross','vat_breakdown']) {
+  for (const col of ['tax_amount','gross_amount','deductions_gross','vat_breakdown','positions']) {
     try { await db.run(`ALTER TABLE booking_invoices ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Booking-Settings: Standard-Vertretung/Agentur (Vorbelegung neuer Bookings)
@@ -10504,11 +10504,12 @@ app.post('/api/booking/invoices', authenticateToken, requireTenant, async (req, 
     const invoice_no = `${bset.number_prefix || 'RE'}-${year}-${String(seq).padStart(4, '0')}`
     const description = b.description || (kind === 'deposit' ? 'Anzahlung / Vorauszahlung gemäß Vereinbarung' : 'Honorar / Abrechnung gemäß Vereinbarung')
     const r = await db.run(
-      `INSERT INTO booking_invoices (tenant_id, contract_id, seq, invoice_no, kind, status, issue_date, service_date, currency, tax_rate, total_net, tax_amount, gross_amount, deductions_gross, deposit_net, vat_breakdown, description, recipient_name, recipient_address, event_title, event_date, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO booking_invoices (tenant_id, contract_id, seq, invoice_no, kind, status, issue_date, service_date, currency, tax_rate, total_net, tax_amount, gross_amount, deductions_gross, deposit_net, vat_breakdown, positions, description, recipient_name, recipient_address, event_title, event_date, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [req.tenant.id, b.contractId, seq, invoice_no, kind, 'issued', new Date().toISOString().slice(0, 10), b.service_date || c.event_date || null,
        c.currency || 'EUR', String(b.tax_rate ?? ''), String(b.total_net ?? 0), String(b.tax_amount ?? 0), String(b.gross_amount ?? 0), String(b.deductions_gross ?? 0), String(b.deposit_net ?? 0),
        JSON.stringify(Array.isArray(b.vat_breakdown) ? b.vat_breakdown : []),
+       JSON.stringify(Array.isArray(b.positions) ? b.positions : []),
        description, c.partner_name || '', c.partner_address || '', c.event_title || '', c.event_date || null, req.user.id]
     )
     res.json({ ok: true, id: r.lastID, invoice_no })
@@ -10532,6 +10533,7 @@ app.post('/api/booking/invoices/preview', authenticateToken, requireTenant, asyn
       tax_rate: String(b.tax_rate ?? ''), total_net: String(b.total_net ?? 0), tax_amount: String(b.tax_amount ?? 0),
       gross_amount: String(b.gross_amount ?? 0), deductions_gross: String(b.deductions_gross ?? 0), deposit_net: String(b.deposit_net ?? 0),
       vat_breakdown: Array.isArray(b.vat_breakdown) ? b.vat_breakdown : [],
+      positions: Array.isArray(b.positions) ? b.positions : [],
       description, recipient_name: c.partner_name || '', recipient_address: c.partner_address || '',
       event_title: c.event_title || '', event_date: c.event_date || null,
     }

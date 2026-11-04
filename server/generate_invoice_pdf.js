@@ -109,11 +109,35 @@ function generateInvoicePdf({ invoice: inv, issuer = {}, logoPath = null, draft 
     doc.moveTo(M, doc.y).lineTo(M + CONTENT_W, doc.y).lineWidth(1).strokeColor('#111827').stroke();
     doc.moveDown(0.6);
 
-    // ── Position ──
-    const descY = doc.y;
-    doc.font(REG).fontSize(10).fillColor('#111827').text(inv.description || 'Leistung', M, descY, { width: CONTENT_W - 130 });
-    doc.font(BOLD).fontSize(10).text(money(totalNet, cur), M + CONTENT_W - 130, descY, { width: 130, align: 'right' });
-    doc.moveDown(1);
+    // ── Positionen (je Position: Netto + Steuersatz, §14 Abs. 4 UStG) ──
+    const positions = (() => {
+      let v = inv.positions;
+      if (typeof v === 'string') { try { v = JSON.parse(v); } catch { v = []; } }
+      return Array.isArray(v) ? v : [];
+    })();
+    const NET_W = 110, NET_X = M + CONTENT_W - NET_W;
+    const RATE_W = 60, RATE_X = NET_X - RATE_W - 12;
+    const DESC_X = M, DESC_W = RATE_X - M - 8;
+    // Kopfzeile
+    let hy = doc.y;
+    doc.font(BOLD).fontSize(8.5).fillColor('#6b7280');
+    doc.text('Beschreibung', DESC_X, hy, { width: DESC_W });
+    doc.text('USt-Satz', RATE_X, hy, { width: RATE_W, align: 'right' });
+    doc.text('Netto', NET_X, hy, { width: NET_W, align: 'right' });
+    doc.y = hy + 14;
+    doc.moveTo(M, doc.y).lineTo(M + CONTENT_W, doc.y).lineWidth(1).strokeColor('#111827').stroke();
+    doc.moveDown(0.5);
+    const rows = positions.length ? positions : [{ label: inv.description || 'Leistung', net: totalNet, rate: null }];
+    for (const p of rows) {
+      const ry = doc.y;
+      doc.font(REG).fontSize(10).fillColor('#111827');
+      const hD = doc.heightOfString(p.label || 'Position', { width: DESC_W });
+      doc.text(p.label || 'Position', DESC_X, ry, { width: DESC_W });
+      if (p.rate != null) doc.font(REG).fontSize(10).fillColor('#6b7280').text(pctDE(num(p.rate)), RATE_X, ry, { width: RATE_W, align: 'right' });
+      doc.font(REG).fontSize(10).fillColor('#111827').text(money(num(p.net), cur), NET_X, ry, { width: NET_W, align: 'right' });
+      doc.y = ry + Math.max(hD, 13);
+      doc.moveDown(0.35);
+    }
     doc.moveTo(M, doc.y).lineTo(M + CONTENT_W, doc.y).lineWidth(0.5).strokeColor('#d1d5db').stroke();
     doc.moveDown(0.5);
 

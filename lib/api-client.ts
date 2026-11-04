@@ -4097,10 +4097,11 @@ export async function getBookingInvoices(contractId?: number): Promise<BookingIn
   return res.invoices
 }
 export interface InvoiceVatLine { rate: number; base: number; amount: number }
+export interface InvoicePosition { label: string; net: number; rate: number | null }
 export async function createBookingInvoice(data: {
   contractId: number; kind: 'deposit' | 'final'
   total_net: number; tax_amount: number; gross_amount: number
-  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; description?: string; service_date?: string
+  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; positions?: InvoicePosition[]; description?: string; service_date?: string
 }): Promise<{ id: number; invoice_no: string }> {
   return await request<{ id: number; invoice_no: string }>('/api/booking/invoices', { method: 'POST', body: data })
 }
@@ -4130,7 +4131,7 @@ async function openBookingPdfPost(path: string, body: unknown): Promise<void> {
 export async function previewBookingInvoice(data: {
   contractId: number; kind: 'deposit' | 'final'
   total_net: number; tax_amount: number; gross_amount: number
-  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; description?: string; service_date?: string
+  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; positions?: InvoicePosition[]; description?: string; service_date?: string
 }): Promise<void> {
   await openBookingPdfPost('invoices/preview', data)
 }
