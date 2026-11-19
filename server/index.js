@@ -2117,6 +2117,18 @@ async function initDatabase() {
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS booking_contract_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      contract_id INTEGER NOT NULL,
+      version INTEGER NOT NULL,
+      label TEXT,
+      snapshot TEXT NOT NULL,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS booking_ticket_sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
@@ -10414,6 +10426,33 @@ app.delete('/api/booking/contracts/:id', authenticateToken, requireTenant, async
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// Baut das vollständige Render-Payload für das Vertrags-PDF (Vertrag + Live-Bausteine
+// aus der Bibliothek + Overrides + Verkäufe/Kosten/Settings). Von der Live-PDF-Route UND
+// vom Festschreiben (Versions-Snapshot) genutzt, damit beide identisch rendern.
+async function buildContractPdfInput(tenant, contractId) {
+  const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [contractId, tenant.id])
+  if (!contract) return null
+  const clausesRaw = await db.all(
+    `SELECT c.id, c.title,
+            (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body
+     FROM booking_clauses c
+     WHERE c.tenant_id=? AND c.archived_at IS NULL
+     ORDER BY c.sort_order, c.id`, [tenant.id])
+  const ovRows = await db.all('SELECT clause_id, included, body FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [contractId, tenant.id])
+  const ov = new Map(ovRows.map(o => [o.clause_id, o]))
+  const clauses = clausesRaw
+    .filter(c => { const o = ov.get(c.id); return !o || o.included !== 0 })
+    .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
+  const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])
+  const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])
+  const bset = await getBookingSettings(tenant.id)
+  return {
+    contract: { ...contract, logoPath: tenant.label_logo_path },
+    clauses, ticketSales, costLines, settings: bset,
+    artist: resolveIssuer(contract, bset, tenant),
+  }
+}
+
 // GET /api/booking/contracts/:id/pdf — Vertrag als PDF
 app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
   try {
@@ -10429,34 +10468,75 @@ app.get('/api/booking/contracts/:id/pdf', async (req, res) => {
       const m = await db.get(`SELECT 1 FROM user_tenants WHERE user_id=? AND tenant_id=? AND status='active'`, [decoded.id, tenant.id])
       if (!m) return res.status(403).json({ error: 'Kein Zugriff' })
     }
-    const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, tenant.id])
-    if (!contract) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
-    // Klauseln LIVE aus der Baustein-Bibliothek (aktuellste Version, nicht archiviert),
-    // damit sich der Vertrag bei Änderungen/Neu-Seed automatisch anpasst (kein eingefrorener Snapshot).
-    const clausesRaw = await db.all(
-      `SELECT c.id, c.title,
-              (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body
-       FROM booking_clauses c
-       WHERE c.tenant_id=? AND c.archived_at IS NULL
-       ORDER BY c.sort_order, c.id`, [tenant.id])
-    // Pro-Vertrag Overrides: Häkchen aus → Baustein weglassen; eigener Text → statt Bibliothekstext.
-    const ovRows = await db.all('SELECT clause_id, included, body FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [req.params.id, tenant.id])
-    const ov = new Map(ovRows.map(o => [o.clause_id, o]))
-    // Reihenfolge = sort_order aus der Bibliothek (Query ist bereits so sortiert); Overrides anwenden.
-    const clauses = clausesRaw
-      .filter(c => { const o = ov.get(c.id); return !o || o.included !== 0 })
-      .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
-    const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
-    const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [req.params.id, tenant.id])
-    const bset = await getBookingSettings(tenant.id)
+    const input = await buildContractPdfInput(tenant, req.params.id)
+    if (!input) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
     const { generateContractPdf } = require('./generate_contract_pdf')
-    const pdf = await generateContractPdf({
-      contract: { ...contract, logoPath: tenant.label_logo_path },
-      clauses, ticketSales, costLines, settings: bset,
-      artist: resolveIssuer(contract, bset, tenant),
-    })
+    const pdf = await generateContractPdf(input)
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `inline; filename="Vertrag_${contract.contract_no || contract.id}.pdf"`)
+    res.setHeader('Content-Disposition', `inline; filename="Vertrag_${input.contract.contract_no || input.contract.id}.pdf"`)
+    res.send(pdf)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Booking: Vertrags-Versionen (Einfrieren beim Verschicken) ────────────────
+// Der Entwurf rendert live aus der Bibliothek; „festschreiben" friert den aktuellen
+// Stand als unveränderlichen Snapshot (JSON) ein, der sich später nicht mehr ändert.
+// POST /api/booking/contracts/:id/versions — aktuellen Stand als neue Version einfrieren
+app.post('/api/booking/contracts/:id/versions', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const input = await buildContractPdfInput(req.tenant, req.params.id)
+    if (!input) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const row = await db.get('SELECT COALESCE(MAX(version),0) AS m FROM booking_contract_versions WHERE contract_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    const version = row.m + 1
+    const label = (req.body && typeof req.body.label === 'string') ? req.body.label.trim() : ''
+    const r = await db.run(
+      'INSERT INTO booking_contract_versions (tenant_id, contract_id, version, label, snapshot, created_by) VALUES (?,?,?,?,?,?)',
+      [req.tenant.id, req.params.id, version, label || null, JSON.stringify(input), req.user.id])
+    res.json({ ok: true, id: r.lastID, version })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/contracts/:id/versions — Liste der eingefrorenen Versionen (ohne Snapshot)
+app.get('/api/booking/contracts/:id/versions', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const versions = await db.all(
+      'SELECT id, version, label, created_at FROM booking_contract_versions WHERE contract_id=? AND tenant_id=? ORDER BY version DESC',
+      [req.params.id, req.tenant.id])
+    res.json({ versions })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/booking/contracts/:id/versions/:vid — Fehl-Festschreibung zurücknehmen
+app.delete('/api/booking/contracts/:id/versions/:vid', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    await db.run('DELETE FROM booking_contract_versions WHERE id=? AND contract_id=? AND tenant_id=?', [req.params.vid, req.params.id, req.tenant.id])
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// GET /api/booking/contracts/:id/versions/:vid/pdf — eingefrorene Version als PDF (aus Snapshot)
+app.get('/api/booking/contracts/:id/versions/:vid/pdf', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token
+    let decoded
+    try { decoded = jwt.verify(token, JWT_SECRET) } catch { return res.status(401).json({ error: 'Nicht autorisiert' }) }
+    const tenantSlug = req.query.tenant || req.headers['x-tenant-slug']
+    const tenant = await db.get('SELECT * FROM tenants WHERE slug=?', [tenantSlug])
+    if (!tenant) return res.status(404).json({ error: 'Tenant nicht gefunden' })
+    if (!decoded.isSuperadmin) {
+      const m = await db.get(`SELECT 1 FROM user_tenants WHERE user_id=? AND tenant_id=? AND status='active'`, [decoded.id, tenant.id])
+      if (!m) return res.status(403).json({ error: 'Kein Zugriff' })
+    }
+    const v = await db.get('SELECT snapshot, version FROM booking_contract_versions WHERE id=? AND contract_id=? AND tenant_id=?', [req.params.vid, req.params.id, tenant.id])
+    if (!v) return res.status(404).json({ error: 'Version nicht gefunden' })
+    const input = JSON.parse(v.snapshot)
+    const { generateContractPdf } = require('./generate_contract_pdf')
+    const pdf = await generateContractPdf(input)
+    res.setHeader('Content-Type', 'application/pdf')
+    const no = (input.contract && (input.contract.contract_no || input.contract.id)) || req.params.id
+    res.setHeader('Content-Disposition', `inline; filename="Vertrag_${no}_v${v.version}.pdf"`)
     res.send(pdf)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

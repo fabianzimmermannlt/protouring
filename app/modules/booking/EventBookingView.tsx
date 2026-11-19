@@ -6,12 +6,13 @@ import { SortableList } from '@/app/components/shared/SortableList'
 import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
+  createBookingContractVersion, getBookingContractVersions, deleteBookingContractVersion, openBookingContractVersionPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   previewBookingInvoice, openBookingSettlementPdf, type SettlementKA,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
   getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
-  type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner,
+  type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner, type BookingContractVersion,
 } from '@/lib/api-client'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
 import { HelpTip } from '@/app/components/shared/HelpTip'
@@ -273,15 +274,29 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [invBusy, setInvBusy] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [versions, setVersions] = useState<BookingContractVersion[]>([])
+  const [freezeBusy, setFreezeBusy] = useState(false)
   const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
   useEffect(() => {
     getBookingClauses().then(setClauses).catch(() => {})
+    getBookingContractVersions(booking.id).then(setVersions).catch(() => {})
     getTerminPartners(termin.id).then(setEventPartners).catch(() => {})
     getPartnerTypes().then(ts => setRoleOptions(ts.filter(t => t.visible).map(t => t.name))).catch(() => {})
     loadInvoices()
-  }, [loadInvoices, termin.id])
+  }, [loadInvoices, termin.id, booking.id])
+
+  // Aktuellen Entwurf als unveränderliche Version einfrieren (für Versand/Signatur).
+  const freezeVersion = async () => {
+    setFreezeBusy(true)
+    try { await createBookingContractVersion(booking.id); setVersions(await getBookingContractVersions(booking.id)) } catch { /* ignore */ }
+    setFreezeBusy(false)
+  }
+  const removeVersion = async (v: BookingContractVersion) => {
+    if (!confirm(`Festgeschriebene Version v${v.version} löschen?`)) return
+    try { await deleteBookingContractVersion(booking.id, v.id); setVersions(await getBookingContractVersions(booking.id)) } catch { /* ignore */ }
+  }
 
   // Kapazität: eine Quelle = der Venue-Datensatz. Beim Laden aus dem Venue vorbefüllen
   // (wenn im Booking noch leer); Änderungen hier werden beim Speichern in den Venue
@@ -978,7 +993,29 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <label className="form-label">Individualvereinbarungen (haben Vorrang)</label>
           <textarea className="form-input" rows={3} disabled={!isAdmin} value={f.individual_terms ?? ''} onChange={e => set({ individual_terms: e.target.value })} placeholder="Abweichungen/Zusätze, die mit der Gegenpartei vereinbart wurden – z. B. handschriftliche Änderungen aus der Verhandlung." />
         </div>
-        <button onClick={() => openBookingContractPdf(booking.id)} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />Vertrag-PDF</button>
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => openBookingContractPdf(booking.id)} className="btn btn-ghost"><DocumentArrowDownIcon className="w-4 h-4" />Vertrag-PDF (Entwurf)</button>
+            {isAdmin && <button onClick={freezeVersion} disabled={freezeBusy} className="btn btn-ghost">{freezeBusy ? 'Schreibe fest…' : 'Vertragsstand festschreiben'}</button>}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Der Entwurf wird live aus der Baustein-Bibliothek erzeugt. „Festschreiben" friert den aktuellen Stand als Version ein – diese ändert sich danach nicht mehr (für Versand &amp; Signatur). Nach Kommentaren der Gegenseite einfach erneut festschreiben = neue Version.</p>
+          {versions.length > 0 && (
+            <div className="border rounded-lg p-2" style={{ borderColor: 'var(--border)' }}>
+              <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Festgeschriebene Versionen</div>
+              <ul className="flex flex-col gap-1">
+                {versions.map(v => (
+                  <li key={v.id} className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">v{v.version}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{new Date(v.created_at.replace(' ', 'T') + 'Z').toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    {v.label && <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>{v.label}</span>}
+                    <button onClick={() => openBookingContractVersionPdf(booking.id, v.id)} className="btn btn-ghost ml-auto" style={{ padding: '2px 8px' }}><DocumentArrowDownIcon className="w-4 h-4" />PDF</button>
+                    {isAdmin && <button onClick={() => removeVersion(v)} className="text-xs" title="Version löschen" style={{ color: 'var(--danger)' }}>×</button>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </fieldset>
 
       {/* ── Bereich 2: Abrechnung (Zahlen nach der Show) ── */}

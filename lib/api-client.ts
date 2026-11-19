@@ -4063,6 +4063,24 @@ function openBookingPdf(path: string): void {
   if (typeof window !== 'undefined') window.open(`${API_BASE}/api/booking/${path}/pdf?${params}`, '_blank')
 }
 
+/** Eingefrorene Vertrags-Version (Snapshot beim Festschreiben/Verschicken). */
+export interface BookingContractVersion { id: number; version: number; label: string | null; created_at: string }
+/** Friert den aktuellen Vertragsstand als unveränderliche Version ein. */
+export async function createBookingContractVersion(contractId: number, label?: string): Promise<{ version: number; id: number }> {
+  return await request<{ version: number; id: number }>(`/api/booking/contracts/${contractId}/versions`, { method: 'POST', body: { label: label ?? '' } })
+}
+export async function getBookingContractVersions(contractId: number): Promise<BookingContractVersion[]> {
+  const res = await request<{ versions: BookingContractVersion[] }>(`/api/booking/contracts/${contractId}/versions`)
+  return res.versions
+}
+export async function deleteBookingContractVersion(contractId: number, versionId: number): Promise<void> {
+  await request(`/api/booking/contracts/${contractId}/versions/${versionId}`, { method: 'DELETE' })
+}
+/** Öffnet das PDF einer eingefrorenen Version (aus dem Snapshot) in neuem Tab. */
+export function openBookingContractVersionPdf(contractId: number, versionId: number): void {
+  openBookingPdf(`contracts/${contractId}/versions/${versionId}`)
+}
+
 export interface BookingSettlement { revenue: number; due: number; deposit: number; remaining: number }
 export async function getBookingSettlement(contractId: number): Promise<BookingSettlement> {
   const res = await request<{ settlement: BookingSettlement }>(`/api/booking/contracts/${contractId}/settlement`)
