@@ -368,7 +368,7 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
           '2': () => { buyoutsRendered = true; if (costRows.length) drawTable('Buyouts (zzgl. gesetzlicher USt.)', ['Leistung', 'Kosten (netto)', 'USt'], costRows, [CONTENT_W - 130 - 70, 130, 70], IND1); else drawKV(null, [['Buyouts', 'keine']], IND1); },
           '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'PK', 'Betrag (brutto)'], refundRows, [CONTENT_W - 90 - 150, 90, 150], IND1); } },
           '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150], IND1),
-          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]], IND1); },
+          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\r\n/g, '\n').trim()]], IND1); },
         };
       } else if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
         inject = {
