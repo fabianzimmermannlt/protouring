@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses, reorderBookingClauses,
-  getBookingClauseTemplates, createBookingClauseTemplate, updateBookingClauseTemplate, deleteBookingClauseTemplate, getPartners,
+  getBookingClauseTemplates, createBookingClauseTemplate, deleteBookingClauseTemplate,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
   getBookingSettings, updateBookingSettings, getTenantArtistSettings,
@@ -15,6 +15,7 @@ import {
   type BookingClauseTemplate, type Partner,
 } from '@/lib/api-client'
 import { DEAL_MODEL_TABS, parseDealModels, templateKey } from '@/lib/booking/deal-models'
+import { PartnerPickerModal } from '@/app/components/shared/modals/PartnerPickerModal'
 
 const nnum2 = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 const eur2 = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
@@ -64,7 +65,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   const [vorlage, setVorlage] = useState<string>('fkp')
   const [group, setGroup] = useState<string>('all')
   const [templates, setTemplates] = useState<BookingClauseTemplate[]>([])
-  const [partners, setPartners] = useState<Partner[]>([])
+  const [showAddPartner, setShowAddPartner] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -72,32 +73,20 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   }, [showArchived])
   useEffect(() => { load() }, [load])
 
-  // Vorlagen (Agentur/Vertragswelten) + Partner (für optionale Verknüpfung) laden.
+  // Vertragswelten laden: „Allgemein" (für alle Verträge) + die hinzugefügten Partner.
   useEffect(() => {
-    getBookingClauseTemplates().then(list => { setTemplates(list); setVorlage(prev => list.find(t => t.key === prev) ? prev : (list[0]?.key ?? 'fkp')) }).catch(() => {})
-    getPartners().then(setPartners).catch(() => {})
+    getBookingClauseTemplates().then(list => { setTemplates(list); setVorlage(prev => list.find(t => t.key === prev) ? prev : (list.find(t => t.key === 'allgemein')?.key ?? list[0]?.key ?? 'allgemein')) }).catch(() => {})
   }, [])
 
   const activeTpl = templates.find(t => t.key === vorlage) || null
-  const addTemplate = async () => {
-    const name = window.prompt('Name der neuen Vorlage (z. B. Agentur XY):')?.trim()
-    if (!name) return
-    try { const r = await createBookingClauseTemplate(name); setTemplates(await getBookingClauseTemplates()); setVorlage(r.key); setGroup('all') } catch { /* ignore */ }
-  }
-  const renameTemplate = async () => {
-    if (!activeTpl) return
-    const name = window.prompt('Vorlage umbenennen:', activeTpl.name)?.trim()
-    if (!name) return
-    try { await updateBookingClauseTemplate(activeTpl.id, { name }); setTemplates(await getBookingClauseTemplates()) } catch { /* ignore */ }
+  const addPartnerWorld = async (partner: Partner) => {
+    setShowAddPartner(false)
+    try { const r = await createBookingClauseTemplate(Number(partner.id)); setTemplates(await getBookingClauseTemplates()); setVorlage(r.key); setGroup('all') } catch { /* ignore */ }
   }
   const removeTemplate = async () => {
-    if (!activeTpl) return
-    if (!confirm(`Vorlage „${activeTpl.name}" und ALLE darin enthaltenen Bausteine löschen?`)) return
-    try { await deleteBookingClauseTemplate(activeTpl.id); const list = await getBookingClauseTemplates(); setTemplates(list); setVorlage(list[0]?.key ?? 'fkp'); load() } catch { /* ignore */ }
-  }
-  const linkPartner = async (pid: number | null) => {
-    if (!activeTpl) return
-    try { await updateBookingClauseTemplate(activeTpl.id, { partner_id: pid }); setTemplates(await getBookingClauseTemplates()) } catch { /* ignore */ }
+    if (!activeTpl || activeTpl.key === 'allgemein') return
+    if (!confirm(`„${activeTpl.name}" und ALLE darin verfassten Bausteine aus dem Booking entfernen? (Der Partner selbst bleibt in den Stammdaten.)`)) return
+    try { await deleteBookingClauseTemplate(activeTpl.id); const list = await getBookingClauseTemplates(); setTemplates(list); setVorlage(list.find(t => t.key === 'allgemein')?.key ?? list[0]?.key ?? 'allgemein'); load() } catch { /* ignore */ }
   }
 
   // Angezeigte Bausteine: aktuelle Vorlage (Agentur-Set) UND Reiter-Gruppe
@@ -137,38 +126,29 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         Platzhalter: <code>{'{{gage}}'}</code> <code>{'{{deal}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{stadt}}'}</code> <code>{'{{venue}}'}</code> <code>{'{{partner}}'}</code> <code>{'{{artist}}'}</code> <code>{'{{ticketpreis}}'}</code> <code>{'{{anzahlung}}'}</code>.
       </p>
 
-      {/* Vorlagen (Agentur/Vertragswelten) – verwaltbar: anlegen, umbenennen, löschen, optional Partner verknüpfen. */}
+      {/* Vertragswelten: „Allgemein" (gilt für JEDEN Vertrag) + deine Partner. Partner über den normalen Picker hinzufügen. */}
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Vorlage:</span>
           {templates.map(t => (
             <button key={t.id} onClick={() => { setVorlage(t.key); setGroup('all') }} className={`px-3 py-1 text-sm rounded-lg transition-colors ${vorlage === t.key ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}>{t.name}</button>
           ))}
-          {canEdit && <button onClick={addTemplate} className="px-2 py-1 text-sm rounded-lg text-[var(--text-muted)] hover:bg-[var(--hover)] inline-flex items-center gap-1" title="Neue Vorlage"><PlusIcon className="w-4 h-4" />Neu</button>}
+          {canEdit && <button onClick={() => setShowAddPartner(true)} className="px-2 py-1 text-sm rounded-lg text-[var(--text-muted)] hover:bg-[var(--hover)] inline-flex items-center gap-1" title="Partner als Vertragswelt hinzufügen"><PlusIcon className="w-4 h-4" />Partner</button>}
         </div>
-        {canEdit && activeTpl && (
-          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-            <button onClick={renameTemplate} className="hover:text-[var(--text)]">Umbenennen</button>
-            <span>·</span>
-            <button onClick={removeTemplate} className="hover:opacity-80" style={{ color: 'var(--danger)' }}>Löschen</button>
-            <span>·</span>
-            <label>Partner (optional):</label>
-            <select className="form-input" style={{ width: 'auto', padding: '2px 6px' }} value={activeTpl.partner_id ?? ''} onChange={e => linkPartner(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">— keiner —</option>
-              {partners.map(p => <option key={p.id} value={p.id}>{p.companyName}</option>)}
-            </select>
+        {canEdit && activeTpl && activeTpl.key !== 'allgemein' && (
+          <div className="text-xs">
+            <button onClick={removeTemplate} className="hover:opacity-80" style={{ color: 'var(--danger)' }}>„{activeTpl.name}" aus dem Booking entfernen</button>
           </div>
         )}
       </div>
 
       {/* Reiter: Allgemein + je Deal-Variante. Darunter nur die Bausteine der Gruppe. */}
       <div className="flex flex-wrap items-center gap-1 border-b pb-2" style={{ borderColor: 'var(--border)' }}>
-        {[{ id: 'all', label: 'Allgemein' }, ...DEAL_MODEL_TABS].map(t => (
+        {[{ id: 'all', label: 'Alle Deals' }, ...DEAL_MODEL_TABS].map(t => (
           <button key={t.id} onClick={() => setGroup(t.id)} className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${group === t.id ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}>{t.label}</button>
         ))}
       </div>
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        <strong>Allgemein</strong> kommt in jeden Vertrag. Bausteine unter einem Deal-Modell kommen nur in Verträge mit <strong>genau diesem Deal</strong> – so z. B. der passende Vergütungs-§ je Deal. Die Zuordnung legst du beim Bearbeiten eines Bausteins fest.
+        <strong>Alle Deals</strong> = Bausteine dieser Vertragswelt, die bei jedem Deal gelten; die übrigen Reiter nur beim jeweiligen Deal-Modell (z. B. der passende Vergütungs-§). Die Vertragswelt <strong>Allgemein</strong> (oben) kommt zusätzlich in <strong>jeden</strong> Vertrag.
       </p>
 
       <div className="flex items-center gap-1">
@@ -179,7 +159,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
       {loading ? (
         <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
       ) : shown.length === 0 ? (
-        <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{showArchived ? 'Kein archivierter Baustein' : (group === 'all' ? 'Keine allgemeinen Bausteine' : 'Keine Bausteine für dieses Deal-Modell – mit „Neuer Baustein" einen anlegen.')}</div>
+        <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{showArchived ? 'Kein archivierter Baustein' : 'Hier noch keine Bausteine – mit „Neuer Baustein" einen anlegen.'}</div>
       ) : (
         <div className="space-y-2">
           {shown.map((c, i) => (
@@ -215,6 +195,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
 
       {modal && <ClauseModal clause={modal.clause} defaultGroup={modal.group} defaultTemplate={modal.vorlage} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
       {historyFor && <HistoryModal clause={historyFor} onClose={() => setHistoryFor(null)} />}
+      {showAddPartner && <PartnerPickerModal existingPartnerIds={templates.filter(t => t.partner_id).map(t => t.partner_id as number)} onSelect={addPartnerWorld} onClose={() => setShowAddPartner(false)} />}
     </div>
   )
 }

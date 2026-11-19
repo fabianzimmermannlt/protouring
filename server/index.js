@@ -2218,16 +2218,12 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_clauses ADD COLUMN template TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN template TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_clause_templates ADD COLUMN partner_id INTEGER`); } catch {}
-  // Bestandsklauseln ohne Vorlage auf „fkp" normalisieren (damit Löschen der FKP-Vorlage sie miterfasst).
+  // Bestandsklauseln ohne Vorlage auf „fkp" normalisieren.
   try { await db.run(`UPDATE booking_clauses SET template='fkp' WHERE template IS NULL`); } catch {}
-  // Vorlagen-Startwerte: Tenants ohne JEDE Vorlage bekommen FKP + Standard (einmalig; gezielt gelöschte
-  // bleiben gelöscht, solange noch mindestens eine andere Vorlage existiert).
-  try {
-    await db.run(`INSERT INTO booking_clause_templates (tenant_id, key, name, sort_order)
-      SELECT t.id, v.key, v.name, v.so FROM tenants t
-      CROSS JOIN (SELECT 'fkp' AS key, 'FKP' AS name, 0 AS so UNION ALL SELECT 'standard', 'Standard', 1) v
-      WHERE NOT EXISTS (SELECT 1 FROM booking_clause_templates x WHERE x.tenant_id=t.id)`)
-  } catch {}
+  // „Allgemein" (partner-unabhängig) sicherstellen – gilt für JEDEN Vertrag, immer erster Eintrag.
+  try { await db.run(`INSERT OR IGNORE INTO booking_clause_templates (tenant_id, key, name, sort_order) SELECT id, 'allgemein', 'Allgemein', -1 FROM tenants`) } catch {}
+  // Leere „standard"-Demo-Vorlage entfernen (durch „Allgemein" abgelöst).
+  try { await db.run(`DELETE FROM booking_clause_templates WHERE key='standard' AND NOT EXISTS (SELECT 1 FROM booking_clauses c WHERE c.tenant_id = booking_clause_templates.tenant_id AND c.template='standard')`) } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -9982,22 +9978,28 @@ app.get('/api/booking/clauses', authenticateToken, requireTenant, async (req, re
 // GET /api/booking/clause-templates — Liste der Vorlagen des Tenants
 app.get('/api/booking/clause-templates', authenticateToken, requireTenant, async (req, res) => {
   try {
-    const templates = await db.all('SELECT id, key, name, partner_id, sort_order FROM booking_clause_templates WHERE tenant_id=? ORDER BY sort_order, id', [req.tenant.id])
+    const rows = await db.all(`SELECT t.id, t.key, t.name, t.partner_id, t.sort_order, p.company_name AS partner_name
+      FROM booking_clause_templates t LEFT JOIN partners p ON p.id = t.partner_id AND p.tenant_id = t.tenant_id
+      WHERE t.tenant_id=? ORDER BY t.sort_order, t.id`, [req.tenant.id])
+    // Name eines Partner-Eintrags = aktueller Firmenname (live aus den Stammdaten).
+    const templates = rows.map(r => ({ id: r.id, key: r.key, name: (r.partner_id && r.partner_name) ? r.partner_name : r.name, partner_id: r.partner_id, sort_order: r.sort_order }))
     res.json({ templates })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-// POST /api/booking/clause-templates — neue Vorlage { name, partner_id? }; stabiler key = tpl<id>
+// POST /api/booking/clause-templates — Partner als Vertragswelt hinzufügen { partner_id }; stabiler key = p<partner_id>
 app.post('/api/booking/clause-templates', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const name = (req.body && typeof req.body.name === 'string') ? req.body.name.trim() : ''
-    if (!name) return res.status(400).json({ error: 'Name ist Pflicht' })
-    const partnerId = (req.body && req.body.partner_id != null && req.body.partner_id !== '') ? Number(req.body.partner_id) : null
-    const row = await db.get('SELECT COALESCE(MAX(sort_order),-1) AS m FROM booking_clause_templates WHERE tenant_id=?', [req.tenant.id])
-    const r = await db.run('INSERT INTO booking_clause_templates (tenant_id, key, name, partner_id, sort_order) VALUES (?,?,?,?,?)', [req.tenant.id, 'pending', name, partnerId, row.m + 1])
-    const key = 'tpl' + r.lastID
-    await db.run('UPDATE booking_clause_templates SET key=? WHERE id=?', [key, r.lastID])
+    const partnerId = (req.body && req.body.partner_id != null && req.body.partner_id !== '') ? Number(req.body.partner_id) : 0
+    if (!partnerId) return res.status(400).json({ error: 'partner_id ist Pflicht' })
+    const p = await db.get('SELECT company_name FROM partners WHERE id=? AND tenant_id=?', [partnerId, req.tenant.id])
+    if (!p) return res.status(404).json({ error: 'Partner nicht gefunden' })
+    const key = 'p' + partnerId
+    const existing = await db.get('SELECT id FROM booking_clause_templates WHERE tenant_id=? AND key=?', [req.tenant.id, key])
+    if (existing) return res.json({ ok: true, id: existing.id, key })
+    const row = await db.get('SELECT COALESCE(MAX(sort_order),0) AS m FROM booking_clause_templates WHERE tenant_id=?', [req.tenant.id])
+    const r = await db.run('INSERT INTO booking_clause_templates (tenant_id, key, name, partner_id, sort_order) VALUES (?,?,?,?,?)', [req.tenant.id, key, p.company_name || ('Partner ' + partnerId), partnerId, row.m + 1])
     res.json({ ok: true, id: r.lastID, key })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -10023,6 +10025,7 @@ app.delete('/api/booking/clause-templates/:id', authenticateToken, requireTenant
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
     const row = await db.get('SELECT key FROM booking_clause_templates WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (row && row.key === 'allgemein') return res.status(400).json({ error: '„Allgemein" kann nicht gelöscht werden' })
     if (row) {
       await db.run('DELETE FROM booking_clause_versions WHERE tenant_id=? AND clause_id IN (SELECT id FROM booking_clauses WHERE tenant_id=? AND template=?)', [req.tenant.id, req.tenant.id, row.key])
       await db.run('DELETE FROM booking_clauses WHERE tenant_id=? AND template=?', [req.tenant.id, row.key])
@@ -10557,8 +10560,9 @@ async function buildContractPdfInput(tenant, contractId) {
   // Leeres deal_model zählt als „vs" (Default), damit Bestandsverträge ihren Vergütungs-§ behalten.
   const dealModel = contract.deal_model || 'vs'
   const dealMatch = (raw) => { let arr = []; try { arr = raw ? JSON.parse(raw) : [] } catch { arr = [] } if (!Array.isArray(arr) || !arr.length) return true; return arr.map(String).includes(dealModel) }
+  // §§ = Bausteine der gewählten Vertragswelt (Partner) ODER „Allgemein" (gilt für alle), dann Deal-Match.
   const clauses = clausesRaw
-    .filter(c => String(c.template || 'fkp') === tmpl)
+    .filter(c => { const ct = String(c.template || 'fkp'); return ct === tmpl || ct === 'allgemein' })
     .filter(c => { const o = ov.get(c.id); return o ? o.included !== 0 : dealMatch(c.deal_models) })
     .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
   const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])

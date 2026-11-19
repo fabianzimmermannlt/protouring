@@ -954,19 +954,19 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERTRAG</legend>
         {isAdmin && (
           <div className="mb-2 flex items-center gap-2 text-sm">
-            <label style={{ color: 'var(--text-muted)' }}>Vorlage:</label>
+            <label style={{ color: 'var(--text-muted)' }}>Vertragswelt:</label>
             <select className="form-input" style={{ width: 'auto' }} value={f.template || 'fkp'} onChange={e => set({ template: e.target.value })}>
               {clauseTemplates.map(t => <option key={t.id} value={t.key}>{t.name}</option>)}
             </select>
           </div>
         )}
-        {clauses.filter(c => !c.archived_at && templateKey(c.template) === (f.template || 'fkp')).length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Für diese Vorlage noch keine Bausteine – unter Booking → Bausteine (Vorlage wählen) anlegen.</p>
+        {clauses.filter(c => !c.archived_at && (templateKey(c.template) === (f.template || 'fkp') || templateKey(c.template) === 'allgemein')).length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Für diese Vertragswelt noch keine Bausteine – unter Booking → Bausteine anlegen.</p>
         ) : (
           <>
             <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vorausgewählt: „Allgemein" + die zum Deal „{dealModelLabel(f.deal_model || '') || '—'}" passenden Bausteine. Mit <strong>Bearbeiten</strong> passt du den Text nur für <strong>diesen Vertrag</strong> an (die Bibliothek bleibt unverändert). Variable Deal-Werte werden automatisch eingesetzt.</p>
             <div className="space-y-0.5 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 280, overflowY: 'auto' }}>
-              {clauses.filter(c => !c.archived_at && templateKey(c.template) === (f.template || 'fkp')).filter(c => { const t = parseDealModels(c.deal_models); const dm = f.deal_model || ''; return showOtherDeals || t.length === 0 || (!!dm && t.includes(dm)) }).map((c, i) => {
+              {clauses.filter(c => !c.archived_at && (templateKey(c.template) === (f.template || 'fkp') || templateKey(c.template) === 'allgemein')).filter(c => { const t = parseDealModels(c.deal_models); const dm = f.deal_model || ''; return showOtherDeals || t.length === 0 || (!!dm && t.includes(dm)) }).map((c, i) => {
                 const ov = clauseOv[c.id]
                 const dmt = parseDealModels(c.deal_models)
                 const mine = dmt.length === 0 || (!!(f.deal_model || '') && dmt.includes(f.deal_model || ''))
@@ -1011,7 +1011,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
             </div>
             {(() => {
               const dm = f.deal_model || ''
-              const others = clauses.filter(c => !c.archived_at && templateKey(c.template) === (f.template || 'fkp')).filter(c => { const t = parseDealModels(c.deal_models); return t.length > 0 && !(dm && t.includes(dm)) }).length
+              const others = clauses.filter(c => !c.archived_at && (templateKey(c.template) === (f.template || 'fkp') || templateKey(c.template) === 'allgemein')).filter(c => { const t = parseDealModels(c.deal_models); return t.length > 0 && !(dm && t.includes(dm)) }).length
               return others > 0 ? (
                 <button type="button" onClick={() => setShowOtherDeals(s => !s)} className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                   {showOtherDeals ? 'Andere Deal-Varianten ausblenden' : `+ ${others} Baustein(e) anderer Deal-Varianten anzeigen`}

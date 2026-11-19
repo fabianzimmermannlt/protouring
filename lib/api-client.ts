@@ -4012,8 +4012,9 @@ export async function getBookingClauseTemplates(): Promise<BookingClauseTemplate
   const res = await request<{ templates: BookingClauseTemplate[] }>('/api/booking/clause-templates')
   return res.templates
 }
-export async function createBookingClauseTemplate(name: string, partner_id?: number | null): Promise<{ id: number; key: string }> {
-  return await request<{ id: number; key: string }>('/api/booking/clause-templates', { method: 'POST', body: { name, partner_id: partner_id ?? null } })
+/** Fügt einen Partner als Vertragswelt hinzu (idempotent über den Partner). */
+export async function createBookingClauseTemplate(partnerId: number): Promise<{ id: number; key: string }> {
+  return await request<{ id: number; key: string }>('/api/booking/clause-templates', { method: 'POST', body: { partner_id: partnerId } })
 }
 export async function updateBookingClauseTemplate(id: number, data: { name?: string; partner_id?: number | null }): Promise<void> {
   await request(`/api/booking/clause-templates/${id}`, { method: 'PUT', body: data })
