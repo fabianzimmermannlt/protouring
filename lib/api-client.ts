@@ -3839,6 +3839,8 @@ export interface BookingClause {
   latest_version?: number
   latest_body?: string
   version_count?: number
+  /** JSON-Array der Deal-Modelle, denen dieser Baustein zugeordnet ist; leer/NULL = „Allgemein". */
+  deal_models?: string | null
 }
 
 export interface BookingClauseVersion {
@@ -3986,12 +3988,12 @@ export async function getBookingClauseVersions(id: number): Promise<BookingClaus
   const res = await request<{ versions: BookingClauseVersion[] }>(`/api/booking/clauses/${id}/versions`)
   return res.versions
 }
-export async function createBookingClause(data: { title: string; body?: string }): Promise<number> {
+export async function createBookingClause(data: { title: string; body?: string; deal_models?: string[] }): Promise<number> {
   const res = await request<{ id: number }>('/api/booking/clauses', { method: 'POST', body: data })
   return res.id
 }
-/** Titel ändern und/oder (newVersion:true) eine neue Version des Texts anlegen. */
-export async function updateBookingClause(id: number, data: { title?: string; body?: string; newVersion?: boolean }): Promise<void> {
+/** Titel/Deal-Zuordnung ändern und/oder (newVersion:true) eine neue Version des Texts anlegen. */
+export async function updateBookingClause(id: number, data: { title?: string; body?: string; newVersion?: boolean; deal_models?: string[] }): Promise<void> {
   await request(`/api/booking/clauses/${id}`, { method: 'PUT', body: data })
 }
 export async function archiveBookingClause(id: number, archived: boolean): Promise<void> {

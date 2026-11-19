@@ -14,6 +14,7 @@ import {
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner, type BookingContractVersion,
 } from '@/lib/api-client'
+import { parseDealModels, dealModelLabel } from '@/lib/booking/deal-models'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
 import { HelpTip } from '@/app/components/shared/HelpTip'
 import { PartnerPickerModal } from '@/app/components/shared/modals/PartnerPickerModal'
@@ -276,6 +277,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [pdfBusy, setPdfBusy] = useState(false)
   const [versions, setVersions] = useState<BookingContractVersion[]>([])
   const [freezeBusy, setFreezeBusy] = useState(false)
+  const [showOtherDeals, setShowOtherDeals] = useState(false)
   const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
@@ -356,9 +358,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)), ticket_systems: JSON.stringify(shops.map(s => ({ name: s.name.trim(), fee: String(s.fee ?? '').trim() })).filter(s => s.name)) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
-    // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
+    // Pro-Vertrag Baustein-Overrides: nur echte Abweichungen speichern. „Abweichung" = Häkchen
+    // weicht vom Deal-abhängigen Default (Allgemein oder passender Deal) ab ODER eigener Text.
+    const dmSel = f.deal_model || ''
     const ovList = Object.entries(clauseOv)
-      .filter(([, v]) => !v.included || (v.body || '').trim())
+      .filter(([cid, v]) => {
+        const t = parseDealModels(clauses.find(x => x.id === Number(cid))?.deal_models)
+        const mine = t.length === 0 || (!!dmSel && t.includes(dmSel))
+        return (!!v.included !== mine) || (v.body || '').trim()
+      })
       .map(([cid, v]) => ({ clause_id: Number(cid), included: v.included ? 1 : 0, body: v.body || '' }))
     await setBookingClauseOverrides(booking.id, ovList)
     // Kapazität in den Venue-Datensatz zurückschreiben (eine Quelle, keine Dopplung).
@@ -945,11 +953,13 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Bausteine – unter Booking → Bausteine anlegen (oder „FKP-Standard laden").</p>
         ) : (
           <>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Häkchen = Baustein im Vertrag enthalten. Mit <strong>Bearbeiten</strong> passt du den Text nur für <strong>diesen Vertrag</strong> an (die Bibliothek bleibt unverändert). Ohne Anpassung gilt immer der aktuelle Stand aus <strong>Booking → Bausteine</strong>. Variable Deal-Werte werden automatisch eingesetzt.</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vorausgewählt: „Allgemein" + die zum Deal „{dealModelLabel(f.deal_model || '') || '—'}" passenden Bausteine. Mit <strong>Bearbeiten</strong> passt du den Text nur für <strong>diesen Vertrag</strong> an (die Bibliothek bleibt unverändert). Variable Deal-Werte werden automatisch eingesetzt.</p>
             <div className="space-y-0.5 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 280, overflowY: 'auto' }}>
-              {clauses.filter(c => !c.archived_at).map((c, i) => {
+              {clauses.filter(c => !c.archived_at).filter(c => { const t = parseDealModels(c.deal_models); const dm = f.deal_model || ''; return showOtherDeals || t.length === 0 || (!!dm && t.includes(dm)) }).map((c, i) => {
                 const ov = clauseOv[c.id]
-                const included = ov ? ov.included : true
+                const dmt = parseDealModels(c.deal_models)
+                const mine = dmt.length === 0 || (!!(f.deal_model || '') && dmt.includes(f.deal_model || ''))
+                const included = ov ? ov.included : mine
                 const override = ov?.body ?? ''
                 const edited = !!override.trim()
                 const isEditing = editingClause === c.id
@@ -961,6 +971,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                       <span style={{ color: 'var(--text-subtle)', minWidth: 28 }}>§ {i + 1}</span>
                       <span style={{ opacity: included ? 1 : 0.45, textDecoration: included ? 'none' : 'line-through' }}>{c.title}</span>
                       {edited && <span className="text-xs" style={{ color: 'var(--accent)' }}>• angepasst</span>}
+                      {!mine && <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>· {dmt.map(dealModelLabel).join(', ')}</span>}
                       {isAdmin && included && (
                         <button type="button" onClick={() => setEditingClause(isEditing ? null : c.id)} className="btn btn-ghost ml-auto" style={{ padding: '2px 8px' }}>
                           {isEditing ? 'Fertig' : 'Bearbeiten'}
@@ -987,6 +998,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                 )
               })}
             </div>
+            {(() => {
+              const dm = f.deal_model || ''
+              const others = clauses.filter(c => !c.archived_at).filter(c => { const t = parseDealModels(c.deal_models); return t.length > 0 && !(dm && t.includes(dm)) }).length
+              return others > 0 ? (
+                <button type="button" onClick={() => setShowOtherDeals(s => !s)} className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {showOtherDeals ? 'Andere Deal-Varianten ausblenden' : `+ ${others} Baustein(e) anderer Deal-Varianten anzeigen`}
+                </button>
+              ) : null
+            })()}
           </>
         )}
         <div className="mt-3">

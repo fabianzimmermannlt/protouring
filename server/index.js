@@ -2201,6 +2201,8 @@ async function initDatabase() {
   // Preiskategorie je Kanal (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – für die §5.1-Tabellen.
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN category TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN rabattstufe TEXT`); } catch {}
+  // Baustein-Deal-Bindung: deal_models = JSON-Array der Deal-Modelle; NULL/leer = „Allgemein" (gilt für alle Deals).
+  try { await db.run(`ALTER TABLE booking_clauses ADD COLUMN deal_models TEXT`); } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -9981,11 +9983,12 @@ app.get('/api/booking/clauses/:id/versions', authenticateToken, requireTenant, a
 app.post('/api/booking/clauses', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { title, body = '' } = req.body
+    const { title, body = '', deal_models } = req.body
     if (!title) return res.status(400).json({ error: 'Titel ist Pflicht' })
+    const dm = Array.isArray(deal_models) && deal_models.length ? JSON.stringify(deal_models.map(String)) : null
     const r = await db.run(
-      `INSERT INTO booking_clauses (tenant_id, title) VALUES (?,?)`,
-      [req.tenant.id, title]
+      `INSERT INTO booking_clauses (tenant_id, title, deal_models) VALUES (?,?,?)`,
+      [req.tenant.id, title, dm]
     )
     await db.run(
       `INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)`,
@@ -10149,11 +10152,16 @@ app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, asyn
 app.put('/api/booking/clauses/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { title, body, newVersion } = req.body
+    const { title, body, newVersion, deal_models } = req.body
     const clause = await db.get('SELECT id FROM booking_clauses WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     if (!clause) return res.status(404).json({ error: 'Baustein nicht gefunden' })
     if (title != null) {
       await db.run(`UPDATE booking_clauses SET title=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?`, [title, req.params.id, req.tenant.id])
+    }
+    // deal_models: Array → JSON; leeres Array/anderes → NULL („Allgemein"). Nur bei mitgesendetem Feld.
+    if (deal_models !== undefined) {
+      const dm = Array.isArray(deal_models) && deal_models.length ? JSON.stringify(deal_models.map(String)) : null
+      await db.run(`UPDATE booking_clauses SET deal_models=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?`, [dm, req.params.id, req.tenant.id])
     }
     // Neue Version nur anlegen, wenn Body übergeben und als neue Version markiert (bzw. geändert)
     if (body != null && newVersion) {
@@ -10433,15 +10441,19 @@ async function buildContractPdfInput(tenant, contractId) {
   const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [contractId, tenant.id])
   if (!contract) return null
   const clausesRaw = await db.all(
-    `SELECT c.id, c.title,
+    `SELECT c.id, c.title, c.deal_models,
             (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body
      FROM booking_clauses c
      WHERE c.tenant_id=? AND c.archived_at IS NULL
      ORDER BY c.sort_order, c.id`, [tenant.id])
   const ovRows = await db.all('SELECT clause_id, included, body FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [contractId, tenant.id])
   const ov = new Map(ovRows.map(o => [o.clause_id, o]))
+  // Deal-Bindung: ein Baustein mit deal_models-Tag gehört nur zu diesen Deal-Modellen; ohne Tag = „Allgemein".
+  // Default-Aufnahme in den Vertrag = Allgemein ODER Tag passt zum deal_model des Vertrags. Pro-Vertrag-Override gewinnt.
+  const dealModel = contract.deal_model || ''
+  const dealMatch = (raw) => { let arr = []; try { arr = raw ? JSON.parse(raw) : [] } catch { arr = [] } if (!Array.isArray(arr) || !arr.length) return true; return !!dealModel && arr.map(String).includes(dealModel) }
   const clauses = clausesRaw
-    .filter(c => { const o = ov.get(c.id); return !o || o.included !== 0 })
+    .filter(c => { const o = ov.get(c.id); return o ? o.included !== 0 : dealMatch(c.deal_models) })
     .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
   const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])
   const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])

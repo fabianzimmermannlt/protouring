@@ -12,6 +12,7 @@ import {
   type TenantArtistSettings,
   type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type BookingSettings, type Termin,
 } from '@/lib/api-client'
+import { DEAL_MODEL_TABS, parseDealModels } from '@/lib/booking/deal-models'
 
 const nnum2 = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 const eur2 = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
@@ -56,8 +57,9 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   const [clauses, setClauses] = useState<BookingClause[]>([])
   const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<{ clause: BookingClause | null } | null>(null)
+  const [modal, setModal] = useState<{ clause: BookingClause | null; group: string } | null>(null)
   const [historyFor, setHistoryFor] = useState<BookingClause | null>(null)
+  const [group, setGroup] = useState<string>('all')
 
   const load = useCallback(() => {
     setLoading(true)
@@ -65,12 +67,18 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   }, [showArchived])
   useEffect(() => { load() }, [load])
 
-  // Reihenfolge verschieben (nur in der aktiven Liste); optimistisch + persistiert.
+  // Reiter-Gruppe: 'all' = Allgemein (ohne Deal-Tag), sonst ein Deal-Modell.
+  const inGroup = (c: BookingClause) => { const t = parseDealModels(c.deal_models); return group === 'all' ? t.length === 0 : t.includes(group) }
+  const shown = clauses.filter(inGroup)
+
+  // Reihenfolge verschieben – innerhalb der angezeigten Gruppe; der Rest bleibt an Ort und Stelle.
   const move = async (i: number, dir: -1 | 1) => {
     const j = i + dir
-    if (j < 0 || j >= clauses.length) return
-    const next = [...clauses]
-    ;[next[i], next[j]] = [next[j], next[i]]
+    if (j < 0 || j >= shown.length) return
+    const ns = [...shown]
+    ;[ns[i], ns[j]] = [ns[j], ns[i]]
+    let k = 0
+    const next = clauses.map(c => inGroup(c) ? ns[k++] : c)
     setClauses(next)
     try { await reorderBookingClauses(next.map(c => c.id)) } catch { load() }
   }
@@ -82,13 +90,23 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         {canEdit && !showArchived && (
           <div className="flex gap-2">
             <button onClick={async () => { if (!confirm('FKP-Standardbausteine laden/aktualisieren?\n\nVorhandene Bausteine werden auf den vollständigen Vertragstext aktualisiert (als neue Version – die Historie bleibt erhalten), fehlende §§ werden angelegt, alte gekürzte Bausteine werden archiviert.')) return; const r = await seedFkpClauses(); alert(`${r.created} angelegt, ${r.updated} aktualisiert, ${r.archived} archiviert.`); load() }} className="btn btn-ghost">FKP-Standard laden</button>
-            <button onClick={() => setModal({ clause: null })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
+            <button onClick={() => setModal({ clause: null, group })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
           </div>
         )}
       </div>
       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
         Feste Textbausteine für Verträge. Beim Bearbeiten kannst du eine <strong>neue Version</strong> speichern – alte Versionen bleiben erhalten.
         Platzhalter: <code>{'{{gage}}'}</code> <code>{'{{deal}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{stadt}}'}</code> <code>{'{{venue}}'}</code> <code>{'{{partner}}'}</code> <code>{'{{artist}}'}</code> <code>{'{{ticketpreis}}'}</code> <code>{'{{anzahlung}}'}</code>.
+      </p>
+
+      {/* Reiter: Allgemein + je Deal-Variante. Darunter nur die Bausteine der Gruppe. */}
+      <div className="flex flex-wrap items-center gap-1 border-b pb-2" style={{ borderColor: 'var(--border)' }}>
+        {[{ id: 'all', label: 'Allgemein' }, ...DEAL_MODEL_TABS].map(t => (
+          <button key={t.id} onClick={() => setGroup(t.id)} className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${group === t.id ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}>{t.label}</button>
+        ))}
+      </div>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        <strong>Allgemein</strong> kommt in jeden Vertrag. Bausteine unter einem Deal-Modell kommen nur in Verträge mit <strong>genau diesem Deal</strong> – so z. B. der passende Vergütungs-§ je Deal. Die Zuordnung legst du beim Bearbeiten eines Bausteins fest.
       </p>
 
       <div className="flex items-center gap-1">
@@ -98,11 +116,11 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
 
       {loading ? (
         <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Lädt…</div>
-      ) : clauses.length === 0 ? (
-        <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{showArchived ? 'Kein archivierter Baustein' : 'Noch keine Bausteine angelegt'}</div>
+      ) : shown.length === 0 ? (
+        <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{showArchived ? 'Kein archivierter Baustein' : (group === 'all' ? 'Keine allgemeinen Bausteine' : 'Keine Bausteine für dieses Deal-Modell – mit „Neuer Baustein" einen anlegen.')}</div>
       ) : (
         <div className="space-y-2">
-          {clauses.map((c, i) => (
+          {shown.map((c, i) => (
             <div key={c.id} className="border rounded-lg p-3" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -116,9 +134,9 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
                   <div className="flex gap-1 flex-shrink-0">
                     {!showArchived && <>
                       <button onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach oben"><ChevronUpIcon className="w-4 h-4" /></button>
-                      <button onClick={() => move(i, 1)} disabled={i === clauses.length - 1} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach unten"><ChevronDownIcon className="w-4 h-4" /></button>
+                      <button onClick={() => move(i, 1)} disabled={i === shown.length - 1} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach unten"><ChevronDownIcon className="w-4 h-4" /></button>
                       <button onClick={() => setHistoryFor(c)} className="p-1 text-gray-400 hover:text-blue-600" title={`Versionen (${c.version_count ?? 1})`}><ClockIcon className="w-4 h-4" /></button>
-                      <button onClick={() => setModal({ clause: c })} className="p-1 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
+                      <button onClick={() => setModal({ clause: c, group })} className="p-1 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
                       <button onClick={async () => { await archiveBookingClause(c.id, true); load() }} className="p-1 text-gray-400 hover:text-gray-700" title="Archivieren"><ArchiveBoxIcon className="w-4 h-4" /></button>
                     </>}
                     {showArchived && <>
@@ -133,15 +151,19 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         </div>
       )}
 
-      {modal && <ClauseModal clause={modal.clause} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
+      {modal && <ClauseModal clause={modal.clause} defaultGroup={modal.group} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
       {historyFor && <HistoryModal clause={historyFor} onClose={() => setHistoryFor(null)} />}
     </div>
   )
 }
 
-function ClauseModal({ clause, onClose, onSaved }: { clause: BookingClause | null; onClose: () => void; onSaved: () => void }) {
+function ClauseModal({ clause, defaultGroup, onClose, onSaved }: { clause: BookingClause | null; defaultGroup: string; onClose: () => void; onSaved: () => void }) {
   const [title, setTitle] = useState(clause?.title ?? '')
   const [body, setBody] = useState(clause?.latest_body ?? '')
+  const [group, setGroup] = useState<string>(() => {
+    const t = parseDealModels(clause?.deal_models)
+    return t.length ? t[0] : (clause ? 'all' : defaultGroup)
+  })
   const [saving, setSaving] = useState(false)
   const isEdit = !!clause
   const bodyChanged = isEdit && body !== (clause?.latest_body ?? '')
@@ -150,8 +172,9 @@ function ClauseModal({ clause, onClose, onSaved }: { clause: BookingClause | nul
     if (!title.trim()) return
     setSaving(true)
     try {
-      if (isEdit) await updateBookingClause(clause!.id, { title, body, newVersion: bodyChanged })
-      else await createBookingClause({ title, body })
+      const deal_models = group === 'all' ? [] : [group]
+      if (isEdit) await updateBookingClause(clause!.id, { title, body, newVersion: bodyChanged, deal_models })
+      else await createBookingClause({ title, body, deal_models })
       onSaved()
     } catch { setSaving(false) }
   }
@@ -167,6 +190,14 @@ function ClauseModal({ clause, onClose, onSaved }: { clause: BookingClause | nul
           <div>
             <label className="form-label">Titel</label>
             <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Leistungsumfang" autoFocus />
+          </div>
+          <div>
+            <label className="form-label">Deal-Zuordnung</label>
+            <select className="form-input" value={group} onChange={e => setGroup(e.target.value)}>
+              <option value="all">Allgemein – in jedem Vertrag</option>
+              {DEAL_MODEL_TABS.map(d => <option key={d.id} value={d.id}>Nur bei Deal: {d.label}</option>)}
+            </select>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Einem Deal-Modell zugeordnete Bausteine kommen nur in Verträge mit genau diesem Deal (z. B. der passende Vergütungs-§).</p>
           </div>
           <div>
             <label className="form-label">Text</label>
