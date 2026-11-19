@@ -10557,8 +10557,10 @@ async function buildContractPdfInput(tenant, contractId) {
   // Vorlage (Agentur-Set): nur Bausteine der Vorlage des Vertrags; leer = „fkp" (Bestand).
   const tmpl = String(contract.template || 'fkp')
   // Deal-Bindung: Baustein mit deal_models-Tag nur für diese Deal-Modelle; ohne Tag = „Allgemein".
+  // Basis (gross/net) steckt im Break-Even: deal_base='netprofit' → Netto-§4 (vs_break), sonst Struktur.
   // Leeres deal_model zählt als „vs" (Default), damit Bestandsverträge ihren Vergütungs-§ behalten.
-  const dealModel = contract.deal_model || 'vs'
+  const dealStruct = contract.deal_model === 'vs_break' ? 'vs' : (contract.deal_model || 'vs')
+  const dealModel = (contract.deal_base === 'netprofit') ? 'vs_break' : dealStruct
   const dealMatch = (raw) => { let arr = []; try { arr = raw ? JSON.parse(raw) : [] } catch { arr = [] } if (!Array.isArray(arr) || !arr.length) return true; return arr.map(String).includes(dealModel) }
   // §§ = Bausteine der gewählten Vertragswelt (Partner) ODER „Allgemein" (gilt für alle), dann Deal-Match.
   const clauses = clausesRaw

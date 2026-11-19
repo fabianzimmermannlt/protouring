@@ -83,19 +83,13 @@ function NumInput({ value, onChange, kind = 'money', disabled, readOnly, placeho
 }
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
-const DEAL_BASE = [
-  { id: 'gross', label: 'Netto-Ticketumsatz (% of gross)' },
-  { id: 'netprofit', label: 'Nettogewinn ab Break-Even (% of net)' },
-]
-// Zusammensetzbares Deal-Modell: wenige Bausteine (Fixgage? Beteiligung? Verhältnis? Basis?),
-// aus denen sich alle gängigen Deals ergeben. Die Presets setzen nur die Schalter;
-// der Rechner bleibt generisch. „custom" blendet alle Schalter einzeln ein.
-const DEAL_MODELS: { id: string; label: string; fix: boolean; part: boolean; type?: string; base?: string }[] = [
-  { id: 'fix', label: 'Fixgage', fix: true, part: false, type: 'guarantee' },
-  { id: 'participation', label: 'Nur Beteiligung (ggf. mit Stufen)', fix: false, part: true, type: 'vs', base: 'gross' },
-  { id: 'vs', label: 'Fixgage gegen Beteiligung – das Höhere', fix: true, part: true, type: 'vs', base: 'gross' },
-  { id: 'plus', label: 'Fixgage plus Beteiligung', fix: true, part: true, type: 'plus', base: 'gross' },
-  { id: 'vs_break', label: 'Fixgage gegen Beteiligung ab Break-Even', fix: true, part: true, type: 'vs', base: 'netprofit' },
+// 4 Deal-Arten + „Benutzerdefiniert". Gross vs. Net ergibt sich NICHT aus dem Modell,
+// sondern aus dem Schwellenwert/Break-Even (0 = ganzer Umsatz = gross; >0 = nur darüber = net).
+const DEAL_MODELS: { id: string; label: string; fix: boolean; part: boolean; type?: string }[] = [
+  { id: 'fix', label: 'Nur Garantie (Fixgage)', fix: true, part: false, type: 'guarantee' },
+  { id: 'participation', label: 'Nur Beteiligung (ggf. mit Stufen)', fix: false, part: true, type: 'vs' },
+  { id: 'vs', label: 'Garantie gegen Beteiligung – das Höhere', fix: true, part: true, type: 'vs' },
+  { id: 'plus', label: 'Garantie plus Beteiligung', fix: true, part: true, type: 'plus' },
 ]
 const TIER_BASIS = [
   { id: 'revenue', label: 'Netto-Umsatz (€)' },
@@ -103,7 +97,7 @@ const TIER_BASIS = [
 ]
 // Für Bestandsverträge ohne gespeichertes Preset: aus den vorhandenen Werten ableiten.
 const deriveDealModel = (b: { deal_model?: string | null; guarantee?: string | null; deal_base?: string | null; deal_type?: string | null; deal_tiers?: string | null; pct1?: string | null }): string => {
-  if (b.deal_model) return b.deal_model
+  if (b.deal_model) return b.deal_model === 'vs_break' ? 'vs' : b.deal_model   // Altbestand: vs_break → vs (Basis steckt jetzt im Break-Even)
   const num = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
   const hasFix = num(b.guarantee) > 0
   let hasPart = false
@@ -111,7 +105,7 @@ const deriveDealModel = (b: { deal_model?: string | null; guarantee?: string | n
   if (!hasPart && num(b.pct1) > 0) hasPart = true
   if (hasFix && !hasPart) return 'fix'
   if (!hasFix && hasPart) return 'participation'
-  if (hasFix && hasPart) return b.deal_base === 'netprofit' ? 'vs_break' : (b.deal_type === 'plus' ? 'plus' : 'vs')
+  if (hasFix && hasPart) return b.deal_type === 'plus' ? 'plus' : 'vs'
   return 'vs'
 }
 const VENUE_ROLE = 'Venue'
@@ -323,11 +317,13 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const cur = f.currency || 'EUR'
   const deductOwn = f.deduct_own_shop === '1'
   // Deal-Modell auflösen (steuert, welche Felder sichtbar sind und ob Stufen in die Rechnung gehen).
-  const dmId = f.deal_model ?? 'vs'
+  const dmId = f.deal_model === 'vs_break' ? 'vs' : (f.deal_model ?? 'vs')
   const isCustomDeal = dmId === 'custom'
   const dm = DEAL_MODELS.find(m => m.id === dmId)
   const showFix = isCustomDeal || (dm?.fix ?? true)
   const showPart = isCustomDeal || (dm?.part ?? true)
+  // Für die §4-/Baustein-Auswahl: Schwelle/Break-Even gesetzt (netprofit) → Netto-§4 (vs_break), sonst Struktur.
+  const effDealModel = (f.deal_base === 'netprofit' && showPart) ? 'vs_break' : (dmId === 'custom' ? (f.deal_type === 'plus' ? 'plus' : 'vs') : dmId)
   const tierOnTickets = f.tier_basis === 'tickets'
 
   // Refundierung je Händler als Map (Name → Gebühr) für den Rechenkern (vor globaler Standard-Gebühr).
@@ -363,7 +359,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     await setBookingCostLines(booking.id, costs)
     // Pro-Vertrag Baustein-Overrides: nur echte Abweichungen speichern. „Abweichung" = Häkchen
     // weicht vom Deal-abhängigen Default (Allgemein oder passender Deal) ab ODER eigener Text.
-    const dmSel = f.deal_model || ''
+    const dmSel = effDealModel
     const ovList = Object.entries(clauseOv)
       .filter(([cid, v]) => {
         const t = parseDealModels(clauses.find(x => x.id === Number(cid))?.deal_models)
@@ -434,7 +430,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     const m = DEAL_MODELS.find(x => x.id === id)
     const patch: Partial<BookingContractInput> = { deal_model: id }
     if (m?.type) patch.deal_type = m.type
-    if (m?.base) patch.deal_base = m.base
+    // Basis (gross/net) NICHT vom Modell setzen – ergibt sich aus dem Schwellenwert/Break-Even.
     set(patch)
   }
   // Parteien
@@ -806,12 +802,10 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                     <option value="plus">plus Fixgage – addiert</option>
                   </select></div>
               )}
-              <div><label className="form-label inline-flex items-center gap-1">Beteiligungs-Basis
-                <HelpTip text="Worauf die Prozente gerechnet werden. „Netto-Ticketumsatz“: vom gesamten Netto-Umsatz. „Nettogewinn ab Break-Even“: nur vom Umsatz oberhalb der fixen Break-Even-Summe des Veranstalters." /></label>
-                <select className="form-select" disabled={!isAdmin} value={f.deal_base ?? 'gross'} onChange={e => set({ deal_base: e.target.value })}>
-                  {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select></div>
-              {f.deal_base === 'netprofit' && In('Break-Even Veranstalter (netto)', 'promoter_costs', '0', 'Die fixe Break-Even-Summe des Veranstalters (eine Zahl, keine Positionsliste). Erst oberhalb dieses Betrags greift die Beteiligung.')}
+              <div><label className="form-label inline-flex items-center gap-1">Schwellenwert / Break-Even (netto)
+                <HelpTip text="Nur Einnahmen oberhalb dieses Werts werden geteilt. Leer/0 = der gesamte Netto-Ticketumsatz wird geteilt („% of gross“). Mit Wert = nur der Umsatz über dem Break-Even („% of net“) – z. B. die nachgewiesenen Veranstaltungskosten des Veranstalters. Das ersetzt die frühere Basis-Auswahl." /></label>
+                <NumInput kind="money" disabled={!isAdmin} value={(f.promoter_costs as string) ?? ''} onChange={v => set({ promoter_costs: v, deal_base: nnum(v) > 0 ? 'netprofit' : 'gross' })} placeholder="0" />
+              </div>
               <div><label className="form-label inline-flex items-center gap-1">Stufen-Basis
                 <HelpTip text="Woran die Stufen-Schwellen hängen: am Netto-Umsatz (€) oder an der verkauften Ticketzahl (Stück). Der Prozentsatz gilt jeweils für den Bereich oberhalb der Schwelle." /></label>
                 <select className="form-select" disabled={!isAdmin} value={f.tier_basis ?? 'revenue'} onChange={e => set({ tier_basis: e.target.value })}>
@@ -964,12 +958,12 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Für diese Vertragswelt noch keine Bausteine – unter Booking → Bausteine anlegen.</p>
         ) : (
           <>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vorausgewählt: „Allgemein" + die zum Deal „{dealModelLabel(f.deal_model || '') || '—'}" passenden Bausteine. Mit <strong>Bearbeiten</strong> passt du den Text nur für <strong>diesen Vertrag</strong> an (die Bibliothek bleibt unverändert). Variable Deal-Werte werden automatisch eingesetzt.</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Vorausgewählt: „Allgemein" + die zum Deal „{dealModelLabel(effDealModel) || '—'}" passenden Bausteine. Mit <strong>Bearbeiten</strong> passt du den Text nur für <strong>diesen Vertrag</strong> an (die Bibliothek bleibt unverändert). Variable Deal-Werte werden automatisch eingesetzt.</p>
             <div className="space-y-0.5 border rounded-lg p-2" style={{ borderColor: 'var(--border)', maxHeight: 280, overflowY: 'auto' }}>
-              {clauses.filter(c => !c.archived_at && (templateKey(c.template) === (f.template || 'fkp') || templateKey(c.template) === 'allgemein')).filter(c => { const t = parseDealModels(c.deal_models); const dm = f.deal_model || ''; return showOtherDeals || t.length === 0 || (!!dm && t.includes(dm)) }).map((c, i) => {
+              {clauses.filter(c => !c.archived_at && (templateKey(c.template) === (f.template || 'fkp') || templateKey(c.template) === 'allgemein')).filter(c => { const t = parseDealModels(c.deal_models); const dm = effDealModel; return showOtherDeals || t.length === 0 || (!!dm && t.includes(dm)) }).map((c, i) => {
                 const ov = clauseOv[c.id]
                 const dmt = parseDealModels(c.deal_models)
-                const mine = dmt.length === 0 || (!!(f.deal_model || '') && dmt.includes(f.deal_model || ''))
+                const mine = dmt.length === 0 || dmt.includes(effDealModel)
                 const included = ov ? ov.included : mine
                 const override = ov?.body ?? ''
                 const edited = !!override.trim()
@@ -1010,7 +1004,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
               })}
             </div>
             {(() => {
-              const dm = f.deal_model || ''
+              const dm = effDealModel
               const others = clauses.filter(c => !c.archived_at && (templateKey(c.template) === (f.template || 'fkp') || templateKey(c.template) === 'allgemein')).filter(c => { const t = parseDealModels(c.deal_models); return t.length > 0 && !(dm && t.includes(dm)) }).length
               return others > 0 ? (
                 <button type="button" onClick={() => setShowOtherDeals(s => !s)} className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
