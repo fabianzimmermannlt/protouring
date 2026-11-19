@@ -4005,6 +4005,22 @@ export async function archiveBookingClause(id: number, archived: boolean): Promi
 export async function deleteBookingClause(id: number): Promise<void> {
   await request(`/api/booking/clauses/${id}`, { method: 'DELETE' })
 }
+
+/** Vorlage (Agentur/Vertragswelt) – verwaltbarer Bereich für Bausteine, optional mit Partner verknüpft. */
+export interface BookingClauseTemplate { id: number; key: string; name: string; partner_id?: number | null; sort_order?: number }
+export async function getBookingClauseTemplates(): Promise<BookingClauseTemplate[]> {
+  const res = await request<{ templates: BookingClauseTemplate[] }>('/api/booking/clause-templates')
+  return res.templates
+}
+export async function createBookingClauseTemplate(name: string, partner_id?: number | null): Promise<{ id: number; key: string }> {
+  return await request<{ id: number; key: string }>('/api/booking/clause-templates', { method: 'POST', body: { name, partner_id: partner_id ?? null } })
+}
+export async function updateBookingClauseTemplate(id: number, data: { name?: string; partner_id?: number | null }): Promise<void> {
+  await request(`/api/booking/clause-templates/${id}`, { method: 'PUT', body: data })
+}
+export async function deleteBookingClauseTemplate(id: number): Promise<void> {
+  await request(`/api/booking/clause-templates/${id}`, { method: 'DELETE' })
+}
 /** FKP-Standardbausteine für den aktuellen Tenant anlegen (überspringt vorhandene Titel). */
 export async function seedFkpClauses(): Promise<{ created: number; updated: number; archived: number }> {
   const res = await request<{ created: number; updated?: number; archived?: number }>('/api/booking/clauses/seed-fkp', { method: 'POST' })

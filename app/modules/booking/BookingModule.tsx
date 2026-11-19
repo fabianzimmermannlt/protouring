@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentArrowDownIcon, ClockIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import {
   getBookingClauses, createBookingClause, updateBookingClause, archiveBookingClause, deleteBookingClause, getBookingClauseVersions, seedFkpClauses, reorderBookingClauses,
+  getBookingClauseTemplates, createBookingClauseTemplate, updateBookingClauseTemplate, deleteBookingClauseTemplate, getPartners,
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingInvoices, deleteBookingInvoice, openBookingInvoicePdf,
   getBookingSettings, updateBookingSettings, getTenantArtistSettings,
@@ -11,8 +12,9 @@ import {
   getTermine, getEffectiveRole, canEdit as canEditArea,
   type TenantArtistSettings,
   type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type BookingSettings, type Termin,
+  type BookingClauseTemplate, type Partner,
 } from '@/lib/api-client'
-import { DEAL_MODEL_TABS, parseDealModels, CLAUSE_TEMPLATES, templateKey } from '@/lib/booking/deal-models'
+import { DEAL_MODEL_TABS, parseDealModels, templateKey } from '@/lib/booking/deal-models'
 
 const nnum2 = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 const eur2 = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
@@ -61,12 +63,42 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   const [historyFor, setHistoryFor] = useState<BookingClause | null>(null)
   const [vorlage, setVorlage] = useState<string>('fkp')
   const [group, setGroup] = useState<string>('all')
+  const [templates, setTemplates] = useState<BookingClauseTemplate[]>([])
+  const [partners, setPartners] = useState<Partner[]>([])
 
   const load = useCallback(() => {
     setLoading(true)
     getBookingClauses({ archived: showArchived }).then(setClauses).catch(() => {}).finally(() => setLoading(false))
   }, [showArchived])
   useEffect(() => { load() }, [load])
+
+  // Vorlagen (Agentur/Vertragswelten) + Partner (für optionale Verknüpfung) laden.
+  useEffect(() => {
+    getBookingClauseTemplates().then(list => { setTemplates(list); setVorlage(prev => list.find(t => t.key === prev) ? prev : (list[0]?.key ?? 'fkp')) }).catch(() => {})
+    getPartners().then(setPartners).catch(() => {})
+  }, [])
+
+  const activeTpl = templates.find(t => t.key === vorlage) || null
+  const addTemplate = async () => {
+    const name = window.prompt('Name der neuen Vorlage (z. B. Agentur XY):')?.trim()
+    if (!name) return
+    try { const r = await createBookingClauseTemplate(name); setTemplates(await getBookingClauseTemplates()); setVorlage(r.key); setGroup('all') } catch { /* ignore */ }
+  }
+  const renameTemplate = async () => {
+    if (!activeTpl) return
+    const name = window.prompt('Vorlage umbenennen:', activeTpl.name)?.trim()
+    if (!name) return
+    try { await updateBookingClauseTemplate(activeTpl.id, { name }); setTemplates(await getBookingClauseTemplates()) } catch { /* ignore */ }
+  }
+  const removeTemplate = async () => {
+    if (!activeTpl) return
+    if (!confirm(`Vorlage „${activeTpl.name}" und ALLE darin enthaltenen Bausteine löschen?`)) return
+    try { await deleteBookingClauseTemplate(activeTpl.id); const list = await getBookingClauseTemplates(); setTemplates(list); setVorlage(list[0]?.key ?? 'fkp'); load() } catch { /* ignore */ }
+  }
+  const linkPartner = async (pid: number | null) => {
+    if (!activeTpl) return
+    try { await updateBookingClauseTemplate(activeTpl.id, { partner_id: pid }); setTemplates(await getBookingClauseTemplates()) } catch { /* ignore */ }
+  }
 
   // Angezeigte Bausteine: aktuelle Vorlage (Agentur-Set) UND Reiter-Gruppe
   // ('all' = Allgemein ohne Deal-Tag, sonst ein Deal-Modell).
@@ -105,12 +137,28 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         Platzhalter: <code>{'{{gage}}'}</code> <code>{'{{deal}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{stadt}}'}</code> <code>{'{{venue}}'}</code> <code>{'{{partner}}'}</code> <code>{'{{artist}}'}</code> <code>{'{{ticketpreis}}'}</code> <code>{'{{anzahlung}}'}</code>.
       </p>
 
-      {/* Vorlage (Agentur-Set) – über den Deal-Reitern. „fkp" ist vorbefüllt, „standard" offen für eigene/andere Verträge. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Vorlage:</span>
-        {CLAUSE_TEMPLATES.map(t => (
-          <button key={t.key} onClick={() => setVorlage(t.key)} className={`px-3 py-1 text-sm rounded-lg transition-colors ${vorlage === t.key ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}>{t.name}</button>
-        ))}
+      {/* Vorlagen (Agentur/Vertragswelten) – verwaltbar: anlegen, umbenennen, löschen, optional Partner verknüpfen. */}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Vorlage:</span>
+          {templates.map(t => (
+            <button key={t.id} onClick={() => { setVorlage(t.key); setGroup('all') }} className={`px-3 py-1 text-sm rounded-lg transition-colors ${vorlage === t.key ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}>{t.name}</button>
+          ))}
+          {canEdit && <button onClick={addTemplate} className="px-2 py-1 text-sm rounded-lg text-[var(--text-muted)] hover:bg-[var(--hover)] inline-flex items-center gap-1" title="Neue Vorlage"><PlusIcon className="w-4 h-4" />Neu</button>}
+        </div>
+        {canEdit && activeTpl && (
+          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <button onClick={renameTemplate} className="hover:text-[var(--text)]">Umbenennen</button>
+            <span>·</span>
+            <button onClick={removeTemplate} className="hover:opacity-80" style={{ color: 'var(--danger)' }}>Löschen</button>
+            <span>·</span>
+            <label>Partner (optional):</label>
+            <select className="form-input" style={{ width: 'auto', padding: '2px 6px' }} value={activeTpl.partner_id ?? ''} onChange={e => linkPartner(e.target.value ? Number(e.target.value) : null)}>
+              <option value="">— keiner —</option>
+              {partners.map(p => <option key={p.id} value={p.id}>{p.companyName}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Reiter: Allgemein + je Deal-Variante. Darunter nur die Bausteine der Gruppe. */}

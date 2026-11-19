@@ -7,14 +7,14 @@ import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   createBookingContractVersion, getBookingContractVersions, deleteBookingContractVersion, openBookingContractVersionPdf,
-  getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
+  getBookingClauses, getBookingClauseTemplates, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   previewBookingInvoice, openBookingSettlementPdf, type SettlementKA,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
   getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
-  type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner, type BookingContractVersion,
+  type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner, type BookingContractVersion, type BookingClauseTemplate,
 } from '@/lib/api-client'
-import { parseDealModels, dealModelLabel, CLAUSE_TEMPLATES, templateKey } from '@/lib/booking/deal-models'
+import { parseDealModels, dealModelLabel, templateKey } from '@/lib/booking/deal-models'
 import { AccordionSection } from '@/app/components/shared/AccordionSection'
 import { HelpTip } from '@/app/components/shared/HelpTip'
 import { PartnerPickerModal } from '@/app/components/shared/modals/PartnerPickerModal'
@@ -279,11 +279,13 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [versions, setVersions] = useState<BookingContractVersion[]>([])
   const [freezeBusy, setFreezeBusy] = useState(false)
   const [showOtherDeals, setShowOtherDeals] = useState(false)
+  const [clauseTemplates, setClauseTemplates] = useState<BookingClauseTemplate[]>([])
   const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
   useEffect(() => {
     getBookingClauses().then(setClauses).catch(() => {})
+    getBookingClauseTemplates().then(setClauseTemplates).catch(() => {})
     getBookingContractVersions(booking.id).then(setVersions).catch(() => {})
     getTerminPartners(termin.id).then(setEventPartners).catch(() => {})
     getPartnerTypes().then(ts => setRoleOptions(ts.filter(t => t.visible).map(t => t.name))).catch(() => {})
@@ -954,7 +956,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <div className="mb-2 flex items-center gap-2 text-sm">
             <label style={{ color: 'var(--text-muted)' }}>Vorlage:</label>
             <select className="form-input" style={{ width: 'auto' }} value={f.template || 'fkp'} onChange={e => set({ template: e.target.value })}>
-              {CLAUSE_TEMPLATES.map(t => <option key={t.key} value={t.key}>{t.name}</option>)}
+              {clauseTemplates.map(t => <option key={t.id} value={t.key}>{t.name}</option>)}
             </select>
           </div>
         )}

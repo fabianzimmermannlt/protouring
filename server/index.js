@@ -2064,6 +2064,17 @@ async function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS booking_clause_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
+      name TEXT NOT NULL,
+      partner_id INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(tenant_id, key),
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS booking_clause_versions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
@@ -2206,6 +2217,17 @@ async function initDatabase() {
   // Vorlage (Agentur-Set) für Bausteine + Verträge; NULL/leer = „fkp" (Bestand bleibt unverändert).
   try { await db.run(`ALTER TABLE booking_clauses ADD COLUMN template TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN template TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_clause_templates ADD COLUMN partner_id INTEGER`); } catch {}
+  // Bestandsklauseln ohne Vorlage auf „fkp" normalisieren (damit Löschen der FKP-Vorlage sie miterfasst).
+  try { await db.run(`UPDATE booking_clauses SET template='fkp' WHERE template IS NULL`); } catch {}
+  // Vorlagen-Startwerte: Tenants ohne JEDE Vorlage bekommen FKP + Standard (einmalig; gezielt gelöschte
+  // bleiben gelöscht, solange noch mindestens eine andere Vorlage existiert).
+  try {
+    await db.run(`INSERT INTO booking_clause_templates (tenant_id, key, name, sort_order)
+      SELECT t.id, v.key, v.name, v.so FROM tenants t
+      CROSS JOIN (SELECT 'fkp' AS key, 'FKP' AS name, 0 AS so UNION ALL SELECT 'standard', 'Standard', 1) v
+      WHERE NOT EXISTS (SELECT 1 FROM booking_clause_templates x WHERE x.tenant_id=t.id)`)
+  } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -9956,6 +9978,60 @@ app.get('/api/booking/clauses', authenticateToken, requireTenant, async (req, re
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
+// ── Booking: Vorlagen (Agentur/Vertragswelten; optional mit Partner verknüpft) ──
+// GET /api/booking/clause-templates — Liste der Vorlagen des Tenants
+app.get('/api/booking/clause-templates', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const templates = await db.all('SELECT id, key, name, partner_id, sort_order FROM booking_clause_templates WHERE tenant_id=? ORDER BY sort_order, id', [req.tenant.id])
+    res.json({ templates })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/booking/clause-templates — neue Vorlage { name, partner_id? }; stabiler key = tpl<id>
+app.post('/api/booking/clause-templates', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const name = (req.body && typeof req.body.name === 'string') ? req.body.name.trim() : ''
+    if (!name) return res.status(400).json({ error: 'Name ist Pflicht' })
+    const partnerId = (req.body && req.body.partner_id != null && req.body.partner_id !== '') ? Number(req.body.partner_id) : null
+    const row = await db.get('SELECT COALESCE(MAX(sort_order),-1) AS m FROM booking_clause_templates WHERE tenant_id=?', [req.tenant.id])
+    const r = await db.run('INSERT INTO booking_clause_templates (tenant_id, key, name, partner_id, sort_order) VALUES (?,?,?,?,?)', [req.tenant.id, 'pending', name, partnerId, row.m + 1])
+    const key = 'tpl' + r.lastID
+    await db.run('UPDATE booking_clause_templates SET key=? WHERE id=?', [key, r.lastID])
+    res.json({ ok: true, id: r.lastID, key })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/clause-templates/:id — umbenennen und/oder Partner verknüpfen
+app.put('/api/booking/clause-templates/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const b = req.body || {}
+    if (typeof b.name === 'string' && b.name.trim()) {
+      await db.run('UPDATE booking_clause_templates SET name=? WHERE id=? AND tenant_id=?', [b.name.trim(), req.params.id, req.tenant.id])
+    }
+    if (b.partner_id !== undefined) {
+      const pid = (b.partner_id != null && b.partner_id !== '') ? Number(b.partner_id) : null
+      await db.run('UPDATE booking_clause_templates SET partner_id=? WHERE id=? AND tenant_id=?', [pid, req.params.id, req.tenant.id])
+    }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// DELETE /api/booking/clause-templates/:id — Vorlage + ihre Bausteine (inkl. Versionen) löschen
+app.delete('/api/booking/clause-templates/:id', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const row = await db.get('SELECT key FROM booking_clause_templates WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (row) {
+      await db.run('DELETE FROM booking_clause_versions WHERE tenant_id=? AND clause_id IN (SELECT id FROM booking_clauses WHERE tenant_id=? AND template=?)', [req.tenant.id, req.tenant.id, row.key])
+      await db.run('DELETE FROM booking_clauses WHERE tenant_id=? AND template=?', [req.tenant.id, row.key])
+      await db.run('DELETE FROM booking_clause_templates WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    }
+    res.json({ ok: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // PUT /api/booking/clauses/reorder — Reihenfolge der Bausteine setzen (ids in gewünschter Reihenfolge).
 // MUSS vor der /:id-Route stehen, sonst matcht Express „reorder" als :id.
 app.put('/api/booking/clauses/reorder', authenticateToken, requireTenant, async (req, res) => {
@@ -10120,6 +10196,8 @@ const FKP_OBSOLETE_TITLES = new Set([
 app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
+    // FKP-Vorlage sicherstellen (falls zuvor gelöscht), damit „FKP laden" sie wiederherstellt.
+    await db.run(`INSERT OR IGNORE INTO booking_clause_templates (tenant_id, key, name, sort_order) VALUES (?, 'fkp', 'FKP', 0)`, [req.tenant.id])
     const existing = await db.all(
       `SELECT c.id, c.title, c.archived_at,
               (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body,
