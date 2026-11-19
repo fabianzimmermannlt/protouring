@@ -6,12 +6,12 @@
 
 export interface SettlementChannel {
   name?: string | null
+  vendor?: string | null       // Händler/Shop-Name (Zuordnung zur je-Händler-Refundierung)
   art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
   revenue?: string | null      // Bruttoeinnahme dieses Kanals (inkl. Ticket-USt)
-  chan_fee?: string | null       // Gebühr/Ticket NUR für diesen Kanal (leer = global; Abendkasse = 0)
-  chan_fee_split?: string | null // Band-Anteil % an der Gebühr NUR für diesen Kanal (leer = global)
+  chan_fee?: string | null       // Gebühr/Ticket NUR für diesen Kanal (leer = Händler-/Standard-Gebühr; Abendkasse = 0)
 }
 export interface SettlementCost {
   label?: string | null
@@ -22,15 +22,21 @@ export interface SettlementInput {
   channels: SettlementChannel[]
   costs: SettlementCost[]
   ticketVat?: string | null         // USt auf Tickets (z.B. 7)
-  feePerTicket?: string | null      // Ticket-Systemgebühr je Ticket (brutto), „Refundierung"
+  feePerTicket?: string | null      // Standard-Ticketgebühr je Ticket (brutto), „Refundierung" (Fallback)
+  shopFees?: Record<string, string | number | null>  // Refundierung je Händler/Shop-Name (vor feePerTicket)
   feeVat?: string | null            // USt auf die Gebühr (z.B. 7)
   feeBandSplitPct?: string | null   // Anteil der Band an der Gebühr (netto), z.B. 50
   artistVat?: string | null         // USt auf den Künstleranteil (z.B. 7)
-  dealBase?: string | null          // 'gross' (Netto-Ticketumsatz) | 'netprofit' (nach Kosten)
-  promoterCosts?: string | null     // Veranstalterkosten (nur bei 'netprofit')
-  guarantee?: string | null         // Produktionskostengarantie
-  // Beliebig viele Deal-Stufen (progressiv): je Stufe gilt pct ab der Nettoeinnahme `from`.
-  // Erste Stufe sollte from=0 haben. Beispiel: [{from:0,pct:50},{from:44859.81,pct:55}].
+  dealBase?: string | null          // 'gross' (Netto-Ticketumsatz) | 'netprofit' (nach Break-Even)
+  promoterCosts?: string | null     // Veranstalter-Break-Even (nur bei 'netprofit')
+  guarantee?: string | null         // Fixgage / Produktionskostengarantie
+  // Verhältnis Fixgage ↔ Beteiligung: 'plus' = beides addiert; sonst (vs/guarantee) = das Höhere.
+  dealType?: string | null
+  // Bezug der Stufen-Schwellen: 'tickets' = `from` ist eine Ticketzahl; sonst = Netto-Umsatz.
+  tierBasis?: string | null
+  // Beliebig viele Deal-Stufen (progressiv): je Stufe gilt pct ab der Schwelle `from`
+  // (Netto-Umsatz oder Ticketzahl, je nach tierBasis). Erste Stufe sollte from=0 haben.
+  // Beispiel: [{from:0,pct:50},{from:44859.81,pct:55}].
   tiers?: { from?: string | number | null; pct?: string | number | null }[]
   // Rückwärtskompatibel (2 Stufen) – wird genutzt, falls tiers leer ist.
   pct1?: string | null
@@ -54,7 +60,28 @@ export interface SettlementResult {
   payableGross: number   // offener Betrag an die Band nach allen Verrechnungen
 }
 
-const n = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+// Robuste Zahl-Erkennung für deutsche UND kanonische Schreibweise:
+//   "1.600,50" → 1600.5   "1600,50" → 1600.5   "1.600.000" → 1600000
+//   "32000.00" → 32000     "1,600.50" → 1600.5  (US-Format, letzter Trenner = Dezimal)
+// Regel: Sind beide Trenner da, ist der LETZTE der Dezimaltrenner; sonst ist "," immer
+// Dezimal (App-Konvention), und mehrere "." sind Tausender.
+export function parseNum(v: unknown): number {
+  if (typeof v === 'number') return isFinite(v) ? v : 0
+  let s = String(v ?? '').trim()
+  if (!s) return 0
+  const hasComma = s.includes(','), hasDot = s.includes('.')
+  if (hasComma && hasDot) {
+    s = s.lastIndexOf(',') > s.lastIndexOf('.')
+      ? s.replace(/\./g, '').replace(',', '.')   // deutsch: Punkt=Tausender, Komma=Dezimal
+      : s.replace(/,/g, '')                        // US: Komma=Tausender
+  } else if (hasComma) {
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else if ((s.match(/\./g) || []).length > 1) {
+    s = s.replace(/\./g, '')                        // mehrere Punkte = Tausender
+  }
+  const x = Number(s); return isFinite(x) ? x : 0
+}
+const n = parseNum
 
 export function computeSettlement(inp: SettlementInput): SettlementResult {
   const ticketVat = n(inp.ticketVat), feeVat = n(inp.feeVat), artistVat = n(inp.artistVat)
@@ -69,14 +96,19 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
   // Default = globale feePerTicket; Abendkasse (art='boxoffice') hat keine Systemgebühr (0),
   // sofern nicht am Kanal ausdrücklich gesetzt. Band-Split ebenfalls je Kanal (Default global).
   const globalFee = n(inp.feePerTicket), globalSplit = n(inp.feeBandSplitPct)
+  const shopFees = inp.shopFees || {}
+  // Refundierung je Ticket: Kanal-Override (chan_fee) > Händler-Gebühr (shopFees[vendor]) >
+  // globale Standard-Gebühr; Abendkasse ohne Override = 0.
   let feeTotalGross = 0, bandFeeShareGross = 0
   for (const c of channels) {
     const hasOwnFee = c.chan_fee != null && String(c.chan_fee) !== ''
-    const fee = hasOwnFee ? n(c.chan_fee) : (c.art === 'boxoffice' ? 0 : globalFee)
+    const shopFeeRaw = c.vendor != null ? shopFees[String(c.vendor).trim()] : undefined
+    const hasShopFee = shopFeeRaw != null && String(shopFeeRaw) !== ''
+    const fee = hasOwnFee ? n(c.chan_fee) : (c.art === 'boxoffice' ? 0 : (hasShopFee ? n(shopFeeRaw) : globalFee))
     const lineGross = n(c.tickets) * fee
     feeTotalGross += lineGross
-    const split = (c.chan_fee_split != null && String(c.chan_fee_split) !== '') ? n(c.chan_fee_split) : globalSplit
-    bandFeeShareGross += lineGross * split / 100
+    // Band-Anteil an der Gebühr = ein globaler Deal-Wert (nicht je Händler/Kanal).
+    bandFeeShareGross += lineGross * globalSplit / 100
   }
   const feeNet = feeTotalGross / (1 + feeVat / 100)
   const feeVatAmt = feeTotalGross - feeNet
@@ -90,6 +122,12 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
     if (n(inp.threshold2) > 0 && n(inp.pct2) > 0) tiers.push({ from: n(inp.threshold2), pct: n(inp.pct2) })
   }
   tiers.sort((a, b) => a.from - b.from)
+  // Bei Stufen auf Ticketzahl: Schwellen in Umsatz umrechnen (Ø-Umsatz je Ticket auf der Basis),
+  // damit der marginale Loop unverändert auf dealBaseAmt läuft. Ticketzahl 0 → alles Stufe 1.
+  if (inp.tierBasis === 'tickets') {
+    const scale = totalTickets > 0 ? dealBaseAmt / totalTickets : 0
+    tiers = tiers.map(t => ({ from: t.from * scale, pct: t.pct }))
+  }
   // Progressiv/marginal: Anteil je Stufe auf den Betrag zwischen from[i] und from[i+1].
   let share = 0
   for (let i = 0; i < tiers.length; i++) {
@@ -97,7 +135,10 @@ export function computeSettlement(inp: SettlementInput): SettlementResult {
     const upper = i + 1 < tiers.length ? tiers[i + 1].from : Infinity
     if (dealBaseAmt > lower) share += (Math.min(dealBaseAmt, upper) - lower) * tiers[i].pct / 100
   }
-  const dealShareNet = Math.max(n(inp.guarantee), share)   // „vs" – das Höhere gewinnt
+  // Verhältnis Fixgage ↔ Beteiligung: 'plus' = Garantie + Beteiligung; sonst das Höhere („vs").
+  // Reine Fixgage (keine Stufen) → share=0 → Garantie; reine Beteiligung (keine Garantie) → share.
+  const guar = n(inp.guarantee)
+  const dealShareNet = inp.dealType === 'plus' ? (guar + share) : Math.max(guar, share)
   const artistShareNet = dealShareNet + bandFeeShareNet
 
   const costsNet = costs.reduce((a, c) => a + n(c.net), 0)

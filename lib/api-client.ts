@@ -3890,6 +3890,8 @@ export interface BookingContract {
   actual_revenue: string | null
   // Erweiterte Deal-/Abrechnungsfelder
   deal_base?: string | null
+  deal_model?: string | null   // Preset: fix | participation | vs | plus | vs_break | custom
+  tier_basis?: string | null   // Stufen-Schwellen bezogen auf: revenue (Umsatz) | tickets (Ticketzahl)
   promoter_costs?: string | null
   pct1?: string | null
   threshold2?: string | null
@@ -3927,6 +3929,8 @@ export interface BookingContract {
   vk_kills?: string | null
   vk_base_price?: string | null   // VVK-Grundpreis (Face Value)
   ak_price?: string | null        // Abendkasse-Grundpreis
+  price_categories?: string | null // JSON: [{name,cap,holds,comps,kills,price,akprice}, …] – Preiskategorien/Vorverkauf je PK
+  ticket_systems?: string | null   // JSON: ["Eigener Shop","Eventim", …] – Ticketsysteme/Shops im Vertrag
   created_at: string
   updated_at: string
   clauses?: BookingContractClause[]
@@ -3937,6 +3941,8 @@ export interface BookingContract {
 export interface BookingTicketSale {
   id?: number
   vendor?: string | null
+  category?: string | null     // Preiskategorie (z.B. Cat. 01, VIP, Steh-/Sitzplatz)
+  rabattstufe?: string | null  // Verkaufs-/Preisart innerhalb Kanal×Kategorie (public sale, Presale, Rollstuhl, Bandshop, Box Office …)
   art?: string | null          // 'vvk' | 'boxoffice' | 'ownshop'
   money_with?: string | null   // 'promoter' | 'band'
   tickets?: string | null
@@ -3944,8 +3950,7 @@ export interface BookingTicketSale {
   revenue?: string | null      // Gesamtbrutto des Kanals (= tickets × price, berechnet)
   refund_amount?: string | null
   refund_pct?: string | null
-  chan_fee?: string | null       // Refundierung: Gebühr/Ticket NUR für diesen Kanal (leer = global; Abendkasse = 0)
-  chan_fee_split?: string | null // Band-Anteil % an der Gebühr NUR für diesen Kanal (leer = global)
+  chan_fee?: string | null       // Refundierung: Gebühr/Ticket NUR für diesen Kanal (leer = Händler-/Standard-Gebühr; Abendkasse = 0)
 }
 
 export interface BookingCostLine {
@@ -4090,10 +4095,12 @@ export async function getBookingInvoices(contractId?: number): Promise<BookingIn
   const res = await request<{ invoices: BookingInvoice[] }>(`/api/booking/invoices${contractId ? `?contractId=${contractId}` : ''}`)
   return res.invoices
 }
+export interface InvoiceVatLine { rate: number; base: number; amount: number }
+export interface InvoicePosition { label: string; net: number; rate: number | null }
 export async function createBookingInvoice(data: {
   contractId: number; kind: 'deposit' | 'final'
   total_net: number; tax_amount: number; gross_amount: number
-  deductions_gross?: number; deposit_net?: number; description?: string; service_date?: string
+  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; positions?: InvoicePosition[]; description?: string; service_date?: string
 }): Promise<{ id: number; invoice_no: string }> {
   return await request<{ id: number; invoice_no: string }>('/api/booking/invoices', { method: 'POST', body: data })
 }
@@ -4102,6 +4109,63 @@ export async function deleteBookingInvoice(id: number): Promise<void> {
 }
 export function openBookingInvoicePdf(id: number): void {
   openBookingPdf(`invoices/${id}`)
+}
+
+/** POST, das ein PDF (Blob) zurückgibt, und öffnet es in einem neuen Tab. Für Vorschauen,
+ *  bei denen Daten mitgesendet werden müssen (kein GET mit Query). */
+async function openBookingPdfPost(path: string, body: unknown): Promise<void> {
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (tenant?.slug) headers['X-Tenant-Slug'] = tenant.slug
+  const res = await fetch(`${API_BASE}/api/booking/${path}`, { method: 'POST', headers, body: JSON.stringify(body) })
+  if (!res.ok) throw new Error('PDF konnte nicht erzeugt werden')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  if (typeof window !== 'undefined') { window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000) }
+}
+
+/** Rechnungs-Vorschau (Entwurf, Wasserzeichen) aus den aktuellen Werten – ohne zu speichern. */
+export async function previewBookingInvoice(data: {
+  contractId: number; kind: 'deposit' | 'final'
+  total_net: number; tax_amount: number; gross_amount: number
+  deductions_gross?: number; deposit_net?: number; vat_breakdown?: InvoiceVatLine[]; positions?: InvoicePosition[]; description?: string; service_date?: string
+}): Promise<void> {
+  await openBookingPdfPost('invoices/preview', data)
+}
+
+// ── Konzertabrechnung (KA) nach FKP-Layout ───────────────────────────────────
+// Rohe Zahlen aus dem Client-Rechenkern; der Generator formatiert (money/dateDE) und layoutet.
+export interface KATicketSub { label: string; price: number; tickets: number; einnahme: number }
+export interface KATicketGroup { vendor: string; category: string; price: number; tickets: number; einnahme: number; boxoffice?: boolean; subs: KATicketSub[] }
+export interface KARefundRow { category: string; fee: number; tickets: number; betrag: number }
+export interface KACostRow { label: string; vatPct: number; net: number }
+export interface KADealLine { label: string; valueStr: string }
+export interface SettlementKA {
+  currency: string
+  // Eintrittskartenabrechnung – Ticketeinnahme
+  ticketGroups: KATicketGroup[]
+  totalTickets: number
+  ticketGross: number; ticketVatPct: number; ticketVatAmt: number; ticketNet: number
+  // Refundierung
+  refundRows: KARefundRow[]
+  feeGross: number; feeVatPct: number; feeVatAmt: number; feeNet: number
+  // Veranstaltungsabrechnung – Deal
+  dealLabel: string; dealDescription: string
+  dealLines: KADealLine[]
+  anteilTicketNet: number; bandSplitPct: number; anteilRefundNet: number
+  anteilNet: number; anteilVatPct: number; anteilVatAmt: number; anteilGross: number
+  // Nebenkosten
+  costRows: KACostRow[]; costsNet: number; costsVatAmt: number; costsGross: number
+  // Rechnungsbetrag
+  rechnungNet: number; rechnungVatAmt: number; rechnungGross: number
+  deductions: { label: string; amount: number }[]
+  payableGross: number
+}
+/** Konzertabrechnung (KA) als PDF im FKP-Layout. */
+export async function openBookingSettlementPdf(contractId: number, payload: SettlementKA): Promise<void> {
+  await openBookingPdfPost(`contracts/${contractId}/settlement/pdf`, payload)
 }
 
 // ── Carnets ──────────────────────────────────────────────────────────────────

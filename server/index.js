@@ -2186,6 +2186,9 @@ async function initDatabase() {
   // Refundierung pro Kanal: Gebühr/Ticket + Band-Split-% (leer = global; Abendkasse = 0).
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee TEXT`); } catch {}
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN chan_fee_split TEXT`); } catch {}
+  // Preiskategorie je Kanal (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – für die §5.1-Tabellen.
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN category TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN rabattstufe TEXT`); } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -2195,16 +2198,20 @@ async function initDatabase() {
     await db.run(`DELETE FROM booking_contract_clauses`);
   } catch {}
   // Erweiterte Deal-/Abrechnungsfelder am Vertrag
-  for (const col of ['deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
+  for (const col of ['deal_base','deal_model','tier_basis','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop','issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
     'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
     // Variable Vertragsangaben (statt fix im Baustein-Text): Event-Details, Zahlungstermine, Bank, Support
     'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
     // § 5.1 Eintrittspreise / Vorverkaufsszenario (wie FKP): Holds/Comps/Kills, VVK-Grundpreis, Abendkasse-Preis
-    'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price']) {
+    'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price',
+    // Preiskategorien (Cat. 01 / VIP / Steh-/Sitzplatz) als Vertrags-Preisstruktur. JSON: [{name,cap,holds,comps,kills,price,akprice}, …]
+    'price_categories',
+    // Ticketsysteme/Shops (Eigener Shop, Eventim …) als Vertrags-Angabe. JSON: ["Eigener Shop","Eventim", …]
+    'ticket_systems']) {
     try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Erweiterte Rechnungsfelder (gemischte USt, Abzüge)
-  for (const col of ['tax_amount','gross_amount','deductions_gross']) {
+  for (const col of ['tax_amount','gross_amount','deductions_gross','vat_breakdown','positions']) {
     try { await db.run(`ALTER TABLE booking_invoices ADD COLUMN ${col} TEXT`); } catch {}
   }
   // Booking-Settings: Standard-Vertretung/Agentur (Vorbelegung neuer Bookings)
@@ -10291,12 +10298,12 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
     let order = 0
     for (const s of rows) {
       await db.run(
-        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, chan_fee_split, sort_order)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [req.tenant.id, req.params.id, s.vendor || null, s.art || null, s.money_with || null,
+        `INSERT INTO booking_ticket_sales (tenant_id, contract_id, vendor, category, rabattstufe, art, money_with, tickets, price, revenue, refund_amount, refund_pct, chan_fee, sort_order)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [req.tenant.id, req.params.id, s.vendor || null, s.category || null, s.rabattstufe || null, s.art || null, s.money_with || null,
          s.tickets === '' ? null : s.tickets ?? null, s.price === '' ? null : s.price ?? null, s.revenue === '' ? null : s.revenue ?? null,
          s.refund_amount === '' ? null : s.refund_amount ?? null, s.refund_pct === '' ? null : s.refund_pct ?? null,
-         s.chan_fee === '' ? null : s.chan_fee ?? null, s.chan_fee_split === '' ? null : s.chan_fee_split ?? null, order++]
+         s.chan_fee === '' ? null : s.chan_fee ?? null, order++]
       )
     }
     res.json({ ok: true })
@@ -10304,11 +10311,11 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
 })
 
 const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
-  'deal_base','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
+  'deal_base','deal_model','tier_basis','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
   'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
   'capacity','doors_time','show_time','deposit_due','balance_due','bank_details','support_acts',
-  'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price']
+  'vk_holds','vk_comps','vk_kills','vk_base_price','ak_price','price_categories','ticket_systems']
 
 const bnum = v => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 
@@ -10497,13 +10504,61 @@ app.post('/api/booking/invoices', authenticateToken, requireTenant, async (req, 
     const invoice_no = `${bset.number_prefix || 'RE'}-${year}-${String(seq).padStart(4, '0')}`
     const description = b.description || (kind === 'deposit' ? 'Anzahlung / Vorauszahlung gemäß Vereinbarung' : 'Honorar / Abrechnung gemäß Vereinbarung')
     const r = await db.run(
-      `INSERT INTO booking_invoices (tenant_id, contract_id, seq, invoice_no, kind, status, issue_date, service_date, currency, tax_rate, total_net, tax_amount, gross_amount, deductions_gross, deposit_net, description, recipient_name, recipient_address, event_title, event_date, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO booking_invoices (tenant_id, contract_id, seq, invoice_no, kind, status, issue_date, service_date, currency, tax_rate, total_net, tax_amount, gross_amount, deductions_gross, deposit_net, vat_breakdown, positions, description, recipient_name, recipient_address, event_title, event_date, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [req.tenant.id, b.contractId, seq, invoice_no, kind, 'issued', new Date().toISOString().slice(0, 10), b.service_date || c.event_date || null,
        c.currency || 'EUR', String(b.tax_rate ?? ''), String(b.total_net ?? 0), String(b.tax_amount ?? 0), String(b.gross_amount ?? 0), String(b.deductions_gross ?? 0), String(b.deposit_net ?? 0),
+       JSON.stringify(Array.isArray(b.vat_breakdown) ? b.vat_breakdown : []),
+       JSON.stringify(Array.isArray(b.positions) ? b.positions : []),
        description, c.partner_name || '', c.partner_address || '', c.event_title || '', c.event_date || null, req.user.id]
     )
     res.json({ ok: true, id: r.lastID, invoice_no })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/booking/invoices/preview — Rechnungs-Vorschau als PDF (Entwurf, Wasserzeichen).
+// Gleicher Body wie /invoices, aber KEIN DB-Eintrag und KEINE Rechnungsnummer wird vergeben.
+app.post('/api/booking/invoices/preview', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const b = req.body || {}
+    const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [b.contractId, req.tenant.id])
+    if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const kind = b.kind === 'deposit' ? 'deposit' : 'final'
+    const bset = await getBookingSettings(req.tenant.id)
+    const description = b.description || (kind === 'deposit' ? 'Anzahlung / Vorauszahlung gemäß Vereinbarung' : 'Honorar / Abrechnung gemäß Vereinbarung')
+    const inv = {
+      invoice_no: null, kind, issue_date: new Date().toISOString().slice(0, 10),
+      service_date: b.service_date || c.event_date || null, currency: c.currency || 'EUR',
+      tax_rate: String(b.tax_rate ?? ''), total_net: String(b.total_net ?? 0), tax_amount: String(b.tax_amount ?? 0),
+      gross_amount: String(b.gross_amount ?? 0), deductions_gross: String(b.deductions_gross ?? 0), deposit_net: String(b.deposit_net ?? 0),
+      vat_breakdown: Array.isArray(b.vat_breakdown) ? b.vat_breakdown : [],
+      positions: Array.isArray(b.positions) ? b.positions : [],
+      description, recipient_name: c.partner_name || '', recipient_address: c.partner_address || '',
+      event_title: c.event_title || '', event_date: c.event_date || null,
+    }
+    const { generateInvoicePdf } = require('./generate_invoice_pdf')
+    const pdf = await generateInvoicePdf({ invoice: inv, issuer: resolveIssuer(c, bset, req.tenant), logoPath: req.tenant.label_logo_path, draft: true })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'inline; filename="rechnung-vorschau.pdf"')
+    res.send(pdf)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// POST /api/booking/contracts/:id/settlement/pdf — Abrechnungs-Aufstellung als PDF.
+// Die fertig formatierten Zeilen kommen aus dem Client-Rechenkern (computeSettlement),
+// damit das PDF 1:1 der Anzeige entspricht. Reines Ansehen, kein DB-Eintrag.
+app.post('/api/booking/contracts/:id/settlement/pdf', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const c = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    if (!c) return res.status(404).json({ error: 'Vertrag nicht gefunden' })
+    const bset = await getBookingSettings(req.tenant.id)
+    const { generateSettlementPdf } = require('./generate_settlement_pdf')
+    const pdf = await generateSettlementPdf({ contract: c, issuer: resolveIssuer(c, bset, req.tenant), data: req.body || {}, logoPath: req.tenant.label_logo_path })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'inline; filename="abrechnung.pdf"')
+    res.send(pdf)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 

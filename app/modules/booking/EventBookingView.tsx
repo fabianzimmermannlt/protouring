@@ -7,6 +7,7 @@ import { TitleWithRole } from '@/app/components/shared/TitleWithRole'
 import {
   getBookingContracts, getBookingContract, createBookingContract, updateBookingContract, deleteBookingContract, openBookingContractPdf,
   getBookingClauses, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
+  previewBookingInvoice, openBookingSettlementPdf, type SettlementKA,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
   getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
@@ -39,17 +40,78 @@ async function partiesFromEvent(termin: Termin, settings: BookingSettings | null
   } catch { /* ignore */ }
   return out
 }
-import { computeSettlement, type SettlementChannel } from '@/lib/booking/settlement'
+import { computeSettlement, parseNum, type SettlementChannel } from '@/lib/booking/settlement'
 import { BOOKING_STATUSES } from './BookingModule'
 
-const nnum = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+const nnum = parseNum
 const eur = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
+// Betrag deutsch fürs Anzeigen in read-only Feldern: 32000 → "32.000,00" (ohne Währung); leer bleibt leer.
+const amtDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const intDE = (v: unknown) => (v == null || v === '') ? '' : parseNum(v).toLocaleString('de-DE', { maximumFractionDigits: 0 })
+
+// Preiskategorie (Vorverkauf-Szenario je PK, wie FKP): eigenes Kontingent + Holds/Comps/Kills + Preise.
+type PriceCat = { name: string; cap: string; holds: string; comps: string; kills: string; price: string; akprice: string }
+const catVerk = (c: PriceCat) => Math.max(0, parseNum(c.cap) - parseNum(c.holds) - parseNum(c.comps) - parseNum(c.kills))
+const catEinnahme = (c: PriceCat) => catVerk(c) * parseNum(c.price)
+
+// Editierbares Zahlenfeld: zeigt den Wert deutsch formatiert (20000 → "20.000,00"),
+// solange das Feld NICHT fokussiert ist. Beim Reinklicken erscheint der reine Wert zum
+// Bearbeiten (kein Umformatieren beim Tippen → kein Cursor-Springen). kind steuert die
+// Darstellung: 'money' = Betrag mit 2 Nachkommastellen, 'int' = ganze Zahl mit Tausender-Punkt,
+// 'raw' = unverändert (z.B. Prozentwerte).
+function NumInput({ value, onChange, kind = 'money', disabled, readOnly, placeholder, className = 'form-input', style, title, align }: {
+  value: string; onChange: (v: string) => void; kind?: 'money' | 'int' | 'raw';
+  disabled?: boolean; readOnly?: boolean; placeholder?: string; className?: string; style?: React.CSSProperties; title?: string; align?: 'right'
+}) {
+  const [focused, setFocused] = useState(false)
+  const raw = value ?? ''
+  const display = (focused && !readOnly) || raw === '' || kind === 'raw'
+    ? raw
+    : (kind === 'int' ? intDE(raw) : amtDE(raw))
+  return (
+    <input
+      className={className + (align === 'right' ? ' text-right' : '')}
+      inputMode="decimal" disabled={disabled} readOnly={readOnly} placeholder={placeholder} title={title} style={style}
+      value={display}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onChange={e => onChange(e.target.value)}
+    />
+  )
+}
 const ART = [{ id: 'vvk', label: 'VVK' }, { id: 'boxoffice', label: 'Abendkasse' }, { id: 'ownshop', label: 'Eigener Shop' }]
 const MONEY = [{ id: 'promoter', label: 'Veranstalter' }, { id: 'band', label: 'Band' }]
 const DEAL_BASE = [
-  { id: 'gross', label: '% vom Netto-Ticketumsatz (vs. % of gross)' },
-  { id: 'netprofit', label: '% vom Nettogewinn nach Kosten (vs. % of net)' },
+  { id: 'gross', label: 'Netto-Ticketumsatz (% of gross)' },
+  { id: 'netprofit', label: 'Nettogewinn ab Break-Even (% of net)' },
 ]
+// Zusammensetzbares Deal-Modell: wenige Bausteine (Fixgage? Beteiligung? Verhältnis? Basis?),
+// aus denen sich alle gängigen Deals ergeben. Die Presets setzen nur die Schalter;
+// der Rechner bleibt generisch. „custom" blendet alle Schalter einzeln ein.
+const DEAL_MODELS: { id: string; label: string; fix: boolean; part: boolean; type?: string; base?: string }[] = [
+  { id: 'fix', label: 'Fixgage', fix: true, part: false, type: 'guarantee' },
+  { id: 'participation', label: 'Nur Beteiligung (ggf. mit Stufen)', fix: false, part: true, type: 'vs', base: 'gross' },
+  { id: 'vs', label: 'Fixgage gegen Beteiligung – das Höhere', fix: true, part: true, type: 'vs', base: 'gross' },
+  { id: 'plus', label: 'Fixgage plus Beteiligung', fix: true, part: true, type: 'plus', base: 'gross' },
+  { id: 'vs_break', label: 'Fixgage gegen Beteiligung ab Break-Even', fix: true, part: true, type: 'vs', base: 'netprofit' },
+]
+const TIER_BASIS = [
+  { id: 'revenue', label: 'Netto-Umsatz (€)' },
+  { id: 'tickets', label: 'Ticketzahl (Stück)' },
+]
+// Für Bestandsverträge ohne gespeichertes Preset: aus den vorhandenen Werten ableiten.
+const deriveDealModel = (b: { deal_model?: string | null; guarantee?: string | null; deal_base?: string | null; deal_type?: string | null; deal_tiers?: string | null; pct1?: string | null }): string => {
+  if (b.deal_model) return b.deal_model
+  const num = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
+  const hasFix = num(b.guarantee) > 0
+  let hasPart = false
+  try { const t = b.deal_tiers ? JSON.parse(b.deal_tiers) : null; if (Array.isArray(t) && t.some((x: { pct?: unknown }) => num(x.pct) > 0)) hasPart = true } catch { /* */ }
+  if (!hasPart && num(b.pct1) > 0) hasPart = true
+  if (hasFix && !hasPart) return 'fix'
+  if (!hasFix && hasPart) return 'participation'
+  if (hasFix && hasPart) return b.deal_base === 'netprofit' ? 'vs_break' : (b.deal_type === 'plus' ? 'plus' : 'vs')
+  return 'vs'
+}
 const VENUE_ROLE = 'Venue'
 const roleLabel = (r?: string) => r || 'Beteiligte/r'
 interface Party { role: string; name: string; street: string; postalCode: string; city: string; country: string; email: string; taxid: string; partner_id?: number }
@@ -111,6 +173,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     partner_name: booking.partner_name ?? '', partner_address: booking.partner_address ?? '', partner_email: booking.partner_email ?? '',
     individual_terms: booking.individual_terms ?? '',
     deal_type: booking.deal_type ?? 'vs', deal_base: booking.deal_base ?? 'gross',
+    deal_model: deriveDealModel(booking), tier_basis: booking.tier_basis ?? 'revenue',
     guarantee: booking.guarantee ?? '', pct1: booking.pct1 ?? '', threshold2: booking.threshold2 ?? '', pct2: booking.pct2 ?? '',
     promoter_costs: booking.promoter_costs ?? '', deposit: booking.deposit ?? '', payment_terms: booking.payment_terms ?? '',
     ticket_vat: booking.ticket_vat ?? settings?.ticket_vat ?? '7',
@@ -134,6 +197,49 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     const base: { from: string; pct: string }[] = [{ from: '0', pct: booking.pct1 ?? '' }]
     if (booking.threshold2 && booking.pct2) base.push({ from: booking.threshold2, pct: booking.pct2 })
     return base
+  })
+  // Preiskategorien = Vorverkauf-Szenario je PK (Kontingent/Holds/Comps/Kills/Preise), wie FKP.
+  // Eine Quelle für Mengen UND Preise; speist die Vertrags-§5.1 und die Abrechnung (Kanal-Zuordnung).
+  const [cats, setCats] = useState<PriceCat[]>(() => {
+    try {
+      const t = booking.price_categories ? JSON.parse(booking.price_categories) : null
+      if (Array.isArray(t) && t.length) return t.map((x: Record<string, unknown>) => ({
+        name: String(x.name ?? ''), cap: String(x.cap ?? ''), holds: String(x.holds ?? ''),
+        comps: String(x.comps ?? ''), kills: String(x.kills ?? ''),
+        price: String(x.price ?? x.face ?? ''), akprice: String(x.akprice ?? ''),
+      }))
+    } catch { /* */ }
+    // Migration: aus den früheren Haus-Einzelwerten eine Zeile „Cat. 01" bilden.
+    const legacy = [booking.capacity, booking.vk_base_price, booking.vk_holds, booking.vk_comps, booking.vk_kills, booking.ak_price]
+    if (legacy.some(v => (v ?? '') !== '')) return [{
+      name: 'Cat. 01', cap: booking.capacity ?? '', holds: booking.vk_holds ?? '', comps: booking.vk_comps ?? '',
+      kills: booking.vk_kills ?? '', price: booking.vk_base_price ?? '', akprice: booking.ak_price ?? '',
+    }]
+    return []
+  })
+  // Ticketsysteme / Shops (Eigener Shop, Eventim …): zum Vertragszeitpunkt definiert, speisen §4 Refundierung
+  // und §5.1 Preisstruktur; in der Abrechnung als Händler-Auswahl. Face Value/Gebühr sind NICHT je Shop (FKP).
+  // Vertriebskanäle/Shops MIT je-Händler-Refundierung. Zum Vertragszeitpunkt definiert (speisen §4/§5.1);
+  // in der Abrechnung Händler-Auswahl + Gebühren-Quelle. Abwärtskompatibel: alte Namensliste (string[]).
+  const [shops, setShops] = useState<{ name: string; fee: string }[]>(() => {
+    try {
+      const t = booking.ticket_systems ? JSON.parse(booking.ticket_systems) : null
+      if (Array.isArray(t)) {
+        const rows = t.map((x: unknown) => typeof x === 'string'
+          ? { name: x.trim(), fee: '' }
+          : { name: String((x as { name?: unknown })?.name ?? '').trim(), fee: String((x as { fee?: unknown })?.fee ?? '') }
+        ).filter(s => s.name)
+        if (rows.length) return rows
+      }
+    } catch { /* */ }
+    const seen = new Set<string>(); const fromChans: { name: string; fee: string }[] = []
+    for (const s of (booking.ticket_sales ?? [])) {
+      if ((s.art ?? 'vvk') === 'boxoffice') continue
+      const v = (s.vendor ?? '').trim()
+      if (v && !seen.has(v)) { seen.add(v); fromChans.push({ name: v, fee: String(s.chan_fee ?? '') }) }
+    }
+    if (fromChans.length) return fromChans
+    return [{ name: 'Eigener Shop', fee: '' }, { name: 'Eventim', fee: '' }]
   })
   const [parties, setParties] = useState<Party[]>(() => {
     const norm = (x: Partial<Party> & { address?: string }): Party => ({
@@ -166,6 +272,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [eventPartners, setEventPartners] = useState<TerminPartner[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [invBusy, setInvBusy] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
   const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
@@ -195,12 +302,22 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const set = (patch: Partial<BookingContractInput>) => setF(prev => ({ ...prev, ...patch }))
   const cur = f.currency || 'EUR'
   const deductOwn = f.deduct_own_shop === '1'
+  // Deal-Modell auflösen (steuert, welche Felder sichtbar sind und ob Stufen in die Rechnung gehen).
+  const dmId = f.deal_model ?? 'vs'
+  const isCustomDeal = dmId === 'custom'
+  const dm = DEAL_MODELS.find(m => m.id === dmId)
+  const showFix = isCustomDeal || (dm?.fix ?? true)
+  const showPart = isCustomDeal || (dm?.part ?? true)
+  const tierOnTickets = f.tier_basis === 'tickets'
 
+  // Refundierung je Händler als Map (Name → Gebühr) für den Rechenkern (vor globaler Standard-Gebühr).
+  const shopFees = Object.fromEntries(shops.filter(s => s.name.trim() && String(s.fee).trim() !== '').map(s => [s.name.trim(), s.fee]))
   const st = computeSettlement({
     channels: channels as SettlementChannel[], costs: costs.map(c => ({ net: c.net, vat: c.vat })),
-    ticketVat: f.ticket_vat, feePerTicket: f.fee_per_ticket, feeVat: f.fee_vat, feeBandSplitPct: f.fee_band_split_pct,
+    ticketVat: f.ticket_vat, feePerTicket: f.fee_per_ticket, shopFees, feeVat: f.fee_vat, feeBandSplitPct: f.fee_band_split_pct,
     artistVat: f.artist_vat, dealBase: f.deal_base, promoterCosts: f.promoter_costs, guarantee: f.guarantee,
-    tiers, ticketingPayoutGross: f.ticketing_payout_gross,
+    dealType: f.deal_type, tierBasis: f.tier_basis,
+    tiers: showPart ? tiers : [], ticketingPayoutGross: f.ticketing_payout_gross,
     deductOwnShop: deductOwn, depositNet: f.deposit, depositVat: f.artist_vat,
   })
 
@@ -221,7 +338,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       partner_name: promoter?.name ?? '', partner_address: promoter ? composeAddr(promoter) : '', partner_email: promoter?.email ?? '',
       ...(venue ? { event_venue: venue.name, venue_address: composeAddr(venue) } : {}),
     }
-    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')) })
+    await updateBookingContract(booking.id, { ...f, ...sync, ...patch, deal_tiers: JSON.stringify(tiers.filter(t => t.pct !== '' || t.from === '0')), price_categories: JSON.stringify(cats.filter(c => c.name || c.price || c.cap)), ticket_systems: JSON.stringify(shops.map(s => ({ name: s.name.trim(), fee: String(s.fee ?? '').trim() })).filter(s => s.name)) })
     await setBookingTicketSales(booking.id, channels)
     await setBookingCostLines(booking.id, costs)
     // Pro-Vertrag Baustein-Overrides (nur Abweichungen: ausgeschlossen oder eigener Text).
@@ -254,13 +371,13 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // bewusst auf die editierbaren Zustände hören:
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, parties, channels, costs, tiers, clauseOv])
+  }, [f, parties, channels, costs, tiers, cats, shops, clauseOv])
 
   const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
 
   // Kanäle / Nebenkosten
-  const addChannel = () => setChannels(p => [...p, { vendor: '', art: 'vvk', money_with: 'promoter', tickets: '', price: '', revenue: '' }])
+  const addChannel = () => setChannels(p => [...p, { vendor: '', category: '', art: 'vvk', money_with: 'promoter', tickets: '', price: '', revenue: '' }])
   // Brutto wird aus Stück × Preis berechnet. Nur wenn ein Preis gesetzt ist; sonst bleibt
   // ein ggf. direkt eingetragenes Brutto erhalten (Altbestand / Pauschal-Eingabe).
   const setCh = (i: number, patch: Partial<BookingTicketSale>) => setChannels(p => p.map((s, idx) => {
@@ -276,9 +393,24 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const addCost = () => setCosts(p => [...p, { label: '', net: '', vat: settings?.service_vat ?? '19' }])
   const setCo = (i: number, patch: Partial<BookingCostLine>) => setCosts(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
   const rmCo = (i: number) => setCosts(p => p.filter((_, idx) => idx !== i))
+  const addCat = () => setCats(p => [...p, { name: '', cap: '', holds: '', comps: '', kills: '', price: '', akprice: '' }])
+  const setCat = (i: number, patch: Partial<PriceCat>) => setCats(p => p.map((c, idx) => idx === i ? { ...c, ...patch } : c))
+  const rmCat = (i: number) => setCats(p => p.filter((_, idx) => idx !== i))
+  const addShop = () => setShops(p => [...p, { name: '', fee: '' }])
+  const setShop = (i: number, patch: Partial<{ name: string; fee: string }>) => setShops(p => p.map((s, idx) => idx === i ? { ...s, ...patch } : s))
+  const rmShop = (i: number) => setShops(p => p.filter((_, idx) => idx !== i))
   const addTier = () => setTiers(p => [...p, { from: '', pct: '' }])
   const setTier = (i: number, patch: Partial<{ from: string; pct: string }>) => setTiers(p => p.map((t, idx) => idx === i ? { ...t, ...patch } : t))
   const rmTier = (i: number) => setTiers(p => p.filter((_, idx) => idx !== i))
+
+  // Deal-Modell: Preset setzt nur die Schalter (deal_type/deal_base), der Rechner bleibt generisch.
+  const applyDealModel = (id: string) => {
+    const m = DEAL_MODELS.find(x => x.id === id)
+    const patch: Partial<BookingContractInput> = { deal_model: id }
+    if (m?.type) patch.deal_type = m.type
+    if (m?.base) patch.deal_base = m.base
+    set(patch)
+  }
   // Parteien
   const setParty = (i: number, patch: Partial<Party>) => setParties(p => p.map((x, idx) => idx === i ? { ...x, ...patch } : x))
   const rmParty = (i: number) => setParties(p => p.filter((_, idx) => idx !== i))
@@ -354,26 +486,147 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     if (link) addEventPartner(link)
   }
 
+  // USt je Satz aufschlüsseln (7 % / 19 % getrennt) – Künstleranteil + Nebenkosten nach Satz gruppiert.
+  const vatBreakdown = (kind: 'deposit' | 'final') => {
+    const groups: Record<string, { rate: number; base: number; amount: number }> = {}
+    const add = (rate: number, base: number) => {
+      if (base === 0) return
+      const key = rate.toFixed(2)
+      const g = groups[key] || { rate, base: 0, amount: 0 }
+      g.base += base; g.amount += base * rate / 100; groups[key] = g
+    }
+    if (kind === 'deposit') add(nnum(f.artist_vat), nnum(f.deposit))
+    else { add(nnum(f.artist_vat), st.artistShareNet); for (const c of costs) add(nnum(c.vat), nnum(c.net)) }
+    return Object.values(groups).sort((a, b) => a.rate - b.rate)
+  }
+  // Einzelpositionen (je Position Netto + USt-Satz) – §14 Abs. 4 UStG.
+  const invPositions = (kind: 'deposit' | 'final') => {
+    if (kind === 'deposit') return [{ label: 'Anzahlung / Vorauszahlung gemäß Vereinbarung', net: nnum(f.deposit), rate: nnum(f.artist_vat) }]
+    const rows = [{ label: 'Gage / Beteiligung (Künstleranteil)', net: st.artistShareNet, rate: nnum(f.artist_vat) }]
+    for (const c of costs) if (nnum(c.net) !== 0) rows.push({ label: c.label || 'Nebenkosten', net: nnum(c.net), rate: nnum(c.vat) })
+    return rows
+  }
   const createInv = async (kind: 'deposit' | 'final') => {
     setInvBusy(true)
     try {
       await saveEverything()
       if (kind === 'deposit') {
         const net = nnum(f.deposit); const vat = net * nnum(f.artist_vat) / 100
-        await createBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
+        await createBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, vat_breakdown: vatBreakdown(kind), positions: invPositions(kind), description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
       } else {
         const deductions = st.rechnungGross - st.payableGross
-        await createBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
+        await createBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), vat_breakdown: vatBreakdown(kind), positions: invPositions(kind), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
       }
       loadInvoices(); onChanged()
     } catch { /* ignore */ }
     setInvBusy(false)
   }
+  // Rechnungs-Vorschau (Entwurf, Wasserzeichen) aus denselben Werten wie das echte Erstellen –
+  // nur ohne zu speichern/Nummer zu vergeben, damit man sie vorher sehen kann.
+  const previewInv = async (kind: 'deposit' | 'final') => {
+    setInvBusy(true)
+    try {
+      await saveEverything()
+      if (kind === 'deposit') {
+        const net = nnum(f.deposit); const vat = net * nnum(f.artist_vat) / 100
+        await previewBookingInvoice({ contractId: booking.id, kind, total_net: net, tax_amount: vat, gross_amount: net + vat, deposit_net: net, vat_breakdown: vatBreakdown(kind), positions: invPositions(kind), description: 'Anzahlung / Vorauszahlung gemäß Vereinbarung' })
+      } else {
+        const deductions = st.rechnungGross - st.payableGross
+        await previewBookingInvoice({ contractId: booking.id, kind, total_net: st.rechnungNet, tax_amount: st.rechnungVat, gross_amount: st.rechnungGross, deductions_gross: deductions, deposit_net: nnum(f.deposit), vat_breakdown: vatBreakdown(kind), positions: invPositions(kind), description: 'Honorar / Abrechnung gemäß Vereinbarung' })
+      }
+    } catch { /* ignore */ }
+    setInvBusy(false)
+  }
+  // Konzertabrechnung (KA) nach FKP-Layout: Rohzahlen aus dem Rechenkern (st) + gruppierte Zeilen.
+  const buildKA = (): SettlementKA => {
+    const pctStr = (v: number) => v.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'
+    // Ticketeinnahme: Kanäle nach Händler×Kategorie gruppieren, je Rabattstufe eine Unterzeile.
+    const groups: SettlementKA['ticketGroups'] = []
+    for (const ch of channels) {
+      const vendor = (ch.vendor || '').trim(), category = (ch.category || '').trim()
+      const price = nnum(ch.price), tickets = nnum(ch.tickets)
+      const einn = (ch.price ?? '') !== '' ? tickets * price : nnum(ch.revenue)
+      let g = groups.find(x => x.vendor === vendor && x.category === category)
+      if (!g) { g = { vendor, category, price, tickets: 0, einnahme: 0, boxoffice: false, subs: [] }; groups.push(g) }
+      g.tickets += tickets; g.einnahme += einn
+      if (ch.art === 'boxoffice') g.boxoffice = true
+      if (!g.price) g.price = price
+      g.subs.push({ label: (ch.rabattstufe || '').trim(), price, tickets, einnahme: einn })
+    }
+    // Refundierung: je Kategorie (ohne Abendkasse). Effektive Gebühr/Ticket wie in computeSettlement:
+    // Kanal-Override (chan_fee) > Händler-Gebühr (shopFees) > globale Standard-Gebühr; Abendkasse = 0.
+    const globalFee = nnum(f.fee_per_ticket)
+    const byCat: Record<string, { tickets: number; betrag: number }> = {}
+    for (const ch of channels) {
+      if (ch.art === 'boxoffice') continue
+      const sf = shopFees[(ch.vendor || '').trim()]
+      const fee = (ch.chan_fee ?? '') !== '' ? nnum(ch.chan_fee)
+        : (sf != null && String(sf).trim() !== '' ? nnum(sf) : globalFee)
+      if (fee <= 0) continue
+      const cat = (ch.category || '').trim() || '—'
+      const t = nnum(ch.tickets)
+      const e = byCat[cat] || { tickets: 0, betrag: 0 }
+      e.tickets += t; e.betrag += t * fee
+      byCat[cat] = e
+    }
+    const refundRows: SettlementKA['refundRows'] = Object.entries(byCat).map(
+      ([cat, v]) => ({ category: cat, fee: v.tickets ? v.betrag / v.tickets : 0, tickets: v.tickets, betrag: v.betrag })
+    )
+    // Deal / Veranstaltungsabrechnung.
+    const base = f.deal_base === 'netprofit' ? 'netprofit' : 'gross'
+    const guar = nnum(f.guarantee)
+    const T = tiers.map(t => ({ from: nnum(t.from), pct: nnum(t.pct) })).sort((a, b) => a.from - b.from)
+    const baseAmt = st.dealBaseAmt
+    const tierAmt = T.map((t, i) => { const lower = t.from, upper = i + 1 < T.length ? T[i + 1].from : Infinity; return baseAmt > lower ? (Math.min(baseAmt, upper) - lower) * t.pct / 100 : 0 })
+    const rawShare = tierAmt.reduce((a, b) => a + b, 0)
+    const guaranteeWon = guar >= rawShare
+    const applied = st.dealShareNet
+    const t1pct = T[0]?.pct ?? 0
+    let dealLabel = '', dealDescription = ''
+    const dealLines: SettlementKA['dealLines'] = []
+    if (base === 'netprofit') {
+      dealLabel = 'AM - vs. % of net Deal'
+      dealDescription = 'Beteiligung am Nettogewinn & Übernahme der Kosten, wenn dieser die Produktionskostengarantie übersteigt'
+      dealLines.push({ label: `Kosten ${f.partner_name || 'Veranstalter'}`, valueStr: eur(nnum(f.promoter_costs), cur) })
+      dealLines.push({ label: 'Nettogewinn', valueStr: eur(baseAmt, cur) })
+      dealLines.push({ label: `Produktionskostengarantie lt. Vereinbarung ${eur(guar, cur)} gegen ${pctStr(t1pct)} von ${eur(baseAmt, cur)}`, valueStr: eur(applied, cur) })
+    } else {
+      dealLabel = `AM - vs. % of gross${T.length > 1 ? ' / 2nd threshold' : ''} Deal`
+      dealDescription = 'Beteiligung an den Nettoeinnahmen, wenn diese die Produktionskostengarantie übersteigt'
+      const line1Val = T.length > 1 ? (guaranteeWon ? guar : tierAmt[0]) : applied
+      dealLines.push({ label: `Produktionskostengarantie lt. Vereinbarung ${eur(guar, cur)} gegen ${pctStr(t1pct)} ab der ersten Karte`, valueStr: eur(line1Val, cur) })
+      if (T.length > 1) dealLines.push({ label: `und ${pctStr(T[1].pct)} ab einer Nettoeinnahme von ${eur(T[1].from, cur)}`, valueStr: eur(guaranteeWon ? 0 : (tierAmt[1] || 0), cur) })
+    }
+    const anteilVatPct = nnum(f.artist_vat)
+    const anteilVatAmt = st.artistShareNet * anteilVatPct / 100
+    const deductions: SettlementKA['deductions'] = []
+    if (st.ticketingPayout > 0) deductions.push({ label: `abzgl. Ticketing Payout (inkl. MwSt. ${pctStr(nnum(f.ticket_vat))})`, amount: st.ticketingPayout })
+    if (st.ownShopGross > 0) deductions.push({ label: 'abzgl. Eigener Shop (bei Band)', amount: st.ownShopGross })
+    if (st.depositGross > 0) deductions.push({ label: 'abzgl. Anzahlung', amount: st.depositGross })
+    return {
+      currency: cur,
+      ticketGroups: groups, totalTickets: st.totalTickets,
+      ticketGross: st.ticketGross, ticketVatPct: nnum(f.ticket_vat), ticketVatAmt: st.ticketVatAmt, ticketNet: st.ticketNet,
+      refundRows, feeGross: st.feeTotalGross, feeVatPct: nnum(f.fee_vat), feeVatAmt: st.feeVatAmt, feeNet: st.feeNet,
+      dealLabel, dealDescription, dealLines,
+      anteilTicketNet: st.dealShareNet, bandSplitPct: nnum(f.fee_band_split_pct), anteilRefundNet: st.bandFeeShareNet,
+      anteilNet: st.artistShareNet, anteilVatPct, anteilVatAmt, anteilGross: st.artistShareNet + anteilVatAmt,
+      costRows: costs.map(c => ({ label: c.label || 'Position', vatPct: nnum(c.vat), net: nnum(c.net) })),
+      costsNet: st.costsNet, costsVatAmt: st.costsVat, costsGross: st.costsNet + st.costsVat,
+      rechnungNet: st.rechnungNet, rechnungVatAmt: st.rechnungVat, rechnungGross: st.rechnungGross,
+      deductions, payableGross: st.payableGross,
+    }
+  }
+  const onSettlementPdf = async () => {
+    setPdfBusy(true)
+    try { await saveEverything(); await openBookingSettlementPdf(booking.id, buildKA()) } catch { /* ignore */ }
+    setPdfBusy(false)
+  }
   const invGross = (iv: BookingInvoice) => nnum(iv.gross_amount) - nnum(iv.deductions_gross)
 
-  const In = (label: string, key: keyof BookingContractInput, ph = '') => (
-    <div><label className="form-label">{label}</label>
-      <input className="form-input" inputMode="decimal" disabled={!isAdmin} value={(f[key] as string) ?? ''} onChange={e => set({ [key]: e.target.value } as Partial<BookingContractInput>)} placeholder={ph} /></div>
+  const In = (label: string, key: keyof BookingContractInput, ph = '', help?: string, kind: 'money' | 'int' | 'raw' = 'money') => (
+    <div><label className="form-label inline-flex items-center gap-1">{label}{help && <HelpTip text={help} />}</label>
+      <NumInput kind={kind} disabled={!isAdmin} value={(f[key] as string) ?? ''} onChange={v => set({ [key]: v } as Partial<BookingContractInput>)} placeholder={ph} /></div>
   )
   const Row = ({ k, v, bold, muted, big, sub }: { k: string; v: string; bold?: boolean; muted?: boolean; big?: boolean; sub?: boolean }) => (
     <div className={`flex justify-between ${sub ? 'pl-3' : ''}`} style={{ padding: '2px 0' }}>
@@ -394,6 +647,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           </button>
         ))}
         {isAdmin && nextStatus && <button onClick={goNext} className="btn btn-primary ml-2" style={{ padding: '6px 12px' }}>{nextStatus.label} <ArrowRightIcon className="w-4 h-4" /></button>}
+      </div>
+
+      {/* ── Bereich 1: Vertrag (alle Angaben für den Vertrag; endet mit dem Vertrag-PDF-Button) ── */}
+      <div className="flex items-center gap-3 pt-1">
+        <span className="inline-flex items-center justify-center rounded-full text-xs font-bold" style={{ width: 24, height: 24, background: 'var(--primary)', color: '#fff' }}>1</span>
+        <div>
+          <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Vertrag</div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Alle Angaben für den Vertrag – unten erzeugt der Button das Vertrags-PDF.</div>
+        </div>
       </div>
 
       {/* Parteien */}
@@ -483,7 +745,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div>
             <label className="form-label">Kapazität</label>
-            <input className="form-input" inputMode="decimal" disabled={!isAdmin} value={(f.capacity as string) ?? ''} onChange={e => set({ capacity: e.target.value })} placeholder="z.B. 2200" />
+            <NumInput kind="int" disabled={!isAdmin} value={(f.capacity as string) ?? ''} onChange={v => set({ capacity: v })} placeholder="z.B. 2200" />
             {termin.venueId ? <p className="text-xs mt-0.5" style={{ color: 'var(--text-subtle)' }}>Wird im Venue-Datensatz gespeichert</p> : null}
           </div>
           <div><label className="form-label">Einlass</label><input type="time" className="form-input" disabled={!isAdmin} value={f.doors_time ?? ''} onChange={e => set({ doors_time: e.target.value })} /></div>
@@ -492,61 +754,173 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <div className="mt-3"><label className="form-label">Support Act(s)</label><input className="form-input" disabled={!isAdmin} value={f.support_acts ?? ''} onChange={e => set({ support_acts: e.target.value })} placeholder="z.B. Rogers" /></div>
       </fieldset>
 
-      {/* Eintrittspreise / Vorverkauf (§ 5.1) */}
-      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
-        <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
-          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show). Kapazität kommt aus der Veranstaltung oben. Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; erwartete Einnahme = Verkaufbar × VVK-Grundpreis. Die Face Values je Ticketsystem kommen aus den Vertriebskanälen in der Abrechnung." />
-        </legend>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {In('VVK-Grundpreis', 'vk_base_price', 'Face Value, z.B. 45')}
-          {In('Abendkasse-Preis', 'ak_price', 'z.B. 60')}
-          <div>
-            <label className="form-label">Verkaufbar</label>
-            <input className="form-input" readOnly value={Math.max(0, nnum(f.capacity) - nnum(f.vk_holds) - nnum(f.vk_comps) - nnum(f.vk_kills)).toLocaleString('de-DE')} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
-          </div>
-          {In('Holds', 'vk_holds', '0')}
-          {In('Comps', 'vk_comps', '0')}
-          {In('Kills', 'vk_kills', '0')}
-        </div>
-      </fieldset>
-
       {/* Deal */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>DEAL / KONDITIONEN</legend>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div><label className="form-label inline-flex items-center gap-1">Deal-Basis
-            <HelpTip text="Worauf sich die Beteiligung bezieht. „vs. % of gross“: Prozent vom Netto-Ticketumsatz (vor Abzug der Veranstalterkosten). „vs. % of net“: Prozent vom Nettogewinn (Ticketumsatz abzüglich der Veranstalterkosten). „vs.“ heißt: der höhere Wert aus Produktionskostengarantie und Beteiligung gilt." /></label>
-            <select className="form-select" disabled={!isAdmin} value={f.deal_base ?? 'gross'} onChange={e => set({ deal_base: e.target.value })}>
-              {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+          <div><label className="form-label inline-flex items-center gap-1">Deal-Modell
+            <HelpTip text="Baukasten aus wenigen Schaltern. Fixgage = feste Gage. Nur Beteiligung = Prozent vom Umsatz (ggf. mit Stufen). „gegen“ (vs.) = der höhere Wert aus Fixgage und Beteiligung gilt. „plus“ = beides wird addiert. „ab Break-Even“ = die Beteiligung greift erst auf den Umsatz oberhalb der fixen Break-Even-Summe des Veranstalters. „Benutzerdefiniert“ blendet alle Schalter einzeln ein." /></label>
+            <select className="form-select" disabled={!isAdmin} value={dmId} onChange={e => applyDealModel(e.target.value)}>
+              {DEAL_MODELS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+              <option value="custom">Benutzerdefiniert</option>
             </select></div>
-          {In('Produktionskostengarantie', 'guarantee', '0')}
-          {f.deal_base === 'netprofit' && In('Veranstalterkosten', 'promoter_costs')}
-          {In('Anzahlung (netto)', 'deposit')}
+          {showFix && In('Fixgage / Garantie (netto)', 'guarantee', '0')}
           <div><label className="form-label">Währung</label><input className="form-input" disabled={!isAdmin} value={f.currency ?? 'EUR'} onChange={e => set({ currency: e.target.value })} /></div>
+        </div>
+
+        {/* Beteiligung (nur wenn das Modell eine Beteiligung hat) */}
+        {showPart && (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {isCustomDeal && (
+                <div><label className="form-label inline-flex items-center gap-1">Verhältnis
+                  <HelpTip text="„gegen“ (vs.): der höhere Wert aus Fixgage und Beteiligung gilt – entweder/oder. „plus“: Fixgage und Beteiligung werden addiert." /></label>
+                  <select className="form-select" disabled={!isAdmin} value={f.deal_type === 'plus' ? 'plus' : 'vs'} onChange={e => set({ deal_type: e.target.value })}>
+                    <option value="vs">gegen Fixgage – das Höhere</option>
+                    <option value="plus">plus Fixgage – addiert</option>
+                  </select></div>
+              )}
+              <div><label className="form-label inline-flex items-center gap-1">Beteiligungs-Basis
+                <HelpTip text="Worauf die Prozente gerechnet werden. „Netto-Ticketumsatz“: vom gesamten Netto-Umsatz. „Nettogewinn ab Break-Even“: nur vom Umsatz oberhalb der fixen Break-Even-Summe des Veranstalters." /></label>
+                <select className="form-select" disabled={!isAdmin} value={f.deal_base ?? 'gross'} onChange={e => set({ deal_base: e.target.value })}>
+                  {DEAL_BASE.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select></div>
+              {f.deal_base === 'netprofit' && In('Break-Even Veranstalter (netto)', 'promoter_costs', '0', 'Die fixe Break-Even-Summe des Veranstalters (eine Zahl, keine Positionsliste). Erst oberhalb dieses Betrags greift die Beteiligung.')}
+              <div><label className="form-label inline-flex items-center gap-1">Stufen-Basis
+                <HelpTip text="Woran die Stufen-Schwellen hängen: am Netto-Umsatz (€) oder an der verkauften Ticketzahl (Stück). Der Prozentsatz gilt jeweils für den Bereich oberhalb der Schwelle." /></label>
+                <select className="form-select" disabled={!isAdmin} value={f.tier_basis ?? 'revenue'} onChange={e => set({ tier_basis: e.target.value })}>
+                  {TIER_BASIS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select></div>
+            </div>
+
+            {/* Stufen (beliebig viele, progressiv) */}
+            <div className="flex items-center justify-between mt-3 mb-1">
+              <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Beteiligung / Stufen</span>
+              {isAdmin && <button onClick={addTier} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Stufe</button>}
+            </div>
+            <div className="space-y-1.5">
+              {tiers.map((t, i) => (
+                <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 120px 28px' }}>
+                  <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {i === 0
+                      ? 'ab Beginn'
+                      : <span className="flex items-center gap-1">ab {tierOnTickets ? 'Ticket' : 'Netto-Umsatz'} <NumInput kind={tierOnTickets ? 'int' : 'money'} align="right" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={v => setTier(i, { from: v })} placeholder={tierOnTickets ? 'z.B. 1000' : 'z.B. 44859,81'} /> {tierOnTickets ? 'Stück' : '€'}</span>}
+                  </div>
+                  <div className="flex items-center gap-1"><input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} value={t.pct} onChange={e => setTier(i, { pct: e.target.value })} placeholder="%" /> <span className="text-sm" style={{ color: 'var(--text-muted)' }}>%</span></div>
+                  {isAdmin && i > 0 ? <button onClick={() => rmTier(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Progressiv: jede Stufe gilt nur für den Bereich oberhalb ihrer Schwelle (wie Steuerstufen){tierOnTickets ? ' – Schwellen in Ticketzahl' : ''}. {f.deal_type === 'plus' ? 'Fixgage und Beteiligung werden addiert.' : 'Es gilt der höhere Wert aus Fixgage und Beteiligung („vs.").'}</p>
+          </div>
+        )}
+
+        {/* Zahlungen */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+          {In('Anzahlung (netto)', 'deposit')}
           <div><label className="form-label">Anzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.deposit_due ?? ''} onChange={e => set({ deposit_due: e.target.value })} /></div>
           <div><label className="form-label">Restzahlung fällig bis</label><input type="date" className="form-input" disabled={!isAdmin} value={f.balance_due ?? ''} onChange={e => set({ balance_due: e.target.value })} /></div>
         </div>
         <div className="mt-3"><label className="form-label">Bankverbindung (Artist)</label><textarea className="form-input" rows={2} disabled={!isAdmin} value={f.bank_details ?? ''} onChange={e => set({ bank_details: e.target.value })} placeholder="Kontoinhaber, IBAN, BIC" /></div>
+      </fieldset>
 
-        {/* Deal-Stufen (beliebig viele, progressiv) */}
-        <div className="flex items-center justify-between mt-3 mb-1">
-          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Deal-Stufen (% je Netto-Einnahmebereich)</span>
-          {isAdmin && <button onClick={addTier} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Stufe</button>}
+      {/* Eintrittspreise / Vorverkauf (§ 5.1) – Szenario je Preiskategorie (wie FKP) */}
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1 inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>EINTRITTSPREISE / VORVERKAUF (§ 5.1)
+          <HelpTip text="Vereinbartes Vorverkaufs-Szenario (vor der Show), je Preiskategorie. Kapazität = zum Verkauf gestelltes Kontingent dieser Kategorie (kann kleiner sein als die Hallen-Kapazität oben). Holds = gesperrte Tickets, Comps = Freikarten, Kills = aus dem Verkauf genommene Plätze. Verkaufbar = Kapazität − Holds − Comps − Kills; Einnahme = Verkaufbar × VVK-Grundpreis. Diese Kategorien stehen in der Abrechnung je Vertriebskanal zur Auswahl und bilden die Preisstruktur im Vertrag." />
+        </legend>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Preiskategorien / Vorverkauf-Szenario</span>
+          {isAdmin && <button onClick={addCat} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Kategorie</button>}
         </div>
-        <div className="space-y-1.5">
-          {tiers.map((t, i) => (
-            <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 120px 28px' }}>
-              <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {i === 0
-                  ? 'ab erster Karte'
-                  : <span className="flex items-center gap-1">ab Netto-Einnahme <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} style={{ width: 120 }} value={t.from} onChange={e => setTier(i, { from: e.target.value })} placeholder="z.B. 44859,81" /> €</span>}
+        {cats.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Noch keine Preiskategorie. Mit „Kategorie" die Preisklassen der Show anlegen (z.B. Cat. 01, VIP, Steh-/Sitzplatz) – je mit Kontingent und Preis.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: 720 }}>
+              <div className="grid gap-1.5 text-[11px] px-1 mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', color: 'var(--text-muted)' }}>
+                <span>Kategorie</span><span className="text-right">Kapazität</span><span className="text-right">Holds</span><span className="text-right">Comps</span><span className="text-right">Kills</span><span className="text-right">Verkaufbar</span><span className="text-right">Grundpreis</span><span className="text-right">AK-Preis</span><span className="text-right">Einnahme</span><span />
               </div>
-              <div className="flex items-center gap-1"><input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} value={t.pct} onChange={e => setTier(i, { pct: e.target.value })} placeholder="%" /> <span className="text-sm" style={{ color: 'var(--text-muted)' }}>%</span></div>
-              {isAdmin && i > 0 ? <button onClick={() => rmTier(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+              {cats.map((c, i) => (
+                <div key={i} className="grid gap-1.5 items-center mb-1" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px' }}>
+                  <input className="form-input" disabled={!isAdmin} placeholder="z.B. Cat. 01" value={c.name} onChange={e => setCat(i, { name: e.target.value })} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.cap} onChange={v => setCat(i, { cap: v })} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.holds} onChange={v => setCat(i, { holds: v })} title="Holds = zurückgehaltene Tickets (Produktion, VIP, Sponsoren …)" />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.comps} onChange={v => setCat(i, { comps: v })} title="Comps = Freikarten (Gästeliste, Presse, Crew …)" />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="0" value={c.kills} onChange={v => setCat(i, { kills: v })} title="Kills = dauerhaft gesperrte Plätze (Sicht, Bühne, Notausgänge …)" />
+                  <input className="form-input text-right" readOnly value={intDE(catVerk(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Kapazität − Holds − Comps − Kills" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.price} onChange={v => setCat(i, { price: v })} title="VVK-Grundpreis (Face Value) dieser Kategorie" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="€" value={c.akprice} onChange={v => setCat(i, { akprice: v })} title="Abendkasse-Preis dieser Kategorie (optional)" />
+                  <input className="form-input text-right" readOnly value={amtDE(catEinnahme(c))} style={{ background: 'var(--hover)', color: 'var(--text-muted)' }} title="Verkaufbar × Grundpreis" />
+                  {isAdmin ? <button onClick={() => rmCat(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+                </div>
+              ))}
+              {/* Gesamt-Zeile */}
+              <div className="grid gap-1.5 items-center px-1 pt-1 border-t text-sm font-semibold" style={{ gridTemplateColumns: 'minmax(96px,1.1fr) 72px 56px 56px 56px 72px 84px 84px 96px 26px', borderColor: 'var(--border)', color: 'var(--text)' }}>
+                <span>Gesamt</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.cap), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.holds), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.comps), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + nnum(c.kills), 0))}</span>
+                <span className="text-right">{intDE(cats.reduce((a, c) => a + catVerk(c), 0))}</span>
+                <span /><span />
+                <span className="text-right">{amtDE(cats.reduce((a, c) => a + catEinnahme(c), 0))} €</span>
+                <span />
+              </div>
             </div>
-          ))}
+          </div>
+        )}
+
+      </fieldset>
+
+      {/* Vertriebskanäle, Refundierung & Buyouts (Vertrag · § 4) – Definitionen, die VOR dem Vertrag
+          stehen, weil sie in ihn eingehen. Jeder Händler/Shop mit eigener Refundierung (Gebühr/Ticket).
+          Die konkreten Verkaufszahlen je Kanal kommen erst nach der Show in der Abrechnung. */}
+      <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>VERTRIEBSKANÄLE · REFUNDIERUNG · BUYOUTS (§ 4)</legend>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>Vertriebskanäle / Shops – Refundierung je Händler
+            <HelpTip text="Welche Ticketsysteme/Shops verkaufen und welche Refundierungs-Gebühr je Ticket der Veranstalter dafür erstattet. Je Händler eigene Gebühr; bleibt sie leer, gilt die Standard-Gebühr unten. In der Abrechnung erbt jeder Kanal die Gebühr seines Händlers (pro Zeile noch übersteuerbar). Diese Definition steht im Vertrag (§ 4 Refundierung, § 5.1 Preisstruktur)." /></span>
+          {isAdmin && <button onClick={addShop} className="btn btn-ghost inline-flex items-center gap-1 text-sm"><PlusIcon className="w-4 h-4" />Händler</button>}
         </div>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Progressiv: jede Stufe gilt nur für den Betrag oberhalb ihrer Schwelle (wie Steuerstufen). „vs." Garantie – das Höhere gewinnt.</p>
+        {shops.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Vertriebskanäle. Mit „Händler" die verkaufenden Systeme anlegen (z.B. Eigener Shop, Eventim) – je mit Refundierungs-Gebühr.</p>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1fr) 150px 28px', color: 'var(--text-subtle)' }}>
+              <span>Händler / Shop</span><span className="text-right">Refundierung €/Ticket</span><span />
+            </div>
+            {shops.map((s, i) => (
+              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 150px 28px' }}>
+                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Eventim" value={s.name} onChange={e => setShop(i, { name: e.target.value })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder={f.fee_per_ticket ? `${f.fee_per_ticket} (Std.)` : 'Standard'} value={s.fee} onChange={e => setShop(i, { fee: e.target.value })} title="Refundierungs-Gebühr je Ticket nur für diesen Händler · leer = Standard-Gebühr unten" />
+                {isAdmin ? <button onClick={() => rmShop(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+          {In('Standard-Gebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
+          {In('USt Gebühr %', 'fee_vat', '', undefined, 'raw')}
+          {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50', undefined, 'raw')}
+        </div>
+
+        {/* Nebenkosten / Buyouts (§ 4) */}
+        <div className="flex items-center justify-between mt-4 mb-1"><span className="text-sm font-medium inline-flex items-center gap-1" style={{ color: 'var(--text)' }}>Nebenkosten / Buyouts<HelpTip text="Vom Veranstalter zu erstattende Leistungen, die Artist/Agentur selbst stellt (z.B. Nightliner-Buyout). Erscheinen im Vertrag als Buyouts in § 4 und fließen in die Abrechnung (Rechnung an den Veranstalter) ein." /></span>{isAdmin && <button onClick={addCost} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Position</button>}</div>
+        {costs.length === 0 ? (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Keine Buyouts. Mit „Position" vom Veranstalter zu erstattende Leistungen anlegen (z.B. Nightliner-Buyout).</p>
+        ) : (
+          <div className="space-y-1.5">
+            {costs.map((c, i) => (
+              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 110px 70px 28px' }}>
+                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Nightliner Buyout" value={c.label ?? ''} onChange={e => setCo(i, { label: e.target.value })} />
+                <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="netto €" value={c.net ?? ''} onChange={v => setCo(i, { net: v })} />
+                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="USt %" value={c.vat ?? ''} onChange={e => setCo(i, { vat: e.target.value })} />
+                {isAdmin ? <button onClick={() => rmCo(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
+              </div>
+            ))}
+          </div>
+        )}
       </fieldset>
 
       {/* Vertrag */}
@@ -607,42 +981,73 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         <button onClick={() => openBookingContractPdf(booking.id)} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />Vertrag-PDF</button>
       </fieldset>
 
+      {/* ── Bereich 2: Abrechnung (Zahlen nach der Show) ── */}
+      <div className="flex items-center gap-3 pt-3">
+        <span className="inline-flex items-center justify-center rounded-full text-xs font-bold" style={{ width: 24, height: 24, background: 'var(--primary)', color: '#fff' }}>2</span>
+        <div>
+          <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Abrechnung</div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Zahlen nach der Show – Verkauf je Kanal, Verrechnungen, Ergebnis.</div>
+        </div>
+      </div>
+
       {/* Abrechnung */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
-        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>ABRECHNUNG (nach der Show)</legend>
+        <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>TICKETVERKAUF & ERGEBNIS</legend>
 
         <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Ticketing – Vertriebskanäle</span>{isAdmin && <button onClick={addChannel} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Kanal</button>}</div>
         {channels.length === 0 ? <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Kanäle hinzufügen (Eventim, Abendkasse, Eigener Shop …).</p> : (
           <div className="space-y-1.5 mb-2">
-            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px', color: 'var(--text-subtle)' }}>
-              <span>Händler</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
+            <div className="grid gap-1.5 items-center text-[11px] font-medium" style={{ gridTemplateColumns: '2fr 1fr 80px 90px 50px 74px 92px 26px', color: 'var(--text-subtle)' }}>
+              <span>Händler</span><span>Kategorie</span><span>Art</span><span>Geld bei</span><span className="text-right">Stk</span><span className="text-right">Preis €</span><span className="text-right">= Brutto €</span><span />
             </div>
             {channels.map((s, i) => {
               const hasPrice = (s.price ?? '') !== ''
               const boxoffice = (s.art ?? 'vvk') === 'boxoffice'
+              // Auswahllisten aus den oben definierten Shops/Kategorien; ein evtl. vorhandener
+              // (Alt-)Wert, der dort nicht (mehr) steht, bleibt als Option erhalten, damit nichts verloren geht.
+              const shopNames = shops.map(sh => sh.name.trim()).filter((v, k, a) => v && a.indexOf(v) === k)
+              const shopOpts = s.vendor && !shopNames.includes(s.vendor) ? [s.vendor, ...shopNames] : shopNames
+              // Von diesem Händler geerbte Refundierung (Platzhalter, wenn chan_fee leer).
+              const shopFee = (shops.find(sh => sh.name.trim() === (s.vendor || '').trim())?.fee || '').trim()
+              const catNames = cats.map(c => c.name).filter((v, k, a) => v && a.indexOf(v) === k)
+              const catOpts = s.category && !catNames.includes(s.category) ? [s.category, ...catNames] : catNames
               return (
               <div key={i} className="space-y-1">
-                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1.1fr) 84px 94px 56px 80px 100px 28px' }}>
-                  <input className="form-input" disabled={!isAdmin} placeholder="Händler" value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} />
+                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '2fr 1fr 80px 90px 50px 74px 92px 26px' }}>
+                  <select className="form-select" disabled={!isAdmin} value={s.vendor ?? ''} onChange={e => setCh(i, { vendor: e.target.value })} title="Ticketsystem / Shop – aus den oben definierten Shops">
+                    <option value="">— Händler —</option>
+                    {shopOpts.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <select className="form-select" disabled={!isAdmin} value={s.category ?? ''} title="Preiskategorie – aus den oben definierten Kategorien" onChange={e => {
+                    const name = e.target.value
+                    const m = cats.find(c => c.name && c.name === name)
+                    const patch: Partial<BookingTicketSale> = { category: name }
+                    // Preis aus der Kategorie vorbefüllen, wenn noch leer (VVK-Grundpreis, bzw. AK bei Abendkasse).
+                    const catPrice = m ? ((s.art === 'boxoffice' && m.akprice) ? m.akprice : m.price) : ''
+                    if (catPrice && !(s.price ?? '').trim()) { patch.price = catPrice; patch.revenue = (nnum(s.tickets) * nnum(catPrice)).toFixed(2) }
+                    setCh(i, patch)
+                  }}>
+                    <option value="">— Kategorie —</option>
+                    {catOpts.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
                   <select className="form-select" disabled={!isAdmin} value={s.art ?? 'vvk'} onChange={e => setCh(i, { art: e.target.value })}>{ART.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
                   <select className="form-select" disabled={!isAdmin} value={s.money_with ?? 'promoter'} onChange={e => setCh(i, { money_with: e.target.value })} title="Geld liegt bei">{MONEY.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={e => setCh(i, { tickets: e.target.value })} />
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={e => setCh(i, { price: e.target.value })} title="Ticketpreis brutto je Stück" />
-                  <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={e => setCh(i, { revenue: e.target.value })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
+                  <NumInput kind="int" align="right" disabled={!isAdmin} placeholder="Stk" value={s.tickets ?? ''} onChange={v => setCh(i, { tickets: v })} />
+                  <NumInput kind="money" align="right" disabled={!isAdmin} placeholder="Preis" value={s.price ?? ''} onChange={v => setCh(i, { price: v })} title="Ticketpreis brutto je Stück" />
+                  <NumInput kind="money" align="right" disabled={!isAdmin || hasPrice} readOnly={hasPrice} placeholder="Brutto €" value={s.revenue ?? ''} onChange={v => setCh(i, { revenue: v })} title={hasPrice ? 'Berechnet: Stück × Preis' : 'Gesamtbrutto des Kanals'} style={hasPrice ? { background: 'var(--hover)', color: 'var(--text-muted)' } : undefined} />
                   {isAdmin ? <button onClick={() => rmCh(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
                 </div>
-                <div className="flex items-center gap-1.5 pl-1 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
-                  <span style={{ minWidth: 64 }}>Refund.:</span>
+                <div className="flex items-center gap-1.5 pl-1 text-[11px] flex-wrap" style={{ color: 'var(--text-subtle)' }}>
+                  <span style={{ minWidth: 64 }}>Rabattstufe:</span>
+                  <input className="form-input" style={{ height: 26, width: 150 }} disabled={!isAdmin}
+                    placeholder="z.B. public sale" value={s.rabattstufe ?? ''} onChange={e => setCh(i, { rabattstufe: e.target.value })}
+                    title="Verkaufs-/Preisart innerhalb Kanal×Kategorie (public sale, Presale, Rollstuhl, Bandshop, Box Office …). Erscheint in der Konzertabrechnung als Unterzeile; mehrere Zeilen mit gleichem Händler+Kategorie werden gruppiert." />
+                  <span style={{ minWidth: 48, marginLeft: 8 }}>Refund.:</span>
                   <input className="form-input text-right" style={{ height: 26, width: 78 }} inputMode="decimal" disabled={!isAdmin}
-                    placeholder={boxoffice ? '0' : (f.fee_per_ticket ? `${f.fee_per_ticket} (gl.)` : 'global')}
+                    placeholder={boxoffice ? '0' : (shopFee ? `${shopFee} (Händler)` : (f.fee_per_ticket ? `${f.fee_per_ticket} (Std.)` : 'Standard'))}
                     value={s.chan_fee ?? ''} onChange={e => setCh(i, { chan_fee: e.target.value })}
-                    title="Gebühr/Ticket nur für diesen Kanal · leer = global, Abendkasse = 0" />
+                    title="Gebühr/Ticket nur für diesen Kanal · leer = Händler-/Standard-Gebühr, Abendkasse = 0" />
                   <span>€/Tkt</span>
-                  <input className="form-input text-right" style={{ height: 26, width: 64 }} inputMode="decimal" disabled={!isAdmin}
-                    placeholder={f.fee_band_split_pct ? `${f.fee_band_split_pct} (gl.)` : 'global'}
-                    value={s.chan_fee_split ?? ''} onChange={e => setCh(i, { chan_fee_split: e.target.value })}
-                    title="Band-Anteil % an der Gebühr nur für diesen Kanal · leer = global" />
-                  <span>% Band</span>
                 </div>
               </div>
               )
@@ -651,32 +1056,14 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-          {In('USt Tickets %', 'ticket_vat')}
-          {In('Ticketgebühr / Ticket', 'fee_per_ticket', 'z.B. 3,38')}
-          {In('USt Gebühr %', 'fee_vat')}
-          {In('Band-Anteil Gebühr %', 'fee_band_split_pct', 'z.B. 50')}
-          {In('USt Künstleranteil %', 'artist_vat')}
+          {In('USt Tickets %', 'ticket_vat', '', undefined, 'raw')}
+          {In('USt Künstleranteil %', 'artist_vat', '', undefined, 'raw')}
           {In('Ticketing-Payout (brutto)', 'ticketing_payout_gross', 'bereits an Band')}
           <div className="flex items-end"><label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
             <input type="checkbox" disabled={!isAdmin} checked={deductOwn} onChange={e => set({ deduct_own_shop: e.target.checked ? '1' : '' })} className="accent-blue-600" />
             Eigener Shop verrechnen
           </label></div>
         </div>
-
-        {/* Nebenkosten */}
-        <div className="flex items-center justify-between mt-4 mb-1"><span className="text-sm font-medium" style={{ color: 'var(--text)' }}>Nebenkosten</span>{isAdmin && <button onClick={addCost} className="btn btn-ghost" style={{ padding: '4px 10px' }}><PlusIcon className="w-4 h-4" />Position</button>}</div>
-        {costs.length > 0 && (
-          <div className="space-y-1.5">
-            {costs.map((c, i) => (
-              <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: 'minmax(0,1fr) 110px 70px 28px' }}>
-                <input className="form-input" disabled={!isAdmin} placeholder="z.B. Nightliner Buyout" value={c.label ?? ''} onChange={e => setCo(i, { label: e.target.value })} />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="netto €" value={c.net ?? ''} onChange={e => setCo(i, { net: e.target.value })} />
-                <input className="form-input text-right" inputMode="decimal" disabled={!isAdmin} placeholder="USt %" value={c.vat ?? ''} onChange={e => setCo(i, { vat: e.target.value })} />
-                {isAdmin ? <button onClick={() => rmCo(i)} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4" /></button> : <span />}
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Ergebnis */}
         <div className="mt-3 rounded-lg p-3 text-sm" style={{ background: 'var(--hover)' }}>
@@ -694,7 +1081,17 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           {st.depositGross > 0 && <Row k="abzgl. Anzahlung" v={'− ' + eur(st.depositGross, cur)} muted />}
           <div className="border-t mt-1 pt-1" style={{ borderColor: 'var(--border)' }}><Row k="Offener Betrag an die Band" v={eur(st.payableGross, cur)} big bold /></div>
         </div>
+        <button onClick={onSettlementPdf} disabled={pdfBusy} className="btn btn-ghost mt-3"><DocumentArrowDownIcon className="w-4 h-4" />{pdfBusy ? 'Erzeuge…' : 'Abrechnung-PDF'}</button>
       </fieldset>
+
+      {/* ── Bereich 3: Rechnung (Rechnungssteller + Rechnungen erstellen) ── */}
+      <div className="flex items-center gap-3 pt-3">
+        <span className="inline-flex items-center justify-center rounded-full text-xs font-bold" style={{ width: 24, height: 24, background: 'var(--primary)', color: '#fff' }}>3</span>
+        <div>
+          <div className="text-base font-bold leading-tight" style={{ color: 'var(--text)' }}>Rechnung</div>
+          <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Rechnungssteller festlegen und Anzahlungs-/Schlussrechnung erstellen.</div>
+        </div>
+      </div>
 
       {/* Rechnungssteller */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
@@ -717,12 +1114,15 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       {/* Rechnungen */}
       <fieldset className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
         <legend className="text-xs font-semibold px-1" style={{ color: 'var(--text-muted)' }}>RECHNUNGEN</legend>
-        {isAdmin && (
-          <div className="flex gap-2 flex-wrap mb-3">
-            <button onClick={() => createInv('deposit')} disabled={invBusy || nnum(f.deposit) <= 0} className="btn btn-ghost" title={nnum(f.deposit) <= 0 ? 'Keine Anzahlung hinterlegt' : ''}><PlusIcon className="w-4 h-4" />Anzahlungsrechnung</button>
-            <button onClick={() => createInv('final')} disabled={invBusy} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Schlussrechnung</button>
+        {isAdmin && (<>
+          <div className="flex gap-2 flex-wrap mb-1">
+            <button onClick={() => previewInv('deposit')} disabled={invBusy || nnum(f.deposit) <= 0} className="btn btn-ghost" title="Vorschau als PDF – ohne zu speichern"><DocumentArrowDownIcon className="w-4 h-4" />Anzahlung – Vorschau</button>
+            <button onClick={() => createInv('deposit')} disabled={invBusy || nnum(f.deposit) <= 0} className="btn btn-ghost" title={nnum(f.deposit) <= 0 ? 'Keine Anzahlung hinterlegt' : 'Rechnung endgültig erstellen'}><PlusIcon className="w-4 h-4" />Anzahlungsrechnung</button>
+            <button onClick={() => previewInv('final')} disabled={invBusy} className="btn btn-ghost" title="Vorschau als PDF – ohne zu speichern"><DocumentArrowDownIcon className="w-4 h-4" />Schluss – Vorschau</button>
+            <button onClick={() => createInv('final')} disabled={invBusy} className="btn btn-primary" title="Rechnung endgültig erstellen"><PlusIcon className="w-4 h-4" />Schlussrechnung</button>
           </div>
-        )}
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>„Vorschau" erzeugt ein Entwurfs-PDF (Wasserzeichen, keine Nummer) ohne zu speichern. „…rechnung" legt die Rechnung endgültig an.</p>
+        </>)}
         {invoices.length === 0 ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Noch keine Rechnungen. Erst Abrechnung ausfüllen, dann erstellen.</p> : (
           <div className="space-y-1">
             {invoices.map(iv => (

@@ -40,7 +40,7 @@ export function QuickCreateModal({
       <div className="modal-container max-w-[420px]">
         <div className="modal-header">
           <h3 className="modal-title">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-[var(--text)]"
+          <button data-modal-close onClick={onClose} className="text-gray-400 hover:text-[var(--text)]"
             style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
             <X size={18} />
           </button>

@@ -1,8 +1,32 @@
 // Validierung des Abrechnungs-Rechenkerns gegen eine echte Konzertabrechnung (Osnabrück, Q4/2026).
 import { describe, it, expect } from 'vitest'
-import { computeSettlement } from './settlement'
+import { computeSettlement, parseNum } from './settlement'
 
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 2)
+
+describe('parseNum – deutsche & kanonische Schreibweise', () => {
+  it('erkennt Tausender-Punkt + Dezimal-Komma', () => {
+    close(parseNum('1.600,50'), 1600.5)
+    close(parseNum('1.600.000'), 1600000)
+    close(parseNum('44859,81'), 44859.81)
+  })
+  it('erkennt kanonische (toFixed) und US-Schreibweise', () => {
+    close(parseNum('32000.00'), 32000)
+    close(parseNum('1,600.50'), 1600.5)
+  })
+  it('liefert bei leer/ungültig 0', () => {
+    expect(parseNum('')).toBe(0)
+    expect(parseNum(null)).toBe(0)
+    expect(parseNum('abc')).toBe(0)
+  })
+  it('wird in der Abrechnung genutzt (Umsatz mit Tausender-Punkt)', () => {
+    const r = computeSettlement({
+      channels: [{ name: 'X', art: 'vvk', money_with: 'promoter', tickets: '1.000', revenue: '45.000,00' }],
+      ticketVat: '7', guarantee: '0', dealShare: '100', dealBase: 'gross',
+    } as Parameters<typeof computeSettlement>[0])
+    close(r.ticketGross, 45000)
+  })
+})
 
 describe('computeSettlement – echte KA Osnabrück', () => {
   const r = computeSettlement({
@@ -50,6 +74,34 @@ describe('computeSettlement – echte KA Wiesbaden (Refundierung ohne Abendkasse
   it('Restbetrag an Band nach Ticketing-Payout', () => { near(r.payableGross, 18452.58) })
 })
 
+describe('computeSettlement – Refundierung je Händler (shopFees)', () => {
+  const base = {
+    channels: [
+      { vendor: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '100', revenue: '4500' },
+      { vendor: 'Reservix', art: 'vvk', money_with: 'promoter', tickets: '100', revenue: '4500' },
+      { vendor: 'Abendkasse', art: 'boxoffice', money_with: 'promoter', tickets: '50', revenue: '2250' },
+    ],
+    ticketVat: '7', feeVat: '7', feeBandSplitPct: '50', artistVat: '7', guarantee: '0', dealBase: 'gross',
+  }
+  it('nutzt Händler-Gebühr vor Standard, Abendkasse 0', () => {
+    const r = computeSettlement({ ...base, feePerTicket: '3,00', shopFees: { Eventim: '4,00', Reservix: '2,00' } } as Parameters<typeof computeSettlement>[0])
+    // 100×4 + 100×2 + 0 (Abendkasse) = 600
+    close(r.feeTotalGross, 600)
+  })
+  it('fällt auf Standard-Gebühr zurück, wenn Händler keine eigene hat', () => {
+    const r = computeSettlement({ ...base, feePerTicket: '3,00', shopFees: { Eventim: '4,00' } } as Parameters<typeof computeSettlement>[0])
+    // Eventim 100×4 + Reservix 100×3 (Standard) = 700
+    close(r.feeTotalGross, 700)
+  })
+  it('chan_fee am Kanal übersteuert die Händler-Gebühr', () => {
+    const r = computeSettlement({
+      ...base, feePerTicket: '3,00', shopFees: { Eventim: '4,00', Reservix: '2,00' },
+      channels: [{ vendor: 'Eventim', art: 'vvk', money_with: 'promoter', tickets: '100', revenue: '4500', chan_fee: '5,00' }],
+    } as Parameters<typeof computeSettlement>[0])
+    close(r.feeTotalGross, 500)
+  })
+})
+
 describe('computeSettlement – beliebig viele Stufen (progressiv)', () => {
   it('3 Stufen marginal: 50 % bis 20k, 60 % bis 40k, 70 % darüber', () => {
     const r = computeSettlement({
@@ -80,5 +132,46 @@ describe('computeSettlement – 2. Schwelle (Wiesbaden-artig, Fallback pct1/thre
     const net = 53500 / 1.07 // 50000
     const expected = 44859.81 * 0.5 + (net - 44859.81) * 0.55
     close(r.dealShareNet, expected)
+  })
+})
+
+// Zusammensetzbares Deal-Modell: Verhältnis (vs/plus), Basis (ab Break-Even), Stufen-Basis (Ticketzahl).
+describe('computeSettlement – Deal-Modell-Bausteine', () => {
+  const base = { costs: [], ticketVat: '7', artistVat: '7' as const }
+  const net = 53500 / 1.07 // 50000
+
+  it('Fixgage plus Beteiligung (addiert)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      dealBase: 'gross', dealType: 'plus', guarantee: '3000', tiers: [{ from: 0, pct: 50 }],
+    })
+    close(r.dealShareNet, 3000 + net * 0.5) // 28000
+  })
+
+  it('Fixgage gegen Beteiligung – das Höhere gewinnt (Garantie)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      dealBase: 'gross', dealType: 'vs', guarantee: '30000', tiers: [{ from: 0, pct: 50 }],
+    })
+    close(r.dealShareNet, 30000) // max(30000, 25000)
+  })
+
+  it('Stufen auf Ticketzahl (Schwelle in Stück → Umsatz umgerechnet)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', tickets: '1000', money_with: 'promoter' }],
+      dealBase: 'gross', dealType: 'vs', guarantee: '0', tierBasis: 'tickets',
+      tiers: [{ from: 0, pct: 50 }, { from: 500, pct: 60 }],
+    })
+    // Ø 50 €/Ticket → Schwelle 500 Tickets = 25.000 €; 25000*0,5 + 25000*0,6
+    close(r.dealShareNet, 25000 * 0.5 + 25000 * 0.6) // 27500
+  })
+
+  it('Nur Beteiligung ab Break-Even (netprofit)', () => {
+    const r = computeSettlement({
+      ...base, channels: [{ revenue: '53500', money_with: 'promoter' }],
+      dealBase: 'netprofit', dealType: 'vs', guarantee: '0', promoterCosts: '30000',
+      tiers: [{ from: 0, pct: 50 }],
+    })
+    close(r.dealShareNet, (net - 30000) * 0.5) // 10000
   })
 })

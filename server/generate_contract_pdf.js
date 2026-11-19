@@ -29,17 +29,35 @@ function drawLogo(doc, logoPath) {
   } catch { return MARGIN; }
 }
 
+// Robuste Zahl-Erkennung (deutsch + kanonisch), identisch zu lib/booking/settlement.ts parseNum:
+//   "1.600,50"→1600.5  "1600,50"→1600.5  "1.600.000"→1600000  "32000.00"→32000  "1,600.50"→1600.5
+function parseNum(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  let s = String(v ?? '').trim();
+  if (!s) return 0;
+  const hasComma = s.includes(','), hasDot = s.includes('.');
+  if (hasComma && hasDot) {
+    s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  } else if (hasComma) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if ((s.match(/\./g) || []).length > 1) {
+    s = s.replace(/\./g, '');
+  }
+  const x = Number(s); return isFinite(x) ? x : 0;
+}
 function money(v, cur = 'EUR') {
   if (v == null || v === '') return null;
-  const n = Number(String(v).replace(',', '.'));
-  if (!isFinite(n)) return String(v);
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = parseNum(s);
+  if (!isFinite(n) || (n === 0 && !/[0-9]/.test(s))) return String(v);
   return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur;
 }
-function num(v) { const n = Number(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0; }
+function num(v) { return parseNum(v); }
 function intDE(v) { const n = num(v); return n ? n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) : (v == null || v === '' ? '—' : String(v)); }
 function pct(v) {
   if (v == null || v === '') return null;
-  const n = Number(String(v).replace(',', '.'));
+  const n = parseNum(v);
   if (!isFinite(n)) return String(v);
   const p = n <= 1 ? n * 100 : n;
   return p.toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' %';
@@ -95,7 +113,10 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     const addrLine = (parts) => parts.filter(Boolean).join(', ');
     const partyBlock = (intro, name, addr, extra, tag) => {
       if (intro) { doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(intro, MARGIN, doc.y, { width: CONTENT_W, align: 'center' }); doc.moveDown(0.1); }
-      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(`${name || '—'}${addr ? ', ' + addr : ''}`, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
+      // Firmenname in eigener Zeile, Anschrift darunter (Zeilenschaltung nach dem Namen).
+      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(name || '—', MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
+      const addr1 = String(addr || '').replace(/\s*\n\s*/g, ', ').trim();
+      if (addr1) doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(addr1, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
       if (extra) doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(extra, MARGIN, doc.y, { width: CONTENT_W, align: 'center' });
       doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(`– „${tag}" –`, MARGIN, doc.y + 1, { width: CONTENT_W, align: 'center' });
       doc.moveDown(0.5);
@@ -132,28 +153,41 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     doc.moveDown(0.6);
 
     // ── Tabellen-Helfer (einfache Linien-Tabelle) ──
-    const drawTable = (title, headers, rows, widths) => {
+    const drawTable = (title, headers, rows, widths, indent = 0) => {
       if (!rows.length) return;
-      ensureSpace(60 + rows.length * 16);
-      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.2); }
-      const x0 = MARGIN, totalW = widths.reduce((a, b) => a + b, 0);
-      const rowH = 16;
+      const x0 = MARGIN + indent, innerW = CONTENT_W - indent;
+      if (title) { ensureSpace(34); doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(BODY_INK).text(title, x0, doc.y, { width: innerW }); doc.moveDown(0.2); }
+      // Spalten exakt auf die (eingerückte) Breite skalieren: füllt die Zeile voll aus
+      // (keine Lücke rechts) und läuft nie über – die übergebenen Breiten sind nur Verhältnisse.
+      const sumW = widths.reduce((a, b) => a + b, 0) || 1;
+      const w = widths.map(x => x * innerW / sumW);
+      const totalW = w.reduce((a, b) => a + b, 0);
+      const PAD = 4, MIN_ROWH = 16;
       const drawRow = (cells, bold, bg) => {
+        doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_TABLE);
+        // Zeilenhöhe dynamisch aus dem höchsten Feld: lange Texte (z. B. Kategoriename)
+        // brechen innerhalb der Spalte um und bleiben lesbar, statt die nächste Zeile zu überlappen.
+        const texts = cells.map(c => String(c ?? ''));
+        let rowH = MIN_ROWH;
+        texts.forEach((s, i) => {
+          const h = doc.heightOfString(s, { width: w[i] - PAD * 2, align: i > 0 ? 'right' : 'left' }) + PAD * 2;
+          if (h > rowH) rowH = h;
+        });
+        ensureSpace(rowH + 2);
         const y = doc.y;
         if (bg) { doc.save().rect(x0, y, totalW, rowH).fill(bg).restore(); }
+        doc.fillColor(INK);
         let x = x0;
-        doc.font(bold ? FONT_BOLD : FONT_REG).fontSize(SIZE_TABLE).fillColor(INK);
-        cells.forEach((cell, i) => {
-          const alignRight = i > 0; // erste Spalte links, Rest rechts
-          doc.text(String(cell ?? ''), x + 4, y + 4, { width: widths[i] - 8, align: alignRight ? 'right' : 'left', lineBreak: false });
-          x += widths[i];
+        texts.forEach((s, i) => {
+          doc.text(s, x + PAD, y + PAD, { width: w[i] - PAD * 2, align: i > 0 ? 'right' : 'left' });
+          x += w[i];
         });
         doc.lineWidth(0.4).strokeColor('#d1d5db').rect(x0, y, totalW, rowH).stroke();
         doc.y = y + rowH;
       };
       drawRow(headers, true, '#f3f4f6');
-      rows.forEach(r => { ensureSpace(rowH + 20); drawRow(r, r._bold, r._bg); });
-      doc.moveDown(0.5);
+      rows.forEach(r => drawRow(r, r._bold, r._bg));
+      doc.moveDown(1); // Leerzeile nach jeder Tabelle (sonst gequetscht)
     };
 
     // Tabellen-Daten vorbereiten
@@ -168,23 +202,55 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
     }
 
     const feePer = money(c.fee_per_ticket, cur);
-    // Refundierung = Ticketsystem-Gebühr; nur Vorverkaufskanäle (Abendkasse/Eigener Shop haben keine).
-    const refundRows = feePer ? (ticketSales || []).filter(s => (s.art || 'vvk') === 'vvk').map(s => [s.vendor || 'Ticketsystem', feePer]) : [];
+    // Ticketsysteme/Shops + Preiskategorien aus dem Vertrag (zum Vertragszeitpunkt definiert).
+    const shopList = (() => {
+      try {
+        const ts = c.ticket_systems ? JSON.parse(c.ticket_systems) : null;
+        if (Array.isArray(ts)) return ts.map(x => typeof x === 'string'
+          ? { name: x.trim(), fee: '' }
+          : { name: String((x && x.name) || '').trim(), fee: String((x && x.fee) != null ? x.fee : '') }
+        ).filter(x => x.name);
+      } catch { /* */ }
+      return [];
+    })();
+    const catList = (() => {
+      try { const pc = c.price_categories ? JSON.parse(c.price_categories) : null; if (Array.isArray(pc)) return pc.filter(x => x && (x.name || x.price || x.cap || x.face)); } catch { /* */ }
+      return [];
+    })();
+    const pkNames = catList.length ? catList.map(x => String(x.name || '').trim() || 'Cat. 01') : ['Cat. 01'];
+    // Refundierung = Ticketsystem-Gebühr (wie FKP: Ticketsystem · PK · Betrag). Bevorzugt die im Vertrag
+    // definierten Shops × Kategorien mit globaler Gebühr; sonst Fallback aus den Abrechnungs-Kanälen.
+    // Refundierung je Händler: eigene Shop-Gebühr vor globaler Standard-Gebühr (feePer).
+    let refundRows = [];
+    const anyShopFee = shopList.some(sh => String(sh.fee).trim() !== '');
+    if (shopList.length && (feePer || anyShopFee)) {
+      for (const sh of shopList) {
+        const ef = String(sh.fee).trim() !== '' ? money(sh.fee, cur) : feePer;
+        if (!ef) continue;
+        for (const pk of pkNames) refundRows.push([sh.name, pk, ef]);
+      }
+    } else if (feePer) {
+      refundRows = (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice').map(s => {
+        const ef = (s.chan_fee != null && String(s.chan_fee) !== '') ? money(s.chan_fee, cur) : feePer;
+        return [s.vendor || 'Ticketsystem', String(s.category || '').trim() || 'Cat. 01', ef];
+      });
+    }
 
     // Key-Value-Block (Label links, Wert rechts fett).
-    const drawKV = (title, pairs) => {
+    const drawKV = (title, pairs, indent = 0) => {
       const rows = pairs.filter(p => p && p[1] != null && p[1] !== '');
       if (!rows.length) return;
       ensureSpace(30 + rows.length * 14);
-      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(MUTED).text(title, MARGIN, doc.y, { width: CONTENT_W }); doc.moveDown(0.2); }
-      const labelW = 210;
+      const x0 = MARGIN + indent, innerW = CONTENT_W - indent;
+      if (title) { doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(BODY_INK).text(title, x0, doc.y, { width: innerW }); doc.moveDown(0.2); }
+      const labelW = Math.min(210, innerW - 120);
       for (const [k, v] of rows) {
         const y = doc.y;
-        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(MUTED).text(k, MARGIN + 6, y, { width: labelW });
-        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(String(v), MARGIN + 6 + labelW, y, { width: CONTENT_W - labelW - 6 });
+        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(k, x0, y, { width: labelW });
+        doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text(String(v), x0 + labelW, y, { width: innerW - labelW });
         doc.y = Math.max(doc.y, y + 13);
       }
-      doc.moveDown(0.4);
+      doc.moveDown(0.8); // Leerzeile nach jedem KV-Block
     };
 
     // Event-Details (§1) – variabel aus Booking.
@@ -198,21 +264,44 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       ['Beginn', c.show_time ? `${c.show_time} Uhr` : null],
     ];
 
-    // Deal-Details (§4) – Basis net/gross + Stufen.
+    // Deal-Details (§4) – zusammensetzbares Modell: Fixgage? Beteiligung? Verhältnis? Basis? Stufen.
     let tiers = [];
     try { tiers = c.deal_tiers ? JSON.parse(c.deal_tiers) : []; } catch { tiers = []; }
     tiers = (Array.isArray(tiers) ? tiers : []).map(t => ({ from: num(t.from), pct: num(t.pct) })).filter(t => t.pct > 0).sort((a, b) => a.from - b.from);
-    const dealTypeLabel = { guarantee: 'Festgage', vs: 'Garantie vs. Beteiligung', plus: 'Garantie plus Beteiligung', door: 'Door Deal' }[c.deal_type] || c.deal_type || '—';
-    const basisLabel = c.deal_base === 'netprofit' ? 'Nettogewinn (nach örtlichen Kosten)' : 'Nettoeinnahmen aus Ticketverkäufen';
-    const dealRows = [
-      ['Deal-Art', dealTypeLabel],
-      ['Produktionskostengarantie (netto)', money(c.guarantee, cur)],
-      ['Berechnungsbasis Beteiligung', basisLabel],
-    ];
-    if (tiers.length > 1) {
-      tiers.forEach((t, i) => dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${money(t.from, cur)}`, pct(t.pct)]));
-    } else {
-      dealRows.push(['Beteiligung Artist', pct(c.deal_share)]);
+    // Preset (gespeichert) oder aus Werten ableiten.
+    const hasFixAmt = num(c.guarantee) > 0;
+    const hasPartAmt = tiers.length > 0 || num(c.deal_share) > 0;
+    const model = c.deal_model || (hasFixAmt && !hasPartAmt ? 'fix' : (!hasFixAmt && hasPartAmt ? 'participation'
+      : (c.deal_base === 'netprofit' ? 'vs_break' : (c.deal_type === 'plus' ? 'plus' : 'vs'))));
+    const showFix = model === 'custom' ? true : model !== 'participation';
+    const showPart = model === 'custom' ? true : model !== 'fix';
+    const dealTypeLabel = {
+      fix: 'Fixgage', participation: 'Nur Beteiligung', vs: 'Fixgage gegen Beteiligung – das Höhere',
+      plus: 'Fixgage plus Beteiligung', vs_break: 'Fixgage gegen Beteiligung ab Break-Even', custom: 'Individuell',
+    }[model] || '—';
+    const basisLabel = c.deal_base === 'netprofit' ? 'Nettogewinn ab Break-Even des Veranstalters' : 'Nettoeinnahmen aus Ticketverkäufen';
+    const onTickets = c.tier_basis === 'tickets';
+    const thr = (v) => onTickets ? `${num(v).toLocaleString('de-DE')} Tickets` : money(v, cur);
+    const dealRows = [['Deal-Modell', dealTypeLabel]];
+    if (showFix) dealRows.push(['Fixgage / Garantie (netto)', money(c.guarantee, cur)]);
+    if (showPart) {
+      if (c.deal_base === 'netprofit') dealRows.push(['Break-Even Veranstalter (netto)', money(c.promoter_costs, cur)]);
+      dealRows.push(['Berechnungsbasis Beteiligung', basisLabel]);
+      // Bei echtem Gewinn-Split (Nettogewinn ab Break-Even) ist die Beteiligung eine
+      // Aufteilung zwischen Artist und ÖV – daher den Gegenanteil des ÖV mit ausweisen
+      // (wie FKP Köln: „Artist 85 % – ÖV 15 %"). Bei Ticket-Umsatz-Basis wäre das irreführend.
+      const splitNet = c.deal_base === 'netprofit';
+      const ovPct = (v) => { const n = num(v); const a = n <= 1 ? n * 100 : n; return pct(100 - a); };
+      if (tiers.length > 1) {
+        tiers.forEach((t, i) => {
+          dealRows.push([i === 0 ? 'Beteiligung Artist' : `… ab ${thr(t.from)}`, pct(t.pct)]);
+          if (splitNet) dealRows.push([i === 0 ? 'Beteiligung ÖV / Veranstalter' : '… ÖV / Veranstalter', ovPct(t.pct)]);
+        });
+      } else {
+        const artistPct = tiers.length === 1 ? tiers[0].pct : c.deal_share;
+        dealRows.push(['Beteiligung Artist', pct(artistPct)]);
+        if (splitNet) dealRows.push(['Beteiligung ÖV / Veranstalter', ovPct(artistPct)]);
+      }
     }
 
     const payRows = [
@@ -256,6 +345,10 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       }
     };
 
+    // Buyouts (= erfasste Nebenkosten/Buyouts) – werden inline in § 4 gezeigt (wie FKP Köln).
+    const costRows = (costLines || []).filter(l => l && (l.label || l.net)).map(l => [l.label || '—', money(l.net, cur) || '—', l.vat ? `${num(l.vat)} %` : '—']);
+    let buyoutsRendered = false;
+
     // ── §§-Bausteine (live) + interleaved Deal-Tabellen ──
     clauses.forEach((cl, i) => {
       ensureSpace(90);
@@ -267,43 +360,68 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       const t = norm(cl.title);
       let inject = null;
       if (t.startsWith('vertragsgegenstand') || t.includes('gegenstand des vertrags')) {
-        inject = { '1': () => drawKV('Veranstaltungsdetails', eventRows) };
+        inject = { '1': () => drawKV('Veranstaltungsdetails', eventRows, IND1) };
       } else if (t.startsWith('deal') || t.includes('entgelt')) {
         inject = {
-          '1': () => drawKV('Deal', dealRows),
-          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'Betrag (brutto)'], refundRows, [CONTENT_W - 150, 150]); } },
-          '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150]),
-          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]]); },
+          '1': () => drawKV('Deal', dealRows, IND1),
+          // § 4 Ziff. 2: Buyouts (Leistung · Kosten · USt) wie FKP Köln; „keine", wenn nichts erfasst.
+          '2': () => { buyoutsRendered = true; if (costRows.length) drawTable('Buyouts (zzgl. gesetzlicher USt.)', ['Leistung', 'Kosten (netto)', 'USt'], costRows, [CONTENT_W - 130 - 70, 130, 70], IND1); else drawKV(null, [['Buyouts', 'keine']], IND1); },
+          '3': () => { if (refundRows.length) { const bandPct = pct(c.fee_band_split_pct); drawTable(`Refundierung je Ticket${bandPct ? ` – Artist-Anteil ${bandPct}` : ''}`, ['Ticketsystem', 'PK', 'Betrag (brutto)'], refundRows, [CONTENT_W - 90 - 150, 90, 150], IND1); } },
+          '4': () => drawTable('Zahlungen (zzgl. gesetzlicher USt.)', ['Position', 'Betrag', 'Fällig'], payRows, [CONTENT_W - 150 - 150, 150, 150], IND1),
+          '5': () => { if (c.bank_details) drawKV(null, [['Bankverbindung', String(c.bank_details).replace(/\s*\n\s*/g, ', ')]], IND1); },
         };
       } else if (t.startsWith('eintrittspreise') || t.includes('vorverkauf')) {
         inject = {
           '1': () => {
-            // § 5.1 wie FKP: Vorverkaufs-Szenario, Abendkasse, Preisstruktur (Face Value je System).
-            const cap = num(c.capacity), holds = num(c.vk_holds), comps = num(c.vk_comps), kills = num(c.vk_kills);
-            const verk = Math.max(0, cap - holds - comps - kills);
+            // § 5.1 wie FKP: Vorverkaufs-Szenario JE PK (Kontingent/Holds/Comps/Kills/Preis), Abendkasse
+            // je PK, Preisstruktur = Face Value je Ticketsystem × PK.
             const vvkChans = (ticketSales || []).filter(s => (s.art || 'vvk') !== 'boxoffice');
-            const vkPrice = (c.vk_base_price != null && c.vk_base_price !== '') ? num(c.vk_base_price) : (vvkChans[0] ? num(vvkChans[0].price) : 0);
-            const einnahme = verk * vkPrice;
-            const vkRows = [['Cat. 01', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), money(vkPrice, cur) || '—', money(einnahme, cur) || '—']];
-            const totalVk = ['Gesamt', intDE(cap), intDE(holds), intDE(comps), intDE(kills), intDE(verk), '', money(einnahme, cur) || '—']; totalVk._bold = true; totalVk._bg = '#f9fafb';
-            vkRows.push(totalVk);
-            drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [50, 54, 36, 40, 32, 56, 58, CONTENT_W - 326]);
-            const boChan = (ticketSales || []).find(s => (s.art || '') === 'boxoffice');
-            const akPrice = (c.ak_price != null && c.ak_price !== '') ? num(c.ak_price) : (boChan ? num(boChan.price) : 0);
-            if (akPrice > 0) drawTable('Abendkasse', ['PK', 'Grundpreis'], [['Cat. 01', money(akPrice, cur)]], [CONTENT_W - 120, 120]);
-            const psRows = vvkChans.filter(s => s.vendor || s.price).map(s => ['Face Value', s.vendor || '—', money(s.price, cur) || '—']);
-            if (psRows.length) drawTable('Preisstruktur', ['Preis-Element', 'Ticketsystem', 'Cat. 01'], psRows, [120, CONTENT_W - 120 - 110, 110]);
+            // Preiskategorien als eine Quelle. Fallback (Altbestand): eine Zeile aus den Haus-Einzelwerten.
+            let priceCats = [];
+            try { const pc = c.price_categories ? JSON.parse(c.price_categories) : null; if (Array.isArray(pc)) priceCats = pc.filter(x => (x.name || x.price || x.cap || x.face)); } catch { priceCats = []; }
+            if (!priceCats.length) {
+              const legacy = [c.capacity, c.vk_base_price, c.vk_holds, c.vk_comps, c.vk_kills, c.ak_price].some(v => v != null && v !== '');
+              if (legacy) priceCats = [{ name: 'Cat. 01', cap: c.capacity, holds: c.vk_holds, comps: c.vk_comps, kills: c.vk_kills, price: c.vk_base_price, akprice: c.ak_price }];
+            }
+            const nv = (x) => Math.max(0, num(x.cap) - num(x.holds) - num(x.comps) - num(x.kills));
+            // Vorverkauf-Tabelle je PK + Gesamt.
+            const vkRows = priceCats.map(x => {
+              const verk = nv(x), pr = num(x.price);
+              return [String(x.name || '').trim() || 'Cat. 01', intDE(x.cap), intDE(x.holds), intDE(x.comps), intDE(x.kills), intDE(verk), money(x.price, cur) || '—', money(verk * pr, cur) || '—'];
+            });
+            if (vkRows.length) {
+              const sum = (f) => priceCats.reduce((a, x) => a + f(x), 0);
+              const totEin = priceCats.reduce((a, x) => a + nv(x) * num(x.price), 0);
+              const totalVk = ['Gesamt', intDE(sum(x => num(x.cap))), intDE(sum(x => num(x.holds))), intDE(sum(x => num(x.comps))), intDE(sum(x => num(x.kills))), intDE(sum(nv)), '', money(totEin, cur) || '—'];
+              totalVk._bold = true; totalVk._bg = '#f9fafb';
+              vkRows.push(totalVk);
+              drawTable('Vorverkauf', ['PK', 'Kapazität', 'Holds', 'Comps', 'Kills', 'Verkaufbar', 'Grundpreis', 'Einnahme'], vkRows, [84, 56, 40, 44, 38, 62, 66, 88], IND1);
+            }
+            // Abendkasse je PK (nur Kategorien mit AK-Preis).
+            const akRows = priceCats.filter(x => x.akprice != null && String(x.akprice) !== '').map(x => [String(x.name || '').trim() || 'Cat. 01', money(x.akprice, cur) || '—']);
+            if (akRows.length) drawTable('Abendkasse', ['PK', 'Grundpreis'], akRows, [CONTENT_W - 120, 120], IND1);
+            // Preisstruktur: Face Value je Ticketsystem × PK (abgeleitet; alle Systeme = PK-Grundpreis).
+            // Systeme bevorzugt aus der im Vertrag definierten Shop-Liste, sonst aus den Kanälen.
+            if (priceCats.length) {
+              const systems = shopList.length ? shopList : [...new Set(vvkChans.map(s => String(s.vendor || '').trim()).filter(Boolean))];
+              const pkCols = priceCats.map(x => String(x.name || '').trim() || 'Cat. 01');
+              const faceByPk = priceCats.map(x => money(x.price, cur) || '—');
+              const psHeaders = ['Preis-Element', 'Ticketsystem', ...pkCols];
+              const psRows = (systems.length ? systems : ['Alle Systeme']).map(sys => ['Face Value', sys, ...faceByPk]);
+              const peW = 70, pkW = Math.max(52, Math.min(90, Math.floor((CONTENT_W - peW - 110) / Math.max(1, pkCols.length))));
+              const tsW = CONTENT_W - peW - pkW * pkCols.length;
+              drawTable('Preisstruktur', psHeaders, psRows, [peW, tsW, ...pkCols.map(() => pkW)], IND1);
+            }
           },
-          '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]]); },
+          '3': () => { if (c.support_acts) drawKV(null, [['Support Act(s)', String(c.support_acts).replace(/\s*\n\s*/g, ', ')]], IND1); },
         };
       }
       drawClauseBody(fillPlaceholders(cl.body, placeholders) || ' ', inject);
       doc.moveDown(0.5);
     });
 
-    // ── Nebenkosten (falls erfasst) ──
-    const costRows = (costLines || []).filter(l => l && (l.label || l.net)).map(l => [l.label || '—', money(l.net, cur) || '—', l.vat ? `${num(l.vat)} %` : '—']);
-    if (costRows.length) {
+    // ── Nebenkosten / Buyouts (nur als Fallback, falls nicht schon inline in § 4 gezeigt) ──
+    if (costRows.length && !buyoutsRendered) {
       ensureSpace(80);
       doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Nebenkosten / Buyouts', MARGIN, doc.y, { width: CONTENT_W });
       doc.moveDown(0.3);
