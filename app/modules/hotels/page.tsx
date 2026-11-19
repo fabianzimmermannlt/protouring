@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Plus, ArrowLeft, Download, Upload, Trash2, Star } from 'lucide-react'
 import { getHotels, deleteHotel, isEditorRole, getEffectiveRole, type Hotel } from '@/lib/api-client'
 import { useT } from '@/app/lib/i18n/LanguageContext'
-import HotelFormModal from './HotelFormModal'
 import { QuickCreateHotelModal } from '@/app/components/shared/modals/QuickCreateHotelModal'
 import { useSortable } from '@/app/hooks/useSortable'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
@@ -124,9 +123,7 @@ export default function HotelsPage() {
   const isEditor = isEditorRole(getEffectiveRole())
   const isAdmin = getEffectiveRole() === 'admin'
   const [hotels, setHotels] = useState<Hotel[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
-  const [editingHotel, setEditingHotel] = useState<Hotel | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const [selectedHotelId, setSelectedHotelId] = useState<string | null>(() => {
@@ -169,22 +166,6 @@ export default function HotelsPage() {
       window.removeEventListener('hotel-show-list', showListHandler)
     }
   }, [])
-
-  const openNewHotelModal = () => { setEditingHotel(null); setIsModalOpen(true) }
-  const openEditHotelModal = (hotel: Hotel) => { setEditingHotel(hotel); setIsModalOpen(true) }
-
-  // Sidebar events
-  useEffect(() => {
-    const onCreate = () => openNewHotelModal()
-    const onSelect = (e: Event) => { const h = (e as CustomEvent<Hotel>).detail; if (h) openEditHotelModal(h) }
-    window.addEventListener('hotel-sidebar-create', onCreate)
-    window.addEventListener('hotel-sidebar-select', onSelect)
-    return () => {
-      window.removeEventListener('hotel-sidebar-create', onCreate)
-      window.removeEventListener('hotel-sidebar-select', onSelect)
-    }
-  }, [])
-
 
   const filtered = hotels.filter(h =>
     `${h.name} ${h.city} ${h.state} ${h.country} ${h.website}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -244,7 +225,7 @@ export default function HotelsPage() {
         <>
           {isMobile && isEditor && (
             <div className="flex items-center gap-2 mb-3">
-              <button onClick={openNewHotelModal} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
+              <button onClick={() => setShowQuickCreate(true)} className="btn btn-primary"><Plus className="w-4 h-4" /> {t('general.new')}</button>
             </div>
           )}
           <input
@@ -300,24 +281,6 @@ export default function HotelsPage() {
             localStorage.setItem('pt_hotels_last_id', h.id)
             setSelectedHotelId(h.id)
             setShowQuickCreate(false)
-          }}
-        />
-      )}
-
-      {isModalOpen && (
-        <HotelFormModal
-          hotel={editingHotel}
-          onClose={() => setIsModalOpen(false)}
-          onSaved={saved => {
-            setHotels(prev => {
-              const idx = prev.findIndex(h => h.id === saved.id)
-              if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
-              return [...prev, saved]
-            })
-            setIsModalOpen(false)
-          }}
-          onDeleted={id => {
-            setHotels(prev => prev.filter(h => h.id !== id))
           }}
         />
       )}
