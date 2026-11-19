@@ -2203,6 +2203,9 @@ async function initDatabase() {
   try { await db.run(`ALTER TABLE booking_ticket_sales ADD COLUMN rabattstufe TEXT`); } catch {}
   // Baustein-Deal-Bindung: deal_models = JSON-Array der Deal-Modelle; NULL/leer = „Allgemein" (gilt für alle Deals).
   try { await db.run(`ALTER TABLE booking_clauses ADD COLUMN deal_models TEXT`); } catch {}
+  // Vorlage (Agentur-Set) für Bausteine + Verträge; NULL/leer = „fkp" (Bestand bleibt unverändert).
+  try { await db.run(`ALTER TABLE booking_clauses ADD COLUMN template TEXT`); } catch {}
+  try { await db.run(`ALTER TABLE booking_contracts ADD COLUMN template TEXT`); } catch {}
   // Pro-Vertrag Baustein-Override: included (Häkchen) + body (überschriebener Text, '' = Bibliothek live).
   try {
     await db.run(`ALTER TABLE booking_contract_clauses ADD COLUMN included INTEGER NOT NULL DEFAULT 1`);
@@ -9983,12 +9986,13 @@ app.get('/api/booking/clauses/:id/versions', authenticateToken, requireTenant, a
 app.post('/api/booking/clauses', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { title, body = '', deal_models } = req.body
+    const { title, body = '', deal_models, template } = req.body
     if (!title) return res.status(400).json({ error: 'Titel ist Pflicht' })
     const dm = Array.isArray(deal_models) && deal_models.length ? JSON.stringify(deal_models.map(String)) : null
+    const tmpl = (typeof template === 'string' && template.trim()) ? template.trim() : null
     const r = await db.run(
-      `INSERT INTO booking_clauses (tenant_id, title, deal_models) VALUES (?,?,?)`,
-      [req.tenant.id, title, dm]
+      `INSERT INTO booking_clauses (tenant_id, title, deal_models, template) VALUES (?,?,?,?)`,
+      [req.tenant.id, title, dm, tmpl]
     )
     await db.run(
       `INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)`,
@@ -10028,6 +10032,20 @@ const FKP_STANDARD_CLAUSES = [
 
   { title: 'Deal, Entgelt und Zahlungsmodalitäten', body:
 `1. ÖV zahlt an Artist die nachstehend angegebene Beteiligung an den Nettoeinnahmen der Veranstaltung, wenn die Beteiligung die Produktionskostengarantie übersteigt. Die Deal-Art, die Produktionskostengarantie, die Beteiligungssätze und etwaige Beteiligungsstufen ergeben sich aus den nachstehenden Angaben. Die Nettoeinnahmen sind die Ticketeinnahmen abzgl. sämtlicher im Ticketvorverkauf einzurichtender Gebühren wie Ticketsystem-, Vorverkaufs- oder Mediengebühren sowie abzgl. Umsatzsteuer.
+2. Zusätzlich zahlt ÖV an Artist die Kosten für Buyouts nach § 3 Ziff. 3 gemäß den nachstehenden Angaben.
+3. Es wird eine Refundierung in der nachstehend inkl. MwSt. angegebenen Höhe eingerichtet. Artist partizipiert an dieser Refundierung mit dem nachstehend angegebenen Anteil. Sämtliche anderen Zusatzgebühren wie Mediengebühren oder Werbekostenzuschüsse, Facility Fees oder ÖPNV-Gebühren werden nach gesonderter Vereinbarung zwischen den Parteien aufgeteilt.
+4. ÖV hat den nachstehend angegebenen Abschlag zzgl. gesetzlicher Umsatzsteuer als Abschlagszahlung auf die Produktionskostengarantie sofort nach Anforderung, spätestens bis zum nachstehend angegebenen Termin, gegen Rechnung im Voraus an Artist zu zahlen. Artist behält sich das Recht vor, jederzeit weitere Abschlagszahlungen in Rechnung zu stellen. Der dann verbleibende Betrag ist von ÖV bis zum nachstehend angegebenen Termin unmittelbar nach Erhalt der entsprechenden Rechnung an Artist zu zahlen.
+5. Alle an Artist zu zahlenden Beträge sind auf Kosten von ÖV in EUR auf das nachstehend angegebene Konto zu überweisen. Auf Anforderung von {{agentur}} sind Beträge auf andere Weise als per Überweisung zu zahlen.`, deal_models: ['vs', 'participation', 'plus'] },
+
+  { title: 'Deal, Entgelt und Zahlungsmodalitäten (Festgage)', deal_models: ['fix'], body:
+`1. ÖV zahlt an Artist die nachstehend angegebene Festgage (Produktionskostengarantie) als festes Entgelt für den Auftritt, unabhängig von den Ticketeinnahmen. Eine darüber hinausgehende Beteiligung an den Einnahmen besteht nicht.
+2. Zusätzlich zahlt ÖV an Artist die Kosten für Buyouts nach § 3 Ziff. 3 gemäß den nachstehenden Angaben.
+3. Es wird eine Refundierung in der nachstehend inkl. MwSt. angegebenen Höhe eingerichtet. Artist partizipiert an dieser Refundierung mit dem nachstehend angegebenen Anteil. Sämtliche anderen Zusatzgebühren wie Mediengebühren oder Werbekostenzuschüsse, Facility Fees oder ÖPNV-Gebühren werden nach gesonderter Vereinbarung zwischen den Parteien aufgeteilt.
+4. ÖV hat den nachstehend angegebenen Abschlag zzgl. gesetzlicher Umsatzsteuer als Abschlagszahlung auf die Festgage sofort nach Anforderung, spätestens bis zum nachstehend angegebenen Termin, gegen Rechnung im Voraus an Artist zu zahlen. Artist behält sich das Recht vor, jederzeit weitere Abschlagszahlungen in Rechnung zu stellen. Der dann verbleibende Betrag ist von ÖV bis zum nachstehend angegebenen Termin unmittelbar nach Erhalt der entsprechenden Rechnung an Artist zu zahlen.
+5. Alle an Artist zu zahlenden Beträge sind auf Kosten von ÖV in EUR auf das nachstehend angegebene Konto zu überweisen. Auf Anforderung von {{agentur}} sind Beträge auf andere Weise als per Überweisung zu zahlen.` },
+
+  { title: 'Deal, Entgelt und Zahlungsmodalitäten (Nettogewinn/Break-Even)', deal_models: ['vs_break'], body:
+`1. ÖV zahlt an Artist eine Beteiligung am Nettogewinn der Veranstaltung, wenn diese die Produktionskostengarantie übersteigt; andernfalls zahlt ÖV die Produktionskostengarantie. Der Nettogewinn ergibt sich aus den Nettoeinnahmen abzüglich der nachstehend angegebenen nachgewiesenen Veranstaltungskosten des ÖV (Break-Even). Die Nettoeinnahmen sind die Ticketeinnahmen abzgl. sämtlicher im Ticketvorverkauf einzurichtender Gebühren wie Ticketsystem-, Vorverkaufs- oder Mediengebühren sowie abzgl. Umsatzsteuer. Die Aufteilung des Nettogewinns zwischen Artist und ÖV sowie etwaige Beteiligungsstufen ergeben sich aus den nachstehenden Angaben.
 2. Zusätzlich zahlt ÖV an Artist die Kosten für Buyouts nach § 3 Ziff. 3 gemäß den nachstehenden Angaben.
 3. Es wird eine Refundierung in der nachstehend inkl. MwSt. angegebenen Höhe eingerichtet. Artist partizipiert an dieser Refundierung mit dem nachstehend angegebenen Anteil. Sämtliche anderen Zusatzgebühren wie Mediengebühren oder Werbekostenzuschüsse, Facility Fees oder ÖPNV-Gebühren werden nach gesonderter Vereinbarung zwischen den Parteien aufgeteilt.
 4. ÖV hat den nachstehend angegebenen Abschlag zzgl. gesetzlicher Umsatzsteuer als Abschlagszahlung auf die Produktionskostengarantie sofort nach Anforderung, spätestens bis zum nachstehend angegebenen Termin, gegen Rechnung im Voraus an Artist zu zahlen. Artist behält sich das Recht vor, jederzeit weitere Abschlagszahlungen in Rechnung zu stellen. Der dann verbleibende Betrag ist von ÖV bis zum nachstehend angegebenen Termin unmittelbar nach Erhalt der entsprechenden Rechnung an Artist zu zahlen.
@@ -10117,15 +10135,17 @@ app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, asyn
       const c = FKP_STANDARD_CLAUSES[idx]
       const key = c.title.trim().toLowerCase()
       const ex = byTitle.get(key)
+      // FKP-Vorlage; optional deal_models (für die Vergütungs-§-Varianten).
+      const dm = Array.isArray(c.deal_models) && c.deal_models.length ? JSON.stringify(c.deal_models) : null
       if (ex) {
-        await db.run(`UPDATE booking_clauses SET sort_order=?, archived_at=NULL, updated_at=datetime('now') WHERE id=?`, [idx, ex.id])
+        await db.run(`UPDATE booking_clauses SET sort_order=?, archived_at=NULL, template='fkp', deal_models=?, updated_at=datetime('now') WHERE id=?`, [idx, dm, ex.id])
         if ((ex.body || '') !== c.body) {
           await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)',
             [req.tenant.id, ex.id, (ex.maxv || 0) + 1, c.body, req.user.id])
           updated++
         }
       } else {
-        const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order) VALUES (?,?,?)', [req.tenant.id, c.title, idx])
+        const r = await db.run('INSERT INTO booking_clauses (tenant_id, title, sort_order, template, deal_models) VALUES (?,?,?,?,?)', [req.tenant.id, c.title, idx, 'fkp', dm])
         await db.run('INSERT INTO booking_clause_versions (tenant_id, clause_id, version, body, created_by) VALUES (?,?,?,?,?)', [req.tenant.id, r.lastID, 1, c.body, req.user.id])
         created++
       }
@@ -10152,7 +10172,7 @@ app.post('/api/booking/clauses/seed-fkp', authenticateToken, requireTenant, asyn
 app.put('/api/booking/clauses/:id', authenticateToken, requireTenant, async (req, res) => {
   if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
   try {
-    const { title, body, newVersion, deal_models } = req.body
+    const { title, body, newVersion, deal_models, template } = req.body
     const clause = await db.get('SELECT id FROM booking_clauses WHERE id=? AND tenant_id=?', [req.params.id, req.tenant.id])
     if (!clause) return res.status(404).json({ error: 'Baustein nicht gefunden' })
     if (title != null) {
@@ -10162,6 +10182,11 @@ app.put('/api/booking/clauses/:id', authenticateToken, requireTenant, async (req
     if (deal_models !== undefined) {
       const dm = Array.isArray(deal_models) && deal_models.length ? JSON.stringify(deal_models.map(String)) : null
       await db.run(`UPDATE booking_clauses SET deal_models=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?`, [dm, req.params.id, req.tenant.id])
+    }
+    // template (Vorlage): nur bei mitgesendetem Feld; leer → NULL (= „fkp").
+    if (template !== undefined) {
+      const tmpl = (typeof template === 'string' && template.trim()) ? template.trim() : null
+      await db.run(`UPDATE booking_clauses SET template=?, updated_at=datetime('now') WHERE id=? AND tenant_id=?`, [tmpl, req.params.id, req.tenant.id])
     }
     // Neue Version nur anlegen, wenn Body übergeben und als neue Version markiert (bzw. geändert)
     if (body != null && newVersion) {
@@ -10330,7 +10355,7 @@ app.put('/api/booking/contracts/:id/ticket-sales', authenticateToken, requireTen
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-const CONTRACT_FIELDS = ['title','status','termin_id','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
+const CONTRACT_FIELDS = ['title','status','termin_id','template','event_title','event_date','event_city','event_venue','partner_name','partner_address','partner_email','currency','deal_type','guarantee','deal_share','break_even','vvk','ticket_price','deposit','payment_terms','notes','actual_tickets','actual_revenue',
   'deal_base','deal_model','tier_basis','promoter_costs','pct1','threshold2','pct2','ticket_vat','fee_per_ticket','fee_vat','fee_band_split_pct','artist_vat','ticketing_payout_gross','deduct_own_shop',
   'issuer_mode','issuer_name','issuer_address','issuer_taxid','issuer_email','issuer_phone',
   'rep_name','rep_address','venue_address','individual_terms','deal_tiers','parties',
@@ -10441,18 +10466,21 @@ async function buildContractPdfInput(tenant, contractId) {
   const contract = await db.get('SELECT * FROM booking_contracts WHERE id=? AND tenant_id=?', [contractId, tenant.id])
   if (!contract) return null
   const clausesRaw = await db.all(
-    `SELECT c.id, c.title, c.deal_models,
+    `SELECT c.id, c.title, c.deal_models, c.template,
             (SELECT body FROM booking_clause_versions v WHERE v.clause_id=c.id ORDER BY version DESC LIMIT 1) AS body
      FROM booking_clauses c
      WHERE c.tenant_id=? AND c.archived_at IS NULL
      ORDER BY c.sort_order, c.id`, [tenant.id])
   const ovRows = await db.all('SELECT clause_id, included, body FROM booking_contract_clauses WHERE contract_id=? AND tenant_id=?', [contractId, tenant.id])
   const ov = new Map(ovRows.map(o => [o.clause_id, o]))
-  // Deal-Bindung: ein Baustein mit deal_models-Tag gehört nur zu diesen Deal-Modellen; ohne Tag = „Allgemein".
-  // Default-Aufnahme in den Vertrag = Allgemein ODER Tag passt zum deal_model des Vertrags. Pro-Vertrag-Override gewinnt.
-  const dealModel = contract.deal_model || ''
-  const dealMatch = (raw) => { let arr = []; try { arr = raw ? JSON.parse(raw) : [] } catch { arr = [] } if (!Array.isArray(arr) || !arr.length) return true; return !!dealModel && arr.map(String).includes(dealModel) }
+  // Vorlage (Agentur-Set): nur Bausteine der Vorlage des Vertrags; leer = „fkp" (Bestand).
+  const tmpl = String(contract.template || 'fkp')
+  // Deal-Bindung: Baustein mit deal_models-Tag nur für diese Deal-Modelle; ohne Tag = „Allgemein".
+  // Leeres deal_model zählt als „vs" (Default), damit Bestandsverträge ihren Vergütungs-§ behalten.
+  const dealModel = contract.deal_model || 'vs'
+  const dealMatch = (raw) => { let arr = []; try { arr = raw ? JSON.parse(raw) : [] } catch { arr = [] } if (!Array.isArray(arr) || !arr.length) return true; return arr.map(String).includes(dealModel) }
   const clauses = clausesRaw
+    .filter(c => String(c.template || 'fkp') === tmpl)
     .filter(c => { const o = ov.get(c.id); return o ? o.included !== 0 : dealMatch(c.deal_models) })
     .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
   const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])

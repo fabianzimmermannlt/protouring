@@ -22,3 +22,20 @@ export function parseDealModels(raw: unknown): string[] {
 export function dealModelLabel(id: string): string {
   return DEAL_MODEL_TABS.find(d => d.id === id)?.label ?? id
 }
+
+// Vorlagen = Vertragswelten (Agentur-Sets) über den Deal-Reitern. „fkp" ist die
+// vorbefüllte FKP-Vorlage; „standard" ist eine offene Vorlage für eigene/andere Verträge.
+// Leerer Wert zählt als „fkp" (Bestandsdaten), damit bestehende Verträge unverändert bleiben.
+export const CLAUSE_TEMPLATES: { key: string; name: string }[] = [
+  { key: 'fkp', name: 'FKP' },
+  { key: 'standard', name: 'Standard' },
+]
+
+export function templateKey(x: unknown): string {
+  const s = String(x ?? '').trim()
+  return s || 'fkp'
+}
+
+export function templateName(key: string): string {
+  return CLAUSE_TEMPLATES.find(t => t.key === key)?.name ?? key
+}

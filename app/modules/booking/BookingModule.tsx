@@ -12,7 +12,7 @@ import {
   type TenantArtistSettings,
   type BookingClause, type BookingClauseVersion, type BookingContract, type BookingContractInput, type BookingInvoice, type BookingSettings, type Termin,
 } from '@/lib/api-client'
-import { DEAL_MODEL_TABS, parseDealModels } from '@/lib/booking/deal-models'
+import { DEAL_MODEL_TABS, parseDealModels, CLAUSE_TEMPLATES, templateKey } from '@/lib/booking/deal-models'
 
 const nnum2 = (v: unknown) => { const x = Number(String(v ?? '').replace(',', '.')); return isFinite(x) ? x : 0 }
 const eur2 = (n: number, cur = 'EUR') => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + cur
@@ -57,8 +57,9 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   const [clauses, setClauses] = useState<BookingClause[]>([])
   const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<{ clause: BookingClause | null; group: string } | null>(null)
+  const [modal, setModal] = useState<{ clause: BookingClause | null; group: string; vorlage: string } | null>(null)
   const [historyFor, setHistoryFor] = useState<BookingClause | null>(null)
+  const [vorlage, setVorlage] = useState<string>('fkp')
   const [group, setGroup] = useState<string>('all')
 
   const load = useCallback(() => {
@@ -67,18 +68,23 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
   }, [showArchived])
   useEffect(() => { load() }, [load])
 
-  // Reiter-Gruppe: 'all' = Allgemein (ohne Deal-Tag), sonst ein Deal-Modell.
-  const inGroup = (c: BookingClause) => { const t = parseDealModels(c.deal_models); return group === 'all' ? t.length === 0 : t.includes(group) }
-  const shown = clauses.filter(inGroup)
+  // Angezeigte Bausteine: aktuelle Vorlage (Agentur-Set) UND Reiter-Gruppe
+  // ('all' = Allgemein ohne Deal-Tag, sonst ein Deal-Modell).
+  const inScope = (c: BookingClause) => {
+    if (templateKey(c.template) !== vorlage) return false
+    const t = parseDealModels(c.deal_models)
+    return group === 'all' ? t.length === 0 : t.includes(group)
+  }
+  const shown = clauses.filter(inScope)
 
-  // Reihenfolge verschieben – innerhalb der angezeigten Gruppe; der Rest bleibt an Ort und Stelle.
+  // Reihenfolge verschieben – innerhalb der angezeigten Vorlage+Gruppe; der Rest bleibt an Ort und Stelle.
   const move = async (i: number, dir: -1 | 1) => {
     const j = i + dir
     if (j < 0 || j >= shown.length) return
     const ns = [...shown]
     ;[ns[i], ns[j]] = [ns[j], ns[i]]
     let k = 0
-    const next = clauses.map(c => inGroup(c) ? ns[k++] : c)
+    const next = clauses.map(c => inScope(c) ? ns[k++] : c)
     setClauses(next)
     try { await reorderBookingClauses(next.map(c => c.id)) } catch { load() }
   }
@@ -90,7 +96,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         {canEdit && !showArchived && (
           <div className="flex gap-2">
             <button onClick={async () => { if (!confirm('FKP-Standardbausteine laden/aktualisieren?\n\nVorhandene Bausteine werden auf den vollständigen Vertragstext aktualisiert (als neue Version – die Historie bleibt erhalten), fehlende §§ werden angelegt, alte gekürzte Bausteine werden archiviert.')) return; const r = await seedFkpClauses(); alert(`${r.created} angelegt, ${r.updated} aktualisiert, ${r.archived} archiviert.`); load() }} className="btn btn-ghost">FKP-Standard laden</button>
-            <button onClick={() => setModal({ clause: null, group })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
+            <button onClick={() => setModal({ clause: null, group, vorlage })} className="btn btn-primary"><PlusIcon className="w-4 h-4" />Neuer Baustein</button>
           </div>
         )}
       </div>
@@ -98,6 +104,14 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         Feste Textbausteine für Verträge. Beim Bearbeiten kannst du eine <strong>neue Version</strong> speichern – alte Versionen bleiben erhalten.
         Platzhalter: <code>{'{{gage}}'}</code> <code>{'{{deal}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{stadt}}'}</code> <code>{'{{venue}}'}</code> <code>{'{{partner}}'}</code> <code>{'{{artist}}'}</code> <code>{'{{ticketpreis}}'}</code> <code>{'{{anzahlung}}'}</code>.
       </p>
+
+      {/* Vorlage (Agentur-Set) – über den Deal-Reitern. „fkp" ist vorbefüllt, „standard" offen für eigene/andere Verträge. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Vorlage:</span>
+        {CLAUSE_TEMPLATES.map(t => (
+          <button key={t.key} onClick={() => setVorlage(t.key)} className={`px-3 py-1 text-sm rounded-lg transition-colors ${vorlage === t.key ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-muted)] hover:bg-[var(--hover)]'}`}>{t.name}</button>
+        ))}
+      </div>
 
       {/* Reiter: Allgemein + je Deal-Variante. Darunter nur die Bausteine der Gruppe. */}
       <div className="flex flex-wrap items-center gap-1 border-b pb-2" style={{ borderColor: 'var(--border)' }}>
@@ -136,7 +150,7 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
                       <button onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach oben"><ChevronUpIcon className="w-4 h-4" /></button>
                       <button onClick={() => move(i, 1)} disabled={i === shown.length - 1} className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30" title="Nach unten"><ChevronDownIcon className="w-4 h-4" /></button>
                       <button onClick={() => setHistoryFor(c)} className="p-1 text-gray-400 hover:text-blue-600" title={`Versionen (${c.version_count ?? 1})`}><ClockIcon className="w-4 h-4" /></button>
-                      <button onClick={() => setModal({ clause: c, group })} className="p-1 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
+                      <button onClick={() => setModal({ clause: c, group, vorlage })} className="p-1 text-gray-400 hover:text-blue-600" title="Bearbeiten"><PencilIcon className="w-4 h-4" /></button>
                       <button onClick={async () => { await archiveBookingClause(c.id, true); load() }} className="p-1 text-gray-400 hover:text-gray-700" title="Archivieren"><ArchiveBoxIcon className="w-4 h-4" /></button>
                     </>}
                     {showArchived && <>
@@ -151,13 +165,13 @@ function BausteineTab({ canEdit }: { canEdit: boolean }) {
         </div>
       )}
 
-      {modal && <ClauseModal clause={modal.clause} defaultGroup={modal.group} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
+      {modal && <ClauseModal clause={modal.clause} defaultGroup={modal.group} defaultTemplate={modal.vorlage} onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />}
       {historyFor && <HistoryModal clause={historyFor} onClose={() => setHistoryFor(null)} />}
     </div>
   )
 }
 
-function ClauseModal({ clause, defaultGroup, onClose, onSaved }: { clause: BookingClause | null; defaultGroup: string; onClose: () => void; onSaved: () => void }) {
+function ClauseModal({ clause, defaultGroup, defaultTemplate, onClose, onSaved }: { clause: BookingClause | null; defaultGroup: string; defaultTemplate: string; onClose: () => void; onSaved: () => void }) {
   const [title, setTitle] = useState(clause?.title ?? '')
   const [body, setBody] = useState(clause?.latest_body ?? '')
   const [group, setGroup] = useState<string>(() => {
@@ -174,7 +188,7 @@ function ClauseModal({ clause, defaultGroup, onClose, onSaved }: { clause: Booki
     try {
       const deal_models = group === 'all' ? [] : [group]
       if (isEdit) await updateBookingClause(clause!.id, { title, body, newVersion: bodyChanged, deal_models })
-      else await createBookingClause({ title, body, deal_models })
+      else await createBookingClause({ title, body, deal_models, template: defaultTemplate })
       onSaved()
     } catch { setSaving(false) }
   }
