@@ -1060,10 +1060,11 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
                 <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
                   <span style={{ color: 'var(--text-subtle)', minWidth: 54 }}>Anlage {i + 1}</span>
                   <input className="form-input" style={{ flex: '1 1 160px', minWidth: 120 }} disabled={!isAdmin} value={a.name} onChange={e => setAnnexField(i, { name: e.target.value })} placeholder="z. B. Artist-Rider" />
-                  <select className="form-select" style={{ width: 'auto' }} disabled={!isAdmin} value={a.status} onChange={e => setAnnexField(i, { status: e.target.value })}>
-                    <option value="pending">ausstehend</option>
-                    <option value="draft">Entwurf</option>
-                    <option value="final">final</option>
+                  <select className="form-select" style={{ width: 'auto' }} disabled={!isAdmin || !a.file_id} title={!a.file_id ? 'Status wird mit dem Datei-Upload aktiv' : undefined}
+                    value={a.file_id ? (a.status === 'final' ? 'final' : 'draft') : 'pending'} onChange={e => setAnnexField(i, { status: e.target.value })}>
+                    {!a.file_id && <option value="pending">ausstehend</option>}
+                    {a.file_id && <option value="draft">Entwurf</option>}
+                    {a.file_id && <option value="final">final</option>}
                   </select>
                   {a.file_id ? (
                     <button type="button" onClick={() => openBookingAnnexFile(a.file_id as number)} className="btn btn-ghost" style={{ padding: '2px 8px' }}><DocumentArrowDownIcon className="w-4 h-4" />{a.file_name || 'Datei'}</button>

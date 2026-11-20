@@ -10697,8 +10697,9 @@ app.put('/api/booking/contracts/:id/annexes', authenticateToken, requireTenant, 
     for (const a of list) {
       const name = (a && typeof a.name === 'string') ? a.name.trim() : ''
       if (!name) continue
-      const status = ['pending', 'draft', 'final'].includes(a.status) ? a.status : 'pending'
       const fileId = (a.file_id != null && a.file_id !== '') ? Number(a.file_id) : null
+      // Status nur mit Datei: Entwurf/final setzen eine hinterlegte Datei voraus; sonst „ausstehend".
+      const status = (fileId && (a.status === 'draft' || a.status === 'final')) ? a.status : 'pending'
       const fileName = (typeof a.file_name === 'string' && a.file_name.trim()) ? a.file_name.trim() : null
       await db.run('INSERT INTO booking_contract_annexes (tenant_id, contract_id, name, status, file_id, file_name, sort_order) VALUES (?,?,?,?,?,?,?)', [req.tenant.id, req.params.id, name, status, fileId, fileName, i++])
     }
