@@ -10,6 +10,7 @@ import {
   getBookingClauses, getBookingClauseTemplates, getBookingInvoices, createBookingInvoice, deleteBookingInvoice, openBookingInvoicePdf,
   previewBookingInvoice, openBookingSettlementPdf, type SettlementKA,
   setBookingTicketSales, setBookingCostLines, setBookingClauseOverrides, getBookingSettings,
+  getBookingContractAnnexes, setBookingContractAnnexes, uploadBookingAnnexFile, openBookingAnnexFile, type BookingAnnex,
   getVenue, updateVenue, getPartner, updatePartner, type PartnerFormData, getTerminPartners, getPartnerTypes,
   type BookingContract, type BookingContractInput, type BookingClause, type BookingInvoice,
   type BookingTicketSale, type BookingCostLine, type BookingSettings, type Termin, type Partner, type TerminPartner, type BookingContractVersion, type BookingClauseTemplate,
@@ -90,6 +91,11 @@ const DEAL_MODELS: { id: string; label: string; fix: boolean; part: boolean; typ
   { id: 'participation', label: 'Nur Beteiligung (ggf. mit Stufen)', fix: false, part: true, type: 'vs' },
   { id: 'vs', label: 'Garantie gegen Beteiligung – das Höhere', fix: true, part: true, type: 'vs' },
   { id: 'plus', label: 'Garantie plus Beteiligung', fix: true, part: true, type: 'plus' },
+]
+// Standard-Anlagen (per Button hinzufügbar) – FKP referenziert Rider/Bühnenanweisung als Bestandteil.
+const STANDARD_ANNEXES: { name: string; status: string }[] = [
+  { name: 'Artist-Rider / Bühnenanweisung', status: 'pending' },
+  { name: 'Technischer Rider / Bühnenplan', status: 'pending' },
 ]
 const TIER_BASIS = [
   { id: 'revenue', label: 'Netto-Umsatz (€)' },
@@ -274,12 +280,14 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const [freezeBusy, setFreezeBusy] = useState(false)
   const [showOtherDeals, setShowOtherDeals] = useState(false)
   const [clauseTemplates, setClauseTemplates] = useState<BookingClauseTemplate[]>([])
+  const [annexes, setAnnexes] = useState<BookingAnnex[]>([])
   const [autoState, setAutoState] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle')
 
   const loadInvoices = useCallback(() => { getBookingInvoices(booking.id).then(setInvoices).catch(() => {}) }, [booking.id])
   useEffect(() => {
     getBookingClauses().then(setClauses).catch(() => {})
     getBookingClauseTemplates().then(setClauseTemplates).catch(() => {})
+    getBookingContractAnnexes(booking.id).then(setAnnexes).catch(() => {})
     getBookingContractVersions(booking.id).then(setVersions).catch(() => {})
     getTerminPartners(termin.id).then(setEventPartners).catch(() => {})
     getPartnerTypes().then(ts => setRoleOptions(ts.filter(t => t.visible).map(t => t.name))).catch(() => {})
@@ -295,6 +303,18 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
   const removeVersion = async (v: BookingContractVersion) => {
     if (!confirm(`Festgeschriebene Version v${v.version} löschen?`)) return
     try { await deleteBookingContractVersion(booking.id, v.id); setVersions(await getBookingContractVersions(booking.id)) } catch { /* ignore */ }
+  }
+
+  // Vertrags-Anlagen (Rider etc.) – Autosave persistiert die Liste; Datei via Files-API.
+  const addAnnex = () => setAnnexes(p => [...p, { name: '', status: 'pending' }])
+  const addStandardAnnexes = () => setAnnexes(STANDARD_ANNEXES.map(a => ({ ...a })))
+  const setAnnexField = (i: number, patch: Partial<BookingAnnex>) => setAnnexes(p => p.map((a, idx) => idx === i ? { ...a, ...patch } : a))
+  const rmAnnex = (i: number) => setAnnexes(p => p.filter((_, idx) => idx !== i))
+  const uploadAnnex = async (i: number, file: File) => {
+    try {
+      const r = await uploadBookingAnnexFile(booking.id, file)
+      setAnnexes(p => p.map((a, idx) => idx === i ? { ...a, file_id: r.id, file_name: r.name, status: a.status === 'pending' ? 'draft' : a.status } : a))
+    } catch { /* ignore */ }
   }
 
   // Kapazität: eine Quelle = der Venue-Datensatz. Beim Laden aus dem Venue vorbefüllen
@@ -368,6 +388,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
       })
       .map(([cid, v]) => ({ clause_id: Number(cid), included: v.included ? 1 : 0, body: v.body || '' }))
     await setBookingClauseOverrides(booking.id, ovList)
+    await setBookingContractAnnexes(booking.id, annexes.filter(a => (a.name || '').trim()))
     // Kapazität in den Venue-Datensatz zurückschreiben (eine Quelle, keine Dopplung).
     const capNow = ((patch.capacity ?? f.capacity) ?? '').toString().trim()
     if (venueCapRef.current && capNow && capNow !== venueCapRef.current.capacity) {
@@ -393,7 +414,7 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // bewusst auf die editierbaren Zustände hören:
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, parties, channels, costs, tiers, cats, shops, clauseOv])
+  }, [f, parties, channels, costs, tiers, cats, shops, clauseOv, annexes])
 
   const setStatus = (id: string) => set({ status: id })   // Auto-Save übernimmt das Speichern
   const goNext = () => { if (nextStatus) setStatus(nextStatus.id) }
@@ -1018,6 +1039,48 @@ function BookingWorkspace({ booking, settings, termin, isAdmin, onChanged }: { b
           <label className="form-label">Individualvereinbarungen (haben Vorrang)</label>
           <textarea className="form-input" rows={3} disabled={!isAdmin} value={f.individual_terms ?? ''} onChange={e => set({ individual_terms: e.target.value })} placeholder="Abweichungen/Zusätze, die mit der Gegenpartei vereinbart wurden – z. B. handschriftliche Änderungen aus der Verhandlung." />
         </div>
+
+        {/* Anlagen (Vertragsbestandteile) – stehen immer im Vertrag, Datei optional/nachreichbar */}
+        <div className="mt-3 border rounded-lg p-2" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Anlagen (Vertragsbestandteile)</span>
+            {isAdmin && (
+              <div className="flex gap-2">
+                {annexes.length === 0 && <button type="button" onClick={addStandardAnnexes} className="btn btn-ghost" style={{ padding: '2px 8px' }}>Standard (Rider …)</button>}
+                <button type="button" onClick={addAnnex} className="btn btn-ghost" style={{ padding: '2px 8px' }}><PlusIcon className="w-4 h-4" />Anlage</button>
+              </div>
+            )}
+          </div>
+          <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Anlagen stehen immer (nummeriert) im Vertrag – auch ohne Datei. Die Datei (z. B. Rider) ist jederzeit nachreichbar; „final" = fertig zum Senden.</p>
+          {annexes.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Noch keine Anlagen.</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {annexes.map((a, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span style={{ color: 'var(--text-subtle)', minWidth: 54 }}>Anlage {i + 1}</span>
+                  <input className="form-input" style={{ flex: '1 1 160px', minWidth: 120 }} disabled={!isAdmin} value={a.name} onChange={e => setAnnexField(i, { name: e.target.value })} placeholder="z. B. Artist-Rider" />
+                  <select className="form-select" style={{ width: 'auto' }} disabled={!isAdmin} value={a.status} onChange={e => setAnnexField(i, { status: e.target.value })}>
+                    <option value="pending">ausstehend</option>
+                    <option value="draft">Entwurf</option>
+                    <option value="final">final</option>
+                  </select>
+                  {a.file_id ? (
+                    <button type="button" onClick={() => openBookingAnnexFile(a.file_id as number)} className="btn btn-ghost" style={{ padding: '2px 8px' }}><DocumentArrowDownIcon className="w-4 h-4" />{a.file_name || 'Datei'}</button>
+                  ) : null}
+                  {isAdmin && (
+                    <label className="btn btn-ghost" style={{ padding: '2px 8px', cursor: 'pointer' }}>
+                      {a.file_id ? 'ersetzen' : 'Datei'}
+                      <input type="file" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) uploadAnnex(i, file); e.currentTarget.value = '' }} />
+                    </label>
+                  )}
+                  {isAdmin && <button type="button" onClick={() => rmAnnex(i)} className="text-xs" title="Anlage entfernen" style={{ color: 'var(--danger)' }}>×</button>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="mt-3 flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => openBookingContractPdf(booking.id)} className="btn btn-ghost"><DocumentArrowDownIcon className="w-4 h-4" />Vertrag-PDF (Entwurf)</button>

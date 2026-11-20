@@ -4063,6 +4063,41 @@ export async function setBookingCostLines(contractId: number, lines: BookingCost
 export async function setBookingClauseOverrides(contractId: number, overrides: BookingClauseOverride[]): Promise<void> {
   await request(`/api/booking/contracts/${contractId}/clause-overrides`, { method: 'PUT', body: { overrides } })
 }
+
+/** Vertrags-Anlage (Rider etc.): Name + Status + optionale Datei. */
+export interface BookingAnnex { id?: number; name: string; status: string; file_id?: number | null; file_name?: string | null; sort_order?: number }
+export async function getBookingContractAnnexes(contractId: number): Promise<BookingAnnex[]> {
+  const res = await request<{ annexes: BookingAnnex[] }>(`/api/booking/contracts/${contractId}/annexes`)
+  return res.annexes
+}
+export async function setBookingContractAnnexes(contractId: number, annexes: BookingAnnex[]): Promise<void> {
+  await request(`/api/booking/contracts/${contractId}/annexes`, { method: 'PUT', body: { annexes } })
+}
+/** Lädt eine Anlagen-Datei am Vertrag hoch (bestehende Files-API) → gibt file_id + Name zurück. */
+export async function uploadBookingAnnexFile(contractId: number, file: File): Promise<{ id: number; name: string }> {
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  const fd = new FormData()
+  fd.append('files', file)
+  const res = await fetch(`${API_BASE}/api/files/booking_contract/${contractId}`, {
+    method: 'POST',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(tenant?.slug ? { 'X-Tenant-Slug': tenant.slug } : {}) },
+    body: fd,
+  })
+  if (!res.ok) throw new Error('Upload fehlgeschlagen')
+  const data = await res.json()
+  const f = (data.files && data.files[0]) || {}
+  return { id: Number(f.id), name: String(f.originalName || file.name) }
+}
+/** Öffnet eine Anlagen-Datei im neuen Tab (view-Route mit Token/Slug als Query). */
+export function openBookingAnnexFile(fileId: number): void {
+  const token = getAuthToken()
+  const tenant = getCurrentTenant()
+  const params = new URLSearchParams()
+  if (token) params.set('token', token)
+  if (tenant?.slug) params.set('slug', tenant.slug)
+  if (typeof window !== 'undefined') window.open(`${API_BASE}/api/files/view/${fileId}?${params}`, '_blank')
+}
 export async function getBookingSettings(): Promise<BookingSettings> {
   const res = await request<{ settings: BookingSettings }>('/api/booking/settings')
   return res.settings

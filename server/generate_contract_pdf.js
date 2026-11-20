@@ -76,7 +76,7 @@ function fillPlaceholders(text, map) {
 const norm = (t) => String(t || '').toLowerCase().trim();
 const ART_LABEL = { vvk: 'Vorverkauf', boxoffice: 'Abendkasse', ownshop: 'Eigener Shop' };
 
-function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSales = [], costLines = [], settings = {} }) {
+function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSales = [], costLines = [], annexes = [], settings = {} }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
     const chunks = [];
@@ -444,6 +444,18 @@ function generateContractPdf({ contract: c, clauses = [], artist = {}, ticketSal
       doc.font(FONT_BOLD).fontSize(SIZE_H).fillColor(INK).text('Weitere Vereinbarungen', MARGIN);
       doc.moveDown(0.3);
       doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(String(c.notes), MARGIN, doc.y, { width: CONTENT_W, lineGap: LINEGAP });
+      doc.moveDown(0.6);
+    }
+
+    // ── Anlagen (Vertragsbestandteile) – immer gelistet, auch ohne hinterlegte Datei ──
+    if (Array.isArray(annexes) && annexes.length) {
+      ensureSpace(40 + annexes.length * 14);
+      doc.font(FONT_BOLD).fontSize(SIZE_BODY).fillColor(INK).text('Anlagen', MARGIN, doc.y, { width: CONTENT_W });
+      doc.moveDown(0.3);
+      annexes.forEach((a, i) => {
+        const st = a.status === 'final' ? (a.file_name || 'final') : (a.status === 'draft' ? 'Entwurf, noch nicht final' : 'ausstehend');
+        doc.font(FONT_REG).fontSize(SIZE_BODY).fillColor(BODY_INK).text(`Anlage ${i + 1}: ${a.name}  (${st})`, MARGIN + 12, doc.y, { width: CONTENT_W - 12, lineGap: LINEGAP });
+      });
       doc.moveDown(0.6);
     }
 

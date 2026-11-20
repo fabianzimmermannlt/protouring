@@ -2140,6 +2140,18 @@ async function initDatabase() {
       FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
       FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS booking_contract_annexes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL,
+      contract_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      file_id INTEGER,
+      file_name TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+      FOREIGN KEY (contract_id) REFERENCES booking_contracts(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS booking_ticket_sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tenant_id INTEGER NOT NULL,
@@ -10569,10 +10581,11 @@ async function buildContractPdfInput(tenant, contractId) {
     .map(c => { const o = ov.get(c.id); return { title: c.title, body: (o && o.body && o.body.trim()) ? o.body : c.body } })
   const ticketSales = await db.all('SELECT * FROM booking_ticket_sales WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])
   const costLines = await db.all('SELECT * FROM booking_cost_lines WHERE contract_id=? AND tenant_id=? ORDER BY sort_order', [contractId, tenant.id])
+  const annexes = await db.all('SELECT name, status, file_name FROM booking_contract_annexes WHERE contract_id=? AND tenant_id=? ORDER BY sort_order, id', [contractId, tenant.id])
   const bset = await getBookingSettings(tenant.id)
   return {
     contract: { ...contract, logoPath: tenant.label_logo_path },
-    clauses, ticketSales, costLines, settings: bset,
+    clauses, ticketSales, costLines, annexes, settings: bset,
     artist: resolveIssuer(contract, bset, tenant),
   }
 }
@@ -10662,6 +10675,34 @@ app.get('/api/booking/contracts/:id/versions/:vid/pdf', async (req, res) => {
     const no = (input.contract && (input.contract.contract_no || input.contract.id)) || req.params.id
     res.setHeader('Content-Disposition', `inline; filename="Vertrag_${no}_v${v.version}.pdf"`)
     res.send(pdf)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Booking: Vertrags-Anlagen (Rider etc. als Bestandteil; Datei via Files-API) ──
+// GET /api/booking/contracts/:id/annexes
+app.get('/api/booking/contracts/:id/annexes', authenticateToken, requireTenant, async (req, res) => {
+  try {
+    const annexes = await db.all('SELECT id, name, status, file_id, file_name, sort_order FROM booking_contract_annexes WHERE contract_id=? AND tenant_id=? ORDER BY sort_order, id', [req.params.id, req.tenant.id])
+    res.json({ annexes })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// PUT /api/booking/contracts/:id/annexes — ganze Liste ersetzen { annexes:[{name,status,file_id?,file_name?}] }
+app.put('/api/booking/contracts/:id/annexes', authenticateToken, requireTenant, async (req, res) => {
+  if (!bookingCanEdit(req)) return res.status(403).json({ error: 'Keine Berechtigung' })
+  try {
+    const list = Array.isArray(req.body?.annexes) ? req.body.annexes : []
+    await db.run('DELETE FROM booking_contract_annexes WHERE contract_id=? AND tenant_id=?', [req.params.id, req.tenant.id])
+    let i = 0
+    for (const a of list) {
+      const name = (a && typeof a.name === 'string') ? a.name.trim() : ''
+      if (!name) continue
+      const status = ['pending', 'draft', 'final'].includes(a.status) ? a.status : 'pending'
+      const fileId = (a.file_id != null && a.file_id !== '') ? Number(a.file_id) : null
+      const fileName = (typeof a.file_name === 'string' && a.file_name.trim()) ? a.file_name.trim() : null
+      await db.run('INSERT INTO booking_contract_annexes (tenant_id, contract_id, name, status, file_id, file_name, sort_order) VALUES (?,?,?,?,?,?,?)', [req.tenant.id, req.params.id, name, status, fileId, fileName, i++])
+    }
+    res.json({ ok: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
