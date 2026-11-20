@@ -4674,6 +4674,12 @@ app.get('/api/termine/:terminId/linked-files', authenticateToken, requireTenant,
       const p = await db.get('SELECT id, company_name FROM partners WHERE id=? AND tenant_id=?', [pr.partner_id, req.tenant.id])
       if (p) { const files = await filesFor('partner', p.id); if (files.length) groups.push({ sourceType: 'Partner', sourceName: p.company_name || 'Partner', files }) }
     }
+    // Vertrag (Booking): am Vertrag hängende Anlagen/Dateien hier sichtbar machen
+    const bContract = await db.get('SELECT id FROM booking_contracts WHERE termin_id=? AND tenant_id=?', [terminId, req.tenant.id])
+    if (bContract) {
+      const files = await filesFor('booking_contract', bContract.id)
+      if (files.length) groups.push({ sourceType: 'Vertrag', sourceName: 'Booking-Anlagen', files })
+    }
 
     res.json({ groups })
   } catch (err) {
