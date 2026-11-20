@@ -127,10 +127,10 @@ export function TermineSubNavigation({
         </div>
         {activeLeaves.length > 0 && (
           <div className={`${maxWidth} mx-auto px-4 sm:px-6 lg:px-8`} style={{ borderTop: '1px solid var(--border)' }}>
-            <div className="pt-subnav-inner" style={{ height: '2.5rem' }}>
+            <div className="pt-subnav-inner" style={{ height: '2.5rem', gap: '0.375rem' }}>
               {activeLeaves.map(l => (
                 <button key={l.view} onClick={() => go(l.view)}
-                  className={`pt-subnav-btn ${isLeafActive(l, activeView) ? 'active' : ''}`}>
+                  className={`pt-detail-subtab ${isLeafActive(l, activeView) ? 'active' : ''}`}>
                   {l.label}
                 </button>
               ))}
