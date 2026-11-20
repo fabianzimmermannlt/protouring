@@ -544,6 +544,41 @@ body {
   background: none;
 }
 
+/* Zweite Ebene – Sub-Nav der aktiven Gruppe */
+.pt-detail-subrow {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.5rem 0 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pt-detail-subrow::-webkit-scrollbar { display: none; }
+.pt-detail-subtab {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #4b5563;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.pt-detail-subtab:hover {
+  color: #111827;
+  background: #f3f4f6;
+}
+.pt-detail-subtab.active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  font-weight: 500;
+}
+html.dark .pt-detail-subtab { background: #2d2d2d; color: #9ca3af; border-color: #3c3c3c; }
+html.dark .pt-detail-subtab:hover { color: #e6edf3; background: #363636; }
+html.dark .pt-detail-subtab.active { background: #1a4a82; color: #a8d0fd; border-color: #74aef9; }
+
 /* ============================================================
    PT-Travel — Reisegruppe pro Termin
    ============================================================ */

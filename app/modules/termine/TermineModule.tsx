@@ -46,6 +46,7 @@ import BriefingView from './BriefingView'
 import AgreementsView from './AgreementsView'
 import TerminDetailMobile from './TerminDetailMobile'
 import { useLayout } from '@/app/components/shared/Navigation/LayoutContext'
+import { visibleGroups, visibleLeaves, defaultViewForGroup, groupForView, isLeafActive, type CanLeaf } from '@/app/components/shared/Navigation/eventNav'
 import ColumnToggle from '@/app/components/shared/ColumnToggle'
 import { useColumnVisibility } from '@/app/components/shared/useColumnVisibility'
 import { useColumnOrder } from '@/app/lib/hooks/useColumnOrder'
@@ -1077,30 +1078,18 @@ function TerminDetailHeader({
       ? [termin.venueName, termin.venueCity].filter(Boolean).join(' · ') || termin.title || ''
       : [termin.city, termin.title].filter(Boolean).join(' · ') || termin.title || ''
 
-  // Alle verfügbaren Views
-  const tabs = ([
-    { id: 'details2',       label: 'Details' },
-    { id: 'venue',          label: 'Venue' },
-    { id: 'partner',        label: 'Partner' },
-    { id: 'schedule',       label: 'Schedule' },
-    { id: 'travelparty',    label: 'Reisegruppe' },
-    { id: 'travel',         label: 'Travel' },
-    { id: 'hospitality',    label: 'Hospitality' },
-    { id: 'guestlist',      label: 'Gästeliste' },
-    { id: 'setlist',        label: 'Setlist' },
-    { id: 'files',          label: 'Dateien' },
-    { id: 'advancing',      label: 'Advancing' },
-    { id: 'briefing',       label: 'Briefing' },
-    { id: 'advance-sheet',  label: 'Advance Sheet' },
-    ...(isTenantModuleEnabled('booking') ? [{ id: 'booking', label: 'Booking' }] : []),
-  ]).filter(t => can('event.' + t.id))
+  // Gruppierte Event-Navigation (8 Top-Reiter + Sub-Navs)
+  const canLeaf: CanLeaf = (leaf) =>
+    (!leaf.needsBooking || isTenantModuleEnabled('booking')) &&
+    can('event.' + (leaf.permKey || leaf.view))
+
+  const groups = visibleGroups(canLeaf)
+  const activeGroup = groupForView(selectedView) ?? groups[0]
+  const activeLeaves = activeGroup?.children ? visibleLeaves(activeGroup, canLeaf) : []
 
   const changeView = (view: string) => {
     window.dispatchEvent(new CustomEvent('termine-set-view', { detail: { view } }))
   }
-
-  // Normalize: 'details' maps to 'details2' in this header
-  const activeTab = selectedView === 'details' ? 'details2' : selectedView
 
   return (
     <div style={{ marginBottom: '0.25rem' }}>
@@ -1161,18 +1150,33 @@ function TerminDetailHeader({
         )}
       </div>
 
-      {/* Tab bar */}
+      {/* Tab bar – Top-Gruppen */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
-        {tabs.map(tab => (
+        {groups.map(g => (
           <button
-            key={tab.id}
-            onClick={() => changeView(tab.id)}
-            className={`pt-detail-tab${activeTab === tab.id ? ' active' : ''}`}
+            key={g.id}
+            onClick={() => changeView(defaultViewForGroup(g, canLeaf))}
+            className={`pt-detail-tab${activeGroup?.id === g.id ? ' active' : ''}`}
           >
-            {tab.label}
+            {g.label}
           </button>
         ))}
       </div>
+
+      {/* Sub-Nav der aktiven Gruppe */}
+      {activeLeaves.length > 0 && (
+        <div className="pt-detail-subrow">
+          {activeLeaves.map(l => (
+            <button
+              key={l.view}
+              onClick={() => changeView(l.view)}
+              className={`pt-detail-subtab${isLeafActive(l, selectedView) ? ' active' : ''}`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
